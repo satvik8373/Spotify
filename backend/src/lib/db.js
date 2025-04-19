@@ -8,12 +8,18 @@ let cachedConnection = null;
  * @returns {Promise<void>}
  */
 export const connectDB = async () => {
-  if (cachedConnection) {
-    console.log("Using cached database connection");
-    return cachedConnection;
-  }
-
   try {
+    // If we have a cached connection, check if it's still valid
+    if (cachedConnection) {
+      if (mongoose.connection.readyState === 1) {
+        console.log("Using cached database connection");
+        return cachedConnection;
+      } else {
+        console.log("Cached connection is not ready, creating new connection");
+        cachedConnection = null;
+      }
+    }
+
     // Check if we already have a connection
     if (mongoose.connection.readyState === 1) {
       console.log("MongoDB already connected");
@@ -22,16 +28,22 @@ export const connectDB = async () => {
     }
     
     if (!env.MONGODB_URI) {
+      console.error("MONGODB_URI is not defined");
       throw new Error("MONGODB_URI is not defined");
     }
     
+    console.log("Connecting to MongoDB...");
     const conn = await mongoose.connect(env.MONGODB_URI, {
-      // These options help with serverless environments
       useNewUrlParser: true,
       useUnifiedTopology: true,
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      serverSelectionTimeoutMS: 10000, // Increased timeout
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      minPoolSize: 0,
+      connectTimeoutMS: 10000,
+      retryWrites: true,
+      retryReads: true
     });
     
     cachedConnection = conn;
@@ -39,10 +51,15 @@ export const connectDB = async () => {
     return cachedConnection;
   } catch (error) {
     console.error(`Error connecting to MongoDB: ${error.message}`);
+    console.error("Full error:", error);
+    
     // Don't exit in serverless environment
     if (env.NODE_ENV !== "production") {
       process.exit(1);
     }
-    throw error; // Re-throw the error to be handled by the caller
+    
+    // Clear cached connection on error
+    cachedConnection = null;
+    throw error;
   }
 }; 

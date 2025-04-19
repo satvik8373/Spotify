@@ -27,15 +27,29 @@ const app = express();
 
 // Initialize database connection
 let dbConnection = null;
+let dbConnectionAttempts = 0;
+const MAX_DB_CONNECTION_ATTEMPTS = 3;
+
 const initializeDB = async () => {
 	try {
 		if (!dbConnection) {
+			console.log(`Attempting to connect to database (attempt ${dbConnectionAttempts + 1}/${MAX_DB_CONNECTION_ATTEMPTS})`);
 			dbConnection = await connectDB();
+			dbConnectionAttempts = 0; // Reset attempts on success
 		}
 		return dbConnection;
 	} catch (error) {
-		console.error("Database connection failed:", error);
-		throw error;
+		dbConnectionAttempts++;
+		console.error(`Database connection failed (attempt ${dbConnectionAttempts}/${MAX_DB_CONNECTION_ATTEMPTS}):`, error);
+		
+		if (dbConnectionAttempts >= MAX_DB_CONNECTION_ATTEMPTS) {
+			console.error("Maximum database connection attempts reached");
+			throw new Error("Failed to connect to database after multiple attempts");
+		}
+		
+		// Wait before retrying
+		await new Promise(resolve => setTimeout(resolve, 1000));
+		return initializeDB(); // Retry
 	}
 };
 
@@ -104,6 +118,7 @@ app.get("/api/health", async (req, res) => {
 			timestamp: new Date().toISOString()
 		});
 	} catch (error) {
+		console.error("Health check failed:", error);
 		res.status(500).json({ 
 			status: "error", 
 			message: "Server is running but database connection failed",
@@ -120,6 +135,7 @@ app.use(async (req, res, next) => {
 		}
 		next();
 	} catch (error) {
+		console.error("Database middleware error:", error);
 		next(error);
 	}
 });

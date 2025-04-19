@@ -24,6 +24,18 @@ if (missingEnvVars.length > 0) {
   }
 }
 
+// Validate MongoDB URI format
+const validateMongoDBUri = (uri) => {
+  if (!uri) return false;
+  try {
+    // Basic validation for MongoDB URI format
+    return uri.startsWith('mongodb://') || uri.startsWith('mongodb+srv://');
+  } catch (error) {
+    console.error('Error validating MongoDB URI:', error);
+    return false;
+  }
+};
+
 // Set default values for optional environment variables
 const env = {
   PORT: process.env.PORT || 5000,
@@ -37,5 +49,13 @@ const env = {
   CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
   FRONTEND_URL: process.env.FRONTEND_URL || 'https://spotify-clone-satvik8373.vercel.app',
 };
+
+// Validate MongoDB URI
+if (env.MONGODB_URI && !validateMongoDBUri(env.MONGODB_URI)) {
+  console.error('Invalid MongoDB URI format');
+  if (env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
+}
 
 export default env; 
