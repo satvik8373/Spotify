@@ -8,6 +8,11 @@ A full-featured Spotify clone with real-time functionality, including:
 - Search functionality across multiple music catalogs
 - Mobile-responsive design
 
+## Live Demo
+
+- **Frontend**: [https://mavrixfilms.live/](https://mavrixfilms.live/)
+- **Backend**: [https://spotify-delta-puce.vercel.app/](https://spotify-delta-puce.vercel.app/)
+
 ## Features
 
 - **Music player**: Full-featured audio player with play/pause, skip, shuffle, and repeat
@@ -22,6 +27,7 @@ A full-featured Spotify clone with real-time functionality, including:
 - **Authentication**: Clerk
 - **API**: External music APIs with proxy endpoints
 - **Styling**: Modern UI with responsive design
+- **Deployment**: Frontend on custom domain, Backend on Vercel
 
 ## Installation
 
