@@ -24,7 +24,20 @@ import musicRoutes from "./routes/music.route.js";
 
 const __dirname = path.resolve();
 const app = express();
-const PORT = env.PORT;
+
+// Initialize database connection
+let dbConnection = null;
+const initializeDB = async () => {
+	try {
+		if (!dbConnection) {
+			dbConnection = await connectDB();
+		}
+		return dbConnection;
+	} catch (error) {
+		console.error("Database connection failed:", error);
+		throw error;
+	}
+};
 
 // Initialize socket only in development
 if (env.NODE_ENV !== "production") {
@@ -32,17 +45,21 @@ if (env.NODE_ENV !== "production") {
 	initializeSocket(httpServer);
 }
 
+// Basic middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // Configure CORS
 app.use(
 	cors({
 		origin: env.NODE_ENV === "production" 
 			? [env.FRONTEND_URL, "https://spotify-clone-satvik8373.vercel.app"]
-			: ["http://localhost:3000", "http://localhost:3001", "https://fcf6-2401-4900-1f3f-bcc1-acdf-150c-4cb8-28aa.ngrok-free.app"],
+			: ["http://localhost:3000", "http://localhost:3001"],
 		credentials: true,
 	})
 );
 
-app.use(express.json());
+// Clerk authentication middleware
 app.use(clerkMiddleware());
 
 // Configure file upload with memory storage for serverless
@@ -76,13 +93,35 @@ if (env.NODE_ENV !== "production") {
 }
 
 // Health check endpoint
-app.get("/api/health", (req, res) => {
-	res.status(200).json({ 
-		status: "ok", 
-		message: "Server is running",
-		environment: env.NODE_ENV,
-		timestamp: new Date().toISOString()
-	});
+app.get("/api/health", async (req, res) => {
+	try {
+		await initializeDB();
+		res.status(200).json({ 
+			status: "ok", 
+			message: "Server is running",
+			environment: env.NODE_ENV,
+			database: "connected",
+			timestamp: new Date().toISOString()
+		});
+	} catch (error) {
+		res.status(500).json({ 
+			status: "error", 
+			message: "Server is running but database connection failed",
+			error: env.NODE_ENV === "production" ? {} : error.message
+		});
+	}
+});
+
+// Initialize database before handling API routes
+app.use(async (req, res, next) => {
+	try {
+		if (!dbConnection) {
+			await initializeDB();
+		}
+		next();
+	} catch (error) {
+		next(error);
+	}
 });
 
 // API Routes
@@ -101,33 +140,37 @@ app.get('/spotify-callback', (req, res) => {
 	res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
 });
 
-// Serve static files in production
-if (env.NODE_ENV === "production") {
-	app.use(express.static(path.join(__dirname, "../frontend/dist")));
-	app.get("*", (req, res) => {
-		res.sendFile(path.resolve(__dirname, "../frontend", "dist", "index.html"));
-	});
-}
-
 // Error handler
 app.use((err, req, res, next) => {
-	console.error("Error:", err.stack);
+	console.error("Error:", err);
+	
+	// Handle specific types of errors
+	if (err.name === 'MongoError' || err.name === 'MongooseError') {
+		return res.status(500).json({
+			message: "Database error occurred",
+			error: env.NODE_ENV === "production" ? {} : err.message
+		});
+	}
+	
+	if (err.name === 'ClerkError') {
+		return res.status(401).json({
+			message: "Authentication error",
+			error: env.NODE_ENV === "production" ? {} : err.message
+		});
+	}
+	
+	// Default error response
 	res.status(500).json({ 
 		message: env.NODE_ENV === "production" ? "Internal server error" : err.message,
 		error: env.NODE_ENV === "production" ? {} : err
 	});
 });
 
-// Connect to database
-connectDB().catch(err => {
-	console.error("Failed to connect to database:", err);
-});
-
 // Start server only in development
 if (env.NODE_ENV !== "production") {
 	const httpServer = createServer(app);
-	httpServer.listen(PORT, () => {
-		console.log(`Server is running on port ${PORT} in ${env.NODE_ENV} mode`);
+	httpServer.listen(env.PORT, () => {
+		console.log(`Server is running on port ${env.PORT} in ${env.NODE_ENV} mode`);
 	});
 }
 
