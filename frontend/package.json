@@ -2,6 +2,7 @@
   "name": "spotify-clone-frontend",
   "version": "1.0.0",
   "description": "Spotify Clone Frontend",
+  "main": "index.js",
   "type": "module",
   "scripts": {
     "dev": "vite",

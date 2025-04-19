@@ -36,22 +36,6 @@ A full-featured Spotify clone with real-time functionality, including:
    npm run dev
    ```
 
-## Deployment
-
-### Vercel Deployment
-
-This project is configured for easy deployment on Vercel:
-
-1. Push your code to GitHub
-2. Import the repository in Vercel
-3. Set the following environment variables:
-   - `VITE_CLERK_PUBLISHABLE_KEY`: Your Clerk publishable key
-
-The project includes a `vercel.json` configuration file that handles:
-- Build commands
-- Output directory
-- SPA routing
-
 ## Credits
 
 This project was created as a learning exercise.
