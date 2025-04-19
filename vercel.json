@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "functions": {
+    "api/proxy.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "builds": [
+    { 
+      "src": "frontend/package.json", 
+      "use": "@vercel/static-build",
+      "config": { 
+        "distDir": "dist",
+        "buildCommand": "cd frontend && npm install && npm run build"
+      }
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/proxy.js" },
+    { "src": "/(.*\\.[a-z0-9]+)$", "dest": "/frontend/dist/$1" },
+    { "src": "/(.*)", "dest": "/frontend/dist/index.html" }
+  ]
+} 
