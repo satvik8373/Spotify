@@ -4,6 +4,11 @@ import dotenv from "dotenv";
 // Load environment variables first
 dotenv.config();
 
+// Log environment for debugging
+console.log(`Environment: ${process.env.NODE_ENV}`);
+console.log(`MongoDB URI exists: ${!!process.env.MONGODB_URI}`);
+console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
+
 import { clerkMiddleware } from "@clerk/express";
 import fileUpload from "express-fileupload";
 import path from "path";
@@ -21,12 +26,10 @@ import musicRoutes from "./routes/music.route.js";
 
 const app = express();
 
-// Configure CORS
+// Configure CORS with more permissive settings for debugging
 app.use(
 	cors({
-		origin: process.env.NODE_ENV === "production" 
-			? [process.env.FRONTEND_URL, "https://spotify-clone-satvik8373.vercel.app"]
-			: ["http://localhost:3000", "http://localhost:3001"],
+		origin: "*", // Allow all origins for now
 		credentials: true,
 	})
 );
@@ -44,6 +47,11 @@ app.use(
 	})
 );
 
+// Add a health check endpoint
+app.get("/api/health", (req, res) => {
+	res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
@@ -60,16 +68,28 @@ app.get('/spotify-callback', (req, res) => {
 	res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
 });
 
-// Error handler
+// Error handler with more detailed logging
 app.use((err, req, res, next) => {
-	console.error(err.stack);
+	console.error("Error details:", {
+		message: err.message,
+		stack: err.stack,
+		path: req.path,
+		method: req.method,
+		query: req.query,
+		body: req.body,
+	});
+	
 	res.status(500).json({ 
-		message: process.env.NODE_ENV === "production" ? "Internal server error" : err.message 
+		message: "Internal server error",
+		error: process.env.NODE_ENV === "production" ? "An unexpected error occurred" : err.message
 	});
 });
 
-// Connect to database
-connectDB().catch(console.error);
+// Connect to database with error handling
+connectDB().catch(err => {
+	console.error("Failed to connect to database:", err);
+	// Don't throw in serverless environment
+});
 
 // Export for Vercel
 export default app;
