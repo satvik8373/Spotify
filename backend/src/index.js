@@ -82,6 +82,11 @@ if (process.env.NODE_ENV !== "production") {
 	});
 }
 
+// Root route
+app.get('/', (req, res) => {
+	res.json({ message: 'Welcome to Spotify Clone API' });
+});
+
 // Health check endpoint with MongoDB status
 app.get('/health', async (req, res) => {
 	try {
@@ -128,9 +133,14 @@ app.use((err, req, res, next) => {
 	});
 });
 
-// 404 handler
+// 404 handler - This should be the last middleware
 app.use((req, res) => {
-	res.status(404).json({ message: "Route not found" });
+	console.log('404 Not Found:', req.method, req.url);
+	res.status(404).json({ 
+		message: "Route not found",
+		path: req.url,
+		method: req.method
+	});
 });
 
 // MongoDB connection with retry mechanism
