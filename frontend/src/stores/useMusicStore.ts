@@ -54,8 +54,6 @@ interface MusicStore {
 	convertIndianSongToAppSong: (song: IndianSong) => Song;
 }
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-
 export const useMusicStore = create<MusicStore>((set, get) => ({
 	albums: [],
 	songs: [],
