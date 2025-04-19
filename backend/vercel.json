@@ -8,19 +8,23 @@
   ],
   "routes": [
     {
+      "src": "/api/health",
+      "dest": "src/index.js"
+    },
+    {
       "src": "/api/(.*)",
-      "dest": "/src/index.js"
+      "dest": "src/index.js"
     },
     {
       "src": "/spotify-callback",
-      "dest": "/src/index.js"
-    },
-    {
-      "handle": "filesystem"
+      "dest": "src/index.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/src/index.js"
+      "dest": "src/index.js"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 } 
