@@ -6,10 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node build.js",
     "preview": "vite preview",
     "start": "vite",
-    "vercel-build": "vite build"
+    "vercel-build": "node build.js"
   },
   "keywords": [
     "spotify",
