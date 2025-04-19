@@ -11,7 +11,6 @@ import cors from "cors";
 import fs from "fs";
 import { createServer } from "http";
 import cron from "node-cron";
-import mongoose from "mongoose";
 
 import { initializeSocket } from "./lib/socket.js";
 import { connectDB } from "./lib/db.js";
@@ -38,8 +37,6 @@ app.use(
 			? ["https://mavrixfilms.live", "https://spotify-clone-satvik8373.vercel.app"]
 			: ["http://localhost:3000", "http://localhost:3001"],
 		credentials: true,
-		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-		allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 	})
 );
 
@@ -82,26 +79,9 @@ if (process.env.NODE_ENV !== "production") {
 	});
 }
 
-// Root route
-app.get('/', (req, res) => {
-	res.json({ message: 'Welcome to Spotify Clone API' });
-});
-
-// Health check endpoint with MongoDB status
-app.get('/health', async (req, res) => {
-	try {
-		const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-		res.status(200).json({ 
-			status: 'ok',
-			database: dbStatus,
-			environment: process.env.NODE_ENV
-		});
-	} catch (error) {
-		res.status(500).json({ 
-			status: 'error',
-			message: error.message
-		});
-	}
+// Health check endpoint
+app.get('/health', (req, res) => {
+	res.status(200).json({ status: 'ok' });
 });
 
 // API Routes
@@ -133,66 +113,21 @@ app.use((err, req, res, next) => {
 	});
 });
 
-// 404 handler - This should be the last middleware
+// 404 handler
 app.use((req, res) => {
-	console.log('404 Not Found:', req.method, req.url);
-	res.status(404).json({ 
-		message: "Route not found",
-		path: req.url,
-		method: req.method
-	});
+	res.status(404).json({ message: "Route not found" });
 });
 
-// MongoDB connection with retry mechanism
-let isConnected = false;
-const connectWithRetry = async () => {
-	if (isConnected) return;
-	
-	try {
-		if (!process.env.MONGODB_URI) {
-			throw new Error('MONGODB_URI is not defined in environment variables');
-		}
-
-		await mongoose.connect(process.env.MONGODB_URI, {
-			useNewUrlParser: true,
-			useUnifiedTopology: true,
-			serverSelectionTimeoutMS: 5000,
-			socketTimeoutMS: 45000,
-		});
-
-		isConnected = true;
-		console.log('MongoDB connected successfully');
-
-		// Handle connection events
-		mongoose.connection.on('error', (err) => {
-			console.error('MongoDB connection error:', err);
-			isConnected = false;
-		});
-
-		mongoose.connection.on('disconnected', () => {
-			console.log('MongoDB disconnected');
-			isConnected = false;
-		});
-
-	} catch (error) {
-		console.error('MongoDB connection error:', error);
-		isConnected = false;
-		// Retry connection after 5 seconds
-		setTimeout(connectWithRetry, 5000);
-	}
-};
+// Connect to database
+connectDB().catch(console.error);
 
 // Start server only in development
 if (process.env.NODE_ENV !== "production") {
 	const httpServer = createServer(app);
 	httpServer.listen(PORT, () => {
 		console.log(`Server is running on port ${PORT}`);
-		connectWithRetry();
 	});
 }
-
-// Initialize database connection
-connectWithRetry();
 
 // Export for Vercel
 export default app;
