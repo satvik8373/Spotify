@@ -1,12 +1,13 @@
 import express from "express";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from 'url';
 
 // Load environment variables first
 dotenv.config();
 
 import { clerkMiddleware } from "@clerk/express";
 import fileUpload from "express-fileupload";
-import path from "path";
 import cors from "cors";
 import fs from "fs";
 import { createServer } from "http";
@@ -22,6 +23,9 @@ import albumRoutes from "./routes/album.route.js";
 import statRoutes from "./routes/stat.route.js";
 import spotifyRoutes from "./routes/spotify.route.js";
 import musicRoutes from "./routes/music.route.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -84,6 +88,11 @@ app.get('/health', (req, res) => {
 	res.status(200).json({ status: 'ok' });
 });
 
+// Handle favicon.ico
+app.get('/favicon.ico', (req, res) => {
+	res.status(204).end();
+});
+
 // API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
@@ -103,6 +112,23 @@ app.get('/spotify-callback', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
 	console.error('Error:', err);
+	
+	// Handle specific error types
+	if (err.name === 'ValidationError') {
+		return res.status(400).json({
+			message: 'Validation Error',
+			details: err.message
+		});
+	}
+	
+	if (err.name === 'UnauthorizedError') {
+		return res.status(401).json({
+			message: 'Unauthorized',
+			details: err.message
+		});
+	}
+	
+	// Default error response
 	res.status(err.status || 500).json({
 		message: process.env.NODE_ENV === "production" 
 			? "Internal server error" 
@@ -115,7 +141,10 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-	res.status(404).json({ message: "Route not found" });
+	res.status(404).json({ 
+		message: "Route not found",
+		path: req.path
+	});
 });
 
 // Connect to database

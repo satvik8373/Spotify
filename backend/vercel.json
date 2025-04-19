@@ -8,16 +8,32 @@
   ],
   "routes": [
     {
+      "src": "/favicon.ico",
+      "dest": "/src/index.js",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
       "src": "/api/(.*)",
-      "dest": "/src/index.js"
+      "dest": "/src/index.js",
+      "headers": {
+        "Cache-Control": "no-cache"
+      }
     },
     {
       "src": "/spotify-callback",
-      "dest": "/src/index.js"
+      "dest": "/src/index.js",
+      "headers": {
+        "Cache-Control": "no-cache"
+      }
     },
     {
       "src": "/(.*)",
-      "dest": "/src/index.js"
+      "dest": "/src/index.js",
+      "headers": {
+        "Cache-Control": "no-cache"
+      }
     }
   ],
   "env": {
