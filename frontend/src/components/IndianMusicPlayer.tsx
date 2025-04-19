@@ -443,8 +443,6 @@ const IndianMusicPlayer = () => {
                 e.stopPropagation();
                 playSong(song);
               }}
-              variant="default" 
-              size="icon" 
               className="bg-green-500/90 hover:bg-green-600/90 hover:scale-110 h-14 w-14 rounded-full shadow-xl shadow-green-500/20 backdrop-blur-sm border border-green-400/20 transform transition-all duration-300"
             >
               {isCurrentlyPlaying ? (
@@ -467,8 +465,6 @@ const IndianMusicPlayer = () => {
           <div className="flex mb-1">
             <Button
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => toggleLikeSong(song, e)}
-              variant="ghost"
-              size="icon"
               className="h-9 w-9 text-zinc-400 hover:text-white transition-all hover:scale-110 hover:bg-zinc-800/80 rounded-full flex-shrink-0 -ml-2 mr-1"
             >
               <Heart className={`h-5 w-5 transition-all duration-300 ${likedSongIds.has(song.id) ? 'fill-green-500 text-green-500 animate-pulse' : ''}`} />
@@ -544,8 +540,6 @@ const IndianMusicPlayer = () => {
           <div className="flex items-center mb-0.5">
             <Button
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => toggleLikeSong(song, e)}
-              variant="ghost"
-              size="icon"
               className="h-7 w-7 text-zinc-400 hover:text-white opacity-70 group-hover:opacity-100 hover:scale-110 transition-all hover:bg-zinc-800/80 rounded-full flex-shrink-0 -ml-2 mr-1 p-0"
             >
               <Heart className={`h-4 w-4 transition-all duration-300 ${likedSongIds.has(song.id) ? 'fill-green-500 text-green-500' : ''}`} />
@@ -576,8 +570,6 @@ const IndianMusicPlayer = () => {
               e.stopPropagation();
               playSong(song);
             }}
-            variant="ghost" 
-            size="icon" 
             className="opacity-80 group-hover:opacity-100 h-11 w-11 text-white bg-zinc-800/80 hover:bg-green-600/90 rounded-full transition-all shadow-lg hover:shadow-green-500/20 backdrop-blur-sm border border-zinc-700/50 hover:border-green-500/30"
           >
             {isCurrentlyPlaying ? (
@@ -603,8 +595,6 @@ const IndianMusicPlayer = () => {
       {onRefresh && (
         <Button
           onClick={onRefresh}
-          variant="ghost"
-          size="sm"
           className="text-zinc-400 hover:text-white flex items-center gap-1 hover:bg-zinc-800/60 rounded-full px-4 transition-all hover:shadow-md border border-zinc-800/60 hover:border-green-500/30"
           disabled={isRefreshing}
         >
@@ -678,16 +668,12 @@ const IndianMusicPlayer = () => {
           <div className="flex justify-between items-center mb-8">
             <Button
               onClick={closeSongDetails}
-              variant="ghost"
-              size="icon"
               className="h-9 w-9 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/60"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             
             <Button
-              variant="ghost"
-              size="icon"
               className="h-9 w-9 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/60"
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
             >
