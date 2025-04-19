@@ -21,6 +21,9 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "MONGODB_URI": "@mongodb_uri",
+    "CLERK_SECRET_KEY": "@clerk_secret_key",
+    "FRONTEND_URL": "https://mavrixfilms.live"
   }
 } 

@@ -119,15 +119,32 @@ app.use((req, res) => {
 });
 
 // Connect to database
-connectDB().catch(console.error);
+let isConnected = false;
+const connectWithRetry = async () => {
+	if (isConnected) return;
+	
+	try {
+		await connectDB();
+		isConnected = true;
+		console.log('MongoDB connected successfully');
+	} catch (error) {
+		console.error('MongoDB connection error:', error);
+		// Retry connection after 5 seconds
+		setTimeout(connectWithRetry, 5000);
+	}
+};
 
 // Start server only in development
 if (process.env.NODE_ENV !== "production") {
 	const httpServer = createServer(app);
 	httpServer.listen(PORT, () => {
 		console.log(`Server is running on port ${PORT}`);
+		connectWithRetry();
 	});
 }
+
+// Initialize database connection
+connectWithRetry();
 
 // Export for Vercel
 export default app;
