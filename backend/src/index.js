@@ -1,13 +1,12 @@
 import express from "express";
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from 'url';
 
 // Load environment variables first
 dotenv.config();
 
 import { clerkMiddleware } from "@clerk/express";
 import fileUpload from "express-fileupload";
+import path from "path";
 import cors from "cors";
 import fs from "fs";
 import { createServer } from "http";
@@ -23,9 +22,6 @@ import albumRoutes from "./routes/album.route.js";
 import statRoutes from "./routes/stat.route.js";
 import spotifyRoutes from "./routes/spotify.route.js";
 import musicRoutes from "./routes/music.route.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -53,17 +49,29 @@ if (process.env.NODE_ENV !== "production") {
 // Clerk middleware
 app.use(clerkMiddleware());
 
-// File upload configuration
-app.use(
-	fileUpload({
-		useTempFiles: true,
-		tempFileDir: "/tmp",
-		createParentPath: true,
-		limits: {
-			fileSize: 10 * 1024 * 1024, // 10MB max file size
-		},
-	})
-);
+// File upload configuration - disabled in production for serverless
+if (process.env.NODE_ENV !== "production") {
+	app.use(
+		fileUpload({
+			useTempFiles: true,
+			tempFileDir: path.join(process.cwd(), "tmp"),
+			createParentPath: true,
+			limits: {
+				fileSize: 10 * 1024 * 1024, // 10MB max file size
+			},
+		})
+	);
+} else {
+	// In production, use memory storage instead of temp files
+	app.use(
+		fileUpload({
+			useTempFiles: false,
+			limits: {
+				fileSize: 10 * 1024 * 1024, // 10MB max file size
+			},
+		})
+	);
+}
 
 // Clean up temp files (only in development)
 if (process.env.NODE_ENV !== "production") {
@@ -83,14 +91,14 @@ if (process.env.NODE_ENV !== "production") {
 	});
 }
 
+// Handle favicon.ico requests
+app.get('/favicon.ico', (req, res) => {
+	res.status(204).end();
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
 	res.status(200).json({ status: 'ok' });
-});
-
-// Handle favicon.ico
-app.get('/favicon.ico', (req, res) => {
-	res.status(204).end();
 });
 
 // API Routes
@@ -112,23 +120,6 @@ app.get('/spotify-callback', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
 	console.error('Error:', err);
-	
-	// Handle specific error types
-	if (err.name === 'ValidationError') {
-		return res.status(400).json({
-			message: 'Validation Error',
-			details: err.message
-		});
-	}
-	
-	if (err.name === 'UnauthorizedError') {
-		return res.status(401).json({
-			message: 'Unauthorized',
-			details: err.message
-		});
-	}
-	
-	// Default error response
 	res.status(err.status || 500).json({
 		message: process.env.NODE_ENV === "production" 
 			? "Internal server error" 
@@ -141,10 +132,7 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-	res.status(404).json({ 
-		message: "Route not found",
-		path: req.path
-	});
+	res.status(404).json({ message: "Route not found" });
 });
 
 // Connect to database

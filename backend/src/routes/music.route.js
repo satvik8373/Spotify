@@ -3,6 +3,11 @@ import axios from "axios";
 
 const router = Router();
 
+// Test endpoint
+router.get("/test", (req, res) => {
+  res.json({ message: "Music API is working!" });
+});
+
 // Base URL for JioSaavn API
 const JIOSAAVN_API_BASE_URL = "https://saavn.dev/api";
 
