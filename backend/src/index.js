@@ -1,17 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
-
-// Load environment variables first
-dotenv.config();
-
-// Log environment for debugging
-console.log(`Environment: ${process.env.NODE_ENV}`);
-console.log(`MongoDB URI exists: ${!!process.env.MONGODB_URI}`);
-console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
-
 import { clerkMiddleware } from "@clerk/express";
 import fileUpload from "express-fileupload";
-import path from "path";
 import cors from "cors";
 import { connectDB } from "./lib/db.js";
 
@@ -24,32 +14,50 @@ import statRoutes from "./routes/stat.route.js";
 import spotifyRoutes from "./routes/spotify.route.js";
 import musicRoutes from "./routes/music.route.js";
 
+// Load environment variables
+dotenv.config();
+
 const app = express();
 
-// Configure CORS with more permissive settings for debugging
-app.use(
-	cors({
-		origin: "*", // Allow all origins for now
-		credentials: true,
-	})
-);
-
+// Basic middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// CORS configuration
+app.use(cors({
+	origin: process.env.NODE_ENV === "production" 
+		? [process.env.FRONTEND_URL, "https://spotify-clone-satvik8373.vercel.app"]
+		: ["http://localhost:3000", "http://localhost:3001"],
+	credentials: true,
+	methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+	allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// File upload configuration
+app.use(fileUpload({
+	useTempFiles: false,
+	limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+}));
+
+// Authentication middleware
 app.use(clerkMiddleware());
 
-// Configure file upload with memory storage for serverless
-app.use(
-	fileUpload({
-		useTempFiles: false,
-		limits: {
-			fileSize: 10 * 1024 * 1024, // 10MB max file size
-		},
-	})
-);
-
-// Add a health check endpoint
-app.get("/api/health", (req, res) => {
-	res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+// Health check endpoint
+app.get("/api/health", async (req, res) => {
+	try {
+		const dbConnection = await connectDB();
+		res.json({
+			status: "healthy",
+			database: dbConnection ? "connected" : "disconnected",
+			timestamp: new Date().toISOString(),
+		});
+	} catch (error) {
+		res.status(500).json({
+			status: "unhealthy",
+			error: error.message,
+			timestamp: new Date().toISOString(),
+		});
+	}
 });
 
 // API Routes
@@ -62,34 +70,34 @@ app.use("/api/stats", statRoutes);
 app.use("/api/spotify", spotifyRoutes);
 app.use("/api/music", musicRoutes);
 
-// Spotify callback route
+// Spotify callback
 app.get('/spotify-callback', (req, res) => {
 	const { code, state } = req.query;
 	res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
 });
 
-// Error handler with more detailed logging
+// Global error handler
 app.use((err, req, res, next) => {
-	console.error("Error details:", {
+	console.error('Error:', {
 		message: err.message,
-		stack: err.stack,
+		stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
 		path: req.path,
 		method: req.method,
-		query: req.query,
-		body: req.body,
 	});
-	
-	res.status(500).json({ 
-		message: "Internal server error",
-		error: process.env.NODE_ENV === "production" ? "An unexpected error occurred" : err.message
+
+	res.status(err.status || 500).json({
+		error: process.env.NODE_ENV === 'production' 
+			? 'Internal server error' 
+			: err.message
 	});
 });
 
-// Connect to database with error handling
-connectDB().catch(err => {
-	console.error("Failed to connect to database:", err);
-	// Don't throw in serverless environment
+// 404 handler
+app.use((req, res) => {
+	res.status(404).json({ error: 'Not found' });
 });
 
-// Export for Vercel
+// Initialize database connection
+connectDB().catch(console.error);
+
 export default app;
