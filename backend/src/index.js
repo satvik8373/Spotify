@@ -1,19 +1,17 @@
 import express from "express";
-import dotenv from "dotenv";
-
-// Load environment variables first
-dotenv.config();
-
-import { clerkMiddleware } from "@clerk/express";
-import fileUpload from "express-fileupload";
 import path from "path";
 import cors from "cors";
 import fs from "fs";
 import { createServer } from "http";
 import cron from "node-cron";
+import fileUpload from "express-fileupload";
 
+// Import our environment configuration
+import env from "./lib/env.js";
+
+// Import middleware and routes
+import { clerkMiddleware } from "@clerk/express";
 import { initializeSocket } from "./lib/socket.js";
-
 import { connectDB } from "./lib/db.js";
 import userRoutes from "./routes/user.route.js";
 import adminRoutes from "./routes/admin.route.js";
@@ -26,10 +24,10 @@ import musicRoutes from "./routes/music.route.js";
 
 const __dirname = path.resolve();
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = env.PORT;
 
 // Initialize socket only in development
-if (process.env.NODE_ENV !== "production") {
+if (env.NODE_ENV !== "production") {
 	const httpServer = createServer(app);
 	initializeSocket(httpServer);
 }
@@ -37,30 +35,30 @@ if (process.env.NODE_ENV !== "production") {
 // Configure CORS
 app.use(
 	cors({
-		origin: process.env.NODE_ENV === "production" 
-			? [process.env.FRONTEND_URL, "https://spotify-clone-satvik8373.vercel.app"]
+		origin: env.NODE_ENV === "production" 
+			? [env.FRONTEND_URL, "https://spotify-clone-satvik8373.vercel.app"]
 			: ["http://localhost:3000", "http://localhost:3001", "https://fcf6-2401-4900-1f3f-bcc1-acdf-150c-4cb8-28aa.ngrok-free.app"],
 		credentials: true,
 	})
 );
 
-app.use(express.json()); // to parse req.body
-app.use(clerkMiddleware()); // this will add auth to req obj => req.auth
+app.use(express.json());
+app.use(clerkMiddleware());
 
 // Configure file upload with memory storage for serverless
 app.use(
 	fileUpload({
-		useTempFiles: process.env.NODE_ENV !== "production",
+		useTempFiles: env.NODE_ENV !== "production",
 		tempFileDir: path.join(__dirname, "tmp"),
 		createParentPath: true,
 		limits: {
-			fileSize: 10 * 1024 * 1024, // 10MB  max file size
+			fileSize: 10 * 1024 * 1024, // 10MB max file size
 		},
 	})
 );
 
 // Clean up temp files (only in development)
-if (process.env.NODE_ENV !== "production") {
+if (env.NODE_ENV !== "production") {
 	const tempDir = path.join(process.cwd(), "tmp");
 	cron.schedule("0 * * * *", () => {
 		if (fs.existsSync(tempDir)) {
@@ -79,9 +77,15 @@ if (process.env.NODE_ENV !== "production") {
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
-	res.status(200).json({ status: "ok", message: "Server is running" });
+	res.status(200).json({ 
+		status: "ok", 
+		message: "Server is running",
+		environment: env.NODE_ENV,
+		timestamp: new Date().toISOString()
+	});
 });
 
+// API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
@@ -91,26 +95,26 @@ app.use("/api/stats", statRoutes);
 app.use("/api/spotify", spotifyRoutes);
 app.use("/api/music", musicRoutes);
 
-// Special route to handle Spotify callback directly
+// Spotify callback route
 app.get('/spotify-callback', (req, res) => {
-	// Redirect to our API endpoint that handles the callback
 	const { code, state } = req.query;
 	res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
 });
 
 // Serve static files in production
-if (process.env.NODE_ENV === "production") {
+if (env.NODE_ENV === "production") {
 	app.use(express.static(path.join(__dirname, "../frontend/dist")));
 	app.get("*", (req, res) => {
 		res.sendFile(path.resolve(__dirname, "../frontend", "dist", "index.html"));
 	});
 }
 
-// error handler
+// Error handler
 app.use((err, req, res, next) => {
-	console.error(err.stack);
+	console.error("Error:", err.stack);
 	res.status(500).json({ 
-		message: process.env.NODE_ENV === "production" ? "Internal server error" : err.message 
+		message: env.NODE_ENV === "production" ? "Internal server error" : err.message,
+		error: env.NODE_ENV === "production" ? {} : err
 	});
 });
 
@@ -120,10 +124,10 @@ connectDB().catch(err => {
 });
 
 // Start server only in development
-if (process.env.NODE_ENV !== "production") {
+if (env.NODE_ENV !== "production") {
 	const httpServer = createServer(app);
 	httpServer.listen(PORT, () => {
-		console.log("Server is running on port " + PORT);
+		console.log(`Server is running on port ${PORT} in ${env.NODE_ENV} mode`);
 	});
 }
 

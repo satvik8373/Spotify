@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import env from "./env.js";
 
 /**
  * Connect to MongoDB database
@@ -12,7 +13,11 @@ export const connectDB = async () => {
       return;
     }
     
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+    if (!env.MONGODB_URI) {
+      throw new Error("MONGODB_URI is not defined");
+    }
+    
+    const conn = await mongoose.connect(env.MONGODB_URI, {
       // These options help with serverless environments
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -24,7 +29,7 @@ export const connectDB = async () => {
   } catch (error) {
     console.error(`Error connecting to MongoDB: ${error.message}`);
     // Don't exit in serverless environment
-    if (process.env.NODE_ENV !== "production") {
+    if (env.NODE_ENV !== "production") {
       process.exit(1);
     }
   }
