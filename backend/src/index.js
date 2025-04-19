@@ -1,18 +1,19 @@
 import express from "express";
+import dotenv from "dotenv";
+
+// Load environment variables first
+dotenv.config();
+
+import { clerkMiddleware } from "@clerk/express";
+import fileUpload from "express-fileupload";
 import path from "path";
 import cors from "cors";
 import fs from "fs";
 import { createServer } from "http";
 import cron from "node-cron";
-import fileUpload from "express-fileupload";
 
-// Import our environment configuration
-import env from "./lib/env.js";
-
-// Import middleware and routes
-import { clerkMiddleware } from "@clerk/express";
 import { initializeSocket } from "./lib/socket.js";
-import { connectToDatabase } from "./lib/mongodb.js";
+import { connectDB } from "./lib/db.js";
 import userRoutes from "./routes/user.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import authRoutes from "./routes/auth.route.js";
@@ -22,14 +23,8 @@ import statRoutes from "./routes/stat.route.js";
 import spotifyRoutes from "./routes/spotify.route.js";
 import musicRoutes from "./routes/music.route.js";
 
-const __dirname = path.resolve();
 const app = express();
-
-// Initialize socket only in development
-if (env.NODE_ENV !== "production") {
-	const httpServer = createServer(app);
-	initializeSocket(httpServer);
-}
+const PORT = process.env.PORT || 5000;
 
 // Basic middleware
 app.use(express.json());
@@ -38,21 +33,27 @@ app.use(express.urlencoded({ extended: true }));
 // Configure CORS
 app.use(
 	cors({
-		origin: env.NODE_ENV === "production" 
-			? [env.FRONTEND_URL, "https://spotify-clone-satvik8373.vercel.app"]
+		origin: process.env.NODE_ENV === "production" 
+			? ["https://mavrixfilms.live", "https://spotify-clone-satvik8373.vercel.app"]
 			: ["http://localhost:3000", "http://localhost:3001"],
 		credentials: true,
 	})
 );
 
-// Clerk authentication middleware
+// Initialize socket only in development
+if (process.env.NODE_ENV !== "production") {
+	const httpServer = createServer(app);
+	initializeSocket(httpServer);
+}
+
+// Clerk middleware
 app.use(clerkMiddleware());
 
-// Configure file upload with memory storage for serverless
+// File upload configuration
 app.use(
 	fileUpload({
-		useTempFiles: env.NODE_ENV !== "production",
-		tempFileDir: path.join(__dirname, "tmp"),
+		useTempFiles: true,
+		tempFileDir: "/tmp",
 		createParentPath: true,
 		limits: {
 			fileSize: 10 * 1024 * 1024, // 10MB max file size
@@ -61,7 +62,7 @@ app.use(
 );
 
 // Clean up temp files (only in development)
-if (env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== "production") {
 	const tempDir = path.join(process.cwd(), "tmp");
 	cron.schedule("0 * * * *", () => {
 		if (fs.existsSync(tempDir)) {
@@ -79,35 +80,8 @@ if (env.NODE_ENV !== "production") {
 }
 
 // Health check endpoint
-app.get("/api/health", async (req, res) => {
-	try {
-		await connectToDatabase();
-		res.status(200).json({ 
-			status: "ok", 
-			message: "Server is running",
-			environment: env.NODE_ENV,
-			database: "connected",
-			timestamp: new Date().toISOString()
-		});
-	} catch (error) {
-		console.error("Health check failed:", error);
-		res.status(500).json({ 
-			status: "error", 
-			message: "Server is running but database connection failed",
-			error: env.NODE_ENV === "production" ? {} : error.message
-		});
-	}
-});
-
-// Initialize database before handling API routes
-app.use(async (req, res, next) => {
-	try {
-		await connectToDatabase();
-		next();
-	} catch (error) {
-		console.error("Database middleware error:", error);
-		next(error);
-	}
+app.get('/health', (req, res) => {
+	res.status(200).json({ status: 'ok' });
 });
 
 // API Routes
@@ -126,37 +100,32 @@ app.get('/spotify-callback', (req, res) => {
 	res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
 });
 
-// Error handler
+// Error handling middleware
 app.use((err, req, res, next) => {
-	console.error("Error:", err);
-	
-	// Handle specific types of errors
-	if (err.name === 'MongoError' || err.name === 'MongooseError') {
-		return res.status(500).json({
-			message: "Database error occurred",
-			error: env.NODE_ENV === "production" ? {} : err.message
-		});
-	}
-	
-	if (err.name === 'ClerkError') {
-		return res.status(401).json({
-			message: "Authentication error",
-			error: env.NODE_ENV === "production" ? {} : err.message
-		});
-	}
-	
-	// Default error response
-	res.status(500).json({ 
-		message: env.NODE_ENV === "production" ? "Internal server error" : err.message,
-		error: env.NODE_ENV === "production" ? {} : err
+	console.error('Error:', err);
+	res.status(err.status || 500).json({
+		message: process.env.NODE_ENV === "production" 
+			? "Internal server error" 
+			: err.message,
+		stack: process.env.NODE_ENV === "production" 
+			? undefined 
+			: err.stack
 	});
 });
 
+// 404 handler
+app.use((req, res) => {
+	res.status(404).json({ message: "Route not found" });
+});
+
+// Connect to database
+connectDB().catch(console.error);
+
 // Start server only in development
-if (env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== "production") {
 	const httpServer = createServer(app);
-	httpServer.listen(env.PORT, () => {
-		console.log(`Server is running on port ${env.PORT} in ${env.NODE_ENV} mode`);
+	httpServer.listen(PORT, () => {
+		console.log(`Server is running on port ${PORT}`);
 	});
 }
 
