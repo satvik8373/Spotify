@@ -60,8 +60,8 @@ const Topbar = () => {
 			console.log("Direct Google sign-in attempt");
 			await signIn.authenticateWithRedirect({
 				strategy: "oauth_google",
-				redirectUrl: "/sso-callback",
-				redirectUrlComplete: "/auth-callback",
+				redirectUrl: "/auth-callback",
+				redirectUrlComplete: "/",
 			});
 		} catch (error) {
 			console.error("Direct Google sign-in error:", error);

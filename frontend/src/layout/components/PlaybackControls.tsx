@@ -142,8 +142,8 @@ export const PlaybackControls = () => {
 			console.log("Starting Google sign-in flow");
 			await signIn.authenticateWithRedirect({
 				strategy: "oauth_google",
-				redirectUrl: "/sso-callback",
-				redirectUrlComplete: "/auth-callback",
+				redirectUrl: "/auth-callback",
+				redirectUrlComplete: "/",
 			});
 		} catch (error) {
 			console.error("Google sign-in error:", error);
