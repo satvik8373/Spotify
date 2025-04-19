@@ -12,7 +12,7 @@ import env from "./lib/env.js";
 // Import middleware and routes
 import { clerkMiddleware } from "@clerk/express";
 import { initializeSocket } from "./lib/socket.js";
-import { connectDB } from "./lib/db.js";
+import { connectToDatabase } from "./lib/mongodb.js";
 import userRoutes from "./routes/user.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import authRoutes from "./routes/auth.route.js";
@@ -24,34 +24,6 @@ import musicRoutes from "./routes/music.route.js";
 
 const __dirname = path.resolve();
 const app = express();
-
-// Initialize database connection
-let dbConnection = null;
-let dbConnectionAttempts = 0;
-const MAX_DB_CONNECTION_ATTEMPTS = 3;
-
-const initializeDB = async () => {
-	try {
-		if (!dbConnection) {
-			console.log(`Attempting to connect to database (attempt ${dbConnectionAttempts + 1}/${MAX_DB_CONNECTION_ATTEMPTS})`);
-			dbConnection = await connectDB();
-			dbConnectionAttempts = 0; // Reset attempts on success
-		}
-		return dbConnection;
-	} catch (error) {
-		dbConnectionAttempts++;
-		console.error(`Database connection failed (attempt ${dbConnectionAttempts}/${MAX_DB_CONNECTION_ATTEMPTS}):`, error);
-		
-		if (dbConnectionAttempts >= MAX_DB_CONNECTION_ATTEMPTS) {
-			console.error("Maximum database connection attempts reached");
-			throw new Error("Failed to connect to database after multiple attempts");
-		}
-		
-		// Wait before retrying
-		await new Promise(resolve => setTimeout(resolve, 1000));
-		return initializeDB(); // Retry
-	}
-};
 
 // Initialize socket only in development
 if (env.NODE_ENV !== "production") {
@@ -109,7 +81,7 @@ if (env.NODE_ENV !== "production") {
 // Health check endpoint
 app.get("/api/health", async (req, res) => {
 	try {
-		await initializeDB();
+		await connectToDatabase();
 		res.status(200).json({ 
 			status: "ok", 
 			message: "Server is running",
@@ -130,9 +102,7 @@ app.get("/api/health", async (req, res) => {
 // Initialize database before handling API routes
 app.use(async (req, res, next) => {
 	try {
-		if (!dbConnection) {
-			await initializeDB();
-		}
+		await connectToDatabase();
 		next();
 	} catch (error) {
 		console.error("Database middleware error:", error);
