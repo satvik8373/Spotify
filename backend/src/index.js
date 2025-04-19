@@ -28,13 +28,17 @@ const __dirname = path.resolve();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const httpServer = createServer(app);
-initializeSocket(httpServer);
+// Initialize socket only in development
+if (process.env.NODE_ENV !== "production") {
+	const httpServer = createServer(app);
+	initializeSocket(httpServer);
+}
 
+// Configure CORS
 app.use(
 	cors({
 		origin: process.env.NODE_ENV === "production" 
-			? process.env.FRONTEND_URL 
+			? [process.env.FRONTEND_URL, "https://spotify-clone-satvik8373.vercel.app"]
 			: ["http://localhost:3000", "http://localhost:3001", "https://fcf6-2401-4900-1f3f-bcc1-acdf-150c-4cb8-28aa.ngrok-free.app"],
 		credentials: true,
 	})
@@ -53,21 +57,23 @@ app.use(
 	})
 );
 
-// cron jobs
-const tempDir = path.join(process.cwd(), "tmp");
-cron.schedule("0 * * * *", () => {
-	if (fs.existsSync(tempDir)) {
-		fs.readdir(tempDir, (err, files) => {
-			if (err) {
-				console.log("error", err);
-				return;
-			}
-			for (const file of files) {
-				fs.unlink(path.join(tempDir, file), (err) => {});
-			}
-		});
-	}
-});
+// Clean up temp files (only in development)
+if (process.env.NODE_ENV !== "production") {
+	const tempDir = path.join(process.cwd(), "tmp");
+	cron.schedule("0 * * * *", () => {
+		if (fs.existsSync(tempDir)) {
+			fs.readdir(tempDir, (err, files) => {
+				if (err) {
+					console.log("error", err);
+					return;
+				}
+				for (const file of files) {
+					fs.unlink(path.join(tempDir, file), (err) => {});
+				}
+			});
+		}
+	});
+}
 
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
@@ -85,6 +91,7 @@ app.get('/spotify-callback', (req, res) => {
 	res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
 });
 
+// Serve static files in production
 if (process.env.NODE_ENV === "production") {
 	app.use(express.static(path.join(__dirname, "../frontend/dist")));
 	app.get("*", (req, res) => {
@@ -94,10 +101,26 @@ if (process.env.NODE_ENV === "production") {
 
 // error handler
 app.use((err, req, res, next) => {
-	res.status(500).json({ message: process.env.NODE_ENV === "production" ? "Internal server error" : err.message });
+	console.error(err.stack);
+	res.status(500).json({ 
+		message: process.env.NODE_ENV === "production" ? "Internal server error" : err.message 
+	});
 });
 
-httpServer.listen(PORT, () => {
-	console.log("Server is running on port " + PORT);
-	connectDB();
-});
+// Start server
+if (process.env.NODE_ENV !== "production") {
+	const httpServer = createServer(app);
+	httpServer.listen(PORT, () => {
+		console.log("Server is running on port " + PORT);
+		connectDB();
+	});
+} else {
+	// For Vercel
+	app.listen(PORT, () => {
+		console.log("Server is running on port " + PORT);
+		connectDB();
+	});
+}
+
+// Export for Vercel
+export default app;
