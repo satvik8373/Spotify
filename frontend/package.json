@@ -2,13 +2,14 @@
   "name": "spotify-clone-frontend",
   "version": "1.0.0",
   "description": "Spotify Clone Frontend",
-  "main": "index.js",
-  "type": "module",
+  "main": "server.js",
+  "type": "commonjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "start": "vite"
+    "start": "node server.js",
+    "vercel-build": "npm run build"
   },
   "keywords": [
     "spotify",
@@ -27,6 +28,7 @@
     "axios": "^1.6.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+    "express": "^4.18.2",
     "lucide-react": "^0.293.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
