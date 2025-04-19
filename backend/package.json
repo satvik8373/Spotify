@@ -3,13 +3,10 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "type": "module",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "vercel-build": "echo 'Building...'"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "spotify",
@@ -28,7 +25,7 @@
     "cloudinary": "^2.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
-    "express": "^4.18.2",
+    "express": "^5.1.0",
     "express-fileupload": "^1.5.1",
     "mongoose": "^8.13.2",
     "node-cron": "^3.0.3",

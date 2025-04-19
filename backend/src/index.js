@@ -13,6 +13,7 @@ import { createServer } from "http";
 import cron from "node-cron";
 
 import { initializeSocket } from "./lib/socket.js";
+
 import { connectDB } from "./lib/db.js";
 import userRoutes from "./routes/user.route.js";
 import adminRoutes from "./routes/admin.route.js";
@@ -23,22 +24,9 @@ import statRoutes from "./routes/stat.route.js";
 import spotifyRoutes from "./routes/spotify.route.js";
 import musicRoutes from "./routes/music.route.js";
 
+const __dirname = path.resolve();
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// Basic middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Configure CORS
-app.use(
-	cors({
-		origin: process.env.NODE_ENV === "production" 
-			? ["https://mavrixfilms.live", "https://spotify-clone-satvik8373.vercel.app"]
-			: ["http://localhost:3000", "http://localhost:3001"],
-		credentials: true,
-	})
-);
 
 // Initialize socket only in development
 if (process.env.NODE_ENV !== "production") {
@@ -46,32 +34,28 @@ if (process.env.NODE_ENV !== "production") {
 	initializeSocket(httpServer);
 }
 
-// Clerk middleware
-app.use(clerkMiddleware());
+// Configure CORS
+app.use(
+	cors({
+		origin: process.env.NODE_ENV === "production" 
+			? [process.env.FRONTEND_URL, "https://spotify-clone-satvik8373.vercel.app"]
+			: ["http://localhost:3000", "http://localhost:3001", "https://fcf6-2401-4900-1f3f-bcc1-acdf-150c-4cb8-28aa.ngrok-free.app"],
+		credentials: true,
+	})
+);
 
-// File upload configuration - disabled in production for serverless
-if (process.env.NODE_ENV !== "production") {
-	app.use(
-		fileUpload({
-			useTempFiles: true,
-			tempFileDir: path.join(process.cwd(), "tmp"),
-			createParentPath: true,
-			limits: {
-				fileSize: 10 * 1024 * 1024, // 10MB max file size
-			},
-		})
-	);
-} else {
-	// In production, use memory storage instead of temp files
-	app.use(
-		fileUpload({
-			useTempFiles: false,
-			limits: {
-				fileSize: 10 * 1024 * 1024, // 10MB max file size
-			},
-		})
-	);
-}
+app.use(express.json()); // to parse req.body
+app.use(clerkMiddleware()); // this will add auth to req obj => req.auth
+app.use(
+	fileUpload({
+		useTempFiles: true,
+		tempFileDir: path.join(__dirname, "tmp"),
+		createParentPath: true,
+		limits: {
+			fileSize: 10 * 1024 * 1024, // 10MB  max file size
+		},
+	})
+);
 
 // Clean up temp files (only in development)
 if (process.env.NODE_ENV !== "production") {
@@ -91,17 +75,6 @@ if (process.env.NODE_ENV !== "production") {
 	});
 }
 
-// Handle favicon.ico requests
-app.get('/favicon.ico', (req, res) => {
-	res.status(204).end();
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-	res.status(200).json({ status: 'ok' });
-});
-
-// API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
@@ -111,38 +84,41 @@ app.use("/api/stats", statRoutes);
 app.use("/api/spotify", spotifyRoutes);
 app.use("/api/music", musicRoutes);
 
-// Spotify callback route
+// Special route to handle Spotify callback directly
 app.get('/spotify-callback', (req, res) => {
+	// Redirect to our API endpoint that handles the callback
 	const { code, state } = req.query;
 	res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
 });
 
-// Error handling middleware
+// Serve static files in production
+if (process.env.NODE_ENV === "production") {
+	app.use(express.static(path.join(__dirname, "../frontend/dist")));
+	app.get("*", (req, res) => {
+		res.sendFile(path.resolve(__dirname, "../frontend", "dist", "index.html"));
+	});
+}
+
+// error handler
 app.use((err, req, res, next) => {
-	console.error('Error:', err);
-	res.status(err.status || 500).json({
-		message: process.env.NODE_ENV === "production" 
-			? "Internal server error" 
-			: err.message,
-		stack: process.env.NODE_ENV === "production" 
-			? undefined 
-			: err.stack
+	console.error(err.stack);
+	res.status(500).json({ 
+		message: process.env.NODE_ENV === "production" ? "Internal server error" : err.message 
 	});
 });
 
-// 404 handler
-app.use((req, res) => {
-	res.status(404).json({ message: "Route not found" });
-});
-
-// Connect to database
-connectDB().catch(console.error);
-
-// Start server only in development
+// Start server
 if (process.env.NODE_ENV !== "production") {
 	const httpServer = createServer(app);
 	httpServer.listen(PORT, () => {
-		console.log(`Server is running on port ${PORT}`);
+		console.log("Server is running on port " + PORT);
+		connectDB();
+	});
+} else {
+	// For Vercel
+	app.listen(PORT, () => {
+		console.log("Server is running on port " + PORT);
+		connectDB();
 	});
 }
 
