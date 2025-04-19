@@ -8,11 +8,8 @@ import { Play, Loader, Heart, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Topbar from "@/components/Topbar";
 import { useAuth } from "@clerk/clerk-react";
-import { loadLikedSongs, addLikedSong, removeLikedSong } from "@/services/likedSongsService";
+import { loadLikedSongs, saveLikedSongs } from "@/services/likedSongsService";
 import IndianMusicPlayer from "@/components/IndianMusicPlayer";
-
-// Constants
-const LIKED_SONGS_KEY = "spotify-clone-liked-songs";
 
 const SearchPage = () => {
   const location = useLocation();
@@ -91,4 +88,4 @@ const SearchPage = () => {
   );
 };
 
-export default SearchPage; 
+export default SearchPage;

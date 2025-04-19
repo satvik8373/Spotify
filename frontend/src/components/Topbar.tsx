@@ -4,10 +4,9 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import SignInOAuthButtons from "./SignInOAuthButtons";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "./ui/button";
-import { Input } from "./ui/input";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
-import { Button } from "./ui/button";
 import { useMusicStore } from "@/stores/useMusicStore";
 
 const Topbar = () => {
