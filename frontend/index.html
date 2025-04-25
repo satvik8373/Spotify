@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="icon" type="image/svg+xml" href="/spotify.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="description" content="A better Spotify clone with real-time features" />
+		
+		<title>Spotify but Better</title>
+		<!-- Spotify Web Playback SDK -->
+		<script src="https://sdk.scdn.co/spotify-player.js"></script>
+		<script>
+			window.onSpotifyWebPlaybackSDKReady = () => {
+				// The Spotify SDK is ready, this empty function just prevents the error
+				console.log("Spotify Web Playback SDK is ready");
+				window.SpotifyPlayerReady = true;
+			};
+		</script>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="/src/main.tsx"></script>
+	</body>
+</html>

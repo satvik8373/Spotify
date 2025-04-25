@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	:root {
+		--background: 0 0% 100%;
+		--foreground: 240 10% 3.9%;
+		--card: 0 0% 100%;
+		--card-foreground: 240 10% 3.9%;
+		--popover: 0 0% 100%;
+		--popover-foreground: 240 10% 3.9%;
+		--primary: 142.1 76.2% 36.3%;
+		--primary-foreground: 355.7 100% 97.3%;
+		--secondary: 240 4.8% 95.9%;
+		--secondary-foreground: 240 5.9% 10%;
+		--muted: 240 4.8% 95.9%;
+		--muted-foreground: 240 3.8% 46.1%;
+		--accent: 240 4.8% 95.9%;
+		--accent-foreground: 240 5.9% 10%;
+		--destructive: 0 84.2% 60.2%;
+		--destructive-foreground: 0 0% 98%;
+		--border: 240 5.9% 90%;
+		--input: 240 5.9% 90%;
+		--ring: 142.1 76.2% 36.3%;
+		--radius: 0.5rem;
+		--chart-1: 12 76% 61%;
+		--chart-2: 173 58% 39%;
+		--chart-3: 197 37% 24%;
+		--chart-4: 43 74% 66%;
+		--chart-5: 27 87% 67%;
+	}
+
+	.dark {
+		--background: 20 14.3% 4.1%;
+		--foreground: 0 0% 95%;
+		--card: 24 9.8% 10%;
+		--card-foreground: 0 0% 95%;
+		--popover: 0 0% 9%;
+		--popover-foreground: 0 0% 95%;
+		--primary: 142.1 70.6% 45.3%;
+		--primary-foreground: 144.9 80.4% 10%;
+		--secondary: 240 3.7% 15.9%;
+		--secondary-foreground: 0 0% 98%;
+		--muted: 0 0% 15%;
+		--muted-foreground: 240 5% 64.9%;
+		--accent: 12 6.5% 15.1%;
+		--accent-foreground: 0 0% 98%;
+		--destructive: 0 62.8% 30.6%;
+		--destructive-foreground: 0 85.7% 97.3%;
+		--border: 240 3.7% 15.9%;
+		--input: 240 3.7% 15.9%;
+		--ring: 142.4 71.8% 29.2%;
+		--chart-1: 220 70% 50%;
+		--chart-2: 160 60% 45%;
+		--chart-3: 30 80% 55%;
+		--chart-4: 280 65% 60%;
+		--chart-5: 340 75% 55%;
+	}
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+	html, body, #root {
+		@apply h-full overflow-hidden m-0 p-0;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+
+	/* Spotify-like main content area padding for mobile */
+	.overflow-auto.p-6 {
+		padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+	}
+}
+
+/* Utility classes */
+.pb-safe {
+	padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+}
+
+/* Album art styling */
+img.object-cover {
+	background-color: #333;
+}
+img.object-cover.bg-zinc-800 {
+	background-color: #27272a;
+}
+
+/* Audio player styling */
+.audio-player-button {
+	transition: transform 0.1s ease;
+}
+.audio-player-button:active {
+	transform: scale(0.95);
+}
+.audio-player-button.play-button:active {
+	transform: scale(0.9);
+}
+
+/* Keyboard shortcut tooltips */
+.keyboard-shortcut {
+	position: relative;
+}
+.keyboard-shortcut::after {
+	content: attr(data-shortcut);
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 4px 8px;
+	background-color: rgba(0, 0, 0, 0.8);
+	color: white;
+	border-radius: 4px;
+	font-size: 12px;
+	white-space: nowrap;
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 0.2s ease, visibility 0.2s ease;
+	pointer-events: none;
+	z-index: 100;
+}
+.keyboard-shortcut:hover::after {
+	opacity: 1;
+	visibility: visible;
+}
+
+/* Netflix slider tweaks */
+.netflix-slider {
+	padding-left: 8px !important;
+}
+
+/* Mobile nav and player layout fixes */
+.fixed.bottom-0.z-30 {
+	bottom: 0;
+	padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.fixed.bottom-0.z-40 {
+	bottom: 4rem;
+}
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+	/* Fix content padding when player is active */
+	.pb-24 {
+		padding-bottom: 6rem;
+	}
+	
+	.pb-32 {
+		padding-bottom: 8rem;
+	}
+}
+
+/* Hide scrollbar but allow scrolling */
+.no-scrollbar {
+	-ms-overflow-style: none;  /* IE and Edge */
+	scrollbar-width: none;  /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+	display: none; /* Chrome, Safari, Opera */
+}

@@ -1,0 +1,17 @@
+{
+  "name": "spotify-clone",
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js",
+    "build": "node scripts/build.js",
+    "prepare": "node vercel-deploy.js"
+  },
+  "dependencies": {
+    "fs-extra": "^11.3.0",
+    "react-router-dom": "^6.30.0"
+  }
+}
