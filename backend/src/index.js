@@ -116,6 +116,12 @@ app.get('/spotify-callback', (req, res) => {
 	res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
 });
 
+// Add a specific route for favicon.ico 
+app.get('/favicon.ico', (req, res) => {
+  // Either send the favicon if it exists or send a 204 No Content
+  res.status(204).end();
+});
+
 // Add a root route handler
 app.get('/', (req, res) => {
 	res.json({ 
@@ -137,23 +143,11 @@ if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
 // Add error handling middleware
 app.use((err, req, res, next) => {
 	console.error('Error:', err);
-	
-	// Log additional error details in development
-	if (process.env.NODE_ENV === "development") {
-		console.error('Error stack:', err.stack);
-		console.error('Error name:', err.name);
-		console.error('Error message:', err.message);
-	}
-	
 	res.status(err.status || 500).json({
 		message: process.env.NODE_ENV === "production" 
 			? "An error occurred" 
 			: err.message,
-		error: process.env.NODE_ENV === "development" ? {
-			message: err.message,
-			name: err.name,
-			stack: err.stack
-		} : {}
+		error: process.env.NODE_ENV === "development" ? err : {}
 	});
 });
 
