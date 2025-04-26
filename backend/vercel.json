@@ -9,7 +9,6 @@
   "routes": [
     {
       "src": "/favicon.ico",
-      "dest": "/public/favicon.ico",
       "status": 204
     },
     {
