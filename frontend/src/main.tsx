@@ -1,7 +1,20 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
 import './index.css'; // Ensure CSS is imported
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+	window.addEventListener('load', () => {
+		navigator.serviceWorker.register('/service-worker.js')
+			.then(registration => {
+				console.log('ServiceWorker registration successful with scope: ', registration.scope);
+			})
+			.catch(err => {
+				console.log('ServiceWorker registration failed: ', err);
+			});
+	});
+}
 
 // Error handler for unhandled errors
 const ErrorBoundary = ({ children }: { children: React.ReactNode }) => {
@@ -30,11 +43,11 @@ try {
 		throw new Error("Root element not found");
 	}
 
-	createRoot(rootElement).render(
+	ReactDOM.createRoot(rootElement).render(
 		<ErrorBoundary>
-			<StrictMode>
+			<React.StrictMode>
 				<App />
-			</StrictMode>
+			</React.StrictMode>
 		</ErrorBoundary>
 	);
 } catch (error) {

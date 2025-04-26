@@ -30,7 +30,7 @@ const AlbumPage = () => {
             _id: albumId || '1',
             title: 'Example Album',
             artist: 'Various Artists',
-            imageUrl: 'https://via.placeholder.com/400',
+            imageUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0iIzU1NSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPkFsYnVtIENvdmVyPC90ZXh0Pjwvc3ZnPg==',
             songs: [],
           });
           setIsLoading(false);

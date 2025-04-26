@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, XCircle, LayoutDashboardIcon, ChevronDown, LogOut, User } from 'lucide-react';
+import { Search, XCircle, LayoutDashboardIcon, ChevronDown, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -28,7 +28,6 @@ const Header = ({ className }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
   const { searchIndianSongs } = useMusicStore();
   const { user, loading: authLoading, refreshUserData } = useAuth();
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
@@ -42,12 +41,7 @@ const Header = ({ className }: HeaderProps) => {
       const q = queryParams.get('q');
       if (q) {
         setSearchQuery(q);
-        setShowSearch(true);
       }
-    } else if (!location.pathname.includes('/search')) {
-      // Reset search state when not on search page
-      setShowSearch(false);
-      setSearchQuery('');
     }
   }, [location]);
 
@@ -135,57 +129,52 @@ const Header = ({ className }: HeaderProps) => {
     window.location.href = getGoogleAuthUrl();
   };
 
-  const toggleSearch = () => {
-    setShowSearch(!showSearch);
-    if (!showSearch) {
-      setTimeout(() => {
-        const searchInput = document.getElementById('header-search-input');
-        if (searchInput) searchInput.focus();
-      }, 100);
-    }
+  const goBack = () => {
+    navigate(-1);
+  };
+
+  const goForward = () => {
+    navigate(1);
   };
 
   return (
-    <header className={`bg-gradient-to-b from-black via-black/95 to-transparent py-3 px-4 sm:px-6 z-50 sticky top-0 ${className}`}>
+    <header className={`bg-[#121212] py-4 px-6 z-50 sticky top-0 ${className}`}>
       <div className="flex items-center justify-between max-w-[1800px] mx-auto">
-        <div className="flex items-center">
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <svg viewBox="0 0 1134 340" className="h-8 text-white">
+        {/* Left section with navigation arrows and logo */}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 md:gap-4">
+            <button 
+              onClick={goBack}
+              className="h-8 w-8 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80"
+              aria-label="Go back"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button 
+              onClick={goForward}
+              className="h-8 w-8 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80"
+              aria-label="Go forward"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+          
+          <Link to="/" className="hidden lg:flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <svg viewBox="0 0 1134 340" className="h-10 text-[#1DB954]">
               <title>Spotify</title>
               <path
                 fill="currentColor"
                 d="M8 171c0 92 76 168 168 168s168-76 168-168S268 4 176 4 8 79 8 171zm230 78c-39-24-89-30-147-17-14 2-16-18-4-20 64-15 118-8 162 19 11 7 0 24-11 18zm17-45c-45-28-114-36-167-20-17 5-23-21-7-25 61-18 136-9 188 23 14 9 0 31-14 22zM80 133c-17 6-28-23-9-30 59-18 159-15 221 22 17 9 1 37-17 27-54-32-144-35-195-19zm379 91c-17 0-33-6-47-20-1 0-1 1-1 1l-16 19c-1 1-1 2 0 3 18 16 40 24 64 24 34 0 55-19 55-47 0-24-15-37-50-46-29-7-34-12-34-22s10-16 23-16 25 5 39 15c0 0 1 1 2 1s1-1 1-1l14-20c1-1 1-1 0-2-16-13-35-20-56-20-31 0-53 19-53 46 0 29 20 38 52 46 28 6 32 12 32 22 0 11-10 17-25 17z"
               />
             </svg>
-            <span className="text-white font-bold text-lg hidden sm:inline-block">Spotify</span>
           </Link>
-          
-          <nav className="hidden md:flex ml-10">
-            <ul className="flex gap-6">
-              <li>
-                <Link to="/" className="text-zinc-300 hover:text-white text-sm font-medium transition-colors">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link to="/search" className="text-zinc-300 hover:text-white text-sm font-medium transition-colors">
-                  Search
-                </Link>
-              </li>
-              <li>
-                <Link to="/library" className="text-zinc-300 hover:text-white text-sm font-medium transition-colors">
-                  Library
-                </Link>
-              </li>
-            </ul>
-          </nav>
         </div>
         
-        <div className="flex items-center gap-3">
-          {/* Search Input - Always visible on desktop */}
+        {/* Center section (search) - always visible on desktop */}
+        <div className="flex-1 max-w-xl mx-4 md:mx-6">
           <form 
             ref={searchFormRef} 
-            className="relative hidden md:block" 
+            className="relative w-full hidden md:block" 
             onSubmit={handleSearch}
           >
             <div className="relative">
@@ -201,44 +190,47 @@ const Header = ({ className }: HeaderProps) => {
                     setShowSearchSuggestions(true);
                   }
                 }}
-                className="w-[400px] rounded-full bg-white text-zinc-800 pl-10 pr-10 h-12 focus:outline-none focus:ring-1 focus:ring-white/80 border-none placeholder:text-zinc-600"
+                className="w-full rounded-full bg-[#242424] text-white pl-10 pr-10 h-10 focus:outline-none focus:ring-1 focus:ring-white/30 border-none placeholder:text-zinc-400"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={clearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
                 >
-                  <XCircle size={18} />
+                  <XCircle size={16} />
                 </button>
               )}
             </div>
-
-            {/* Search Suggestions */}
             <SearchSuggestions
               isVisible={showSearchSuggestions}
               query={searchQuery}
               onSelectSong={handleSelectSong}
             />
           </form>
-
-          {/* Mobile Search Button */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full hover:bg-zinc-800 focus:bg-zinc-800 md:hidden"
-            onClick={() => navigate('/search')}
-          >
-            <Search className="h-5 w-5" />
-          </Button>
-
+          
+          {/* Mobile search button - Only visible on mobile */}
+          <div className="md:hidden flex justify-center">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-full hover:bg-[#2a2a2a] focus:bg-[#2a2a2a]"
+              onClick={() => navigate('/search')}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Right section with admin button and user profile */}
+        <div className="flex items-center gap-3">
           {/* Admin Dashboard Button (only for admins) */}
           {isAdmin && (
             <Link
               to="/admin"
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "mr-2"
+                "mr-2 bg-[#2a2a2a] border-[#333] text-white hover:bg-[#333] hover:text-white"
               )}
             >
               <LayoutDashboardIcon className="mr-2 h-4 w-4" />
@@ -251,7 +243,7 @@ const Header = ({ className }: HeaderProps) => {
             href="https://www.spotify.com/premium/" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="hidden sm:block text-sm font-bold text-white hover:scale-105 transition-transform"
+            className="hidden md:block text-sm font-bold text-white hover:scale-105 transition-transform bg-transparent py-1 px-3 rounded-full border border-white/30 hover:border-white"
           >
             Premium
           </a>
@@ -261,14 +253,14 @@ const Header = ({ className }: HeaderProps) => {
             {!authLoading && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-9 pl-1 pr-2 rounded-full bg-zinc-800 hover:bg-zinc-700">
+                  <Button variant="ghost" size="sm" className="h-8 pl-1 pr-2 rounded-full bg-black hover:bg-[#282828]">
                     <div className="flex items-center gap-2">
                       <img
-                        src={user.picture || "https://via.placeholder.com/32"}
-                        alt="User"
-                        className="h-7 w-7 rounded-full"
+                        className="w-8 h-8 rounded-full border border-zinc-600"
+                        src={user.picture || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiM1NTUiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5Vc2VyPC90ZXh0Pjwvc3ZnPg=="}
+                        alt="User Profile"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://via.placeholder.com/32";
+                          (e.target as HTMLImageElement).src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiM1NTUiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5Vc2VyPC90ZXh0Pjwvc3ZnPg==";
                         }}
                       />
                       <span className="text-sm font-medium hidden sm:inline-block max-w-[100px] truncate">
@@ -278,34 +270,34 @@ const Header = ({ className }: HeaderProps) => {
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-zinc-800 border-zinc-700 text-white">
+                <DropdownMenuContent align="end" className="w-56 bg-[#282828] border-[#333] text-white mt-1 p-1 rounded-md">
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium">{user.name}</p>
                       <p className="text-xs text-zinc-400 truncate">{user.email}</p>
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-zinc-700" />
+                  <DropdownMenuSeparator className="bg-[#3e3e3e]" />
                   <DropdownMenuItem 
-                    className="flex items-center gap-2 text-zinc-200 hover:text-white focus:text-white cursor-pointer"
+                    className="flex items-center gap-2 text-zinc-200 hover:text-white focus:text-white cursor-pointer rounded-sm my-1 hover:bg-[#3e3e3e] focus:bg-[#3e3e3e]"
                     onClick={() => navigate('/account')}
                   >
                     <User className="h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem 
-                    className="flex items-center gap-2 text-zinc-200 hover:text-white focus:text-white cursor-pointer"
+                    className="flex items-center gap-2 text-zinc-200 hover:text-white focus:text-white cursor-pointer rounded-sm my-1 hover:bg-[#3e3e3e] focus:bg-[#3e3e3e]"
                     onClick={handleLogout}
                   >
                     <LogOut className="h-4 w-4" />
-                    <span>Sign out</span>
+                    <span>Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Button
                 onClick={handleGoogleSignIn}
-                className="h-9 px-4 bg-white text-black hover:bg-gray-200 font-medium flex items-center justify-center gap-2 rounded-full"
+                className="h-8 px-4 bg-white text-black hover:bg-gray-200 font-bold text-sm flex items-center justify-center rounded-full"
               >
                 <svg
                   width="18"
@@ -313,6 +305,7 @@ const Header = ({ className }: HeaderProps) => {
                   viewBox="0 0 24 24"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
+                  className="mr-2"
                 >
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
