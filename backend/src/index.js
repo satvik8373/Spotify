@@ -140,17 +140,6 @@ if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
 	});
 }
 
-// Add error handling middleware
-app.use((err, req, res, next) => {
-	console.error('Error:', err);
-	res.status(err.status || 500).json({
-		message: process.env.NODE_ENV === "production" 
-			? "An error occurred" 
-			: err.message,
-		error: process.env.NODE_ENV === "development" ? err : {}
-	});
-});
-
 // Connect to database before starting server
 connectDB().then(() => {
   httpServer.listen(PORT, () => {
@@ -161,13 +150,45 @@ connectDB().then(() => {
     console.log(`Running on Vercel: ${process.env.VERCEL ? 'Yes' : 'No'}`);
   });
 }).catch(err => {
-  console.error("Failed to connect to database. Server not started:", err);
+  console.error("Failed to connect to database:", err);
   
   // Start server anyway in production to allow API diagnostics
   if (process.env.NODE_ENV === 'production') {
     httpServer.listen(PORT, () => {
       console.log("Server is running on port " + PORT + " (without database connection)");
       console.log("API health check available at /api/test/health");
+      
+      // Set a global flag to indicate DB connection failure
+      global.dbConnectionFailed = true;
     });
   }
+});
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  // Log the error with stack trace in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('Error:', err.stack || err);
+  } else {
+    // Log less verbose in production
+    console.error('Error:', err.message || 'Unknown error');
+  }
+  
+  // Check if error is related to MongoDB connection
+  if (err.name === 'MongoNetworkError' || err.name === 'MongoServerSelectionError' || 
+      err.message?.includes('MongoDB') || global.dbConnectionFailed) {
+    return res.status(503).json({
+      message: "Database service unavailable. We're working on it!",
+      status: "database_error"
+    });
+  }
+  
+  // Default error response
+  res.status(err.status || 500).json({
+    message: process.env.NODE_ENV === "production" 
+      ? "An error occurred" 
+      : err.message,
+    error: process.env.NODE_ENV === "development" ? err : {},
+    status: err.status ? "error" : "server_error"
+  });
 });

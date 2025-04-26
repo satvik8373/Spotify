@@ -3,13 +3,48 @@ import { clerkMiddleware } from "@clerk/express";
 
 const router = express.Router();
 
-// Basic health check
+// Enhanced health check
 router.get("/health", (req, res) => {
+  // Check database connection
+  const mongoose = req.app.get('mongoose');
+  const isConnected = mongoose ? mongoose.connection.readyState === 1 : false;
+  const dbConnectionFailed = global.dbConnectionFailed === true;
+  
+  // Get memory usage
+  const memoryUsage = process.memoryUsage();
+  
+  // Gather environment variables (safe ones only)
+  const safeEnvVars = {
+    NODE_ENV: process.env.NODE_ENV || 'development',
+    VERCEL: process.env.VERCEL ? 'yes' : 'no',
+    VERCEL_REGION: process.env.VERCEL_REGION || 'unknown',
+    FRONTEND_URL: process.env.FRONTEND_URL ? 'set' : 'not_set'
+  };
+  
+  // Check if we have MongoDB URI configured (without exposing it)
+  const mongoConfigured = !!process.env.MONGODB_URI;
+  
   res.status(200).json({ 
     status: "ok",
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    vercel: process.env.VERCEL ? 'yes' : 'no' 
+    uptime: `${Math.floor(process.uptime())} seconds`,
+    environment: safeEnvVars,
+    database: {
+      configured: mongoConfigured,
+      connected: isConnected,
+      status: isConnected ? 'connected' : (dbConnectionFailed ? 'connection_failed' : 'disconnected')
+    },
+    memory: {
+      rss: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`,
+      heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+      heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
+      external: `${Math.round(memoryUsage.external / 1024 / 1024)}MB`,
+    },
+    server: {
+      platform: process.platform,
+      arch: process.arch,
+      nodeVersion: process.version
+    }
   });
 });
 
