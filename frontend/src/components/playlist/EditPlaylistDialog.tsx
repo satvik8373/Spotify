@@ -12,9 +12,8 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { useForm } from 'react-hook-form';
-import { Loader2, ImageIcon } from 'lucide-react';
+import { Loader2, ImageIcon, Cloud } from 'lucide-react';
 import { Playlist } from '@/types';
-import axios from '@/lib/axios';
 import { toast } from 'sonner';
 import { uploadImage, getPlaceholderImageUrl } from '@/services/cloudinaryService';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
@@ -87,6 +86,51 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
     // Create a preview URL
     const previewUrl = URL.createObjectURL(file);
     setImagePreview(previewUrl);
+  };
+
+  // Test direct upload to Cloudinary
+  const testDirectUpload = async () => {
+    if (!imageFile) {
+      toast.error('Please select an image first');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      formData.append('upload_preset', 'spotify_clone');
+      formData.append('cloud_name', 'djqq8kba8');
+      formData.append('folder', 'spotify_clone/playlists');
+      
+      // Make direct upload request to Cloudinary
+      const response = await fetch(
+        'https://api.cloudinary.com/v1_1/djqq8kba8/image/upload',
+        {
+          method: 'POST',
+          body: formData
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      // Show success and update preview
+      toast.success('Direct upload successful!');
+      setImagePreview(result.secure_url);
+      
+      console.log('Cloudinary upload result:', result);
+    } catch (error: any) {
+      console.error('Direct upload error:', error);
+      toast.error(`Direct upload failed: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const uploadImageToCloudinary = async (file: File): Promise<string> => {
@@ -209,6 +253,24 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
                 disabled={isSubmitting || isUploading}
               />
             </div>
+            
+            {/* Test direct upload button */}
+            {imageFile && (
+              <div className="flex justify-center">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  className="text-xs"
+                  onClick={testDirectUpload}
+                  disabled={isUploading || !imageFile}
+                >
+                  <Cloud className="h-3 w-3 mr-1" />
+                  Test Direct Upload
+                </Button>
+              </div>
+            )}
+            
             <div className="grid gap-2">
               <Label htmlFor="name" className="text-right">
                 Name

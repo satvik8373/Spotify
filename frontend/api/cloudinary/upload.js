@@ -71,6 +71,9 @@ export default async function handler(req, res) {
         {
           folder,
           resource_type: 'image',
+          upload_preset: 'spotify_clone', // Use the unsigned upload preset
+          use_filename: true, // Use the filename (matches the settings in your screenshot)
+          unique_filename: true, // Generate unique filenames (matches the settings in your screenshot)
           // Add any other upload options here
           transformation: [
             { width: 500, height: 500, crop: 'fill' },

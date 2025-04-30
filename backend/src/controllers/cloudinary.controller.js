@@ -39,6 +39,9 @@ export const uploadImage = async (req, res) => {
         {
           folder,
           resource_type: 'image',
+          upload_preset: 'spotify_clone', // Use the unsigned upload preset
+          use_filename: true, // Match the settings from the preset
+          unique_filename: true, // Match the settings from the preset
           transformation: [
             { width: 500, height: 500, crop: 'fill' },
             { quality: 'auto' }
@@ -127,7 +130,8 @@ export const createTextPlaceholder = async (req, res) => {
         folder: 'spotify_clone/placeholders',
         public_id: `placeholder_${Date.now()}`,
         resource_type: 'image',
-        format: 'png'
+        format: 'png',
+        upload_preset: 'spotify_clone' // Use the same unsigned upload preset
       }
     );
 

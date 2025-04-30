@@ -5,12 +5,12 @@ import {
   deleteImage, 
   createTextPlaceholder 
 } from "../controllers/cloudinary.controller.js";
-import { requireAuth } from "../middleware/auth.middleware.js";
+import { isAuthenticated } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
 // All routes require authentication
-router.use(requireAuth);
+router.use(isAuthenticated);
 
 // Upload image to Cloudinary
 router.post("/upload", handleSingleUpload, uploadImage);

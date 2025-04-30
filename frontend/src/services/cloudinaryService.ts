@@ -96,7 +96,7 @@ export const getOptimizedImageUrl = (
 };
 
 /**
- * Uploads an image to Cloudinary using direct upload
+ * Uploads an image to Cloudinary using direct unsigned upload
  * @param file The file to upload
  * @param onProgress Optional callback for upload progress
  * @returns Promise with the upload result
@@ -114,6 +114,7 @@ export const uploadImage = async (
     formData.append('file', file);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
     formData.append('cloud_name', CLOUDINARY_CLOUD_NAME);
+    formData.append('folder', 'spotify_clone/playlists'); // Explicitly set folder to match Asset folder setting
 
     const response = await axios.post<CloudinaryUploadResponse>(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
@@ -146,6 +147,7 @@ export const uploadImageFromUrl = async (imageUrl: string): Promise<string> => {
     formData.append('file', imageUrl);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
     formData.append('cloud_name', CLOUDINARY_CLOUD_NAME);
+    formData.append('folder', 'spotify_clone/playlists'); // Explicitly set folder
 
     const response = await axios.post<CloudinaryUploadResponse>(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
