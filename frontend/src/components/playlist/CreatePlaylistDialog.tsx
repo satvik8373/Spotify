@@ -16,6 +16,7 @@ import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { useNavigate } from 'react-router-dom';
 import { ImagePlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { uploadImage, getPlaceholderImageUrl } from '@/services/cloudinaryService';
 
 interface CreatePlaylistDialogProps {
   isOpen: boolean;
@@ -28,9 +29,11 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
   const [isPublic, setIsPublic] = useState(true);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(
-    '/default-playlist.jpg'
+    getPlaceholderImageUrl('Playlist')
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const { createPlaylist, isCreating } = usePlaylistStore();
   const navigate = useNavigate();
 
@@ -56,6 +59,26 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
     setImagePreview(previewUrl);
   };
 
+  const uploadImageToCloudinary = async (file: File): Promise<string> => {
+    setIsUploading(true);
+    try {
+      // Upload the image to Cloudinary and track progress
+      const imageUrl = await uploadImage(file, (progress) => {
+        setUploadProgress(progress);
+      });
+      
+      return imageUrl;
+    } catch (error) {
+      console.error('Error uploading image to Cloudinary:', error);
+      toast.error('Failed to upload image. Using default image instead.');
+      // Return a placeholder image URL on error
+      return getPlaceholderImageUrl(name);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -64,13 +87,16 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
     
     try {
       // Default placeholder image URL if no custom image is provided
-      let imageUrl = '/default-playlist.jpg';
+      let imageUrl = getPlaceholderImageUrl(name);
       
-      // If there's a file selected, we would upload it but since we've removed
-      // Cloudinary, we'll just use the local preview URL temporarily
-      // In a real app, you'd upload this to your server storage
+      // If there's a file selected, upload it to Cloudinary
       if (imageFile) {
-        imageUrl = imagePreview;
+        try {
+          imageUrl = await uploadImageToCloudinary(imageFile);
+        } catch (uploadError) {
+          console.error('Upload failed, using placeholder:', uploadError);
+          // Continue with playlist creation even if image upload fails
+        }
       }
       
       const playlist = await createPlaylist(name, description, isPublic, imageUrl);
@@ -94,7 +120,8 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
     setDescription('');
     setIsPublic(true);
     setImageFile(null);
-    setImagePreview('/default-playlist.jpg');
+    setImagePreview(getPlaceholderImageUrl('Playlist'));
+    setUploadProgress(0);
   };
 
   return (
@@ -116,9 +143,20 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
           <div className="grid gap-4 py-4">
             <div className="flex flex-col items-center mb-4">
               <div className="relative group">
-                {isLoading ? (
-                  <div className="w-40 h-40 flex items-center justify-center bg-zinc-900 rounded-md">
-                    <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+                {isLoading || isUploading ? (
+                  <div className="w-40 h-40 flex flex-col items-center justify-center bg-zinc-900 rounded-md">
+                    <Loader2 className="h-8 w-8 animate-spin text-green-500 mb-2" />
+                    {isUploading && (
+                      <div className="w-full px-4">
+                        <div className="h-2 w-full bg-gray-300 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-green-500 rounded-full" 
+                            style={{ width: `${uploadProgress}%` }} 
+                          />
+                        </div>
+                        <p className="text-xs text-center mt-1">{uploadProgress}%</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <img
@@ -141,6 +179,7 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
                     accept="image/*"
                     className="hidden"
                     onChange={handleImageChange}
+                    disabled={isLoading || isUploading}
                   />
                 </div>
               </div>
@@ -176,7 +215,7 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim() || isCreating || isLoading}>
+            <Button type="submit" disabled={!name.trim() || isCreating || isLoading || isUploading}>
               {isCreating || isLoading ? 'Creating...' : 'Create Playlist'}
             </Button>
           </DialogFooter>

@@ -16,6 +16,8 @@ import { Loader2, ImageIcon } from 'lucide-react';
 import { Playlist } from '@/types';
 import axios from '@/lib/axios';
 import { toast } from 'sonner';
+import { uploadImage, getPlaceholderImageUrl } from '@/services/cloudinaryService';
+import { usePlaylistStore } from '@/stores/usePlaylistStore';
 
 // Helper function to get a default playlist image URL
 const getDefaultPlaylistImage = (name: string) => {
@@ -25,10 +27,9 @@ const getDefaultPlaylistImage = (name: string) => {
 };
 
 interface EditPlaylistDialogProps {
-  open: boolean;
+  isOpen: boolean;
   onClose: () => void;
   playlist: Playlist;
-  onUpdated: (updatedPlaylist: Playlist) => void;
 }
 
 interface EditPlaylistFormData {
@@ -36,12 +37,14 @@ interface EditPlaylistFormData {
   description: string;
 }
 
-export function EditPlaylistDialog({ open, onClose, playlist, onUpdated }: EditPlaylistDialogProps) {
-  const [imagePreview, setImagePreview] = useState<string>(playlist.imageUrl || getDefaultPlaylistImage(playlist.name));
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDialogProps) {
+  const [imagePreview, setImagePreview] = useState<string>(playlist.imageUrl || getPlaceholderImageUrl(playlist.name));
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const { updatePlaylist } = usePlaylistStore();
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<EditPlaylistFormData>({
     defaultValues: {
@@ -56,7 +59,7 @@ export function EditPlaylistDialog({ open, onClose, playlist, onUpdated }: EditP
         name: playlist.name,
         description: playlist.description || '',
       });
-      setImagePreview(playlist.imageUrl || getDefaultPlaylistImage(playlist.name));
+      setImagePreview(playlist.imageUrl || getPlaceholderImageUrl(playlist.name));
     }
   }, [playlist, reset]);
 
@@ -86,6 +89,26 @@ export function EditPlaylistDialog({ open, onClose, playlist, onUpdated }: EditP
     setImagePreview(previewUrl);
   };
 
+  const uploadImageToCloudinary = async (file: File): Promise<string> => {
+    setIsUploading(true);
+    try {
+      // Upload the image to Cloudinary and track progress
+      const imageUrl = await uploadImage(file, (progress) => {
+        setUploadProgress(progress);
+      });
+      
+      return imageUrl;
+    } catch (error) {
+      console.error('Error uploading image to Cloudinary:', error);
+      toast.error('Failed to upload image. Using default image instead.');
+      // Return a placeholder image URL on error
+      return getPlaceholderImageUrl(playlist.name);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
   const onSubmit = async (data: EditPlaylistFormData) => {
     try {
       setIsSubmitting(true);
@@ -93,21 +116,28 @@ export function EditPlaylistDialog({ open, onClose, playlist, onUpdated }: EditP
       // Use the existing image URL by default
       let imageUrl = playlist.imageUrl;
       
-      // If a new image was selected, in a real app we'd upload it to a server
-      // Since we removed Cloudinary, we'll just use the local preview URL temporarily
+      // If a new image was selected, upload it to Cloudinary
       if (imageFile) {
-        // In a real app, we would upload the image to a server here
-        // For now, just use the preview URL (this is just a simulation)
-        imageUrl = imagePreview;
+        try {
+          imageUrl = await uploadImageToCloudinary(imageFile);
+        } catch (uploadError) {
+          console.error('Upload failed, using previous image:', uploadError);
+          // Continue with playlist update even if image upload fails
+        }
       }
 
-      // Update playlist in database
-      const response = await axios.put(`/api/playlists/${playlist.id}`, {
+      // Get the correct ID (support both _id and id formats for compatibility)
+      const playlistId = playlist._id || playlist.id;
+      
+      if (!playlistId) {
+        throw new Error('Invalid playlist ID');
+      }
+
+      // Update playlist using the store
+      await updatePlaylist(playlistId, {
         ...data,
         imageUrl,
       });
-
-      onUpdated(response.data);
       
       toast.success('Playlist updated successfully!');
       
@@ -123,12 +153,12 @@ export function EditPlaylistDialog({ open, onClose, playlist, onUpdated }: EditP
   const dialogCloseHandler = () => {
     reset();
     setImageFile(null);
-    setImagePreview(playlist.imageUrl || getDefaultPlaylistImage(playlist.name));
+    setImagePreview(playlist.imageUrl || getPlaceholderImageUrl(playlist.name));
     onClose();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && dialogCloseHandler()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && dialogCloseHandler()}>
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
@@ -157,9 +187,16 @@ export function EditPlaylistDialog({ open, onClose, playlist, onUpdated }: EditP
                 <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                   <span className="text-white text-sm font-medium">Change Cover</span>
                 </div>
-                {isLoading && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 text-white animate-spin" />
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
+                    <Loader2 className="h-8 w-8 text-white animate-spin mb-2" />
+                    <div className="w-3/4 bg-gray-300 rounded-full h-1.5 mb-1 overflow-hidden">
+                      <div 
+                        className="bg-white h-1.5" 
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-white text-xs">{uploadProgress}%</span>
                   </div>
                 )}
               </div>
@@ -169,6 +206,7 @@ export function EditPlaylistDialog({ open, onClose, playlist, onUpdated }: EditP
                 className="hidden"
                 accept="image/*"
                 onChange={handleImageChange}
+                disabled={isSubmitting || isUploading}
               />
             </div>
             <div className="grid gap-2">
@@ -201,18 +239,18 @@ export function EditPlaylistDialog({ open, onClose, playlist, onUpdated }: EditP
               type="button" 
               variant="outline" 
               onClick={dialogCloseHandler}
-              disabled={isSubmitting || isLoading}
+              disabled={isSubmitting || isUploading}
             >
               Cancel
             </Button>
             <Button 
               type="submit"
-              disabled={isSubmitting || isLoading}
+              disabled={isSubmitting || isUploading}
             >
-              {isSubmitting ? (
+              {isSubmitting || isUploading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving
+                  {isUploading ? 'Uploading...' : 'Saving...'}
                 </>
               ) : (
                 'Save Changes'

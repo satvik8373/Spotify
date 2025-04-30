@@ -11,6 +11,7 @@
     "prepare": "node vercel-deploy.js"
   },
   "dependencies": {
+    "cloudinary": "^2.6.0",
     "fs-extra": "^11.3.0",
     "react-router-dom": "^6.30.0"
   }

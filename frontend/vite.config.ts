@@ -6,9 +6,14 @@ export default defineConfig(({ mode }) => {
 	// Load environment variables
 	const env = loadEnv(mode, process.cwd(), '');
 	const apiUrl = env.VITE_API_URL || 'http://localhost:5000';
+	const cloudinaryName = env.REACT_APP_CLOUDINARY_CLOUD_NAME || 'djqq8kba8';
+	const cloudinaryPreset = env.REACT_APP_CLOUDINARY_UPLOAD_PRESET || 'spotify_clone';
+	const cloudinaryKey = env.REACT_APP_CLOUDINARY_API_KEY || '';
+	const cloudinarySecret = env.REACT_APP_CLOUDINARY_API_SECRET || '';
 	
 	console.log(`Mode: ${mode}`);
 	console.log(`API URL: ${apiUrl}`);
+	console.log(`Cloudinary Cloud Name: ${cloudinaryName}`);
 	
 	return {
 		plugins: [react()],
@@ -61,7 +66,11 @@ export default defineConfig(({ mode }) => {
 			}
 		},
 		define: {
-			'process.env.VITE_API_URL': JSON.stringify(apiUrl)
+			'process.env.VITE_API_URL': JSON.stringify(apiUrl),
+			'process.env.REACT_APP_CLOUDINARY_CLOUD_NAME': JSON.stringify(cloudinaryName),
+			'process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET': JSON.stringify(cloudinaryPreset),
+			'process.env.REACT_APP_CLOUDINARY_API_KEY': JSON.stringify(cloudinaryKey),
+			'process.env.REACT_APP_CLOUDINARY_API_SECRET': JSON.stringify(cloudinarySecret)
 		}
 	}
 });
