@@ -1,9 +1,18 @@
-import { User } from "../models/user.model.js";
 import { clerkClient } from "@clerk/express";
+import admin from "firebase-admin";
 
 export const getAllUsers = async (req, res, next) => {
 	try {
-		const users = await User.find().select('-password');
+		// List users from Firebase Auth instead of MongoDB
+		const listUsersResult = await admin.auth().listUsers();
+		const users = listUsersResult.users.map(user => ({
+			uid: user.uid,
+			email: user.email,
+			displayName: user.displayName,
+			photoURL: user.photoURL,
+			// Don't include sensitive info like password
+		}));
+		
 		res.status(200).json(users);
 	} catch (error) {
 		console.error('Error getting users:', error);
@@ -23,28 +32,34 @@ export const checkAdminStatus = async (req, res, next) => {
 		let isAdmin = false;
 		
 		try {
-			// First check if this is a Clerk user
-			const clerkUser = await clerkClient.users.getUser(userId);
+			// Check if this is a Firebase user
+			const userRecord = await admin.auth().getUser(userId);
 			
 			// Check if user's email matches admin email from env
-			if (clerkUser && clerkUser.emailAddresses && clerkUser.emailAddresses.length > 0) {
-				const userEmail = clerkUser.emailAddresses[0].emailAddress;
-				isAdmin = process.env.ADMIN_EMAIL === userEmail;
-			}
-		} catch (clerkError) {
-			console.log("Not a Clerk user or Clerk error, trying database lookup:", clerkError.message);
-			
-			// If Clerk check fails, try database
-			try {
-				// Try to find the user in the database
-				const user = await User.findOne({ clerkId: userId });
+			if (userRecord && userRecord.email) {
+				isAdmin = process.env.ADMIN_EMAIL === userRecord.email;
 				
-				if (user) {
-					// Check if the user has admin role/flag
-					isAdmin = user.role === 'admin' || user.isAdmin === true;
+				// You could also check custom claims if you've set them
+				const customClaims = userRecord.customClaims || {};
+				if (customClaims.admin === true) {
+					isAdmin = true;
 				}
-			} catch (dbError) {
-				console.error("Database lookup error:", dbError);
+			}
+		} catch (firebaseError) {
+			console.log("Not a Firebase user or Firebase error:", firebaseError.message);
+			
+			// If Firebase check fails, try Clerk
+			try {
+				// First check if this is a Clerk user
+				const clerkUser = await clerkClient.users.getUser(userId);
+				
+				// Check if user's email matches admin email from env
+				if (clerkUser && clerkUser.emailAddresses && clerkUser.emailAddresses.length > 0) {
+					const userEmail = clerkUser.emailAddresses[0].emailAddress;
+					isAdmin = process.env.ADMIN_EMAIL === userEmail;
+				}
+			} catch (clerkError) {
+				console.log("Not a Clerk user or Clerk error:", clerkError.message);
 				// Continue with isAdmin = false
 			}
 		}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
   ListMusic,
@@ -20,6 +20,7 @@ export const LeftSidebar = () => {
   const { user, isAuthenticated } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { userPlaylists, fetchUserPlaylists } = usePlaylistStore();
+  const location = useLocation();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -27,22 +28,34 @@ export const LeftSidebar = () => {
     }
   }, [isAuthenticated, fetchUserPlaylists]);
 
+  const isActive = (path: string) => {
+    if (path === '/' && location.pathname === '/') return true;
+    if (path !== '/' && location.pathname.startsWith(path)) return true;
+    return false;
+  };
+
   const renderNavItem = (href: string, icon: React.ReactNode, label: string) => {
+    const active = isActive(href);
     return (
       <Link
         to={href}
-        className="flex items-center gap-3 text-zinc-400 font-medium hover:text-white transition-colors py-2"
+        className={cn(
+          "flex items-center gap-3 font-medium transition-colors py-2",
+          active ? "text-white" : "text-zinc-400 hover:text-white"
+        )}
       >
-        {icon}
+        {React.cloneElement(icon as React.ReactElement, {
+          className: cn(active && "text-white")
+        })}
         <span>{label}</span>
       </Link>
     );
   };
 
   return (
-    <div className="hidden md:flex flex-col w-64 bg-black p-4 gap-y-6 overflow-auto border-r border-zinc-800 rounded-lg">
+    <div className="hidden md:flex flex-col w-64 bg-black p-4 gap-y-6 overflow-auto border-r border-zinc-800/30 rounded-lg">
       {/* Spotify Logo */}
-      <Link to={'/'} className="text-white mb-6 px-2 py-4 flex items-center gap-2">
+      <Link to={'/'} className="text-green-500 mb-6 px-2 py-4 flex items-center gap-2">
         <svg viewBox="0 0 1134 340" className="h-8">
           <title>Spotify</title>
           <path
@@ -73,7 +86,10 @@ export const LeftSidebar = () => {
           </button>
           <Link
             to={'/liked-songs'}
-            className="flex items-center gap-3 text-zinc-400 font-medium hover:text-white transition-colors py-2"
+            className={cn(
+              "flex items-center gap-3 font-medium transition-colors py-2",
+              isActive('/liked-songs') ? "text-white" : "text-zinc-400 hover:text-white"
+            )}
           >
             <div className="bg-gradient-to-br from-indigo-600 to-white p-1 rounded">
               <Heart size={16} className="text-black" />
@@ -82,7 +98,7 @@ export const LeftSidebar = () => {
           </Link>
         </div>
 
-        <hr className="border-zinc-800" />
+        <hr className="border-zinc-800/30" />
 
         {/* User Playlists */}
         <div className="space-y-2 pl-2">
@@ -94,7 +110,10 @@ export const LeftSidebar = () => {
                 <Link
                   key={playlist._id}
                   to={`/playlist/${playlist._id}`}
-                  className="block text-zinc-400 py-1.5 hover:text-white transition-colors text-sm font-medium truncate"
+                  className={cn(
+                    "block py-1.5 transition-colors text-sm font-medium truncate",
+                    isActive(`/playlist/${playlist._id}`) ? "text-white" : "text-zinc-400 hover:text-white"
+                  )}
                 >
                   {playlist.name}
                 </Link>

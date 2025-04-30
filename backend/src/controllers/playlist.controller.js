@@ -1,30 +1,61 @@
-import Playlist from '../models/playlist.model.js';
+import { Playlist } from '../models/playlist.model.js';
 import { Song } from '../models/song.model.js';
-import { User } from '../models/user.model.js';
+import admin from 'firebase-admin';
 
 // Create a new playlist
 export const createPlaylist = async (req, res) => {
   try {
     const { name, description, isPublic } = req.body;
-    const userId = req.auth.userId;
-
-    // Get user by clerkId
-    const user = await User.findOne({ clerkId: userId });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    
+    // Get the Firebase user ID
+    const userId = req.auth?.uid;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        message: 'Authentication required', 
+        error: 'No user ID found in request'
+      });
     }
-
-    const playlist = new Playlist({
-      name,
-      description,
-      createdBy: user._id,
-      isPublic: isPublic !== undefined ? isPublic : true,
-    });
-
-    await playlist.save();
-    res.status(201).json(playlist);
+    
+    // Get user information from Firebase
+    try {
+      const userRecord = await admin.auth().getUser(userId);
+      
+      // Create the playlist with Firebase user info
+      const playlist = {
+        _id: `playlist_${Date.now()}`,
+        name: name || 'My Playlist',
+        description: description || '',
+        isPublic: isPublic !== undefined ? isPublic : true,
+        songs: [],
+        createdAt: new Date(),
+        createdBy: {
+          uid: userRecord.uid,
+          fullName: userRecord.displayName || 'User',
+          imageUrl: userRecord.photoURL || 'https://via.placeholder.com/150',
+        }
+      };
+      
+      // Create playlist in Firestore if available
+      if (admin.firestore) {
+        const playlistsRef = admin.firestore().collection('playlists');
+        await playlistsRef.doc(playlist._id).set(playlist);
+      }
+      
+      res.status(201).json(playlist);
+    } catch (error) {
+      console.error("Error getting user information:", error);
+      return res.status(500).json({ 
+        message: 'Error creating playlist', 
+        error: error.message
+      });
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Error creating playlist', error: error.message });
+    console.error('Error in createPlaylist:', error);
+    res.status(500).json({ 
+      message: 'Error creating playlist', 
+      error: error.message 
+    });
   }
 };
 
@@ -58,7 +89,7 @@ export const getUserPlaylists = async (req, res) => {
   try {
     // Log authentication info for debugging
     console.log('Auth info:', {
-      userId: req.auth?.userId || 'Not provided',
+      userId: req.auth?.userId || req.auth?.uid || 'Not provided',
       paramUserId: req.params?.userId || 'Not provided',
       hasAuth: !!req.auth,
       headers: {
@@ -68,7 +99,7 @@ export const getUserPlaylists = async (req, res) => {
     });
     
     // Check if authentication is present
-    if (!req.auth || !req.auth.userId) {
+    if (!req.auth || (!req.auth.userId && !req.auth.uid)) {
       return res.status(401).json({ 
         message: 'Authentication required', 
         error: 'No user ID found in request', 
@@ -76,22 +107,32 @@ export const getUserPlaylists = async (req, res) => {
       });
     }
     
-    const clerkId = req.params.userId || req.auth.userId;
+    // Use either Firebase UID or Clerk ID
+    const userId = req.auth.uid || req.auth.userId;
+    const targetUserId = req.params.userId || userId;
     
-    // Get user by clerkId
-    const user = await User.findOne({ clerkId });
-    if (!user) {
+    try {
+      // Try to get Firebase user to confirm it exists
+      await admin.auth().getUser(targetUserId);
+    } catch (error) {
       return res.status(404).json({ 
         message: 'User not found', 
-        clerkId: clerkId,
-        authUserId: req.auth.userId
+        userId: targetUserId,
+        authUserId: userId,
+        error: error.message
       });
     }
     
-    const playlists = await Playlist.find({ createdBy: user._id })
-      .populate('createdBy', 'fullName imageUrl')
-      .populate('songs')
-      .sort({ createdAt: -1 });
+    // For now, query existing playlists by clerkId
+    // This assumes playlists were created with clerkId stored
+    const playlists = await Playlist.find({ 
+      $or: [
+        { "createdBy.uid": targetUserId },
+        { "createdBy.clerkId": targetUserId }
+      ]
+    })
+    .populate('songs')
+    .sort({ createdAt: -1 });
     
     res.status(200).json(playlists);
   } catch (error) {
@@ -101,7 +142,7 @@ export const getUserPlaylists = async (req, res) => {
       error: error.message,
       authInfo: {
         hasAuth: !!req.auth,
-        userId: req.auth?.userId || 'Not available'
+        userId: req.auth?.userId || req.auth?.uid || 'Not available'
       }
     });
   }

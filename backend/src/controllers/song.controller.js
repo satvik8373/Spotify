@@ -1,82 +1,53 @@
-import { Song } from "../models/song.model.js";
+// Replacing MongoDB with Firebase placeholders
 
-export const getAllSongs = async (req, res, next) => {
+// Get all songs
+export const getAllSongs = async (req, res) => {
 	try {
-		// -1 = Descending => newest -> oldest
-		// 1 = Ascending => oldest -> newest
-		const songs = await Song.find().sort({ createdAt: -1 });
-		res.json(songs);
+		// Firebase implementation would go here
+		res.json({ 
+			message: "This endpoint now uses Firebase. Please use the frontend Firebase implementation.",
+			songs: []
+		});
 	} catch (error) {
-		next(error);
+		res.status(500).json({ message: error.message });
 	}
 };
 
-export const getFeaturedSongs = async (req, res, next) => {
+// Get featured songs
+export const getFeaturedSongs = async (req, res) => {
 	try {
-		// fetch 6 random songs using mongodb's aggregation pipeline
-		const songs = await Song.aggregate([
-			{
-				$sample: { size: 6 },
-			},
-			{
-				$project: {
-					_id: 1,
-					title: 1,
-					artist: 1,
-					imageUrl: 1,
-					audioUrl: 1,
-				},
-			},
-		]);
-
-		res.json(songs);
+		// Firebase implementation would go here
+		res.json({ 
+			message: "This endpoint now uses Firebase. Please use the frontend Firebase implementation.",
+			songs: []
+		});
 	} catch (error) {
-		next(error);
+		res.status(500).json({ message: error.message });
 	}
 };
 
-export const getMadeForYouSongs = async (req, res, next) => {
+// Get songs made for you
+export const getMadeForYouSongs = async (req, res) => {
 	try {
-		const songs = await Song.aggregate([
-			{
-				$sample: { size: 4 },
-			},
-			{
-				$project: {
-					_id: 1,
-					title: 1,
-					artist: 1,
-					imageUrl: 1,
-					audioUrl: 1,
-				},
-			},
-		]);
-
-		res.json(songs);
+		// Firebase implementation would go here
+		res.json({ 
+			message: "This endpoint now uses Firebase. Please use the frontend Firebase implementation.",
+			songs: []
+		});
 	} catch (error) {
-		next(error);
+		res.status(500).json({ message: error.message });
 	}
 };
 
-export const getTrendingSongs = async (req, res, next) => {
+// Get trending songs
+export const getTrendingSongs = async (req, res) => {
 	try {
-		const songs = await Song.aggregate([
-			{
-				$sample: { size: 4 },
-			},
-			{
-				$project: {
-					_id: 1,
-					title: 1,
-					artist: 1,
-					imageUrl: 1,
-					audioUrl: 1,
-				},
-			},
-		]);
-
-		res.json(songs);
+		// Firebase implementation would go here
+		res.json({ 
+			message: "This endpoint now uses Firebase. Please use the frontend Firebase implementation.",
+			songs: []
+		});
 	} catch (error) {
-		next(error);
+		res.status(500).json({ message: error.message });
 	}
 };

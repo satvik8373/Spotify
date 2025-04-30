@@ -8,16 +8,6 @@
   ],
   "routes": [
     {
-      "src": "/favicon.ico",
-      "status": 204
-    },
-    {
-      "src": "/api/test/health",
-      "dest": "src/index.js",
-      "methods": ["GET"],
-      "continue": true
-    },
-    {
       "src": "/(.*)",
       "dest": "src/index.js",
       "headers": {

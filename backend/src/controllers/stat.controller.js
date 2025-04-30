@@ -1,14 +1,21 @@
 import { Album } from "../models/album.model.js";
 import { Song } from "../models/song.model.js";
-import { User } from "../models/user.model.js";
+import admin from "firebase-admin";
 
 export const getStats = async (req, res, next) => {
 	try {
-		const [totalSongs, totalAlbums, totalUsers, uniqueArtists] = await Promise.all([
+		// Get Firebase user count
+		let totalUsers = 0;
+		try {
+			const userList = await admin.auth().listUsers();
+			totalUsers = userList.users.length;
+		} catch (error) {
+			console.error("Error listing Firebase users:", error);
+		}
+		
+		const [totalSongs, totalAlbums, uniqueArtists] = await Promise.all([
 			Song.countDocuments(),
 			Album.countDocuments(),
-			User.countDocuments(),
-
 			Song.aggregate([
 				{
 					$unionWith: {

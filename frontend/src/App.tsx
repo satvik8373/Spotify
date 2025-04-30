@@ -9,10 +9,12 @@ import AlbumPage from './pages/album/AlbumPage';
 import { PlaylistPage } from './pages/playlist/PlaylistPage';
 import { useState } from "react";
 import SplashScreen from './components/SplashScreen';
-import AuthCallback from './pages/auth/AuthCallback';
 import { AuthProvider } from './contexts/AuthContext';
 // @ts-ignore
 import ApiDebugPage from './pages/debug/ApiDebugPage.jsx';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ResetPassword from './pages/ResetPassword';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -43,8 +45,16 @@ const ErrorFallback = () => (
 const router = createBrowserRouter(
 	[
 		{
-			path: '/auth/callback',
-			element: <AuthCallback />
+			path: '/login',
+			element: <Login />
+		},
+		{
+			path: '/register',
+			element: <Register />
+		},
+		{
+			path: '/reset-password',
+			element: <ResetPassword />
 		},
 		{
 			element: <MainLayout />,

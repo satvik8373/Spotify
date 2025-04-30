@@ -54,6 +54,73 @@ interface MusicStore {
   convertIndianSongToAppSong: (song: IndianSong) => Song;
 }
 
+// Generate SVG data URL for song thumbnails
+const generateSongImage = (title: string, color: string = "#1DB954"): string => {
+  const safeText = title.replace(/['&<>]/g, ''); // Basic sanitization
+  return `data:image/svg+xml;base64,${btoa(`
+    <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+      <rect width="300" height="300" fill="${color}"/>
+      <text x="150" y="150" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">${safeText}</text>
+      <path d="M200,150 C200,177.614 177.614,200 150,200 C122.386,200 100,177.614 100,150 C100,122.386 122.386,100 150,100 C177.614,100 200,122.386 200,150 Z" fill="rgba(255,255,255,0.2)"/>
+      <path d="M165,140 L140,125 L140,175 L165,160 Z" fill="white"/>
+    </svg>
+  `)}`;
+};
+
+// Mock data for testing and fallback
+const mockTrendingSongs = [
+  {
+    id: "mock_trending_1",
+    title: "Bewafa",
+    artist: "Imran Khan",
+    album: "Unforgettable",
+    year: "2020",
+    duration: "4:25",
+    image: generateSongImage("Bewafa"),
+    url: "https://aac.saavncdn.com/532/9a6c47cac1eb5823f5a989fdd7d1c513_320.mp4"
+  },
+  {
+    id: "mock_trending_2",
+    title: "Kaise Hua",
+    artist: "Vishal Mishra",
+    album: "Kabir Singh",
+    year: "2019",
+    duration: "3:54",
+    image: generateSongImage("Kaise Hua", "#3D91F4"),
+    url: "https://aac.saavncdn.com/807/94f54b6e5292b6a0a3936e7465cba9ba_320.mp4"
+  },
+  {
+    id: "mock_trending_3",
+    title: "Tera Ban Jaunga",
+    artist: "Akhil Sachdeva, Tulsi Kumar",
+    album: "Kabir Singh",
+    year: "2019",
+    duration: "3:56",
+    image: generateSongImage("Tera Ban Jaunga", "#E13300"),
+    url: "https://aac.saavncdn.com/570/a16bb2ea6875145bf94cee3846abb701_320.mp4"
+  },
+  {
+    id: "mock_trending_4",
+    title: "Tujhe Kitna Chahne Lage",
+    artist: "Arijit Singh",
+    album: "Kabir Singh",
+    year: "2019",
+    duration: "4:45",
+    image: generateSongImage("Tujhe Kitna Chahne Lage", "#FFA42B"),
+    url: "https://aac.saavncdn.com/389/3978da62df331ad10f95e4ad7e8d6435_320.mp4"
+  },
+  {
+    id: "mock_trending_5",
+    title: "Duniyaa",
+    artist: "Abhijit Vaghani, Akhil, Dhvani Bhanushali",
+    album: "Luka Chuppi",
+    year: "2019",
+    duration: "3:42",
+    image: generateSongImage("Duniyaa", "#8B2AC2"),
+    url: "https://aac.saavncdn.com/904/a9a98c04d89b124259d9bcf56cefb0a4_320.mp4"
+  }
+];
+
 export const useMusicStore = create<MusicStore>((set, get) => ({
   albums: [],
   songs: [],
@@ -204,25 +271,34 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
   fetchIndianTrendingSongs: async () => {
     set({ isIndianMusicLoading: true });
     try {
+      // Use mock data first to ensure immediate content display
+      set({ indianTrendingSongs: mockTrendingSongs });
+      
       // First try backend proxy
       let response;
       let data;
 
       try {
-        response = await fetch('/api/music/search?query=latest%20hits');
+        response = await fetch('/api/music/trending');
         if (!response.ok) throw new Error('Backend proxy failed');
         data = await response.json();
       } catch (backendError) {
         // Fallback to direct API
         console.log('Trying direct JioSaavn API...');
-        response = await fetch(
-          'https://saavn.dev/api/search/songs?query=latest%20hits&page=1&limit=15'
-        );
-        if (!response.ok) throw new Error('Failed to fetch trending songs');
-        data = await response.json();
+        try {
+          response = await fetch(
+            'https://saavn.dev/api/search/songs?query=latest%20hits&page=1&limit=10'
+          );
+          if (!response.ok) throw new Error('Failed to fetch trending songs');
+          data = await response.json();
+        } catch (apiError) {
+          console.log('API failed, using mock data');
+          // Already set mock data, no need to set again
+          return;
+        }
       }
 
-      if (data.data && data.data.results) {
+      if (data.data && data.data.results && data.data.results.length > 0) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
           .map((item: any) => ({
@@ -235,12 +311,15 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
             image: item.image[2].url,
             url: item.downloadUrl[4].url,
           }));
-
-        set({ indianTrendingSongs: formattedResults });
-        console.log('Fetched trending songs:', formattedResults.length);
+          
+        if (formattedResults.length > 0) {
+          set({ indianTrendingSongs: formattedResults });
+        }
       }
     } catch (error: any) {
       console.error('Error fetching Indian trending songs:', error);
+      // Ensure we have fallback data
+      set({ indianTrendingSongs: mockTrendingSongs });
     } finally {
       set({ isIndianMusicLoading: false });
     }
@@ -428,95 +507,23 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
       // First try backend proxy
       let response;
       let data;
-      let success = false;
 
       try {
         response = await fetch('/api/music/search?query=new%20releases');
         if (!response.ok) throw new Error('Backend proxy failed');
         data = await response.json();
-        success = true;
       } catch (backendError) {
-        // Fallback to direct APIs with multiple strategies
-        console.log('Trying direct JioSaavn API strategies...');
-        
-        // Define multiple search strategies for latest songs
-        const searchStrategies = [
-          // Strategy 1: Standard new releases search
-          async () => {
-            console.log('Trying new releases strategy 1');
-            const response = await fetch(
-              'https://saavn.dev/api/search/songs?query=new%20released%20songs%202024&page=1&limit=20'
-            );
-            if (!response.ok) throw new Error('New releases strategy 1 failed');
-            return await response.json();
-          },
-          
-          // Strategy 2: Latest Hindi hits
-          async () => {
-            console.log('Trying new releases strategy 2');
-            const response = await fetch(
-              'https://saavn.dev/api/search/songs?query=latest%20hindi%20hits&page=1&limit=20'
-            );
-            if (!response.ok) throw new Error('New releases strategy 2 failed');
-            return await response.json();
-          },
-          
-          // Strategy 3: Trending songs
-          async () => {
-            console.log('Trying new releases strategy 3');
-            const response = await fetch(
-              'https://saavn.dev/api/search/songs?query=trending%20songs%20this%20week&page=1&limit=20'
-            );
-            if (!response.ok) throw new Error('New releases strategy 3 failed');
-            return await response.json();
-          },
-          
-          // Strategy 4: Alternative API
-          async () => {
-            console.log('Trying new releases strategy 4');
-            const response = await fetch(
-              'https://jiosaavn-api-v3.vercel.app/modules?language=hindi'
-            );
-            if (!response.ok) throw new Error('New releases strategy 4 failed');
-            return await response.json();
-          },
-          
-          // Strategy 5: Direct search for "Pal Pal by Afusic"
-          async () => {
-            console.log('Trying specific song search');
-            const response = await fetch(
-              'https://saavn.dev/api/search/songs?query=Pal%20Pal%20Afusic&page=1&limit=10'
-            );
-            if (!response.ok) throw new Error('Specific song search failed');
-            return await response.json();
-          }
-        ];
-        
-        // Try each strategy until one works
-        for (const strategy of searchStrategies) {
-          try {
-            const result = await strategy();
-            
-            // Check if we have valid results
-            if (result && 
-                ((result.data && result.data.results && result.data.results.length > 0) || 
-                 (result.trending && result.trending.songs && result.trending.songs.length > 0))) {
-              data = result;
-              success = true;
-              break;
-            }
-          } catch (strategyError: unknown) {
-            console.log('Strategy failed:', strategyError instanceof Error ? strategyError.message : 'Unknown error');
-            // Continue to next strategy
-          }
-        }
+        // Fallback to direct API
+        console.log('Trying direct JioSaavn API...');
+        response = await fetch(
+          'https://saavn.dev/api/search/songs?query=new%20releases&page=1&limit=10'
+        );
+        if (!response.ok) throw new Error('Failed to fetch new releases');
+        data = await response.json();
       }
 
-      let formattedResults: IndianSong[] = [];
-      
-      if (success && data?.data?.results) {
-        // Standard JioSaavn API format
-        formattedResults = data.data.results
+      if (data.data && data.data.results) {
+        const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
           .map((item: any) => ({
             id: item.id,
@@ -528,44 +535,9 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
             image: item.image[2].url,
             url: item.downloadUrl[4].url,
           }));
-      } else if (success && data?.trending?.songs) {
-        // Alternative API format
-        formattedResults = data.trending.songs
-          .filter((item: any) => item.downloadUrl || item.media_url)
-          .map((item: any) => ({
-            id: item.id || item.song_id || String(Date.now() + Math.random()),
-            title: item.name || item.song_name || item.title || 'Unknown Title',
-            artist: item.primaryArtists || item.artists || item.artist || 'Unknown Artist',
-            album: item.album?.name || item.album_name || item.album || 'Unknown Album',
-            year: item.year || new Date().getFullYear().toString(),
-            duration: item.duration || item.song_duration || '0',
-            image: item.image?.[2]?.url || item.song_image || item.image || 'https://c.saavncdn.com/973/Symphony-125-English-2023-20231222053159-500x500.jpg',
-            url: item.downloadUrl?.[4]?.url || item.media_url || item.audio_url || '',
-          }));
-      }
-      
-      // Manually add Pal Pal by Afusic if not in results
-      const hasPalPalSong = formattedResults.some(song => 
-        song.title.toLowerCase().includes('pal pal') && 
-        (song.artist?.toLowerCase().includes('afusic') || song.artist?.toLowerCase().includes('alisoomro'))
-      );
-      
-      if (!hasPalPalSong) {
-        console.log('Adding "Pal Pal by Afusic, AliSoomroMusic" manually');
-        formattedResults.unshift({
-          id: 'manual-palpal-afusic',
-          title: 'Pal Pal',
-          artist: 'Afusic, AliSoomroMusic',
-          album: 'Pal Pal Single',
-          year: '2024',
-          duration: '180',
-          image: 'https://c.saavncdn.com/973/Symphony-125-English-2023-20231222053159-500x500.jpg',
-          url: '', // This will be filled when played
-        });
-      }
 
-      set({ indianNewReleases: formattedResults });
-      console.log('Fetched new releases:', formattedResults.length);
+        set({ indianNewReleases: formattedResults });
+      }
     } catch (error: any) {
       console.error('Error fetching Indian new releases:', error);
     } finally {
@@ -577,13 +549,10 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
     if (!query || query.trim() === '') return;
 
     set({ isIndianMusicLoading: true });
-    console.log('Searching for:', query);
-    
     try {
       // First try backend proxy
       let response;
       let data;
-      let foundResults = false;
 
       try {
         response = await fetch(`/api/music/search?query=${encodeURIComponent(query)}`);
@@ -592,116 +561,15 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
       } catch (backendError) {
         // Fallback to direct API
         console.log('Trying direct JioSaavn API...');
-        
-        // Try multiple search strategies
-        const searchStrategies = [
-          // Strategy 1: Direct search with the query
-          async () => {
-            const encodedQuery = encodeURIComponent(query);
-            const apiUrl = `https://saavn.dev/api/search/songs?query=${encodedQuery}&page=1&limit=30`;
-            console.log(`Trying search strategy 1: ${apiUrl}`);
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error('API search failed');
-            return await response.json();
-          },
-          
-          // Strategy 2: If it has "by" format, try artist name + song
-          async () => {
-            if (!query.includes(" by ")) throw new Error('Not applicable');
-            
-            const [songTitle, artistPart] = query.split(" by ");
-            if (!songTitle || !artistPart) throw new Error('Invalid format');
-            
-            const refinedQuery = `${songTitle.trim()} ${artistPart.trim()}`;
-            const encodedQuery = encodeURIComponent(refinedQuery);
-            const apiUrl = `https://saavn.dev/api/search/songs?query=${encodedQuery}&page=1&limit=30`;
-            console.log(`Trying search strategy 2: ${apiUrl}`);
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error('API search failed');
-            return await response.json();
-          },
-          
-          // Strategy 3: Try searching only for artist
-          async () => {
-            if (!query.includes(" by ")) throw new Error('Not applicable');
-            
-            const [_, artistPart] = query.split(" by ");
-            if (!artistPart) throw new Error('Invalid format');
-            
-            const encodedQuery = encodeURIComponent(artistPart.trim());
-            const apiUrl = `https://saavn.dev/api/search/songs?query=${encodedQuery}&page=1&limit=30`;
-            console.log(`Trying search strategy 3: ${apiUrl}`);
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error('API search failed');
-            return await response.json();
-          },
-          
-          // Strategy 4: Try alternate API
-          async () => {
-            const encodedQuery = encodeURIComponent(query);
-            const apiUrl = `https://jiosaavn-api-v3.vercel.app/search?query=${encodedQuery}`;
-            console.log(`Trying search strategy 4: ${apiUrl}`);
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error('API search failed');
-            return await response.json();
-          },
-          
-          // Strategy 5: Try using song name without "by"
-          async () => {
-            if (!query.includes(" by ")) throw new Error('Not applicable');
-            
-            const songTitle = query.split(" by ")[0];
-            if (!songTitle) throw new Error('Invalid format');
-            
-            const encodedQuery = encodeURIComponent(songTitle.trim());
-            const apiUrl = `https://saavn.dev/api/search/songs?query=${encodedQuery}&page=1&limit=30`;
-            console.log(`Trying search strategy 5: ${apiUrl}`);
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error('API search failed');
-            return await response.json();
-          }
-        ];
-        
-        // Try each strategy until one works
-        for (const strategy of searchStrategies) {
-          try {
-            const result = await strategy();
-            
-            // Check if we have results
-            if (result && ((result.data && result.data.results && result.data.results.length > 0) || 
-                           (result.songs && result.songs.length > 0))) {
-              data = result;
-              foundResults = true;
-              break;
-            }
-          } catch (strategyError: unknown) {
-            console.log('Strategy failed:', strategyError instanceof Error ? strategyError.message : 'Unknown error');
-            // Continue to next strategy
-          }
-        }
-        
-        // If no results found through strategies, use the last attempted result
-        if (!foundResults && !data) {
-          console.log('All search strategies failed.');
-          // Try one last generic search for latest songs
-          try {
-            const response = await fetch(
-              `https://saavn.dev/api/search/songs?query=new%20released%20songs%202024&page=1&limit=30`
-            );
-            if (response.ok) {
-              data = await response.json();
-            }
-          } catch (error) {
-            console.error('Final fallback search failed:', error);
-          }
-        }
+        response = await fetch(
+          `https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&page=1&limit=20`
+        );
+        if (!response.ok) throw new Error('Failed to search songs');
+        data = await response.json();
       }
 
-      let formattedResults: IndianSong[] = [];
-      
-      if (data?.data?.results) {
-        // Standard JioSaavn API format
-        formattedResults = data.data.results
+      if (data.data && data.data.results) {
+        const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
           .map((item: any) => ({
             id: item.id,
@@ -713,32 +581,11 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
             image: item.image[2].url,
             url: item.downloadUrl[4].url,
           }));
-      } else if (data?.songs) {
-        // Alternative API format
-        formattedResults = data.songs
-          .filter((item: any) => item.downloadUrl || item.media_url)
-          .map((item: any) => ({
-            id: item.id || item.song_id || String(Date.now() + Math.random()),
-            title: item.name || item.song_name || item.title || 'Unknown Title',
-            artist: item.primaryArtists || item.artists || item.artist || 'Unknown Artist',
-            album: item.album?.name || item.album_name || item.album || 'Unknown Album',
-            year: item.year || new Date().getFullYear().toString(),
-            duration: item.duration || item.song_duration || '0',
-            image: item.image?.[2]?.url || item.song_image || item.image || 'https://c.saavncdn.com/973/Symphony-125-English-2023-20231222053159-500x500.jpg',
-            url: item.downloadUrl?.[4]?.url || item.media_url || item.audio_url || '',
-          }));
-      }
 
-      if (formattedResults.length > 0) {
-        console.log(`Found ${formattedResults.length} results for "${query}"`);
         set({ indianSearchResults: formattedResults });
-      } else {
-        console.log(`No results found for "${query}"`);
-        set({ indianSearchResults: [] });
       }
     } catch (error: any) {
       console.error('Error searching Indian songs:', error);
-      set({ indianSearchResults: [] });
     } finally {
       set({ isIndianMusicLoading: false });
     }

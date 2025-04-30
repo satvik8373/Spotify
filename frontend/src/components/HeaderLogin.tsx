@@ -1,9 +1,8 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getGoogleAuthUrl } from '@/services/auth.service';
 import { Button } from '@/components/ui/button';
 import { LogOut, User, Settings } from 'lucide-react';
-import { signOut } from '@/services/auth-service';
+import { signOut } from '@/services/hybridAuthService';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,10 +18,6 @@ interface HeaderLoginProps {
 
 const HeaderLogin = ({ className }: HeaderLoginProps) => {
   const { user, isAuthenticated } = useAuth();
-
-  const handleLogin = () => {
-    window.location.href = getGoogleAuthUrl();
-  };
 
   const handleLogout = async () => {
     try {
@@ -78,14 +73,6 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
       ) : (
         <div className="flex items-center gap-3">
           <Button
-            onClick={handleLogin}
-            variant="ghost"
-            className="text-zinc-400 hover:text-white hover:bg-transparent text-sm"
-          >
-            Sign In
-          </Button>
-          <Button
-            onClick={handleLogin}
             className="bg-white hover:bg-white/90 text-black font-bold rounded-full text-sm px-6 py-2 h-auto"
           >
             Sign Up

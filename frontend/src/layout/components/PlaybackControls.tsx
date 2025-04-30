@@ -5,6 +5,7 @@ import { Heart, Laptop2, ListMusic, Mic2, Pause, Play, Repeat, Shuffle, SkipBack
 import { useEffect, useRef, useState } from "react";
 import SongDetailsView from "@/components/SongDetailsView";
 import { cn } from "@/lib/utils";
+import { useLikedSongsStore } from "@/stores/useLikedSongsStore";
 
 const formatTime = (seconds: number) => {
 	if (isNaN(seconds)) return "0:00";
@@ -15,16 +16,19 @@ const formatTime = (seconds: number) => {
 
 export const PlaybackControls = () => {
 	const { currentSong, isPlaying, togglePlay, playNext, playPrevious, toggleShuffle, isShuffled } = usePlayerStore();
+	const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
 
 	const [volume, setVolume] = useState(75);
 	const [currentTime, setCurrentTime] = useState(0);
 	const [duration, setDuration] = useState(0);
-	const [isLiked, setIsLiked] = useState(false);
 	const [isTransitioning, setIsTransitioning] = useState(false);
 	const [showSongDetails, setShowSongDetails] = useState(false);
 	const [isRepeating, setIsRepeating] = useState(false);
 	const audioRef = useRef<HTMLAudioElement | null>(null);
 	const playerRef = useRef<HTMLDivElement>(null);
+
+	// Get liked state from the liked songs store if possible
+	const isLiked = currentSong ? likedSongIds?.has((currentSong as any).id || currentSong._id) : false;
 
 	// Handle audio element events
 	useEffect(() => {
@@ -101,8 +105,10 @@ export const PlaybackControls = () => {
 		}
 	};
 	
-	const toggleLikeSong = () => {
-		setIsLiked(!isLiked);
+	const handleLikeToggle = () => {
+		if (currentSong) {
+			toggleLikeSong(currentSong);
+		}
 	};
 	
 	const toggleRepeat = () => {
@@ -118,7 +124,7 @@ export const PlaybackControls = () => {
 			{/* Desktop Player */}
 			<footer 
 				ref={playerRef}
-				className='h-20 sm:h-[90px] bg-gradient-to-b from-rose-950/90 to-black border-t border-rose-900/50 px-4 hidden sm:block transition-opacity duration-300'
+				className='h-20 sm:h-[90px] bg-gradient-to-b from-zinc-900 to-black border-t border-zinc-800/50 px-4 hidden sm:block transition-opacity duration-300'
 				style={{ opacity: isTransitioning ? 0.8 : 1 }}
 			>
 				<div className='flex justify-between items-center h-full max-w-[1800px] mx-auto'>
@@ -148,8 +154,8 @@ export const PlaybackControls = () => {
 								<Button
 									size='icon'
 									variant='ghost'
-									className={`hover:text-white ${isLiked ? 'text-rose-500' : 'text-zinc-400'}`}
-									onClick={toggleLikeSong}
+									className={`hover:text-white ${isLiked ? 'text-green-500' : 'text-zinc-400'}`}
+									onClick={handleLikeToggle}
 								>
 									<Heart className='h-4 w-4' fill={isLiked ? 'currentColor' : 'none'} />
 								</Button>
@@ -163,7 +169,7 @@ export const PlaybackControls = () => {
 							<Button
 								size='icon'
 								variant='ghost'
-								className={cn('hover:text-white h-8 w-8', isShuffled ? 'text-rose-500' : 'text-zinc-400')}
+								className={cn('hover:text-white h-8 w-8', isShuffled ? 'text-green-500' : 'text-zinc-400')}
 								onClick={toggleShuffle}
 							>
 								<Shuffle className='h-4 w-4' />
@@ -201,7 +207,7 @@ export const PlaybackControls = () => {
 							<Button
 								size='icon'
 								variant='ghost'
-								className={cn('hover:text-white h-8 w-8', isRepeating ? 'text-rose-500' : 'text-zinc-400')}
+								className={cn('hover:text-white h-8 w-8', isRepeating ? 'text-green-500' : 'text-zinc-400')}
 								onClick={toggleRepeat}
 							>
 								<Repeat className='h-4 w-4' />
@@ -259,7 +265,7 @@ export const PlaybackControls = () => {
 
 			{/* Mobile Player */}
 			<div 
-				className="fixed bottom-14 left-0 right-0 bg-gradient-to-b from-rose-950/90 to-black border-t border-rose-900/50 h-16 backdrop-blur-md z-40 sm:hidden transition-all duration-300"
+				className="fixed bottom-14 left-0 right-0 bg-gradient-to-b from-zinc-900 to-black border-t border-zinc-800/50 h-16 backdrop-blur-md z-40 sm:hidden transition-all duration-300"
 				style={{ opacity: isTransitioning ? 0.8 : 1 }}
 				onClick={() => setShowSongDetails(true)}
 			>
@@ -334,7 +340,7 @@ export const PlaybackControls = () => {
 				{/* Progress bar for mobile */}
 				<div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
 					<div 
-						className="h-full bg-rose-500" 
+						className="h-full bg-green-500" 
 						style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
 					/>
 				</div>

@@ -12,9 +12,11 @@ import fs from "fs";
 import { createServer } from "http";
 import cron from "node-cron";
 
+// Import Firebase admin
+import admin from "./config/firebase.js";
+
 import { initializeSocket } from "./lib/socket.js";
 
-import { connectDB } from "./lib/db.js";
 import userRoutes from "./routes/user.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import authRoutes from "./routes/auth.route.js";
@@ -35,10 +37,6 @@ const PORT = process.env.PORT || 5000;
 const httpServer = createServer(app);
 initializeSocket(httpServer);
 
-// Store mongoose connection in app for testing
-import mongoose from "mongoose";
-app.set('mongoose', mongoose);
-
 // CORS configuration with proper credentials support
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
@@ -58,7 +56,33 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 app.use(express.json()); // to parse req.body
-app.use(clerkMiddleware()); // this will add auth to req obj => req.auth
+
+// Temporarily disable Clerk middleware during Firebase transition
+// app.use(clerkMiddleware()); // this will add auth to req obj => req.auth
+
+// Firebase authentication middleware
+app.use(async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const idToken = authHeader.split('Bearer ')[1];
+    
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      req.auth = {
+        ...req.auth, // Preserve Clerk auth if present
+        uid: decodedToken.uid,
+        email: decodedToken.email,
+        firebase: decodedToken
+      };
+    } catch (error) {
+      console.log("Firebase auth failed, continuing with other auth methods:", error.message);
+      // Don't fail the request - allow other auth methods to be checked
+    }
+  }
+  
+  next();
+});
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, "public")));
@@ -104,7 +128,6 @@ app.use("/api/albums", albumRoutes);
 app.use("/api/stats", statRoutes);
 app.use("/api/spotify", spotifyRoutes);
 app.use("/api/music", musicRoutes);
-
 app.use("/api/playlists", playlistRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/liked-songs", likedSongRoutes);
@@ -114,12 +137,6 @@ app.get('/spotify-callback', (req, res) => {
 	// Redirect to our API endpoint that handles the callback
 	const { code, state } = req.query;
 	res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
-});
-
-// Add a specific route for favicon.ico 
-app.get('/favicon.ico', (req, res) => {
-  // Either send the favicon if it exists or send a 204 No Content
-  res.status(204).end();
 });
 
 // Add a root route handler
@@ -140,55 +157,21 @@ if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
 	});
 }
 
-// Connect to database before starting server
-connectDB().then(() => {
-  httpServer.listen(PORT, () => {
-    console.log("Server is running on port " + PORT);
-    console.log(`MongoDB Connected successfully!`);
-    console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}`);
-    console.log(`Environment: ${process.env.NODE_ENV}`);
-    console.log(`Running on Vercel: ${process.env.VERCEL ? 'Yes' : 'No'}`);
-  });
-}).catch(err => {
-  console.error("Failed to connect to database:", err);
-  
-  // Start server anyway in production to allow API diagnostics
-  if (process.env.NODE_ENV === 'production') {
-    httpServer.listen(PORT, () => {
-      console.log("Server is running on port " + PORT + " (without database connection)");
-      console.log("API health check available at /api/test/health");
-      
-      // Set a global flag to indicate DB connection failure
-      global.dbConnectionFailed = true;
-    });
-  }
-});
-
 // Add error handling middleware
 app.use((err, req, res, next) => {
-  // Log the error with stack trace in development
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('Error:', err.stack || err);
-  } else {
-    // Log less verbose in production
-    console.error('Error:', err.message || 'Unknown error');
-  }
-  
-  // Check if error is related to MongoDB connection
-  if (err.name === 'MongoNetworkError' || err.name === 'MongoServerSelectionError' || 
-      err.message?.includes('MongoDB') || global.dbConnectionFailed) {
-    return res.status(503).json({
-      message: "Database service unavailable. We're working on it!",
-      status: "database_error"
-    });
-  }
-  
-  // Default error response
-  res.status(err.status || 500).json({
-    message: process.env.NODE_ENV === "production" 
-      ? "An error occurred" 
-      : err.message,
-    error: process.env.NODE_ENV === "development" ? err : {},
-    status: err.status ? "error" : "server_error"
-  });
+	console.error('Error:', err);
+	res.status(err.status || 500).json({
+		message: process.env.NODE_ENV === "production" 
+			? "An error occurred" 
+			: err.message,
+		error: process.env.NODE_ENV === "development" ? err : {}
+	});
+});
+
+// Start server
+httpServer.listen(PORT, () => {
+  console.log("Server is running on port " + PORT);
+  console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}`);
+  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`Running on Vercel: ${process.env.VERCEL ? 'Yes' : 'No'}`);
 });

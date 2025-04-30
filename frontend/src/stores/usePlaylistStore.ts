@@ -4,6 +4,17 @@ import { Playlist, Song } from '../types';
 import { toast } from 'sonner';
 import { mockPlaylists, mockUserPlaylists } from '../utils/mockData';
 
+// Generate SVG data URL for fallback images
+const generateImageUrl = (text: string, bgColor: string = "#1DB954"): string => {
+  const safeText = text.replace(/['&<>]/g, ''); // Basic sanitization
+  return `data:image/svg+xml;base64,${btoa(`
+    <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+      <rect width="300" height="300" fill="${bgColor}"/>
+      <text x="150" y="150" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">${safeText}</text>
+    </svg>
+  `)}`;
+};
+
 interface PlaylistStore {
   // State
   playlists: Playlist[];
@@ -50,11 +61,12 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   fetchPlaylists: async () => {
     try {
       set({ isLoading: true });
-      console.log('Fetching all playlists...');
+      console.log('Fetching playlists from:', axiosInstance.defaults.baseURL + '/playlists');
       const response = await axiosInstance.get('/playlists');
+      console.log('Playlists response:', response.data);
       set({ playlists: response.data, isLoading: false });
     } catch (error: any) {
-      console.error('Error fetching playlists');
+      console.error('Error fetching playlists:', error);
       
       // Use mock data for 404 errors
       if (error.response?.status === 404) {
@@ -70,60 +82,67 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   fetchUserPlaylists: async () => {
     try {
       set({ isLoading: true });
-      console.log('Fetching user playlists...');
+      console.log('Fetching user playlists from:', axiosInstance.defaults.baseURL + '/playlists/user');
       
       // First try the regular endpoint
       try {
         const response = await axiosInstance.get('/playlists/user');
-        console.log('User playlists response received');
+        console.log('User playlists response:', response.data);
         set({ userPlaylists: response.data, isLoading: false });
         return;
       } catch (err: any) {
-        // If the endpoint fails with a 401 or 404, use mock data
-        console.log('Primary endpoint failed with status:', err.response?.status);
+        // If the endpoint fails with a 401 or 404, try the test endpoint
+        console.warn('Primary endpoint failed, checking auth status:', err.response?.status);
         
         if (err.response?.status === 401 || err.response?.status === 404) {
-          // Use mock data as fallback
+          try {
+            // Skip the auth-debug test endpoint since it's not implemented yet
+            // Use mock data as fallback
+            console.log('Using mock user playlist data as fallback');
+            set({ userPlaylists: mockUserPlaylists, isLoading: false });
+            return;
+          } catch (testErr) {
+            console.error('Auth test failed:', testErr);
+            // Use mock data as fallback
+            console.log('Using mock user playlist data as fallback');
+            set({ userPlaylists: mockUserPlaylists, isLoading: false });
+            return;
+          }
+        }
+        // Use mock data for 404 errors
+        if (err.response?.status === 404) {
           console.log('Using mock user playlist data as fallback');
           set({ userPlaylists: mockUserPlaylists, isLoading: false });
           return;
         }
-        
         // Re-throw the original error if we couldn't handle it
         throw err;
       }
     } catch (error: any) {
       console.error('Error fetching user playlists:', error);
-      
-      // Use mock data as fallback for any error
-      console.log('Using mock user playlist data as fallback');
-      set({ userPlaylists: mockUserPlaylists, isLoading: false });
+      toast.error('Failed to fetch your playlists');
+      set({ isLoading: false });
     }
   },
 
   fetchFeaturedPlaylists: async () => {
     try {
       set({ isLoading: true });
-      console.log('Fetching featured playlists...');
-      try {
-        const response = await axiosInstance.get('/playlists?featured=true');
-        set({ featuredPlaylists: response.data, isLoading: false });
-      } catch (error: any) {
-        if (error.response?.status === 404) {
-          console.log('Using mock featured playlists data as fallback');
-          // Filter mock playlists to only include featured ones
-          const featured = mockPlaylists.filter(playlist => playlist.featured);
-          set({ featuredPlaylists: featured, isLoading: false });
-        } else {
-          throw error;
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching featured playlists');
+      const response = await axiosInstance.get('/playlists?featured=true');
+      set({ featuredPlaylists: response.data, isLoading: false });
+    } catch (error: any) {
+      console.error('Error fetching featured playlists:', error);
       
-      // Filter mock playlists to only include featured ones
-      const featured = mockPlaylists.filter(playlist => playlist.featured);
-      set({ featuredPlaylists: featured, isLoading: false });
+      // Use mock data for 404 errors
+      if (error.response?.status === 404) {
+        console.log('Using mock featured playlist data as fallback');
+        // Filter mock playlists to only include featured ones
+        const featured = mockPlaylists.filter(playlist => playlist.featured);
+        set({ featuredPlaylists: featured, isLoading: false });
+      } else {
+        toast.error('Failed to fetch featured playlists');
+        set({ isLoading: false });
+      }
     }
   },
 
@@ -180,7 +199,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
           name,
           description,
           isPublic,
-          imageUrl: imageUrl || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzU1NSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMzYiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlBsYXlsaXN0PC90ZXh0Pjwvc3ZnPg==",
+          imageUrl: imageUrl || generateImageUrl(name),
           songs: [],
           featured: false,
           createdAt: new Date().toISOString(),
@@ -189,7 +208,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
             _id: "mock-user-1",
             clerkId: "mock-clerk-id-1",
             fullName: "Demo User",
-            imageUrl: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iIzU1NSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlNvbmc8L3RleHQ+PC9zdmc+"
+            imageUrl: generateImageUrl("User", "#555555")
           }
         };
         
@@ -324,27 +343,15 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
 
   addSongToPlaylist: async (playlistId: string, songId: string) => {
     try {
-      const response = await axiosInstance.post(`/playlists/${playlistId}/songs`, {
-        songId,
-      });
-
-      // Update the current playlist if it's the one we're adding to
+      await axiosInstance.post(`/playlists/${playlistId}/songs`, { songId });
+      
+      // Get the current playlist and update it if it's the one we're adding to
       const currentPlaylist = get().currentPlaylist;
       if (currentPlaylist && currentPlaylist._id === playlistId) {
-        set({ currentPlaylist: response.data });
+        // Fetch the updated playlist
+        get().fetchPlaylistById(playlistId);
       }
-
-      // Update the playlists and userPlaylists lists
-      const updatedPlaylist = response.data;
-      const playlists = get().playlists.map((playlist) =>
-        playlist._id === playlistId ? updatedPlaylist : playlist
-      );
-      const userPlaylists = get().userPlaylists.map((playlist) =>
-        playlist._id === playlistId ? updatedPlaylist : playlist
-      );
       
-      set({ playlists, userPlaylists });
-
       toast.success('Song added to playlist');
     } catch (error: any) {
       console.error('Error adding song to playlist:', error);
@@ -362,7 +369,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
           albumId: null,
           duration: 210,
           audioUrl: "https://example.com/song.mp3",
-          imageUrl: "https://i.scdn.co/image/ab67616d00001e02ff9ca10b55ce82ae553c8228",
+          imageUrl: generateImageUrl("Song " + songId.substr(0, 4), "#3D91F4"),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };

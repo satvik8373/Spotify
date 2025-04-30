@@ -114,12 +114,12 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   if (!currentSong) return null;
 
   const progress = (currentTime / duration) * 100 || 0;
-  const vibrantColor = 'rgba(220, 38, 38, 0.9)'; // Rose-red color
+  const vibrantColor = 'rgba(22, 163, 74, 0.9)'; // Green color
 
   return (
     <div
       className={cn(
-        'fixed inset-0 bg-gradient-to-b from-rose-950/90 via-rose-950/70 to-black z-50 transition-transform duration-500 flex flex-col',
+        'fixed inset-0 bg-gradient-to-b from-black via-zinc-900/90 to-black z-50 transition-transform duration-500 flex flex-col',
         isOpen ? 'translate-y-0' : 'translate-y-full'
       )}
     >
@@ -171,7 +171,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             size="icon"
             className={cn(
               'text-white hover:bg-white/10',
-              isLiked && 'text-rose-500'
+              isLiked && 'text-green-500'
             )}
             onClick={handleLikeToggle}
           >
@@ -205,7 +205,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               size="icon"
               className={cn(
                 "hover:bg-white/10",
-                isShuffled ? "text-rose-500" : "text-zinc-400"
+                isShuffled ? "text-green-500" : "text-zinc-400"
               )}
               onClick={toggleShuffle}
             >
@@ -243,7 +243,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               size="icon"
               className={cn(
                 "hover:bg-white/10",
-                isRepeating ? "text-rose-500" : "text-zinc-400"
+                isRepeating ? "text-green-500" : "text-zinc-400"
               )}
               onClick={toggleRepeat}
             >

@@ -1,12 +1,12 @@
 {
   "name": "Spotify Clone",
   "short_name": "Spotify",
-  "description": "A Spotify clone with modern features",
+  "description": "A better Spotify clone with real-time features",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
+  "background_color": "#121212",
   "theme_color": "#1DB954",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
@@ -57,39 +57,27 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshots/home.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "platform": "wide",
-      "label": "Home Screen"
-    },
-    {
-      "src": "/screenshots/player.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "platform": "wide",
-      "label": "Player Screen"
-    }
-  ],
   "shortcuts": [
+    {
+      "name": "Home",
+      "short_name": "Home",
+      "description": "Go to the home page",
+      "url": "/",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
     {
       "name": "Search",
       "short_name": "Search",
       "description": "Search for music",
       "url": "/search",
-      "icons": [{ "src": "/icons/search.png", "sizes": "96x96" }]
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "Your Library",
+      "name": "Library",
       "short_name": "Library",
-      "description": "View your music library",
+      "description": "Go to your library",
       "url": "/library",
-      "icons": [{ "src": "/icons/library.png", "sizes": "96x96" }]
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     }
-  ],
-  "categories": ["music", "entertainment"],
-  "prefer_related_applications": false,
-  "related_applications": []
+  ]
 } 

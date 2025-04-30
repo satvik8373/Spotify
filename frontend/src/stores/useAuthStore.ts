@@ -1,6 +1,7 @@
 import axiosInstance from '../lib/axios';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { syncLikedSongsOnLogin } from '@/services/likedSongsService';
 
 interface AuthStore {
   isAdmin: boolean;
@@ -92,9 +93,14 @@ export const useAuthStore = create<AuthStore>()(
           user: userId ? { id: userId } : null
         });
 
-        // If user is authenticated, check if they are an admin
+        // If user is authenticated, check if they are an admin and sync liked songs
         if (isAuthenticated && userId) {
           get().checkAdminStatus();
+          
+          // Sync liked songs across devices when user logs in
+          syncLikedSongsOnLogin().catch(err => 
+            console.error("Failed to sync liked songs on login:", err)
+          );
         }
       },
 

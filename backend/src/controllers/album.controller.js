@@ -1,26 +1,29 @@
-import { Album } from "../models/album.model.js";
+// Replacing MongoDB with Firebase placeholders
 
-export const getAllAlbums = async (req, res, next) => {
+// Get all albums
+export const getAllAlbums = async (req, res) => {
 	try {
-		const albums = await Album.find();
-		res.status(200).json(albums);
+		// Firebase implementation would go here
+		res.json({ 
+			message: "This endpoint now uses Firebase. Please use the frontend Firebase implementation.",
+			albums: []
+		});
 	} catch (error) {
-		next(error);
+		res.status(500).json({ message: error.message });
 	}
 };
 
-export const getAlbumById = async (req, res, next) => {
+// Get album by ID
+export const getAlbumById = async (req, res) => {
 	try {
 		const { albumId } = req.params;
-
-		const album = await Album.findById(albumId).populate("songs");
-
-		if (!album) {
-			return res.status(404).json({ message: "Album not found" });
-		}
-
-		res.status(200).json(album);
+		
+		// Firebase implementation would go here
+		res.json({ 
+			message: "This endpoint now uses Firebase. Please use the frontend Firebase implementation.",
+			album: { id: albumId, title: "Album Title", songs: [] }
+		});
 	} catch (error) {
-		next(error);
+		res.status(500).json({ message: error.message });
 	}
 };

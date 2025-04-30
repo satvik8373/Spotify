@@ -1,10 +1,19 @@
 import { LikedSong } from "../models/likedSong.model.js";
-import { User } from "../models/user.model.js";
 import { clerkClient } from "@clerk/express";
+import admin from "firebase-admin";
 
 // Helper to identify user type and ID from request
 const getUserIdentity = async (req) => {
   try {
+    // Check for Firebase authentication
+    if (req.auth && req.auth.uid) {
+      return {
+        userType: "firebase",
+        userId: req.auth.uid,
+        firebaseId: req.auth.uid
+      };
+    }
+    
     // Check for Clerk authentication
     if (req.auth && req.auth.userId) {
       return {
@@ -20,22 +29,35 @@ const getUserIdentity = async (req) => {
       const token = authHeader.split(' ')[1];
       
       try {
-        // Verify the Google token with userinfo endpoint
-        const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        // Try to verify as Firebase token first
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        return {
+          userType: "firebase",
+          userId: decodedToken.uid,
+          firebaseId: decodedToken.uid,
+          email: decodedToken.email
+        };
+      } catch (firebaseError) {
+        console.log("Not a Firebase token, trying Google userinfo:", firebaseError.message);
         
-        if (response.ok) {
-          const userInfo = await response.json();
-          return {
-            userType: "google",
-            userId: userInfo.sub,
-            googleId: userInfo.sub,
-            email: userInfo.email
-          };
+        try {
+          // Verify the Google token with userinfo endpoint
+          const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            const userInfo = await response.json();
+            return {
+              userType: "google",
+              userId: userInfo.sub,
+              googleId: userInfo.sub,
+              email: userInfo.email
+            };
+          }
+        } catch (err) {
+          console.error("Error verifying Google token:", err);
         }
-      } catch (err) {
-        console.error("Error verifying Google token:", err);
       }
     }
     

@@ -1,21 +1,28 @@
-import express from "express";
-import { getLikedSongs, addLikedSong, removeLikedSong, isSongLiked, syncLikedSongs } from "../controllers/likedSong.controller.js";
+import { Router } from "express";
+import { 
+  getLikedSongs, 
+  addLikedSong, 
+  removeLikedSong, 
+  isSongLiked,
+  syncLikedSongs
+} from "../controllers/likedSong.controller.js";
+import { firebaseAuth, optionalFirebaseAuth } from "../middleware/firebase-auth.middleware.js";
 
-const router = express.Router();
+const router = Router();
 
-// GET /api/liked-songs - Get all liked songs for the authenticated user
-router.get("/", getLikedSongs);
+// Get all liked songs for the current user
+router.get("/", optionalFirebaseAuth, getLikedSongs);
 
-// POST /api/liked-songs - Add a song to liked songs
-router.post("/", addLikedSong);
+// Check if a song is liked
+router.get("/check/:songId", optionalFirebaseAuth, isSongLiked);
 
-// DELETE /api/liked-songs/:songId - Remove a song from liked songs
-router.delete("/:songId", removeLikedSong);
+// Add a song to liked songs
+router.post("/", optionalFirebaseAuth, addLikedSong);
 
-// GET /api/liked-songs/check/:songId - Check if a song is liked
-router.get("/check/:songId", isSongLiked);
+// Remove a song from liked songs
+router.delete("/:songId", optionalFirebaseAuth, removeLikedSong);
 
-// POST /api/liked-songs/sync - Sync local liked songs with server
-router.post("/sync", syncLikedSongs);
+// Sync liked songs between local storage and server
+router.post("/sync", optionalFirebaseAuth, syncLikedSongs);
 
 export default router; 

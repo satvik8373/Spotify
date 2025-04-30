@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="2732" viewBox="0 0 2048 2732">
+  <rect width="100%" height="100%" fill="#000000"/>
+  <text x="50%" y="50%" font-family="Arial" font-size="204px" fill="#1DB954" text-anchor="middle" dominant-baseline="middle">
+    Spotify
+  </text>
+  <image x="824" y="1066" width="400" height="400" href="/icons/icon-512x512.png" />
+</svg>

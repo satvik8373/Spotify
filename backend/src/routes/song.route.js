@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { getAllSongs, getFeaturedSongs, getMadeForYouSongs, getTrendingSongs } from "../controllers/song.controller.js";
 import { protectRoute, requireAdmin } from "../middleware/auth.middleware.js";
-import { Song } from "../models/song.model.js";
 
 const router = Router();
 
@@ -13,8 +12,8 @@ router.get("/trending", getTrendingSongs);
 // Get all songs
 router.get("/all", async (req, res) => {
   try {
-    const songs = await Song.find().populate("albumId");
-    res.json(songs);
+    // Firebase version would go here
+    res.json({ message: "This endpoint now uses Firebase. Please use the frontend Firebase implementation." });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -30,18 +29,11 @@ router.post("/external", protectRoute, async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
     
-    // Create a new song
-    const song = new Song({
-      title,
-      artist,
-      imageUrl,
-      audioUrl,
-      duration: duration || 0,
-      albumId: null // External songs might not have an album
+    // Firebase version would go here
+    res.status(201).json({ 
+      message: "This endpoint now uses Firebase. Please use the frontend Firebase implementation.",
+      songData: { title, artist, imageUrl, audioUrl, duration }
     });
-    
-    await song.save();
-    res.status(201).json(song);
   } catch (error) {
     console.error("Error creating external song:", error);
     res.status(500).json({ message: "Failed to create song", error: error.message });

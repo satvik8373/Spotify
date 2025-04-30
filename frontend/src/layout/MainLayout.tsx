@@ -54,11 +54,11 @@ const MainLayout = () => {
           <LeftSidebar />
         </ResizablePanel>
 
-        {!isMobile && <ResizableHandle className="w-1 bg-rose-950/30 rounded-lg transition-colors hover:bg-rose-900/50" />}
+        {!isMobile && <ResizableHandle className="w-1 bg-zinc-800/50 rounded-lg transition-colors hover:bg-green-900/50" />}
 
         {/* Main content - full width on mobile */}
         <ResizablePanel defaultSize={isMobile ? 100 : 80} className="overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-rose-950 scrollbar-track-black">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-black">
             <Outlet />
           </div>
         </ResizablePanel>
