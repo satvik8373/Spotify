@@ -3,8 +3,30 @@ import axios from 'axios';
 // Spotify API credentials
 const CLIENT_ID = '7f22a495ad7e4587acf6cc2f82e41748';
 const CLIENT_SECRET = '6bba9755ba50486cb299448e011b55e3';
-const REDIRECT_URI = 'https://mavrixfilms.live/spotify-callback';
+
+// Get the appropriate redirect URI based on environment
+const getRedirectUri = (): string => {
+  const hostname = window.location.hostname;
+  
+  // Use dynamic detection but with proper fallbacks
+  if (hostname === 'mavrixfilms.live' || hostname.includes('mavrixfilms')) {
+    return 'https://mavrixfilms.live/spotify-callback';
+  } else if (hostname === 'localhost' || hostname.match(/^(192\.168\.|10\.|127\.0\.0\.1)/)) {
+    // For local development, use localhost with port
+    return `${window.location.origin}/spotify-callback`;
+  } else {
+    // Default fallback to the registered production URL
+    console.warn('Unknown hostname, defaulting to production redirect URI');
+    return 'https://mavrixfilms.live/spotify-callback';
+  }
+};
+
+// Set the redirect URI dynamically
+const REDIRECT_URI = getRedirectUri();
 // const REDIRECT_URI = window.location.origin + '/spotify-callback'; // Old dynamic URI that was causing INVALID_CLIENT error
+
+// For debugging
+console.log('Using Spotify redirect URI:', REDIRECT_URI);
 
 // Spotify API URLs
 const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
