@@ -3,7 +3,8 @@ import axios from 'axios';
 // Spotify API credentials
 const CLIENT_ID = '7f22a495ad7e4587acf6cc2f82e41748';
 const CLIENT_SECRET = '6bba9755ba50486cb299448e011b55e3';
-const REDIRECT_URI = window.location.origin + '/spotify-callback';
+const REDIRECT_URI = 'https://mavrixfilms.live/spotify-callback';
+// const REDIRECT_URI = window.location.origin + '/spotify-callback'; // Old dynamic URI that was causing INVALID_CLIENT error
 
 // Spotify API URLs
 const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
