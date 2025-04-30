@@ -25,20 +25,23 @@ const MainLayout = () => {
 
   return (
     <div className="h-screen bg-black text-white flex flex-col overflow-hidden">
-      {/* Header with login */}
-      <Header />
+      {/* Header with login - hidden on mobile */}
+      <div className="hidden md:block">
+        <Header />
+      </div>
       
       <ResizablePanelGroup
         direction="horizontal"
         className="flex-1 flex h-full overflow-hidden"
         style={{
-          height: hasActiveSong
-            ? isMobile
-              ? 'calc(100vh - 14px - 16px - 44px)' // Subtract mobile nav (14px), player (16px), and header (44px) heights
-              : 'calc(100vh - 90px - 44px)' // Subtract the desktop player height and header on desktop
-            : isMobile
-              ? 'calc(100vh - 14px - 44px)' // Just subtract the mobile nav and header on mobile
-              : 'calc(100vh - 44px)', // Just subtract header on desktop
+          height: isMobile 
+            ? hasActiveSong
+              ? 'calc(100vh - 46px - 14px - 40px)' // Mobile header + nav + mini player
+              : 'calc(100vh - 46px - 14px)' // Mobile header + nav
+            : hasActiveSong
+              ? 'calc(100vh - 44px - 90px)' // Desktop header + player
+              : 'calc(100vh - 44px)', // Desktop header only
+          marginTop: isMobile ? '46px' : '0', // Add margin for the mobile header
         }}
       >
         {/* Audio player component - hidden but functional */}
@@ -64,8 +67,8 @@ const MainLayout = () => {
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {/* Playback controls - always visible when there's a song */}
-      {currentSong && <PlaybackControls />}
+      {/* Playback controls - visible on desktop only when there's a song */}
+      {currentSong && !isMobile && <PlaybackControls />}
 
       {/* Mobile Navigation */}
       <MobileNav />

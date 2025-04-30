@@ -143,8 +143,27 @@ img.object-cover.bg-zinc-800 {
 	padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-.fixed.bottom-0.z-40 {
-	bottom: 4rem;
+/* Mobile mini player styles */
+.player-active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mini player play/pause button styles */
+.player-active button span.h-3.w-3 {
+  display: flex;
+  height: 8px;
+  width: 8px;
+}
+
+.player-active button span.h-0.w-0 {
+  display: block;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent #000;
+  margin-left: 2px;
 }
 
 @supports (padding-bottom: env(safe-area-inset-bottom)) {

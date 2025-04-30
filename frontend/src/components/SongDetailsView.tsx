@@ -33,15 +33,21 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     setCurrentTime: setStoreCurrentTime
   } = usePlayerStore();
   
-  const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
+  const { likedSongIds, toggleLikeSong, loadLikedSongs } = useLikedSongsStore();
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isRepeating, setIsRepeating] = useState(false);
   const [albumArtLoaded, setAlbumArtLoaded] = useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
+  // Make sure liked songs are loaded
+  useEffect(() => {
+    loadLikedSongs();
+  }, [loadLikedSongs]);
+  
   // Get liked state from the liked songs store if possible
-  const isLiked = currentSong ? likedSongIds?.has((currentSong as any).id || currentSong._id) : false;
+  const songId = currentSong ? ((currentSong as any).id || currentSong._id) : null;
+  const isLiked = songId ? likedSongIds?.has(songId) : false;
 
   useEffect(() => {
     audioRef.current = document.querySelector("audio");
@@ -72,6 +78,19 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       audio.removeEventListener("loadedmetadata", updateDuration);
     };
   }, [currentSong, storeCurrentTime, storeDuration, setStoreCurrentTime]);
+
+  // Listen for like updates from other components
+  useEffect(() => {
+    const handleLikeUpdate = () => {
+      // Force re-render to reflect updated like status
+      setCurrentTime(prev => prev);
+    };
+    
+    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
+    return () => {
+      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
+    };
+  }, []);
 
   const handleSeek = (value: number[]) => {
     if (audioRef.current) {
@@ -251,31 +270,31 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             </Button>
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-center gap-6 mt-10">
+        
+        {/* Additional Controls */}
+        <div className="flex justify-around mt-8 mb-6">
           <Button
             variant="ghost"
-            size="icon"
-            className="text-zinc-400 hover:bg-white/10 hover:text-white"
+            size="sm"
+            className="text-zinc-400 hover:text-white hover:bg-white/10 flex flex-col items-center gap-1"
             onClick={handleShare}
           >
             <Share2 className="h-5 w-5" />
-            <span className="sr-only">Share</span>
+            <span className="text-xs">Share</span>
           </Button>
           <Button
             variant="ghost"
-            size="icon"
-            className="text-zinc-400 hover:bg-white/10 hover:text-white"
+            size="sm"
+            className="text-zinc-400 hover:text-white hover:bg-white/10 flex flex-col items-center gap-1"
           >
             <ListMusic className="h-5 w-5" />
-            <span className="sr-only">Queue</span>
+            <span className="text-xs">Queue</span>
           </Button>
         </div>
-      </div>
 
-      {/* Safe Area Bottom Padding */}
-      <div className="h-8 flex-shrink-0" />
+        {/* Safe Area for iOS devices */}
+        <div className="h-safe-area-bottom"></div>
+      </div>
     </div>
   );
 };
