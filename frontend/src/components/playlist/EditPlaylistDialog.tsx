@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,26 +11,58 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
-import { Switch } from '../ui/switch';
-import { usePlaylistStore } from '../../stores/usePlaylistStore';
-import { Playlist } from '../../types';
-import { ImagePlus } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { Loader2, ImageIcon } from 'lucide-react';
+import { Playlist } from '@/types';
+import axios from '@/lib/axios';
 import { toast } from 'sonner';
 
+// Helper function to get a default playlist image URL
+const getDefaultPlaylistImage = (name: string) => {
+  // In a real app, you might use a service to generate a placeholder image based on the name
+  // For now, just return a static placeholder
+  return '/default-playlist.jpg';
+};
+
 interface EditPlaylistDialogProps {
-  playlist: Playlist;
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
+  playlist: Playlist;
+  onUpdated: (updatedPlaylist: Playlist) => void;
 }
 
-export function EditPlaylistDialog({ playlist, isOpen, onClose }: EditPlaylistDialogProps) {
-  const [name, setName] = useState(playlist.name);
-  const [description, setDescription] = useState(playlist.description);
-  const [isPublic, setIsPublic] = useState(playlist.isPublic);
-  const [imageUrl, setImageUrl] = useState(playlist.imageUrl);
+interface EditPlaylistFormData {
+  name: string;
+  description: string;
+}
+
+export function EditPlaylistDialog({ open, onClose, playlist, onUpdated }: EditPlaylistDialogProps) {
+  const [imagePreview, setImagePreview] = useState<string>(playlist.imageUrl || getDefaultPlaylistImage(playlist.name));
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const { updatePlaylist, isUpdating } = usePlaylistStore();
+
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<EditPlaylistFormData>({
+    defaultValues: {
+      name: playlist.name,
+      description: playlist.description || '',
+    }
+  });
+
+  useEffect(() => {
+    if (playlist) {
+      reset({
+        name: playlist.name,
+        description: playlist.description || '',
+      });
+      setImagePreview(playlist.imageUrl || getDefaultPlaylistImage(playlist.name));
+    }
+  }, [playlist, reset]);
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -51,131 +83,140 @@ export function EditPlaylistDialog({ playlist, isOpen, onClose }: EditPlaylistDi
     setImageFile(file);
     // Create a preview URL
     const previewUrl = URL.createObjectURL(file);
-    setImageUrl(previewUrl);
+    setImagePreview(previewUrl);
   };
 
-  const uploadImage = async (): Promise<string | null> => {
-    if (!imageFile) return null;
-
-    setIsUploading(true);
+  const onSubmit = async (data: EditPlaylistFormData) => {
     try {
-      // Create form data for image upload
-      const formData = new FormData();
-      formData.append('file', imageFile);
+      setIsSubmitting(true);
+      
+      // Use the existing image URL by default
+      let imageUrl = playlist.imageUrl;
+      
+      // If a new image was selected, in a real app we'd upload it to a server
+      // Since we removed Cloudinary, we'll just use the local preview URL temporarily
+      if (imageFile) {
+        // In a real app, we would upload the image to a server here
+        // For now, just use the preview URL (this is just a simulation)
+        imageUrl = imagePreview;
+      }
 
-      // Upload to the backend
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include', // Include cookies for auth
+      // Update playlist in database
+      const response = await axios.put(`/api/playlists/${playlist.id}`, {
+        ...data,
+        imageUrl,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to upload image');
-      }
-
-      const data = await response.json();
-      return data.imageUrl;
+      onUpdated(response.data);
+      
+      toast.success('Playlist updated successfully!');
+      
+      onClose();
     } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
-      return null;
+      console.error('Error updating playlist:', error);
+      toast.error('Could not update the playlist. Please try again.');
     } finally {
-      setIsUploading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-
-    let finalImageUrl = playlist.imageUrl;
-
-    // If a new image was selected, upload it
-    if (imageFile) {
-      const uploadedUrl = await uploadImage();
-      if (uploadedUrl) {
-        finalImageUrl = uploadedUrl;
-      }
-    }
-
-    await updatePlaylist(playlist._id, {
-      name,
-      description,
-      isPublic,
-      imageUrl: finalImageUrl,
-    });
-
+  const dialogCloseHandler = () => {
+    reset();
+    setImageFile(null);
+    setImagePreview(playlist.imageUrl || getDefaultPlaylistImage(playlist.name));
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(open) => !open && dialogCloseHandler()}>
       <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Edit Playlist</DialogTitle>
-          <DialogDescription>Update your playlist details.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <DialogHeader>
+            <DialogTitle>Edit Playlist</DialogTitle>
+            <DialogDescription>
+              Update your playlist details.
+            </DialogDescription>
+          </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="flex flex-col items-center mb-4">
-              <div className="relative group">
-                <img
-                  src={imageUrl}
-                  alt={name || 'Playlist cover'}
-                  className="w-40 h-40 object-cover rounded-md shadow-md"
-                />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-md">
-                  <Label
-                    htmlFor="cover-image"
-                    className="cursor-pointer flex flex-col items-center"
-                  >
-                    <ImagePlus className="h-8 w-8 mb-2" />
-                    <span>Choose image</span>
-                  </Label>
-                  <Input
-                    id="cover-image"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageChange}
+            <div className="flex items-center justify-center mb-4">
+              <div 
+                className="relative w-40 h-40 rounded-md overflow-hidden bg-gray-100 cursor-pointer group"
+                onClick={handleImageClick}
+              >
+                {imagePreview ? (
+                  <img 
+                    src={imagePreview} 
+                    alt="Playlist Cover" 
+                    className="w-full h-full object-cover"
                   />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <ImageIcon className="h-12 w-12 text-gray-400" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <span className="text-white text-sm font-medium">Change Cover</span>
                 </div>
+                {isLoading && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 text-white animate-spin" />
+                  </div>
+                )}
               </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleImageChange}
+              />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
               <Input
                 id="name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="My Awesome Playlist"
-                required
+                {...register('name', { required: 'Name is required' })}
+                className="col-span-3"
               />
+              {errors.name && (
+                <p className="text-sm text-red-500">{errors.name.message}</p>
+              )}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="text-right">
+                Description
+              </Label>
               <Textarea
                 id="description"
-                value={description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  setDescription(e.target.value)
-                }
-                placeholder="Add an optional description"
-                rows={3}
+                {...register('description')}
+                className="col-span-3"
+                rows={4}
               />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch id="public" checked={isPublic} onCheckedChange={setIsPublic} />
-              <Label htmlFor="public">Make this playlist public</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={dialogCloseHandler}
+              disabled={isSubmitting || isLoading}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim() || isUpdating || isUploading}>
-              {isUpdating || isUploading ? 'Saving...' : 'Save Changes'}
+            <Button 
+              type="submit"
+              disabled={isSubmitting || isLoading}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving
+                </>
+              ) : (
+                'Save Changes'
+              )}
             </Button>
           </DialogFooter>
         </form>
@@ -183,3 +224,5 @@ export function EditPlaylistDialog({ playlist, isOpen, onClose }: EditPlaylistDi
     </Dialog>
   );
 }
+
+export default EditPlaylistDialog;
