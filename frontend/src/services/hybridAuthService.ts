@@ -4,7 +4,9 @@ import {
   User,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -326,4 +328,71 @@ export const checkAdminStatus = async (uid: string) => {
 // Get current user
 export const getCurrentUser = () => {
   return auth.currentUser;
+};
+
+// Sign in with Google
+export const signInWithGoogle = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    const userCredential = await signInWithPopup(auth, provider);
+    const user = userCredential.user;
+    
+    // Check if user already exists in Firestore
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    
+    if (!userDoc.exists()) {
+      // Create user document in Firestore if this is their first sign in
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        fullName: user.displayName,
+        imageUrl: user.photoURL,
+        createdAt: new Date().toISOString(),
+        isAdmin: false,
+      });
+    }
+    
+    // Synchronize with backend if it's available
+    if (API_URL) {
+      try {
+        // Get Firebase ID token
+        const idToken = await user.getIdToken();
+        
+        // Call backend API to sync user
+        const response = await fetch(`${API_URL}/api/auth/sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            email: user.email,
+            uid: user.uid,
+            displayName: user.displayName,
+            photoURL: user.photoURL
+          })
+        });
+        
+        if (!response.ok) {
+          console.warn('Failed to sync Google user with backend, but Firebase auth successful');
+        }
+      } catch (error) {
+        console.warn('Backend sync failed for Google login, but Firebase auth successful:', error);
+      }
+    }
+    
+    // Update auth store
+    useAuthStore.getState().setAuthStatus(true, user.uid);
+    useAuthStore.getState().setUserProfile(
+      user.displayName || "",
+      user.photoURL || undefined
+    );
+    
+    // Migrate any liked songs from anonymous user
+    migrateAnonymousLikedSongs(user.uid);
+    
+    return user;
+  } catch (error: any) {
+    console.error("Error in Google login:", error);
+    throw new Error(error.message || "Failed to login with Google");
+  }
 }; 

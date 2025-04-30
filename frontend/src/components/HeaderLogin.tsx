@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, User, Settings } from 'lucide-react';
 import { signOut } from '@/services/hybridAuthService';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ interface HeaderLoginProps {
 
 const HeaderLogin = ({ className }: HeaderLoginProps) => {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
@@ -72,11 +74,21 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
         </DropdownMenu>
       ) : (
         <div className="flex items-center gap-3">
-          <Button
-            className="bg-white hover:bg-white/90 text-black font-bold rounded-full text-sm px-6 py-2 h-auto"
-          >
-            Sign Up
-          </Button>
+          <Link to="/login">
+            <Button
+              variant="ghost"
+              className="text-white hover:text-white hover:bg-transparent"
+            >
+              Log In
+            </Button>
+          </Link>
+          <Link to="/register">
+            <Button
+              className="bg-white hover:bg-white/90 text-black font-bold rounded-full text-sm px-6 py-2 h-auto"
+            >
+              Sign Up
+            </Button>
+          </Link>
         </div>
       )}
     </div>

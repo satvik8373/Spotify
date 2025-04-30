@@ -7,7 +7,7 @@ import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
 import { Toaster } from 'react-hot-toast';
 import AlbumPage from './pages/album/AlbumPage';
 import { PlaylistPage } from './pages/playlist/PlaylistPage';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider } from './contexts/AuthContext';
 // @ts-ignore
@@ -15,6 +15,7 @@ import ApiDebugPage from './pages/debug/ApiDebugPage.jsx';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
+import { seedFeaturedPlaylists } from './services/seedFirestorePlaylists';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -99,10 +100,30 @@ const router = createBrowserRouter(
 
 function AppContent() {
 	const [showSplash, setShowSplash] = useState(true);
+	const [initialized, setInitialized] = useState(false);
 	
-	// Always show splash screen on initial load
-	if (showSplash) {
-		return <SplashScreen onComplete={() => setShowSplash(false)} />;
+	// Initialize Firestore data
+	useEffect(() => {
+		const initializeApp = async () => {
+			try {
+				// Seed featured playlists if needed
+				await seedFeaturedPlaylists();
+				
+				// Mark initialization as complete
+				setInitialized(true);
+			} catch (error) {
+				console.error("Error initializing app:", error);
+				// Continue anyway in case of initialization errors
+				setInitialized(true);
+			}
+		};
+		
+		initializeApp();
+	}, []);
+	
+	// Always show splash screen on initial load until initialization completes
+	if (showSplash || !initialized) {
+		return <SplashScreen onComplete={() => initialized && setShowSplash(false)} />;
 	}
 	
 	// Always show main app content, login will be handled in the header
