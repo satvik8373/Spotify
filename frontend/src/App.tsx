@@ -16,6 +16,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import SpotifyCallback from './pages/SpotifyCallback';
+import SpotifyPlaylists from './pages/SpotifyPlaylists';
+import SpotifyPlaylistDetail from './pages/SpotifyPlaylistDetail';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -58,6 +61,10 @@ const router = createBrowserRouter(
 			element: <ResetPassword />
 		},
 		{
+			path: '/spotify-callback',
+			element: <SpotifyCallback />
+		},
+		{
 			element: <MainLayout />,
 			errorElement: <ErrorFallback />,
 			children: [
@@ -84,6 +91,14 @@ const router = createBrowserRouter(
 				{
 					path: '/playlist/:id',
 					element: <PlaylistPage />
+				},
+				{
+					path: '/spotify-playlists',
+					element: <SpotifyPlaylists />
+				},
+				{
+					path: '/spotify-playlist/:id',
+					element: <SpotifyPlaylistDetail />
 				},
 				{
 					path: '/debug/api',

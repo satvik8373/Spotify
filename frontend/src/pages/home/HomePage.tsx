@@ -15,6 +15,9 @@ import {
   Share2,
   ThumbsUp,
   Hash,
+  Loader2,
+  ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useNavigate, Link } from 'react-router-dom';
@@ -41,6 +44,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
+import { getUserPlaylists, isAuthenticated as isSpotifyAuthenticated, getAuthorizationUrl, formatSpotifyPlaylist } from '@/services/spotifyService';
 
 // Suggested genres
 const suggestedGenres = [
@@ -119,6 +123,18 @@ interface TopPlaylist extends RecentPlaylist {
   metrics: PlaylistMetrics;
   rank: number;
   isLiked: boolean;
+}
+
+// Interface for Spotify playlist
+interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  owner: string;
+  tracksCount: number;
+  source: string;
+  externalUrl: string;
 }
 
 // Add this CSS to handle the horizontal scroll and Netflix-like effects
@@ -226,6 +242,9 @@ const HomePage = () => {
   const [recentPlaylists, setRecentPlaylists] = useState<RecentPlaylist[]>([]);
   const [topPlaylists, setTopPlaylists] = useState<TopPlaylist[]>([]);
   const [sortBy, setSortBy] = useState<'clicks' | 'likes' | 'shares'>('clicks');
+  const [spotifyPlaylists, setSpotifyPlaylists] = useState<SpotifyPlaylist[]>([]);
+  const [loadingSpotify, setLoadingSpotify] = useState(false);
+  const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
 
   const { indianTrendingSongs, indianNewReleases, bollywoodSongs, hollywoodSongs } =
     useMusicStore();
@@ -371,6 +390,118 @@ const HomePage = () => {
       }
     }
   }, [userPlaylists, sortBy, isAuthenticated, featuredPlaylists]);
+
+  // Check if Spotify is connected and fetch playlists
+  useEffect(() => {
+    const checkSpotifyConnection = async () => {
+      const connected = isSpotifyAuthenticated();
+      setIsSpotifyConnected(connected);
+      
+      if (connected) {
+        setLoadingSpotify(true);
+        try {
+          const data = await getUserPlaylists(6, 0);
+          if (data && data.items && Array.isArray(data.items)) {
+            // Safely map playlists and filter out any nulls or undefined values
+            const formattedPlaylists = data.items
+              .map((item: any) => {
+                try {
+                  return formatSpotifyPlaylist(item);
+                } catch (err) {
+                  console.error('Error formatting playlist:', err);
+                  return null;
+                }
+              })
+              .filter(Boolean); // Remove any null/undefined entries
+              
+            setSpotifyPlaylists(formattedPlaylists);
+            
+            // Store in localStorage as a cache
+            try {
+              localStorage.setItem('spotify_playlists_cache', JSON.stringify({
+                timestamp: Date.now(),
+                playlists: formattedPlaylists
+              }));
+            } catch (cacheErr) {
+              console.error('Error caching playlists:', cacheErr);
+            }
+          } else {
+            console.warn('No playlists found in response or invalid format', data);
+            // Try to use cached data if available
+            tryLoadCachedPlaylists();
+          }
+        } catch (error) {
+          console.error('Error fetching Spotify playlists:', error);
+          // Try to use cached data if available
+          tryLoadCachedPlaylists();
+        } finally {
+          setLoadingSpotify(false);
+        }
+      } else {
+        // Clear spotify playlists if not connected
+        setSpotifyPlaylists([]);
+      }
+    };
+    
+    const tryLoadCachedPlaylists = () => {
+      try {
+        const cachedData = localStorage.getItem('spotify_playlists_cache');
+        if (cachedData) {
+          const { timestamp, playlists } = JSON.parse(cachedData);
+          // Only use cache if it's less than 1 hour old
+          if (Date.now() - timestamp < 3600000 && Array.isArray(playlists)) {
+            setSpotifyPlaylists(playlists);
+            return true;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading cached playlists:', error);
+      }
+      return false;
+    };
+    
+    checkSpotifyConnection();
+  }, []);
+  
+  // Function to retry loading Spotify playlists
+  const handleRetrySpotify = () => {
+    const retry = async () => {
+      if (!isSpotifyAuthenticated()) {
+        handleConnectSpotify();
+        return;
+      }
+      
+      setLoadingSpotify(true);
+      try {
+        const data = await getUserPlaylists(6, 0);
+        if (data && data.items && Array.isArray(data.items)) {
+          const formattedPlaylists = data.items
+            .map((item: any) => {
+              try {
+                return formatSpotifyPlaylist(item);
+              } catch (err) {
+                return null;
+              }
+            })
+            .filter(Boolean);
+            
+          setSpotifyPlaylists(formattedPlaylists);
+        }
+      } catch (error) {
+        console.error('Error retrying Spotify playlists:', error);
+        toast.error('Could not load Spotify playlists');
+      } finally {
+        setLoadingSpotify(false);
+      }
+    };
+    
+    retry();
+  };
+  
+  // Connect to Spotify
+  const handleConnectSpotify = () => {
+    window.location.href = getAuthorizationUrl();
+  };
 
   // Function to add a playlist to recent
   const addToRecentPlaylists = (playlist: any) => {
@@ -670,6 +801,108 @@ const HomePage = () => {
               </div>
             </div>
 
+            {/* Spotify Playlists Section - MOVED UP FOR BETTER VISIBILITY */}
+            <div className="mb-8 px-2 sm:px-0">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-bold tracking-tight flex items-center">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 text-green-500 mr-2">
+                    <path fill="currentColor" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                  </svg>
+                  Spotify Playlists
+                </h2>
+                <Link 
+                  to="/spotify-playlists" 
+                  className="text-sm font-medium text-zinc-400 hover:text-white"
+                >
+                  View All
+                </Link>
+              </div>
+
+              {!isSpotifyConnected ? (
+                <div className="bg-zinc-800/60 rounded-md p-4 flex flex-col sm:flex-row items-center justify-between">
+                  <div className="flex items-center mb-3 sm:mb-0">
+                    <svg viewBox="0 0 24 24" className="h-8 w-8 text-green-500 mr-3 flex-shrink-0">
+                      <path fill="currentColor" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                    </svg>
+                    <div>
+                      <h3 className="font-bold text-white">Connect with Spotify</h3>
+                      <p className="text-zinc-400 text-sm">Access your Spotify playlists and discover new music</p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={handleConnectSpotify}
+                    className="bg-green-500 hover:bg-green-600 text-white rounded-full px-4 py-2 h-auto"
+                  >
+                    Connect with Spotify
+                  </Button>
+                </div>
+              ) : loadingSpotify ? (
+                <div className="flex justify-center items-center py-6 bg-zinc-800/60 rounded-md">
+                  <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+                </div>
+              ) : spotifyPlaylists && spotifyPlaylists.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {spotifyPlaylists.map((playlist) => (
+                    <Link 
+                      key={playlist.id}
+                      to={`/spotify-playlist/${playlist.id}`}
+                      className="bg-zinc-800/60 rounded-md overflow-hidden hover:bg-zinc-800 transition-colors group"
+                    >
+                      <div className="aspect-square relative">
+                        {playlist.imageUrl ? (
+                          <img 
+                            src={playlist.imageUrl} 
+                            alt={playlist.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-zinc-700 flex items-center justify-center">
+                            <Music2 className="h-12 w-12 text-zinc-500" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="icon" className="h-8 w-8 rounded-full bg-green-500 hover:bg-green-400 text-white shadow-md">
+                            <PlayCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <a 
+                            href={playlist.externalUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        </div>
+                      </div>
+                      <div className="p-2">
+                        <h3 className="font-bold text-sm truncate">{playlist.name}</h3>
+                        <p className="text-zinc-400 text-xs truncate">By {playlist.owner}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-zinc-800/60 rounded-md p-4 text-center">
+                  <p className="text-zinc-400 mb-3">No Spotify playlists found. Try connecting again or check your Spotify account.</p>
+                  <Button 
+                    onClick={handleRetrySpotify} 
+                    variant="outline" 
+                    size="sm"
+                    className="border-zinc-700 hover:bg-zinc-700"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                    Retry
+                  </Button>
+                </div>
+              )}
+            </div>
+
             {/* Recently Played Section */}
             <RecentlyPlayed />
 
@@ -815,9 +1048,6 @@ const HomePage = () => {
 
           {/* Indian Music Player Component */}
           <IndianMusicPlayer />
-
-          {/* Bottom padding for mobile player */}
-          <div className="h-2"></div>
         </div>
       </ScrollArea>
 
