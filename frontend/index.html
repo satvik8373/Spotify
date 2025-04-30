@@ -2,11 +2,38 @@
 <html lang="en" class="dark">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="icon" type="image/svg+xml" href="/spotify.png" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<meta name="description" content="A better Spotify clone with real-time features" />
+		<link rel="icon" type="image/svg+xml" href="/pwa-icons/spotify-mavrix-icon.svg" />
+		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+		<meta name="description" content="Spotify x Mavrix - A better Spotify experience with real-time features" />
+		<meta name="theme-color" content="#1DB954" />
 		
-		<title>Spotify but Better</title>
+		<!-- iOS specific meta tags -->
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-title" content="Spotify x Mavrix" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120.png" />
+		<link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png" />
+		<link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png" />
+		
+		<!-- iOS splash screens -->
+		<link rel="apple-touch-startup-image" href="/splash/apple-splash-2048-2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+		<link rel="apple-touch-startup-image" href="/splash/apple-splash-1668-2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+		<link rel="apple-touch-startup-image" href="/splash/apple-splash-1668-2224.png" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+		<link rel="apple-touch-startup-image" href="/splash/apple-splash-1536-2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+		<link rel="apple-touch-startup-image" href="/splash/apple-splash-1242-2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+		<link rel="apple-touch-startup-image" href="/splash/apple-splash-1242-2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+		<link rel="apple-touch-startup-image" href="/splash/apple-splash-1125-2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+		<link rel="apple-touch-startup-image" href="/splash/apple-splash-750-1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+		
+		<!-- Web app manifest for PWA support -->
+		<link rel="manifest" href="/manifest.json" />
+		
+		<title>Spotify x Mavrix</title>
+		
 		<!-- Spotify Web Playback SDK -->
 		<script src="https://sdk.scdn.co/spotify-player.js"></script>
 		<script>

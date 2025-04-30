@@ -16,11 +16,31 @@ import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { useNavigate } from 'react-router-dom';
 import { ImagePlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 
 interface CreatePlaylistDialogProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Generate placeholder image if upload fails
+const generatePlaceholderImage = (name: string): string => {
+  const colors = [
+    '#1DB954', '#1ED760', '#2D46B9', '#9B59B6',
+    '#3498DB', '#1ABC9C', '#F1C40F', '#E74C3C'
+  ];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  const letter = name.charAt(0).toUpperCase();
+  
+  // Generate data URL with the first letter
+  return `data:image/svg+xml;base64,${btoa(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
+      <rect width="100%" height="100%" fill="${color}" />
+      <text x="50%" y="50%" font-family="Arial" font-size="120" fill="white" text-anchor="middle" dominant-baseline="middle">${letter}</text>
+    </svg>
+  `)}`;
+};
 
 export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogProps) {
   const [name, setName] = useState('');
@@ -61,26 +81,21 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
 
     setIsUploading(true);
     try {
-      // Create form data for image upload
-      const formData = new FormData();
-      formData.append('file', imageFile);
-
-      // Upload to the backend
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include', // Include cookies for auth
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload image');
-      }
-
-      const data = await response.json();
-      return data.imageUrl;
+      // Generate a unique filename
+      const filename = `playlists/${Date.now()}_${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+      const storageRef = ref(storage, filename);
+      
+      // Upload file to Firebase storage
+      await uploadBytes(storageRef, imageFile);
+      
+      // Get download URL
+      const downloadUrl = await getDownloadURL(storageRef);
+      return downloadUrl;
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
+      toast.error('Failed to upload image: Using a placeholder instead');
+      
+      // Return null to indicate failure but don't block playlist creation
       return null;
     } finally {
       setIsUploading(false);
@@ -94,7 +109,18 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
     // Handle image upload if there's a file
     let imageUrl = null;
     if (imageFile) {
-      imageUrl = await uploadImage();
+      try {
+        imageUrl = await uploadImage();
+      } catch (uploadError) {
+        console.error('Error in image upload:', uploadError);
+        // Continue with playlist creation even if image upload fails
+      }
+    }
+
+    // If image upload failed or no image was provided, generate a placeholder
+    if (!imageUrl) {
+      imageUrl = generatePlaceholderImage(name);
+      console.log('Using generated placeholder image');
     }
 
     const playlist = await createPlaylist(name, description, isPublic, imageUrl);

@@ -15,7 +15,7 @@ import ApiDebugPage from './pages/debug/ApiDebugPage.jsx';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
-import { seedFeaturedPlaylists } from './services/seedFirestorePlaylists';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -106,8 +106,8 @@ function AppContent() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// Seed featured playlists if needed
-				await seedFeaturedPlaylists();
+				// No longer seeding demo playlists
+				console.log("Application initialized without demo playlists");
 				
 				// Mark initialization as complete
 				setInitialized(true);
@@ -134,6 +134,7 @@ function AppContent() {
 				future={{ v7_startTransition: true }} 
 			/>
 			<Toaster />
+			<PWAInstallPrompt />
 		</>
 	);
 }

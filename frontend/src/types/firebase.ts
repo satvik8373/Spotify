@@ -37,7 +37,7 @@ export const firestoreToSong = (fsong: FirestoreSong): Song => {
 };
 
 // Firebase-compatible Album
-export interface FirestoreAlbum extends Omit<Album, '_id'> {
+export interface FirestoreAlbum extends Omit<Album, '_id' | 'songs'> {
   id: string;
   title: string;
   artist: string;
@@ -63,6 +63,7 @@ export interface FirestorePlaylist extends Omit<Playlist, '_id' | 'songs' | 'cre
 // Firebase-compatible User
 export interface FirestoreUser extends Omit<User, '_id'> {
   id: string;
+  _id?: string;
   clerkId: string;
   fullName: string;
   imageUrl: string;

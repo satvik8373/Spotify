@@ -2,7 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, User } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
 
 // Firebase configuration
@@ -20,7 +20,20 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Initialize Firebase Storage with CORS configuration
 export const storage = getStorage(app);
+
+// Use storage emulator in development if needed
+if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_USE_EMULATOR === 'true') {
+  // Connect to Firebase Storage emulator if it's running
+  try {
+    connectStorageEmulator(storage, 'localhost', 9199);
+    console.log('Connected to Firebase Storage emulator');
+  } catch (error) {
+    console.error('Failed to connect to Firebase Storage emulator:', error);
+  }
+}
 
 // Initialize Analytics only in browser environment
 let analytics = null;

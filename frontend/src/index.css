@@ -29,6 +29,11 @@
 		--chart-3: 197 37% 24%;
 		--chart-4: 43 74% 66%;
 		--chart-5: 27 87% 67%;
+		/* Prevent font size adjustments on orientation changes in iOS */
+		-webkit-text-size-adjust: 100%;
+		/* Improve font rendering */
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
 	}
 
 	.dark {
@@ -161,4 +166,98 @@ img.object-cover.bg-zinc-800 {
 
 .no-scrollbar::-webkit-scrollbar {
 	display: none; /* Chrome, Safari, Opera */
+}
+
+/* Improve touch behavior */
+@media (pointer: coarse) {
+	button, 
+	a, 
+	input[type="button"], 
+	input[type="submit"] {
+		min-height: 44px;
+		min-width: 44px;
+	}
+}
+
+/* Responsive typography system that works well with zooming */
+@media screen and (min-width: 320px) {
+	:root {
+		--base-font-size: calc(14px + 2 * ((100vw - 320px) / 1120));
+	}
+}
+
+@media screen and (min-width: 1440px) {
+	:root {
+		--base-font-size: 16px;
+	}
+}
+
+/* Improve button visibility when zoomed */
+button, .button, a.button {
+	position: relative;
+	z-index: 1; /* Ensure buttons are always clickable */
+	touch-action: manipulation; /* Disable double-tap zoom on buttons */
+}
+
+/* Safari-specific styles for home screen experience */
+@supports (-webkit-touch-callout: none) {
+	/* iOS Safari specific styles */
+	body {
+		/* Prevent overscroll bounce effect */
+		overscroll-behavior: none;
+		/* Remove unwanted highlight on tap */
+		-webkit-tap-highlight-color: transparent;
+	}
+	
+	/* Safe area insets for iOS */
+	@supports (padding: max(0px)) {
+		body {
+			padding-top: env(safe-area-inset-top, 0);
+			padding-right: env(safe-area-inset-right, 0);
+			padding-bottom: env(safe-area-inset-bottom, 0);
+			padding-left: env(safe-area-inset-left, 0);
+		}
+	}
+}
+
+/* Prevent content shifting when zooming */
+.fixed-layout {
+	width: 100%;
+	box-sizing: border-box;
+	margin: 0 auto;
+	overflow-x: hidden;
+}
+
+/* Add proper focus styles for accessibility while zooming */
+:focus {
+	outline: 2px solid #1DB954;
+	outline-offset: 2px;
+}
+
+/* Ensure proper zoom handling for modals */
+.modal, .dialog {
+	position: fixed;
+	z-index: 100;
+	max-height: 90vh; /* Allow scrolling inside modals when zoomed */
+	overflow-y: auto;
+}
+
+/* Add styles for mobile Safari bottom bar to prevent UI elements from being hidden */
+.has-safe-area-bottom {
+	padding-bottom: calc(env(safe-area-inset-bottom, 0) + 1rem);
+}
+
+/* Ensure proper scrolling behavior when zoomed */
+.scroll-container {
+	-webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+	scroll-behavior: smooth;
+}
+
+/* Add a mobile app install prompt banner */
+.pwa-install-prompt {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 100;
 }

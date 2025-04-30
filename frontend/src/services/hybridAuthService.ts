@@ -13,6 +13,8 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { migrateAnonymousLikedSongs } from "@/services/likedSongsService";
+import axiosInstance from "@/lib/axios";
+import { Timestamp } from "firebase/firestore";
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -23,62 +25,192 @@ const API_URL = import.meta.env.VITE_API_URL || '';
  * - Syncs user data with backend API
  */
 
+// Cache login attempts to prevent duplicate calls
+const loginCache = new Map();
+
+// Define FirestoreUser interface
+interface FirestoreUser {
+  uid: string;
+  email: string | null;
+  displayName?: string;
+  photoURL?: string | null;
+  createdAt: any; // Firebase Timestamp
+  updatedAt: any; // Firebase Timestamp
+}
+
+// Define custom user profile interface
+interface UserProfile {
+  id: string;
+  email: string | null;
+  name: string;
+  picture: string | null;
+}
+
 // Sign in with email and password
-export const login = async (email: string, password: string) => {
+export const login = async (email: string, password: string): Promise<User | null> => {
   try {
-    // First authenticate with Firebase
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+    // Generate a cache key
+    const cacheKey = `${email}:${Date.now()}`;
     
-    // Get user data from Firestore
-    const userDoc = await getDoc(doc(db, "users", user.uid));
-    const userData = userDoc.data();
-    
-    // Update auth store
-    useAuthStore.getState().setAuthStatus(true, user.uid);
-    useAuthStore.getState().setUserProfile(
-      userData?.fullName || user.displayName || "",
-      userData?.imageUrl || user.photoURL || undefined
-    );
-    
-    // Synchronize with backend if it's available
-    if (API_URL) {
-      try {
-        // Get Firebase ID token
-        const idToken = await user.getIdToken();
-        
-        // Call backend API to sync user
-        const response = await fetch(`${API_URL}/api/auth/sync`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({
-            email: user.email,
-            uid: user.uid,
-            displayName: userData?.fullName || user.displayName,
-            photoURL: userData?.imageUrl || user.photoURL
-          })
-        });
-        
-        if (!response.ok) {
-          console.warn('Failed to sync user with backend, but Firebase auth successful');
-        }
-      } catch (error) {
-        console.warn('Backend sync failed, but Firebase auth successful:', error);
-      }
+    // Check if we have an ongoing login attempt with this email
+    const existingLoginPromise = loginCache.get(email);
+    if (existingLoginPromise) {
+      console.log("Using cached login promise for", email);
+      return existingLoginPromise;
     }
+
+    // Create a promise for this login attempt and cache it
+    const loginPromise = (async () => {
+      console.log("Starting login process for", email);
+      
+      // Step 1: Firebase Authentication
+      let userCredential;
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      } catch (error: any) {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        console.error("Firebase Auth Error:", errorCode, errorMessage);
+        
+        // Provide more user-friendly error messages
+        if (errorCode === 'auth/user-not-found') {
+          throw new Error("No account found with this email address");
+        } else if (errorCode === 'auth/wrong-password') {
+          throw new Error("Incorrect password");
+        } else if (errorCode === 'auth/too-many-requests') {
+          throw new Error("Too many failed login attempts. Please try again later or reset your password");
+        } else if (errorCode === 'auth/invalid-credential') {
+          throw new Error("Invalid login credentials");
+        } else {
+          throw new Error(`Authentication failed: ${errorMessage}`);
+        }
+      }
+      
+      if (!userCredential?.user) {
+        throw new Error("Login failed: No user returned from Firebase");
+      }
+      
+      const firebaseUser = userCredential.user;
+      
+      // Get fresh ID token with short timeout
+      const idToken = await firebaseUser.getIdToken(true);
+      
+      // Step 2: Fetch Firestore User Profile with retry
+      let firestoreUser = null;
+      let retryCount = 0;
+      const MAX_RETRIES = 3;
+      
+      while (retryCount < MAX_RETRIES) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+          
+          if (userDoc.exists()) {
+            firestoreUser = userDoc.data() as FirestoreUser;
+            break;
+          } else if (retryCount === MAX_RETRIES - 1) {
+            console.warn("User document not found in Firestore. Creating new profile...");
+            // Create a basic profile if not found on final retry
+            firestoreUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || email,
+              displayName: firebaseUser.displayName || email.split('@')[0],
+              photoURL: firebaseUser.photoURL || null,
+              createdAt: Timestamp.now(),
+              updatedAt: Timestamp.now(),
+            };
+            
+            await setDoc(doc(db, "users", firebaseUser.uid), firestoreUser);
+          }
+        } catch (error) {
+          console.error(`Error fetching user document (attempt ${retryCount + 1}):`, error);
+          retryCount++;
+          
+          if (retryCount === MAX_RETRIES) {
+            console.error("Max retries reached for fetching user document");
+            // Continue with available data instead of failing
+            firestoreUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || email,
+              displayName: firebaseUser.displayName || email.split('@')[0],
+              photoURL: firebaseUser.photoURL || null,
+              createdAt: Timestamp.now(),
+              updatedAt: Timestamp.now(),
+            };
+          } else {
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
+          }
+        }
+      }
+
+      // Step 3: Update Auth Store
+      const userProfile: UserProfile = {
+        id: firebaseUser.uid,
+        email: firebaseUser.email || email,
+        name: firestoreUser?.displayName || firebaseUser.displayName || email.split('@')[0],
+        picture: firestoreUser?.photoURL || firebaseUser.photoURL || null,
+      };
+      
+      // Set user auth state in store before backend sync for faster UI updates
+      useAuthStore.getState().setAuthStatus(true, firebaseUser.uid);
+      useAuthStore.getState().setUserProfile(userProfile.name, userProfile.picture || undefined);
+      
+      // Step 4: Sync with Backend API (optional, do in background)
+      try {
+        // Attempt backend sync but don't block login process
+        await syncWithBackend(idToken, firebaseUser);
+      } catch (error) {
+        console.warn("Could not initiate backend sync, continuing with Firebase auth:", error);
+      }
+      
+      // Step 5: Handle Anonymous User Data Migration (if present)
+      try {
+        await migrateAnonymousLikedSongs(firebaseUser.uid);
+      } catch (error) {
+        console.warn("Error migrating liked songs:", error);
+        // Continue without failing the login
+      }
+      
+      console.log("Login completed successfully for", email);
+      return userProfile;
+    })();
     
-    // Migrate any liked songs from anonymous user
-    migrateAnonymousLikedSongs(user.uid);
+    // Store the promise in the cache
+    loginCache.set(email, loginPromise);
     
-    return user;
+    // Set a timeout to clear the cache entry to prevent memory leaks
+    setTimeout(() => {
+      loginCache.delete(email);
+    }, 30000); // Clear after 30 seconds
+    
+    return await loginPromise;
   } catch (error: any) {
-    console.error("Error in login:", error);
-    throw new Error(error.message || "Failed to login");
+    console.error("Login failed:", error);
+    // Clear cache on error
+    loginCache.delete(email);
+    throw error;
   }
 };
+
+// Helper function to synchronize with the backend
+async function syncWithBackend(idToken: string, firebaseUser: any) {
+  try {
+    // Set the auth token for API requests
+    axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
+    
+    // Sync user with backend
+    const response = await axiosInstance.post('/api/auth/firebase-login', {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error("Error syncing with backend:", error);
+    throw error;
+  }
+}
 
 // Register new user
 export const register = async (email: string, password: string, fullName: string) => {
@@ -394,5 +526,42 @@ export const signInWithGoogle = async () => {
   } catch (error: any) {
     console.error("Error in Google login:", error);
     throw new Error(error.message || "Failed to login with Google");
+  }
+};
+
+// Add a refresh user data function that can be called from components
+export const refreshUserData = async (): Promise<User | null> => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      return null;
+    }
+    
+    // Get fresh ID token
+    const idToken = await currentUser.getIdToken(true);
+    
+    // Fetch user data from Firestore
+    const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+    let firestoreUser = null;
+    
+    if (userDoc.exists()) {
+      firestoreUser = userDoc.data() as FirestoreUser;
+    }
+    
+    // Update auth store
+    const userProfile: UserProfile = {
+      id: currentUser.uid,
+      email: currentUser.email,
+      name: firestoreUser?.displayName || currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
+      picture: firestoreUser?.photoURL || currentUser.photoURL || null,
+    };
+    
+    useAuthStore.getState().setAuthStatus(true, currentUser.uid);
+    useAuthStore.getState().setUserProfile(userProfile.name, userProfile.picture || undefined);
+    
+    return currentUser;
+  } catch (error) {
+    console.error("Error refreshing user data:", error);
+    return null;
   }
 }; 

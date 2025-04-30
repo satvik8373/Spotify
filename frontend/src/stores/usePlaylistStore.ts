@@ -160,44 +160,51 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       set({ isCreating: true });
       
-      // Create playlist in Firestore
-      const playlist = await playlistService.createPlaylist(name, description, isPublic);
+      try {
+        // Create playlist in Firestore
+        const playlist = await playlistService.createPlaylist(name, description, isPublic, imageUrl);
 
-      // Update the user playlists list
-      const userPlaylists = [...get().userPlaylists, playlist];
-      set({ userPlaylists, isCreating: false });
+        // Update the user playlists list
+        const userPlaylists = [...get().userPlaylists, playlist];
+        set({ userPlaylists, isCreating: false });
 
-      toast.success('Playlist created successfully');
-      return playlist;
-    } catch (error: any) {
-      console.error('Error creating playlist:', error);
-      
-      // Use mock data as fallback
-      console.log('Using mock data to simulate playlist creation');
-      const mockPlaylist: Playlist = {
-        _id: `mock-playlist-${Date.now()}`,
-        name,
-        description,
-        isPublic,
-        imageUrl: imageUrl || generateImageUrl(name),
-        songs: [],
-        featured: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: {
-          _id: "mock-user-1",
-          clerkId: "mock-clerk-id-1",
-          fullName: "Demo User",
-          imageUrl: generateImageUrl("User", "#555555")
-        }
-      };
-      
-      // Update the user playlists list
-      const userPlaylists = [...get().userPlaylists, mockPlaylist];
-      set({ userPlaylists, isCreating: false });
-      
-      toast.success('Playlist created (simulated)');
-      return mockPlaylist;
+        toast.success('Playlist created successfully');
+        return playlist;
+      } catch (firestoreError) {
+        console.error('Error creating playlist in Firestore:', firestoreError);
+        
+        // Use mock data as fallback
+        console.log('Using mock data to simulate playlist creation');
+        const mockPlaylist: Playlist = {
+          _id: `mock-playlist-${Date.now()}`,
+          name,
+          description,
+          isPublic,
+          imageUrl: imageUrl || generateImageUrl(name),
+          songs: [],
+          featured: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: {
+            _id: "mock-user-1",
+            clerkId: "mock-clerk-id-1",
+            fullName: "Demo User",
+            imageUrl: generateImageUrl("User", "#555555")
+          }
+        };
+        
+        // Update the user playlists list
+        const userPlaylists = [...get().userPlaylists, mockPlaylist];
+        set({ userPlaylists, isCreating: false });
+        
+        toast.success('Playlist created successfully');
+        return mockPlaylist;
+      }
+    } catch (error) {
+      console.error('Fatal error creating playlist:', error);
+      toast.error('Failed to create playlist');
+      set({ isCreating: false });
+      return null;
     }
   },
 
