@@ -348,6 +348,201 @@ const AudioPlayer = () => {
     }
   }, [setCurrentSong, currentSong, setIsPlaying]);
 
+  // Set up MediaSession API for lock screen controls
+  useEffect(() => {
+    // Check if the browser supports Media Session API
+    if (!('mediaSession' in navigator)) {
+      console.log('MediaSession API not supported in this browser');
+      return;
+    }
+
+    // Only proceed if we have a current song
+    if (!currentSong) return;
+
+    try {
+      // Set metadata for lock screen display
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentSong.title || 'Unknown Title',
+        artist: currentSong.artist || 'Unknown Artist',
+        album: 'Music',  // Use a generic album name since Song doesn't have album title
+        artwork: [
+          {
+            src: currentSong.imageUrl || '',
+            sizes: '512x512',
+            type: 'image/jpeg',
+          }
+        ]
+      });
+
+      // Set action handlers for media keys and lock screen controls
+      navigator.mediaSession.setActionHandler('play', () => {
+        console.log('MediaSession: play action');
+        if (!isPlaying) {
+          playerStore.setIsPlaying(true);
+          playerStore.setUserInteracted();
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        console.log('MediaSession: pause action');
+        if (isPlaying) {
+          playerStore.setIsPlaying(false);
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        console.log('MediaSession: previous track action');
+        playPrevious();
+      });
+
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        console.log('MediaSession: next track action');
+        playNext();
+      });
+
+      // Update playback state
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+    } catch (error) {
+      console.error('Error setting up MediaSession:', error);
+    }
+
+    // Clean up function
+    return () => {
+      try {
+        // Remove action handlers when component unmounts
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('previoustrack', null);
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+      } catch (error) {
+        console.error('Error cleaning up MediaSession:', error);
+      }
+    };
+  }, [currentSong, isPlaying, playNext, playPrevious, playerStore]);
+
+  // Update MediaSession playback state when playing state changes
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+      } catch (error) {
+        console.error('Error updating MediaSession playback state:', error);
+      }
+    }
+  }, [isPlaying]);
+
+  // Update MediaSession position state for lock screen progress bar
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !audioRef.current) return;
+    
+    try {
+      if ('setPositionState' in navigator.mediaSession) {
+        navigator.mediaSession.setPositionState({
+          duration: duration || 0,
+          position: currentTime || 0,
+          playbackRate: 1.0,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating MediaSession position state:', error);
+    }
+  }, [currentTime, duration]);
+
+  // Handle wake lock to prevent screen from turning off during playback on mobile
+  useEffect(() => {
+    let wakeLock: any = null;
+    
+    const requestWakeLock = async () => {
+      if (isPlaying && 'wakeLock' in navigator) {
+        try {
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          console.log('Wake Lock activated');
+          
+          wakeLock.addEventListener('release', () => {
+            console.log('Wake Lock released');
+          });
+        } catch (err) {
+          console.error('Wake Lock error:', err);
+        }
+      }
+    };
+    
+    const releaseWakeLock = () => {
+      if (wakeLock) {
+        wakeLock.release()
+          .then(() => {
+            wakeLock = null;
+          })
+          .catch((err: any) => {
+            console.error('Error releasing Wake Lock:', err);
+          });
+      }
+    };
+    
+    // Request wake lock when playing, release when paused
+    if (isPlaying) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+    
+    // Clean up on unmount
+    return () => {
+      releaseWakeLock();
+    };
+  }, [isPlaying]);
+
+  // Listen for visibility change to handle background play state
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Update UI state when tab becomes visible again
+        if (audioRef.current) {
+          setLocalCurrentTime(audioRef.current.currentTime);
+          if (!isNaN(audioRef.current.duration)) {
+            setLocalDuration(audioRef.current.duration);
+          }
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Add audio focus handling for Android
+  useEffect(() => {
+    // Handle audio focus for Android with AudioFocus API (if available)
+    const handleAudioFocus = () => {
+      if ('AudioFocus' in window) {
+        const audioFocus = (window as any).AudioFocus;
+        
+        if (isPlaying) {
+          audioFocus.request(() => {
+            console.log('Audio focus granted');
+          }, () => {
+            console.log('Audio focus lost, pausing playback');
+            playerStore.setIsPlaying(false);
+          });
+        } else {
+          audioFocus.abandon();
+        }
+      }
+    };
+    
+    // Try to use the AudioFocus API if available
+    try {
+      handleAudioFocus();
+    } catch (error) {
+      console.error('AudioFocus API error:', error);
+    }
+    
+  }, [isPlaying, playerStore]);
+
   // Save player state on song changes and unmount
   useEffect(() => {
     // Only save if we have a current song
