@@ -89,7 +89,7 @@ const AudioPlayer = () => {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title || 'Unknown Title',
       artist: currentSong.artist || 'Unknown Artist',
-      album: currentSong.album || '',
+      album: currentSong.albumId ? String(currentSong.albumId) : '',
       artwork: [
         {
           src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
