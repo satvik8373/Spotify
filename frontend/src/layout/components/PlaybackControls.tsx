@@ -35,7 +35,7 @@ export const PlaybackControls = () => {
 		const songId = (currentSong as any).id || currentSong._id;
 		const isCurrentSongLiked = songId ? likedSongIds?.has(songId) : false;
 		
-		console.log(`PlaybackControls - Song ID: ${songId}, Liked: ${isCurrentSongLiked}, LikedSongIds size: ${likedSongIds?.size}`);
+		console.log(`PlaybackControls - Checking like status - Song ID: ${songId}, Liked: ${isCurrentSongLiked}, LikedSongIds size: ${likedSongIds?.size}`);
 		
 		setIsLiked(isCurrentSongLiked);
 	}, [currentSong, likedSongIds]);
@@ -62,7 +62,15 @@ export const PlaybackControls = () => {
 				audio.currentTime = 0;
 				audio.play();
 			} else {
-				usePlayerStore.setState({ isPlaying: false });
+				console.log("PlaybackControls: Song ended, playing next song");
+				playNext();
+				
+				setTimeout(() => {
+					const store = usePlayerStore.getState();
+					store.setUserInteracted();
+					store.playNext();
+					store.setIsPlaying(true);
+				}, 50);
 			}
 		};
 
@@ -75,21 +83,42 @@ export const PlaybackControls = () => {
 			audio.removeEventListener("loadedmetadata", updateDuration);
 			audio.removeEventListener("ended", handleEnded);
 		};
-	}, [currentSong, volume, isRepeating]);
+	}, [currentSong, volume, isRepeating, playNext]);
 
 	// Listen for like updates from other components
 	useEffect(() => {
-		const handleLikeUpdate = () => {
+		const handleLikeUpdate = (e: Event) => {
 			if (!currentSong) return;
 			
-			// Re-check if the song is liked after an update event
 			const songId = (currentSong as any).id || currentSong._id;
-			setIsLiked(likedSongIds?.has(songId));
+			
+			// Check if this event includes details about which song was updated
+			if (e instanceof CustomEvent && e.detail) {
+				// If we have details and it's not for our current song, ignore
+				if (e.detail.songId && e.detail.songId !== songId) {
+					return;
+				}
+				
+				// If we have explicit like state in the event, use it
+				if (typeof e.detail.isLiked === 'boolean') {
+					console.log(`PlaybackControls - Received event with like state: ${e.detail.isLiked}`);
+					setIsLiked(e.detail.isLiked);
+					return;
+				}
+			}
+			
+			// Otherwise do a fresh check from the store
+			const freshCheck = songId ? likedSongIds?.has(songId) : false;
+			console.log(`PlaybackControls - Received like update event, fresh check: ${freshCheck}`);
+			setIsLiked(freshCheck);
 		};
 		
 		document.addEventListener('likedSongsUpdated', handleLikeUpdate);
+		document.addEventListener('songLikeStateChanged', handleLikeUpdate);
+		
 		return () => {
 			document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
+			document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
 		};
 	}, [currentSong, likedSongIds]);
 
@@ -138,13 +167,24 @@ export const PlaybackControls = () => {
 		if (!currentSong) return;
 		
 		const songId = (currentSong as any).id || currentSong._id;
-		console.log(`Toggling like for song ID: ${songId}, current status: ${isLiked}`);
+		console.log(`PlaybackControls - Toggling like for song ID: ${songId}, current status: ${isLiked}`);
 		
 		// Optimistically update UI
 		setIsLiked(!isLiked);
 		
 		// Actually toggle the like status
 		toggleLikeSong(currentSong);
+		
+		// Also dispatch a direct event for immediate notification
+		document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
+			detail: {
+				songId,
+				song: currentSong,
+				isLiked: !isLiked,
+				timestamp: Date.now(),
+				source: 'PlaybackControls'
+			}
+		}));
 	};
 	
 	const toggleRepeat = () => {

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Heart, Music, Play, Pause, AlertCircle, Clock, MoreHorizontal, ChevronLeft } from 'lucide-react';
+import { Heart, Music, Play, Pause, AlertCircle, Clock, MoreHorizontal, ChevronLeft, ArrowDownUp, Calendar, Shuffle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { loadLikedSongs, removeLikedSong, syncWithServer } from '@/services/likedSongsService';
@@ -48,6 +48,7 @@ const LikedSongsPage = () => {
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [sortMethod, setSortMethod] = useState<'recent' | 'title' | 'artist'>('recent');
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   
@@ -60,6 +61,7 @@ const LikedSongsPage = () => {
 
     // Subscribe to liked songs updates
     const handleLikedSongsUpdated = () => {
+      console.log("LikedSongsPage: Received likedSongsUpdated event");
       loadAndSetLikedSongs();
     };
 
@@ -69,6 +71,49 @@ const LikedSongsPage = () => {
       document.removeEventListener('likedSongsUpdated', handleLikedSongsUpdated);
     };
   }, [isAuthenticated]);
+
+  // Ensure player has proper queue setup when this page is active
+  useEffect(() => {
+    // This effect runs when component mounts and ensures proper queue setup
+    const setupQueueOnFocus = () => {
+      const playerStore = usePlayerStore.getState();
+      // If we have songs but queue is empty or very small, set it up
+      if (likedSongs.length > 0 && (playerStore.queue.length === 0 || playerStore.queue.length < likedSongs.length / 2)) {
+        console.log("LikedSongsPage: Initializing queue on focus with", likedSongs.length, "songs");
+        const playerSongs = likedSongs.map(adaptToPlayerSong);
+        
+        // If there's a current song playing, try to find its index
+        let startIndex = 0;
+        if (playerStore.currentSong) {
+          const currentId = (playerStore.currentSong as any).id || playerStore.currentSong._id;
+          const matchingIndex = likedSongs.findIndex(song => song.id === currentId);
+          if (matchingIndex >= 0) {
+            startIndex = matchingIndex;
+          }
+        }
+        
+        // Use playAlbum with correct index to ensure queue is set up
+        playerStore.playAlbum(playerSongs, startIndex);
+        
+        // If already playing, make sure it stays playing
+        if (playerStore.isPlaying) {
+          setTimeout(() => {
+            playerStore.setIsPlaying(true);
+          }, 50);
+        }
+      }
+    };
+    
+    // Run on mount
+    setupQueueOnFocus();
+    
+    // Also run when window gets focus
+    window.addEventListener('focus', setupQueueOnFocus);
+    
+    return () => {
+      window.removeEventListener('focus', setupQueueOnFocus);
+    };
+  }, [likedSongs]);
   
   // Load and set liked songs
   const loadAndSetLikedSongs = async () => {
@@ -78,13 +123,15 @@ const LikedSongsPage = () => {
     try {
       // First load from local storage
       const localSongs = loadLikedSongs();
-      setLikedSongs(localSongs);
+      const sortedSongs = sortSongs(localSongs, sortMethod);
+      setLikedSongs(sortedSongs);
       
       // Then sync with server if authenticated
       if (isAuthenticated) {
         try {
           const serverSongs = await syncWithServer(localSongs);
-          setLikedSongs(serverSongs);
+          const sortedServerSongs = sortSongs(serverSongs, sortMethod);
+          setLikedSongs(sortedServerSongs);
           setSyncedWithServer(true);
         } catch (syncErr) {
           console.error('Error syncing with server:', syncErr);
@@ -107,6 +154,31 @@ const LikedSongsPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Sort songs based on selected method
+  const sortSongs = (songs: any[], method: 'recent' | 'title' | 'artist') => {
+    if (!songs || songs.length === 0) return [];
+    
+    const sortedSongs = [...songs];
+    
+    switch (method) {
+      case 'recent':
+        // In Firebase, newer songs are already at the beginning of array by default
+        return sortedSongs;
+      case 'title':
+        return sortedSongs.sort((a, b) => a.title.localeCompare(b.title));
+      case 'artist':
+        return sortedSongs.sort((a, b) => a.artist.localeCompare(b.artist));
+      default:
+        return sortedSongs;
+    }
+  };
+
+  // Update sort method and re-sort songs
+  const handleSortChange = (method: 'recent' | 'title' | 'artist') => {
+    setSortMethod(method);
+    setLikedSongs(prev => sortSongs([...prev], method));
   };
 
   // Manual sync function for retry button
@@ -135,7 +207,96 @@ const LikedSongsPage = () => {
   const playAllSongs = () => {
     if (likedSongs.length > 0) {
       const playerSongs = likedSongs.map(adaptToPlayerSong);
-      playAlbum(playerSongs, 0);
+      
+      // Use playAlbum directly with an index of 0
+      usePlayerStore.getState().playAlbum(playerSongs, 0);
+      
+      // Force play state immediately to true regardless of autoplay setting
+      setTimeout(() => {
+        const store = usePlayerStore.getState();
+        store.setIsPlaying(true);
+        store.setUserInteracted(); // Ensure user is marked as interacted
+        console.log("Playing all songs, queue size:", store.queue.length);
+        
+        // Debug player state
+        debugPlayerState();
+      }, 100);
+    }
+  };
+  
+  // Debug function to log player state
+  const debugPlayerState = () => {
+    const store = usePlayerStore.getState();
+    console.log("PLAYER DEBUG:", {
+      queueLength: store.queue.length,
+      currentIndex: store.currentIndex,
+      isPlaying: store.isPlaying,
+      shuffled: store.isShuffled,
+      currentSong: store.currentSong ? {
+        id: (store.currentSong as any).id || store.currentSong._id,
+        title: store.currentSong.title
+      } : null
+    });
+    
+    // Check if audio element exists and log its state
+    const audio = document.querySelector('audio');
+    if (audio) {
+      console.log("AUDIO ELEMENT:", {
+        src: audio.src,
+        paused: audio.paused,
+        ended: audio.ended,
+        currentTime: audio.currentTime,
+        duration: audio.duration,
+        readyState: audio.readyState,
+        eventListeners: getEventListeners(audio)
+      });
+    } else {
+      console.log("AUDIO ELEMENT: Not found in DOM");
+    }
+    
+    // Helper to get event listeners (in development)
+    function getEventListeners(element: HTMLAudioElement) {
+      try {
+        return {
+          ended: element.onended !== null,
+          timeupdate: element.ontimeupdate !== null,
+          canplay: element.oncanplay !== null,
+          error: element.onerror !== null
+        };
+      } catch (e) {
+        return "Unable to inspect event listeners";
+      }
+    }
+  };
+
+  // Smart shuffle function to play songs in random order
+  const smartShuffle = () => {
+    if (likedSongs.length > 0) {
+      // Create a copy of the songs array to shuffle
+      const songsToShuffle = [...likedSongs];
+      
+      // Fisher-Yates shuffle algorithm
+      for (let i = songsToShuffle.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [songsToShuffle[i], songsToShuffle[j]] = [songsToShuffle[j], songsToShuffle[i]];
+      }
+      
+      const shuffledPlayerSongs = songsToShuffle.map(adaptToPlayerSong);
+      
+      // Play the shuffled songs
+      usePlayerStore.getState().playAlbum(shuffledPlayerSongs, 0);
+      
+      // Force play state
+      setTimeout(() => {
+        const store = usePlayerStore.getState();
+        store.setIsPlaying(true);
+        store.setUserInteracted();
+        toast.success("Shuffling your liked songs");
+        console.log("Shuffling songs, queue size:", store.queue.length);
+        
+        // Debug player state
+        debugPlayerState();
+      }, 100);
     }
   };
 
@@ -146,7 +307,19 @@ const LikedSongsPage = () => {
     if (currentSong && currentSong._id === song.id) {
       togglePlay();
     } else {
-      playAlbum(playerSongs, index);
+      // Use playAlbum directly with the specific index
+      usePlayerStore.getState().playAlbum(playerSongs, index);
+      
+      // Force play state immediately to true regardless of autoplay setting
+      setTimeout(() => {
+        const store = usePlayerStore.getState();
+        store.setIsPlaying(true);
+        store.setUserInteracted(); // Ensure user is marked as interacted
+        console.log("Playing song at index:", index, "queue size:", store.queue.length);
+        
+        // Debug player state
+        debugPlayerState();
+      }, 100);
     }
   };
 
@@ -157,8 +330,31 @@ const LikedSongsPage = () => {
 
   // Unlike a song
   const unlikeSong = (id: string) => {
+    // Call the service to remove the song from liked songs
     removeLikedSong(id);
+    
+    // Update local state immediately for instant UI feedback
     setLikedSongs(prev => prev.filter(song => song.id !== id));
+    
+    // Dispatch detailed events for better listener handling
+    document.dispatchEvent(new CustomEvent('likedSongsUpdated', { 
+      detail: {
+        songId: id,
+        isLiked: false,
+        timestamp: Date.now(),
+        source: 'LikedSongsPage'
+      }
+    }));
+    
+    document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
+      detail: {
+        songId: id,
+        isLiked: false,
+        timestamp: Date.now(),
+        source: 'LikedSongsPage'
+      }
+    }));
+    
     toast.success('Removed from Liked Songs');
   };
 
@@ -285,16 +481,31 @@ const LikedSongsPage = () => {
           </h1>
           
           {likedSongs.length > 0 && (
-            <Button 
-              onClick={playAllSongs}
-              className={cn(
-                "bg-green-500 hover:bg-green-600 rounded-full w-10 h-10 p-0 flex-shrink-0 shadow-lg transition-opacity",
-                headerOpacity > 0.7 ? "opacity-100" : "opacity-0"
-              )}
-              disabled={likedSongs.length === 0}
-            >
-              <Play className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={smartShuffle}
+                className={cn(
+                  "bg-zinc-800 hover:bg-zinc-700 rounded-full w-10 h-10 p-0 flex-shrink-0 shadow-lg transition-opacity",
+                  headerOpacity > 0.7 ? "opacity-100" : "opacity-0"
+                )}
+                disabled={likedSongs.length === 0}
+                title="Shuffle Play"
+              >
+                <Shuffle className="h-4 w-4" />
+              </Button>
+            
+              <Button 
+                onClick={playAllSongs}
+                className={cn(
+                  "bg-green-500 hover:bg-green-600 rounded-full w-10 h-10 p-0 flex-shrink-0 shadow-lg transition-opacity",
+                  headerOpacity > 0.7 ? "opacity-100" : "opacity-0"
+                )}
+                disabled={likedSongs.length === 0}
+                title="Play in order"
+              >
+                <Play className="h-5 w-5" />
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -383,7 +594,17 @@ const LikedSongsPage = () => {
             </div>
             
             {likedSongs.length > 0 && (
-              <div className={isMobile ? "flex justify-center mt-6" : "mt-6"}>
+              <div className={isMobile ? "flex justify-center gap-3 mt-6" : "flex gap-3 mt-6"}>
+                <TouchRipple color="rgba(255, 255, 255, 0.2)">
+                  <Button 
+                    onClick={smartShuffle}
+                    className="bg-zinc-800 hover:bg-zinc-700 rounded-full px-8 h-12 shadow-lg"
+                  >
+                    <Shuffle className="h-5 w-5 mr-2" />
+                    Shuffle
+                  </Button>
+                </TouchRipple>
+                
                 <TouchRipple color="rgba(255, 255, 255, 0.2)">
                   <Button 
                     onClick={playAllSongs}
@@ -401,12 +622,74 @@ const LikedSongsPage = () => {
           {likedSongs.length > 0 && !isLoading && !isMobile && (
             <div className="grid grid-cols-[16px_1fr_auto] md:grid-cols-[16px_4fr_2fr_1fr_auto] gap-4 py-2 px-4 text-sm font-medium text-zinc-400 border-b border-zinc-800">
               <div className="text-center">#</div>
-              <div>TITLE</div>
-              <div className="hidden md:block">ALBUM</div>
-              <div className="hidden md:block text-right">
+              <div className="flex items-center gap-2">
+                TITLE
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`h-6 w-6 ${sortMethod === 'title' ? 'text-green-500' : 'text-zinc-400'}`}
+                  onClick={() => handleSortChange('title')}
+                >
+                  <ArrowDownUp className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="hidden md:flex items-center gap-2">
+                ARTIST
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`h-6 w-6 ${sortMethod === 'artist' ? 'text-green-500' : 'text-zinc-400'}`}
+                  onClick={() => handleSortChange('artist')}
+                >
+                  <ArrowDownUp className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="hidden md:flex justify-end items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`h-6 w-6 ${sortMethod === 'recent' ? 'text-green-500' : 'text-zinc-400'}`}
+                  onClick={() => handleSortChange('recent')}
+                  title="Sort by recently liked"
+                >
+                  <Calendar className="h-3 w-3" />
+                </Button>
                 <Clock className="h-4 w-4 inline" />
               </div>
               <div></div>
+            </div>
+          )}
+          
+          {/* Sort controls for mobile */}
+          {likedSongs.length > 0 && !isLoading && isMobile && (
+            <div className="flex justify-end px-4 py-2 gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={`h-8 px-2 ${sortMethod === 'recent' ? 'text-green-500 bg-green-500/10' : 'text-zinc-400'}`}
+                onClick={() => handleSortChange('recent')}
+              >
+                <Calendar className="h-3 w-3 mr-1" />
+                Recent
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={`h-8 px-2 ${sortMethod === 'title' ? 'text-green-500 bg-green-500/10' : 'text-zinc-400'}`}
+                onClick={() => handleSortChange('title')}
+              >
+                <ArrowDownUp className="h-3 w-3 mr-1" />
+                Title
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={`h-8 px-2 ${sortMethod === 'artist' ? 'text-green-500 bg-green-500/10' : 'text-zinc-400'}`}
+                onClick={() => handleSortChange('artist')}
+              >
+                <ArrowDownUp className="h-3 w-3 mr-1" />
+                Artist
+              </Button>
             </div>
           )}
           
@@ -518,7 +801,11 @@ const LikedSongsPage = () => {
                           "text-red-500 hover:text-red-400",
                           isMobile ? "h-10 w-10" : "h-8 w-8"
                         )}
-                        onClick={() => unlikeSong(song.id)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent any parent handlers from firing
+                          unlikeSong(song.id);
+                        }}
+                        aria-label="Unlike song"
                       >
                         <Heart className={cn(
                           "fill-current",
@@ -541,7 +828,10 @@ const LikedSongsPage = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem onClick={() => unlikeSong(song.id)}>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            unlikeSong(song.id);
+                          }}>
                             Remove from Liked Songs
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {

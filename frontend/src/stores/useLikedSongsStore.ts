@@ -254,6 +254,16 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           } else {
             await get().addLikedSong(song);
           }
+          
+          // Dispatch a CustomEvent with detailed information for better listener handling
+          const detail = {
+            songId,
+            song,
+            isLiked: !isLiked,
+            timestamp: Date.now()
+          };
+          document.dispatchEvent(new CustomEvent('likedSongsUpdated', { detail }));
+          document.dispatchEvent(new CustomEvent('songLikeStateChanged', { detail }));
         } catch (error) {
           console.error('Error toggling liked song:', error);
           toast.error('Failed to update liked status');

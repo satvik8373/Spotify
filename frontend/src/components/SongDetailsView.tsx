@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { Button } from './ui/button';
-import { ChevronDown, Heart, MoreHorizontal, Share2, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, ListMusic } from 'lucide-react';
+import { ChevronDown, Heart, MoreHorizontal, Share2, SkipBack, Play, Pause, SkipForward, ListMusic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Slider } from './ui/slider';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
@@ -26,8 +26,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     togglePlay, 
     playNext, 
     playPrevious,
-    toggleShuffle,
-    isShuffled,
     currentTime: storeCurrentTime,
     duration: storeDuration,
     setCurrentTime: setStoreCurrentTime
@@ -36,7 +34,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const { likedSongIds, toggleLikeSong, loadLikedSongs } = useLikedSongsStore();
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isRepeating, setIsRepeating] = useState(false);
   const [albumArtLoaded, setAlbumArtLoaded] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -55,7 +52,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const liked = songId ? likedSongIds?.has(songId) : false;
     
     // Log the status for debugging
-    console.log(`SongDetails - Song ID: ${songId}, Liked: ${liked}, LikedSongIds size: ${likedSongIds?.size}`);
+    console.log(`SongDetails - Checked like status - Song ID: ${songId}, Liked: ${liked}, LikedSongIds size: ${likedSongIds?.size}`);
     
     setIsLiked(liked);
   }, [currentSong, likedSongIds]);
@@ -92,18 +89,38 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
   // Listen for like updates from other components
   useEffect(() => {
-    const handleLikeUpdate = () => {
+    const handleLikeUpdate = (e: Event) => {
       if (!currentSong) return;
       
-      // Re-check if the song is liked after an update event
       const songId = (currentSong as any).id || currentSong._id;
-      const liked = songId ? likedSongIds?.has(songId) : false;
-      setIsLiked(liked);
+      
+      // Check if this event includes details about which song was updated
+      if (e instanceof CustomEvent && e.detail) {
+        // If we have details and it's not for our current song, ignore
+        if (e.detail.songId && e.detail.songId !== songId) {
+          return;
+        }
+        
+        // If we have explicit like state in the event, use it
+        if (typeof e.detail.isLiked === 'boolean') {
+          console.log(`SongDetails - Received event with like state: ${e.detail.isLiked}`);
+          setIsLiked(e.detail.isLiked);
+          return;
+        }
+      }
+      
+      // Otherwise do a fresh check from the store
+      const freshCheck = songId ? likedSongIds?.has(songId) : false;
+      console.log(`SongDetails - Received like update event, fresh check: ${freshCheck}`);
+      setIsLiked(freshCheck);
     };
     
     document.addEventListener('likedSongsUpdated', handleLikeUpdate);
+    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
+    
     return () => {
       document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
+      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
     };
   }, [currentSong, likedSongIds]);
 
@@ -120,13 +137,24 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     
     // Get the song ID consistently
     const songId = (currentSong as any).id || currentSong._id;
-    console.log(`Toggling like for song ID: ${songId}, current status: ${isLiked}`);
+    console.log(`SongDetails - Toggling like for song ID: ${songId}, current status: ${isLiked}`);
     
     // Optimistically update the UI immediately
     setIsLiked(!isLiked);
     
     // Perform the actual toggle
     toggleLikeSong(currentSong);
+    
+    // Also dispatch a direct event for immediate notification
+    document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
+      detail: {
+        songId,
+        song: currentSong,
+        isLiked: !isLiked,
+        timestamp: Date.now(),
+        source: 'SongDetails'
+      }
+    }));
   };
 
   const handleShare = () => {
@@ -147,10 +175,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       navigator.clipboard.writeText(`${shareText} - ${window.location.href}`);
       toast.success('Link copied to clipboard');
     }
-  };
-
-  const toggleRepeat = () => {
-    setIsRepeating(!isRepeating);
   };
 
   if (!currentSong) return null;
@@ -241,18 +265,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
         {/* Playback Controls */}
         <div className="mt-6">
-          <div className="flex items-center justify-center gap-6">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "hover:bg-white/10",
-                isShuffled ? "text-green-500" : "text-zinc-400"
-              )}
-              onClick={toggleShuffle}
-            >
-              <Shuffle className="h-5 w-5" />
-            </Button>
+          <div className="flex items-center justify-center gap-8">
             <Button
               variant="ghost"
               size="icon"
@@ -279,17 +292,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               onClick={playNext}
             >
               <SkipForward className="h-6 w-6" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "hover:bg-white/10",
-                isRepeating ? "text-green-500" : "text-zinc-400"
-              )}
-              onClick={toggleRepeat}
-            >
-              <Repeat className="h-5 w-5" />
             </Button>
           </div>
         </div>
