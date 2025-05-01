@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import SongDetailsView from '@/components/SongDetailsView';
+import { signOut } from '@/services/hybridAuthService';
 
 const MobileNav = () => {
   const location = useLocation();
@@ -15,6 +16,7 @@ const MobileNav = () => {
   const { isAuthenticated, user } = useAuth();
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const [showSongDetails, setShowSongDetails] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
@@ -38,6 +40,24 @@ const MobileNav = () => {
       document.head.removeChild(style);
     };
   }, []);
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showProfileMenu) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    // Add event listener only when profile menu is open
+    if (showProfileMenu) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showProfileMenu]);
 
   const navItems = [
     {
@@ -73,6 +93,18 @@ const MobileNav = () => {
     navigate('/login');
   };
 
+  // Handle logout
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await signOut();
+      setShowProfileMenu(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   // Handle opening search
   const handleSearchClick = () => {
     navigate('/search');
@@ -92,6 +124,12 @@ const MobileNav = () => {
       // Open the song details modal instead of navigating
       setShowSongDetails(true);
     }
+  };
+
+  // Handle profile click
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowProfileMenu(prev => !prev);
   };
 
   return (
@@ -125,16 +163,40 @@ const MobileNav = () => {
             </button>
             
             {isAuthenticated ? (
-              <button 
-                onClick={() => navigate('/account')}
-                className="h-7 w-7 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden"
-              >
-                {user?.picture ? (
-                  <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
-                ) : (
-                  <User className="h-3.5 w-3.5 text-zinc-300" />
+              <div className="relative">
+                <button 
+                  onClick={handleProfileClick}
+                  className="h-7 w-7 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden"
+                >
+                  {user?.picture ? (
+                    <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="h-3.5 w-3.5 text-zinc-300" />
+                  )}
+                </button>
+                
+                {/* Profile Menu */}
+                {showProfileMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-36 bg-zinc-800 rounded-md shadow-lg overflow-hidden z-50">
+                    <div className="py-1">
+                      <Link 
+                        to="/account" 
+                        className="block px-4 py-2 text-sm text-white hover:bg-zinc-700"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        Profile
+                      </Link>
+                      <button 
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center"
+                      >
+                        <LogOut className="h-3.5 w-3.5 mr-2" />
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
             ) : (
               <button 
                 onClick={handleLogin}

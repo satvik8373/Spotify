@@ -245,9 +245,14 @@ export const addSongToPlaylist = async (playlistId: string, song: Song): Promise
     
     // Remove any undefined values to prevent Firebase errors
     Object.keys(firestoreSong).forEach(key => {
-      const k = key as keyof FirestoreSong;
-      if (firestoreSong[k] === undefined) {
-        (firestoreSong as any)[k] = null;
+      // Use type-safe approach for handling null values
+      const typedKey = key as keyof typeof firestoreSong;
+      if (firestoreSong[typedKey] === undefined) {
+        // Create a new object with the nullified property
+        firestoreSong = {
+          ...firestoreSong,
+          [typedKey]: null
+        };
       }
     });
     

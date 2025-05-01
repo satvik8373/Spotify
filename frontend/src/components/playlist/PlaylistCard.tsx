@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { Playlist } from '../../types';
-import { Card, CardContent, CardFooter } from '../ui/card';
 import { Play, MoreHorizontal } from 'lucide-react';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import {
@@ -22,7 +21,7 @@ interface PlaylistCardProps {
 
 export function PlaylistCard({ playlist, isOwner }: PlaylistCardProps) {
   const navigate = useNavigate();
-  const { playPlaylist } = usePlayerStore();
+  const { playAlbum } = usePlayerStore();
   const { deletePlaylist } = usePlaylistStore();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
@@ -33,7 +32,7 @@ export function PlaylistCard({ playlist, isOwner }: PlaylistCardProps) {
       toast.error('This playlist has no songs');
       return;
     }
-    playPlaylist(playlist.songs);
+    playAlbum(playlist.songs, 0);
   };
 
   const handleCardClick = () => {
@@ -49,80 +48,105 @@ export function PlaylistCard({ playlist, isOwner }: PlaylistCardProps) {
 
   return (
     <>
-      <Card
-        className={cn(
-          'group relative overflow-hidden transition-all duration-300 border-none bg-zinc-800/40 hover:bg-zinc-700/50 cursor-pointer rounded-xl shadow-md',
-          isHovering && 'shadow-xl'
-        )}
+      <div 
+        className="relative group bg-zinc-800/40 rounded-md overflow-hidden cursor-pointer hover:bg-zinc-800/70 transition-all duration-300"
         onClick={handleCardClick}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
-        <CardContent className="p-4">
-          <div className="relative aspect-square w-full overflow-hidden rounded-xl transition-transform duration-300 group-hover:scale-[1.02]">
-            <div className="absolute inset-0 bg-black/10 transition-opacity z-10"></div>
+        {/* Card Content */}
+        <div className="p-3 flex flex-col h-full">
+          {/* Cover Image Container */}
+          <div className="relative w-full mb-3 rounded-md aspect-square overflow-hidden shadow-md">
+            {/* Image */}
             <img
               src={playlist.imageUrl || 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image'}
               alt={playlist.name}
-              className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
-              onError={e =>
-                ((e.target as HTMLImageElement).src =
-                  'https://placehold.co/400x400/1f1f1f/959595?text=No+Image')
-              }
-            />
-            <button
               className={cn(
-                'absolute bottom-2 right-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-500 text-black shadow-lg z-20 transition-all duration-300 transform',
-                isHovering ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                "w-full h-full object-cover transition-all duration-300",
+                isHovering ? "brightness-80" : "brightness-100"
               )}
-              onClick={handlePlay}
+              onError={e => ((e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image')}
+            />
+            
+            {/* Play Button Overlay */}
+            <div 
+              className={cn(
+                "absolute inset-0 flex items-end justify-end p-2",
+                "transition-all duration-300 ease-in-out",
+                isHovering ? "opacity-100" : "opacity-0"
+              )}
             >
-              <Play className="h-6 w-6" />
-            </button>
+              <button
+                className={cn(
+                  "flex items-center justify-center rounded-full bg-green-500 hover:bg-green-400 shadow-xl",
+                  "w-10 h-10 transform transition-transform duration-300",
+                  isHovering ? "translate-y-0 scale-100" : "translate-y-3 scale-90"
+                )}
+                onClick={handlePlay}
+                aria-label="Play playlist"
+              >
+                <Play className="h-5 w-5 text-black fill-current" />
+              </button>
+            </div>
+            
+            {/* Owner Options */}
+            {isOwner && (
+              <div 
+                className={cn(
+                  "absolute top-2 right-2 z-10",
+                  "transition-opacity duration-200",
+                  isHovering ? "opacity-100" : "opacity-0"
+                )}
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 hover:bg-black/80 transition-colors"
+                      onClick={e => e.stopPropagation()}
+                      aria-label="Menu options"
+                    >
+                      <MoreHorizontal className="h-4 w-4 text-white" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-[#282828] border-zinc-700 text-white min-w-[160px]">
+                    <DropdownMenuItem
+                      className="hover:bg-white/10 text-[14px] py-2.5"
+                      onClick={(e: any) => {
+                        e.stopPropagation();
+                        setShowEditDialog(true);
+                      }}
+                    >
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="hover:bg-white/10 text-[14px] py-2.5 text-red-400 focus:text-red-400"
+                      onClick={handleDelete}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
-          <div className="pt-4">
-            <h3 className="font-semibold truncate text-white">{playlist.name}</h3>
-            <p className="text-sm text-zinc-400 truncate mt-1">
-              {playlist.songs.length} {playlist.songs.length === 1 ? 'song' : 'songs'} •{' '}
-              {playlist.createdBy.fullName}
+          
+          {/* Playlist Info */}
+          <div>
+            <h3 className="font-bold text-white text-sm truncate">{playlist.name}</h3>
+            <p className="text-xs text-zinc-400 line-clamp-2 mt-2">
+              {playlist.description || (
+                <>
+                  By {playlist.createdBy.fullName}
+                  {playlist.songs.length > 0 && (
+                    <> • {playlist.songs.length} {playlist.songs.length === 1 ? 'song' : 'songs'}</>
+                  )}
+                </>
+              )}
             </p>
           </div>
-        </CardContent>
-        {isOwner && (
-          <CardFooter className="flex items-center p-4 pt-0">
-            <div className="ml-auto">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-zinc-600/70 transition-colors"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Open menu</span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-zinc-800 border-zinc-700">
-                  <DropdownMenuItem
-                    className="hover:bg-zinc-700/70 text-white"
-                    onClick={(e: any) => {
-                      e.stopPropagation();
-                      setShowEditDialog(true);
-                    }}
-                  >
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-red-400 focus:text-red-400 hover:bg-zinc-700/70"
-                    onClick={handleDelete}
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </CardFooter>
-        )}
-      </Card>
+        </div>
+      </div>
 
       {showEditDialog && (
         <EditPlaylistDialog

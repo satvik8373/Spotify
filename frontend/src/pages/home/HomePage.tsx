@@ -157,11 +157,11 @@ const HomePage = () => {
   const {
     featuredPlaylists,
     userPlaylists,
+    publicPlaylists,
     fetchFeaturedPlaylists,
     fetchUserPlaylists,
-    createPlaylist,
-    publicPlaylists,
     fetchPublicPlaylists,
+    createPlaylist,
   } = usePlaylistStore();
   const { isAuthenticated, userId } = useAuthStore();
   const navigate = useNavigate();
@@ -596,38 +596,34 @@ const HomePage = () => {
             {/* Recently Played Section */}
             <RecentlyPlayed />
 
-            {/* Public Playlists Section - Moved position */}
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-bold tracking-tight">Public Playlists</h2>
-                <Button
-                  variant="ghost"
-                  className="text-zinc-400 hover:text-white text-xs sm:text-sm h-8"
-                  onClick={() => navigate('/playlists')}
-                >
-                  See all
-                </Button>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
-                {publicPlaylists.map(playlist => (
-                  <div
-                    key={playlist._id}
-                    className="group relative transform transition-all duration-300 hover:scale-[1.02]"
-                    onClick={() => handlePlaylistClick(playlist)}
+            {/* Public Playlists Section */}
+            {publicPlaylists.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-bold tracking-tight">Public Playlists</h2>
+                  <Button
+                    variant="ghost"
+                    className="text-zinc-400 hover:text-white text-xs sm:text-sm h-8"
+                    onClick={() => navigate('/library')}
                   >
-                    <PlaylistCard
-                      playlist={playlist}
-                      isOwner={isAuthenticated && userId === playlist.createdBy.clerkId}
-                    />
-                  </div>
-                ))}
-                {publicPlaylists.length === 0 && (
-                  <div className="col-span-full py-8 text-center text-muted-foreground">
-                    No public playlists available
-                  </div>
-                )}
+                    See all
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
+                  {publicPlaylists.map(playlist => (
+                    <div
+                      key={playlist._id}
+                      className="group relative transform transition-all duration-300 hover:scale-[1.02]"
+                    >
+                      <PlaylistCard
+                        playlist={playlist}
+                        isOwner={isAuthenticated && userId === playlist.createdBy.clerkId}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Featured Playlists Section */}
             {featuredPlaylists.length > 0 && (
@@ -774,53 +770,6 @@ const HomePage = () => {
 
           {/* Bottom padding for mobile player */}
           <div className="h-2"></div>
-        </div>
-
-        {/* Top Charts Section */}
-        <div className="container px-2 md:px-4 lg:px-6 py-4">
-          <div className="flex justify-between items-center mb-1">
-            <h2 className="text-2xl font-bold">Top Charts</h2>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-xs hover:bg-black/10">
-                  Sort by: {sortBy === 'clicks' ? 'Plays' : sortBy === 'likes' ? 'Likes' : 'Shares'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setSortBy('clicks')}>Plays</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy('likes')}>Likes</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy('shares')}>Shares</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div className="netflix-row">
-            <div className="netflix-slider">
-              {topPlaylists.map((playlist) => (
-                <div
-                  key={playlist._id}
-                  className="netflix-card relative"
-                  onClick={() => handlePlaylistClick(playlist)}
-                >
-                  <div className="netflix-rank">{playlist.rank}</div>
-                  <PlaylistCard
-                    playlist={{
-                      _id: playlist._id,
-                      name: playlist.name,
-                      imageUrl: playlist.imageUrl || '',
-                      isPublic: true,
-                      songs: [],
-                      featured: false,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                      createdBy: { _id: '', clerkId: '', fullName: '', imageUrl: '' },
-                      description: ''
-                    }}
-                    isOwner={false}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </ScrollArea>
 
