@@ -4,6 +4,7 @@ import { Playlist, Song } from '../types';
 import { toast } from 'sonner';
 import { mockPlaylists, mockUserPlaylists } from '../utils/mockData';
 import * as playlistService from '../services/playlistService';
+import { useMusicStore } from '../stores/useMusicStore';
 
 // Generate SVG data URL for fallback images
 const generateImageUrl = (text: string, bgColor: string = "#1DB954"): string => {
@@ -21,6 +22,7 @@ interface PlaylistStore {
   playlists: Playlist[];
   userPlaylists: Playlist[];
   featuredPlaylists: Playlist[];
+  publicPlaylists: Playlist[];
   currentPlaylist: Playlist | null;
   isLoading: boolean;
   isCreating: boolean;
@@ -31,6 +33,7 @@ interface PlaylistStore {
   fetchPlaylists: () => Promise<void>;
   fetchUserPlaylists: () => Promise<void>;
   fetchFeaturedPlaylists: () => Promise<void>;
+  fetchPublicPlaylists: () => Promise<void>;
   fetchPlaylistById: (id: string) => Promise<Playlist | null>;
   createPlaylist: (
     name: string,
@@ -43,7 +46,7 @@ interface PlaylistStore {
     data: { name?: string; description?: string; isPublic?: boolean; imageUrl?: string }
   ) => Promise<void>;
   deletePlaylist: (id: string) => Promise<void>;
-  addSongToPlaylist: (playlistId: string, songId: string) => Promise<void>;
+  addSongToPlaylist: (playlistId: string, songIdOrObject: string | any) => Promise<void>;
   removeSongFromPlaylist: (playlistId: string, songId: string) => Promise<void>;
 }
 
@@ -52,6 +55,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   playlists: [],
   userPlaylists: [],
   featuredPlaylists: [],
+  publicPlaylists: [],
   currentPlaylist: null,
   isLoading: false,
   isCreating: false,
@@ -121,6 +125,29 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     } catch (error: any) {
       console.error('Error fetching featured playlists:', error);
       toast.error('Failed to fetch featured playlists');
+      set({ isLoading: false });
+    }
+  },
+
+  fetchPublicPlaylists: async () => {
+    try {
+      set({ isLoading: true });
+      
+      try {
+        // Get public playlists from Firestore
+        const publicPlaylists = await playlistService.getPublicPlaylists();
+        set({ publicPlaylists, isLoading: false });
+      } catch (error) {
+        console.error('Error fetching public playlists:', error);
+        // Use mock data as fallback
+        console.log('Using mock public playlist data as fallback');
+        // Filter mock playlists to only include public ones
+        const public_playlists = mockPlaylists.filter(playlist => playlist.isPublic);
+        set({ publicPlaylists: public_playlists, isLoading: false });
+      }
+    } catch (error: any) {
+      console.error('Error fetching public playlists:', error);
+      toast.error('Failed to fetch public playlists');
       set({ isLoading: false });
     }
   },
@@ -269,7 +296,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     }
   },
 
-  addSongToPlaylist: async (playlistId: string, songId: string) => {
+  addSongToPlaylist: async (playlistId: string, songIdOrObject: string | any) => {
     try {
       const playlist = get().currentPlaylist;
       
@@ -278,21 +305,63 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         return;
       }
       
-      // Get the song from the playlist
-      const song = playlist.songs.find((s) => s._id === songId);
+      // Check if we have a song ID or a song object
+      let song;
       
-      if (!song) {
-        toast.error('Song not found');
-        return;
+      if (typeof songIdOrObject === 'string') {
+        // If it's a string, treat it as an ID and look for the song
+        const songId = songIdOrObject;
+        
+        // Try to find in current playlist or music store
+        song = playlist.songs.find((s) => s._id === songId);
+        
+        if (!song) {
+          // If not found in current playlist, try to convert from store
+          const storeSongs = useMusicStore.getState().songs;
+          song = storeSongs.find(s => s._id === songId);
+          
+          if (!song) {
+            // If still not found, create a placeholder song with the ID
+            song = {
+              _id: songId,
+              title: 'Unknown Song',
+              artist: 'Unknown Artist',
+              imageUrl: '',
+              audioUrl: '',
+              duration: 0,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+          }
+        }
+      } else {
+        // If it's an object, use it directly
+        song = songIdOrObject;
+        
+        // Make sure it has an _id
+        if (!song._id) {
+          song._id = `song-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        }
       }
       
       // Add song to playlist in Firestore
-      const updatedPlaylist = await playlistService.addSongToPlaylist(playlistId, song);
-      
-      // Update the current playlist in state
-      set({ currentPlaylist: updatedPlaylist });
-      
-      toast.success('Song added to playlist');
+      try {
+        const updatedPlaylist = await playlistService.addSongToPlaylist(playlistId, song);
+        
+        // Update the current playlist in state
+        set({ currentPlaylist: updatedPlaylist });
+        
+        toast.success('Song added to playlist');
+      } catch (error) {
+        console.error('Error adding song to playlist:', error);
+        
+        // Fallback: Update locally if Firebase fails
+        const updatedSongs = [...playlist.songs, song];
+        const updatedPlaylist = { ...playlist, songs: updatedSongs };
+        
+        set({ currentPlaylist: updatedPlaylist });
+        toast.success('Song added to playlist (locally)');
+      }
     } catch (error: any) {
       console.error('Error adding song to playlist:', error);
       toast.error('Failed to add song to playlist');

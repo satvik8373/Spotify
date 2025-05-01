@@ -43,62 +43,8 @@ import {
 import { MoreHorizontal } from 'lucide-react';
 
 // Suggested genres
-const suggestedGenres = [
-  {
-    id: 1,
-    name: 'Rock',
-    color: 'from-zinc-800 to-zinc-900 hover:from-purple-900/30 hover:to-zinc-900',
-  },
-  {
-    id: 2,
-    name: 'Hip Hop',
-    color: 'from-zinc-800 to-zinc-900 hover:from-orange-900/30 hover:to-zinc-900',
-  },
-  {
-    id: 3,
-    name: 'Electronic',
-    color: 'from-zinc-800 to-zinc-900 hover:from-blue-900/30 hover:to-zinc-900',
-  },
-  {
-    id: 4,
-    name: 'Classical',
-    color: 'from-zinc-800 to-zinc-900 hover:from-amber-900/30 hover:to-zinc-900',
-  },
-  {
-    id: 5,
-    name: 'Pop',
-    color: 'from-zinc-800 to-zinc-900 hover:from-pink-900/30 hover:to-zinc-900',
-  },
-  {
-    id: 6,
-    name: 'R&B',
-    color: 'from-zinc-800 to-zinc-900 hover:from-indigo-900/30 hover:to-zinc-900',
-  },
-  {
-    id: 7,
-    name: 'Jazz',
-    color: 'from-zinc-800 to-zinc-900 hover:from-green-900/30 hover:to-zinc-900',
-  },
-  {
-    id: 8,
-    name: 'Bollywood',
-    color: 'from-zinc-800 to-zinc-900 hover:from-red-900/30 hover:to-zinc-900',
-  },
-];
 
 // Fixed top picks categories
-const topPicks = [
-  {
-    id: 1,
-    title: 'Liked Songs',
-    subtitle: 'All your liked songs',
-    icon: <Heart className="h-6 w-6" />,
-    image: 'https://misc.scdn.co/liked-songs/liked-songs-640.png',
-    path: '/liked-songs',
-    gradient: 'from-indigo-500 to-indigo-900',
-    fixed: true,
-  },
-];
 
 // Interface for recent playlist
 interface RecentPlaylist {
@@ -214,6 +160,8 @@ const HomePage = () => {
     fetchFeaturedPlaylists,
     fetchUserPlaylists,
     createPlaylist,
+    publicPlaylists,
+    fetchPublicPlaylists,
   } = usePlaylistStore();
   const { isAuthenticated, userId } = useAuthStore();
   const navigate = useNavigate();
@@ -227,17 +175,18 @@ const HomePage = () => {
   const [topPlaylists, setTopPlaylists] = useState<TopPlaylist[]>([]);
   const [sortBy, setSortBy] = useState<'clicks' | 'likes' | 'shares'>('clicks');
 
-  const { indianTrendingSongs, indianNewReleases, bollywoodSongs, hollywoodSongs } =
+  const { indianTrendingSongs } =
     useMusicStore();
 
-  const { setCurrentSong, playPlaylist } = usePlayerStore();
+  const { setCurrentSong } = usePlayerStore();
 
   useEffect(() => {
     fetchFeaturedPlaylists();
+    fetchPublicPlaylists();
     if (isAuthenticated) {
       fetchUserPlaylists();
     }
-  }, [fetchFeaturedPlaylists, fetchUserPlaylists, isAuthenticated]);
+  }, [fetchFeaturedPlaylists, fetchUserPlaylists, fetchPublicPlaylists, isAuthenticated]);
 
   // Load recent playlists from localStorage
   useEffect(() => {
@@ -537,34 +486,8 @@ const HomePage = () => {
   };
 
   // Handle like
-  const handleLike = (playlist: TopPlaylist) => {
-    if (!isAuthenticated) {
-      toast.error('Please sign in to like playlists');
-      return;
-    }
-    updateMetrics(playlist._id, 'likes');
-    setTopPlaylists(current =>
-      current.map(p => (p._id === playlist._id ? { ...p, isLiked: !p.isLiked } : p))
-    );
-  };
 
   // Handle share
-  const handleShare = async (playlist: TopPlaylist) => {
-    try {
-      await navigator.share({
-        title: playlist.name,
-        text: `Check out this playlist: ${playlist.name}`,
-        url: `${window.location.origin}/playlist/${playlist._id}`,
-      });
-      updateMetrics(playlist._id, 'shares');
-    } catch (error) {
-      console.error('Error sharing:', error);
-      // Fallback to copying link
-      navigator.clipboard.writeText(`${window.location.origin}/playlist/${playlist._id}`);
-      toast.success('Link copied to clipboard!');
-      updateMetrics(playlist._id, 'shares');
-    }
-  };
 
   // Add style tag for Netflix-like effects
   useEffect(() => {
@@ -672,6 +595,39 @@ const HomePage = () => {
 
             {/* Recently Played Section */}
             <RecentlyPlayed />
+
+            {/* Public Playlists Section - Moved position */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg font-bold tracking-tight">Public Playlists</h2>
+                <Button
+                  variant="ghost"
+                  className="text-zinc-400 hover:text-white text-xs sm:text-sm h-8"
+                  onClick={() => navigate('/playlists')}
+                >
+                  See all
+                </Button>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
+                {publicPlaylists.map(playlist => (
+                  <div
+                    key={playlist._id}
+                    className="group relative transform transition-all duration-300 hover:scale-[1.02]"
+                    onClick={() => handlePlaylistClick(playlist)}
+                  >
+                    <PlaylistCard
+                      playlist={playlist}
+                      isOwner={isAuthenticated && userId === playlist.createdBy.clerkId}
+                    />
+                  </div>
+                ))}
+                {publicPlaylists.length === 0 && (
+                  <div className="col-span-full py-8 text-center text-muted-foreground">
+                    No public playlists available
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Featured Playlists Section */}
             {featuredPlaylists.length > 0 && (
@@ -818,6 +774,53 @@ const HomePage = () => {
 
           {/* Bottom padding for mobile player */}
           <div className="h-2"></div>
+        </div>
+
+        {/* Top Charts Section */}
+        <div className="container px-2 md:px-4 lg:px-6 py-4">
+          <div className="flex justify-between items-center mb-1">
+            <h2 className="text-2xl font-bold">Top Charts</h2>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-xs hover:bg-black/10">
+                  Sort by: {sortBy === 'clicks' ? 'Plays' : sortBy === 'likes' ? 'Likes' : 'Shares'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSortBy('clicks')}>Plays</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('likes')}>Likes</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('shares')}>Shares</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="netflix-row">
+            <div className="netflix-slider">
+              {topPlaylists.map((playlist) => (
+                <div
+                  key={playlist._id}
+                  className="netflix-card relative"
+                  onClick={() => handlePlaylistClick(playlist)}
+                >
+                  <div className="netflix-rank">{playlist.rank}</div>
+                  <PlaylistCard
+                    playlist={{
+                      _id: playlist._id,
+                      name: playlist.name,
+                      imageUrl: playlist.imageUrl || '',
+                      isPublic: true,
+                      songs: [],
+                      featured: false,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                      createdBy: { _id: '', clerkId: '', fullName: '', imageUrl: '' },
+                      description: ''
+                    }}
+                    isOwner={false}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </ScrollArea>
 

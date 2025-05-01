@@ -12,11 +12,12 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { useForm } from 'react-hook-form';
-import { Loader2, ImageIcon, Cloud } from 'lucide-react';
+import { Loader2, ImageIcon, Cloud, Globe, Lock } from 'lucide-react';
 import { Playlist } from '@/types';
 import { toast } from 'sonner';
 import { uploadImage, getPlaceholderImageUrl } from '@/services/cloudinaryService';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
+import { Switch } from '../ui/switch';
 
 // Helper function to get a default playlist image URL
 const getDefaultPlaylistImage = (name: string) => {
@@ -34,6 +35,7 @@ interface EditPlaylistDialogProps {
 interface EditPlaylistFormData {
   name: string;
   description: string;
+  isPublic: boolean;
 }
 
 export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDialogProps) {
@@ -45,18 +47,23 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
   const [imageFile, setImageFile] = useState<File | null>(null);
   const { updatePlaylist } = usePlaylistStore();
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<EditPlaylistFormData>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<EditPlaylistFormData>({
     defaultValues: {
       name: playlist.name,
       description: playlist.description || '',
+      isPublic: playlist.isPublic !== undefined ? playlist.isPublic : true,
     }
   });
+
+  // Watch the isPublic value to use in the UI
+  const isPublic = watch('isPublic');
 
   useEffect(() => {
     if (playlist) {
       reset({
         name: playlist.name,
         description: playlist.description || '',
+        isPublic: playlist.isPublic !== undefined ? playlist.isPublic : true,
       });
       setImagePreview(playlist.imageUrl || getPlaceholderImageUrl(playlist.name));
     }
@@ -153,6 +160,10 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
     }
   };
 
+  const handlePrivacyToggle = (checked: boolean) => {
+    setValue('isPublic', checked);
+  };
+
   const onSubmit = async (data: EditPlaylistFormData) => {
     try {
       setIsSubmitting(true);
@@ -179,7 +190,9 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
 
       // Update playlist using the store
       await updatePlaylist(playlistId, {
-        ...data,
+        name: data.name,
+        description: data.description,
+        isPublic: data.isPublic,
         imageUrl,
       });
       
@@ -293,6 +306,34 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
                 {...register('description')}
                 className="col-span-3"
                 rows={4}
+              />
+            </div>
+            
+            {/* Privacy Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="mr-2">
+                  {isPublic ? (
+                    <Globe className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Lock className="h-4 w-4 text-zinc-500" />
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="privacy-toggle" className="font-medium">
+                    {isPublic ? 'Public' : 'Private'}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {isPublic 
+                      ? 'Anyone can find and listen to this playlist.' 
+                      : 'Only you can access this playlist.'}
+                  </p>
+                </div>
+              </div>
+              <Switch 
+                id="privacy-toggle"
+                checked={isPublic}
+                onCheckedChange={handlePrivacyToggle}
               />
             </div>
           </div>

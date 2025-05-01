@@ -419,6 +419,11 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
     return this.getByField('featured', true);
   }
   
+  // Get all public playlists
+  async getPublicPlaylists(): Promise<FirestorePlaylist[]> {
+    return this.getByField('isPublic', true);
+  }
+  
   // Add song to playlist
   async addSongToPlaylist(playlistId: string, song: FirestoreSong): Promise<FirestorePlaylist> {
     try {
@@ -430,7 +435,7 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
       
       // Check if song is already in playlist
       const songs = Array.isArray(playlist.songs) ? playlist.songs : [];
-      if (songs.some(s => s.id === song.id || s._id === song.id)) {
+      if (songs.some(s => (s as any).id === song.id || (s as any)._id === song.id)) {
         return playlist; // Song already in playlist
       }
       
@@ -454,7 +459,7 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
       
       // Filter out the song
       const songs = Array.isArray(playlist.songs) ? playlist.songs : [];
-      const updatedSongs = songs.filter(s => s.id !== songId && s._id !== songId);
+      const updatedSongs = songs.filter(s => (s as any).id !== songId && (s as any)._id !== songId);
       
       // Update playlist
       return await this.update(playlistId, { songs: updatedSongs } as Partial<FirestorePlaylist>);

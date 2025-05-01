@@ -15,6 +15,7 @@ import {
   Search,
   Heart,
   ThumbsUp,
+  Shuffle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -61,8 +62,50 @@ function AddSongsDialog({
   const handleSearch = () => {
     if (searchQuery.trim()) {
       setIsSearching(true);
-      searchIndianSongs(searchQuery);
+      
+      // Store the query for potential fallback use
+      const query = searchQuery;
+      
+      searchIndianSongs(query)
+        .then(() => {
+          // Check if we got any results
+          const results = useMusicStore.getState().indianSearchResults;
+          if (results.length === 0) {
+            // Create a fallback search result if no results found
+            handleSearchFallback(query);
+          }
+        })
+        .catch(error => {
+          console.error('Failed to search songs:', error);
+          // Use fallback when search API fails
+          handleSearchFallback(query);
+        });
     }
+  };
+
+  // Provide fallback results when search fails
+  const handleSearchFallback = (query: string) => {
+    const fallbackResults = [
+      {
+        id: `fallback-${Date.now()}-1`,
+        title: query,
+        artist: 'Search Result',
+        image: '/placeholder-song.jpg',
+        url: '',
+        duration: '180'
+      }
+    ];
+    
+    // Update the search results with fallback data
+    useMusicStore.setState({ 
+      indianSearchResults: fallbackResults,
+      isIndianMusicLoading: false
+    });
+    
+    toast.error('Song search API is currently unavailable. Using fallback results.', {
+      duration: 3000,
+      id: 'search-fallback-toast'
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -83,34 +126,17 @@ function AddSongsDialog({
 
   const handleAddIndianSong = async (song: any) => {
     try {
-      // First, create the song in our database
-      const externalSong = {
-        title: song.title,
-        artist: song.artist || 'Unknown Artist',
-        imageUrl: song.image,
-        audioUrl: song.url,
-        duration: parseInt(song.duration || '0'),
-      };
-
-      // Create the song
-      const response = await fetch('/api/songs/external', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(externalSong),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create song');
-      }
-
-      const createdSong = await response.json();
-
-      // Now add the created song to the playlist
-      await addSongToPlaylist(playlistId, createdSong._id);
-      toast.success(`Added "${song.title}" to playlist`);
+      // Convert Indian song to app song format directly
+      const convertedSong = useMusicStore.getState().convertIndianSongToAppSong(song);
+      
+      // Add converted song directly to playlist without validation notification
+      await addSongToPlaylist(playlistId, convertedSong);
+      
+      // Show success message
+      toast.success(`Added "${song.title || 'Unknown'}" to playlist`);
+      
+      // Close the dialog after successful addition
+      onClose();
     } catch (error) {
       console.error('Error adding Indian song:', error);
       toast.error('Failed to add song to playlist');
@@ -402,12 +428,81 @@ export function PlaylistPage() {
 
       // Start playback with a small delay to ensure clean state
       playTimeoutRef.current = setTimeout(() => {
-        playAlbum(currentPlaylist.songs);
+        // Make sure shuffle is off before playing in order
+        const playerStore = usePlayerStore.getState();
+        if (playerStore.isShuffled) {
+          playerStore.toggleShuffle();
+        }
+        
+        // Play the playlist from the beginning
+        playAlbum(currentPlaylist.songs, 0);
+        
+        // Force playback to start
+        setTimeout(() => {
+          usePlayerStore.getState().setUserInteracted();
+          usePlayerStore.getState().setIsPlaying(true);
+        }, 100);
+        
         setIsPlaying(false);
       }, 300);
     } catch (error) {
       console.error('Error playing playlist:', error);
       toast.error('Failed to play playlist');
+      setIsPlaying(false);
+    }
+  };
+
+  // New function to handle shuffle play
+  const handleShufflePlaylist = (e?: React.MouseEvent) => {
+    // Prevent event propagation if event exists
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
+    if (!currentPlaylist || currentPlaylist.songs.length === 0) {
+      toast.error('This playlist has no songs');
+      return;
+    }
+
+    // Prevent multiple rapid clicks
+    if (isPlaying) return;
+
+    try {
+      setIsPlaying(true);
+
+      // Clear any existing timeout
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
+
+      // Update play count only if user hasn't played this playlist before
+      if (!hasPlayed) {
+        updateMetrics('plays');
+      }
+
+      // Start playback with a small delay to ensure clean state
+      playTimeoutRef.current = setTimeout(() => {
+        // Enable shuffle mode before playing
+        const playerStore = usePlayerStore.getState();
+        if (!playerStore.isShuffled) {
+          playerStore.toggleShuffle();
+        }
+        
+        // Play the playlist
+        playAlbum(currentPlaylist.songs, 0);
+        
+        // Force playback to start
+        setTimeout(() => {
+          usePlayerStore.getState().setUserInteracted();
+          usePlayerStore.getState().setIsPlaying(true);
+        }, 100);
+        
+        setIsPlaying(false);
+      }, 300);
+    } catch (error) {
+      console.error('Error shuffling playlist:', error);
+      toast.error('Failed to shuffle playlist');
       setIsPlaying(false);
     }
   };
@@ -440,7 +535,21 @@ export function PlaylistPage() {
 
       // Start playback with a small delay to ensure clean state
       playTimeoutRef.current = setTimeout(() => {
+        // Make sure shuffle is off to play the chosen song
+        const playerStore = usePlayerStore.getState();
+        if (playerStore.isShuffled) {
+          playerStore.toggleShuffle();
+        }
+        
+        // Play the selected song from the playlist
         playAlbum(currentPlaylist.songs, index);
+        
+        // Force playback to start
+        setTimeout(() => {
+          usePlayerStore.getState().setUserInteracted();
+          usePlayerStore.getState().setIsPlaying(true);
+        }, 100);
+        
         setIsPlaying(false);
         // Reset playingSongId after a delay
         setTimeout(() => setPlayingSongId(null), 300);
@@ -528,6 +637,16 @@ export function PlaylistPage() {
           </Button>
           <Button
             variant="outline"
+            size="sm"
+            className="gap-1 rounded-full text-xs px-3 h-8"
+            onClick={handleShufflePlaylist}
+            disabled={currentPlaylist.songs.length === 0 || isPlaying}
+          >
+            <Shuffle className="h-3 w-3" />
+            Shuffle
+          </Button>
+          <Button
+            variant="outline"
             size="icon"
             className={cn(
               'h-8 w-8 rounded-full',
@@ -612,6 +731,17 @@ export function PlaylistPage() {
                 >
                   <Play className="h-4 w-4" />
                   Play
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 rounded-full"
+                  onClick={handleShufflePlaylist}
+                  disabled={currentPlaylist.songs.length === 0 || isPlaying}
+                >
+                  <Shuffle className="h-4 w-4" />
+                  Shuffle
                 </Button>
 
                 <Button
@@ -709,15 +839,29 @@ export function PlaylistPage() {
                   )}
                   onClick={e => handlePlaySong(song, index, e)}
                 >
-                  <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
-                    {index + 1}
+                  <div className="flex items-center justify-center text-xs sm:text-sm text-muted-foreground w-4">
+                    {playingSongId === song._id ? (
+                      <span className="animate-pulse">▶</span>
+                    ) : (
+                      index + 1
+                    )}
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
-                    <img
-                      src={song.imageUrl}
-                      alt={song.title}
-                      className="h-8 w-8 sm:h-10 sm:w-10 rounded-sm object-cover"
-                    />
+                    <div className="relative h-8 w-8 sm:h-10 sm:w-10">
+                      <img
+                        src={song.imageUrl}
+                        alt={song.title}
+                        className={cn(
+                          "h-full w-full rounded-sm object-cover", 
+                          playingSongId === song._id && "opacity-80"
+                        )}
+                      />
+                      {playingSongId === song._id && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-sm">
+                          <span className="animate-ping h-1.5 w-1.5 rounded-full bg-white"></span>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex flex-col overflow-hidden">
                       <span className="truncate font-medium text-xs sm:text-sm">{song.title}</span>
                       <span className="sm:hidden text-xs text-muted-foreground truncate">

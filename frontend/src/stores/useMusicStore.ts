@@ -591,13 +591,13 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
     }
   },
 
-  convertIndianSongToAppSong: song => {
+  convertIndianSongToAppSong: (song) => {
     return {
-      _id: song.id,
-      title: song.title,
+      _id: song.id || `indian-song-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      title: song.title || 'Unknown Title',
       artist: song.artist || 'Unknown Artist',
       albumId: null,
-      imageUrl: song.image,
+      imageUrl: song.image || '',
       audioUrl: song.url || '',
       duration: parseInt(song.duration || '0'),
       createdAt: new Date().toISOString(),

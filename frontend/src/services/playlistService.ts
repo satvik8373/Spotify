@@ -98,6 +98,17 @@ export const getFeaturedPlaylists = async (): Promise<Playlist[]> => {
   }
 };
 
+// Get all public playlists
+export const getPublicPlaylists = async (): Promise<Playlist[]> => {
+  try {
+    const firestorePlaylists = await playlistsService.getPublicPlaylists();
+    return firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
+  } catch (error) {
+    console.error('Error getting public playlists:', error);
+    throw error;
+  }
+};
+
 // Get playlist by ID
 export const getPlaylistById = async (playlistId: string): Promise<Playlist> => {
   try {
@@ -219,18 +230,26 @@ export const deletePlaylist = async (playlistId: string): Promise<void> => {
 // Add a song to a playlist
 export const addSongToPlaylist = async (playlistId: string, song: Song): Promise<Playlist> => {
   try {
-    // Convert song to Firestore format
+    // Ensure song has all required fields with fallbacks for safety
     const firestoreSong: FirestoreSong = {
-      id: song._id,
-      title: song.title,
-      artist: song.artist,
-      imageUrl: song.imageUrl,
-      audioUrl: song.audioUrl,
-      duration: song.duration,
-      albumId: song.albumId,
-      createdAt: song.createdAt,
-      updatedAt: song.updatedAt
+      id: song._id || `song-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      title: song.title || 'Unknown Title',
+      artist: song.artist || 'Unknown Artist',
+      imageUrl: song.imageUrl || '',
+      audioUrl: song.audioUrl || '',
+      duration: typeof song.duration === 'number' ? song.duration : 0,
+      albumId: song.albumId || null,
+      createdAt: song.createdAt || new Date().toISOString(),
+      updatedAt: song.updatedAt || new Date().toISOString()
     };
+    
+    // Remove any undefined values to prevent Firebase errors
+    Object.keys(firestoreSong).forEach(key => {
+      const k = key as keyof FirestoreSong;
+      if (firestoreSong[k] === undefined) {
+        (firestoreSong as any)[k] = null;
+      }
+    });
     
     const updatedPlaylist = await playlistsService.addSongToPlaylist(playlistId, firestoreSong);
     return convertFirestorePlaylistToPlaylist(updatedPlaylist);
