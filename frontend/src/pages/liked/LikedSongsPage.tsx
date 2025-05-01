@@ -4,14 +4,21 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { Heart, Play, Pause, Clock, Music, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { loadLikedSongs } from "@/services/likedSongsService";
+import { useLikedSongsStore } from "@/stores/useLikedSongsStore";
 import { Song } from "@/types";
 
+// Interface for liked songs which might have different ID fields compared to regular songs
+interface LikedSong extends Omit<Song, '_id'> {
+  id?: string;
+  _id?: string;
+  album?: string;
+}
+
 const LikedSongsPage = () => {
-  const [likedSongs, setLikedSongs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { isAuthenticated } = useAuthStore();
   const { setCurrentSong, currentSong, isPlaying, togglePlay, playPlaylist } = usePlayerStore();
+  const { likedSongs, likedSongIds, loadLikedSongs } = useLikedSongsStore();
 
   useEffect(() => {
     // Load liked songs when component mounts
@@ -29,8 +36,7 @@ const LikedSongsPage = () => {
   const loadLikedSongsData = () => {
     setIsLoading(true);
     try {
-      const songs = loadLikedSongs();
-      setLikedSongs(songs);
+      loadLikedSongs();
     } catch (error) {
       console.error("Error loading liked songs:", error);
     } finally {
@@ -48,29 +54,35 @@ const LikedSongsPage = () => {
     if (likedSongs.length === 0) return;
     
     // Convert liked songs to the format expected by the player
-    const formattedSongs = likedSongs.map(song => ({
-      _id: song.id,
-      title: song.title,
-      artist: song.artist,
-      imageUrl: song.imageUrl,
-      audioUrl: song.audioUrl,
-      duration: song.duration,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      albumId: null
-    }));
+    const formattedSongs = likedSongs.map(song => {
+      const songId = (song as LikedSong).id || song._id;
+      return {
+        _id: songId as string,
+        title: song.title,
+        artist: song.artist,
+        imageUrl: song.imageUrl,
+        audioUrl: song.audioUrl,
+        duration: song.duration,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        albumId: null
+      };
+    });
     
     playPlaylist(formattedSongs);
   };
 
-  const isSongPlaying = (song: any) => {
+  const isSongPlaying = (song: LikedSong) => {
     if (!currentSong || !isPlaying) return false;
-    return (currentSong as any).id === song.id || (currentSong as any)._id === song.id;
+    const currentId = (currentSong as any).id || currentSong._id;
+    const songId = song.id || song._id;
+    return currentId === songId;
   };
 
-  const handlePlaySong = (song: any) => {
+  const handlePlaySong = (song: LikedSong) => {
+    const songId = song.id || song._id;
     const formattedSong: Song = {
-      _id: song.id,
+      _id: songId as string,
       title: song.title,
       artist: song.artist,
       imageUrl: song.imageUrl,
@@ -141,56 +153,62 @@ const LikedSongsPage = () => {
             </div>
           ) : (
             <div className="space-y-1">
-              {likedSongs.map((song, index) => (
-                <div 
-                  key={song.id} 
-                  className="grid grid-cols-[16px_1fr_1fr_auto] gap-4 px-4 py-2 text-white hover:bg-white/10 rounded-md group cursor-pointer"
-                  onClick={() => handlePlaySong(song)}
-                >
-                  <div className="flex items-center">
-                    {isSongPlaying(song) ? (
-                      <div className="w-4 h-4 text-green-500 animate-pulse">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z"></path></svg>
-                      </div>
-                    ) : (
-                      <span className="text-white/60 group-hover:hidden">{index + 1}</span>
-                    )}
-                    <Play className="h-4 w-4 hidden group-hover:block text-white" />
-                  </div>
-                  
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-10 h-10 rounded overflow-hidden bg-zinc-800 flex-shrink-0">
-                      {song.imageUrl ? (
-                        <img 
-                          src={song.imageUrl} 
-                          alt={song.title} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-zinc-800">
-                          <Music className="h-5 w-5 text-zinc-400" />
+              {likedSongs.map((song, index) => {
+                // Type cast to our LikedSong interface to handle both id formats
+                const likedSong = song as LikedSong;
+                const uniqueKey = likedSong.id || likedSong._id;
+                
+                return (
+                  <div 
+                    key={uniqueKey} 
+                    className="grid grid-cols-[16px_1fr_1fr_auto] gap-4 px-4 py-2 text-white hover:bg-white/10 rounded-md group cursor-pointer"
+                    onClick={() => handlePlaySong(likedSong)}
+                  >
+                    <div className="flex items-center">
+                      {isSongPlaying(likedSong) ? (
+                        <div className="w-4 h-4 text-green-500 animate-pulse">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z"></path></svg>
                         </div>
+                      ) : (
+                        <span className="text-white/60 group-hover:hidden">{index + 1}</span>
                       )}
+                      <Play className="h-4 w-4 hidden group-hover:block text-white" />
                     </div>
-                    <div className="min-w-0">
-                      <p className={`font-medium truncate ${isSongPlaying(song) ? 'text-green-500' : 'text-white'}`}>
-                        {song.title}
-                      </p>
-                      <p className="text-sm text-white/60 truncate">{song.artist}</p>
+                    
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-10 h-10 rounded overflow-hidden bg-zinc-800 flex-shrink-0">
+                        {likedSong.imageUrl ? (
+                          <img 
+                            src={likedSong.imageUrl} 
+                            alt={likedSong.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-zinc-800">
+                            <Music className="h-5 w-5 text-zinc-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`font-medium truncate ${isSongPlaying(likedSong) ? 'text-green-500' : 'text-white'}`}>
+                          {likedSong.title}
+                        </p>
+                        <p className="text-sm text-white/60 truncate">{likedSong.artist}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="self-center text-white/60 text-sm truncate">
+                      {likedSong.album || '—'}
+                    </div>
+                    
+                    <div className="flex items-center justify-end gap-4">
+                      <Heart className="h-4 w-4 fill-green-500 text-green-500" />
+                      <span className="text-white/60 text-sm">{formatTime(likedSong.duration)}</span>
+                      <MoreHorizontal className="h-4 w-4 text-white/0 group-hover:text-white/60" />
                     </div>
                   </div>
-                  
-                  <div className="self-center text-white/60 text-sm truncate">
-                    {song.album || '—'}
-                  </div>
-                  
-                  <div className="flex items-center justify-end gap-4">
-                    <Heart className="h-4 w-4 fill-green-500 text-green-500" />
-                    <span className="text-white/60 text-sm">{formatTime(song.duration)}</span>
-                    <MoreHorizontal className="h-4 w-4 text-white/0 group-hover:text-white/60" />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

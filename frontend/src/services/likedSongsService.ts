@@ -344,147 +344,125 @@ const queueSyncWithServer = () => {
  * @returns A promise that resolves to the synced songs
  */
 export const syncWithServer = async (songs: Song[]): Promise<Song[]> => {
-  const { isAuthenticated, userId } = useAuthStore.getState();
-  
-  if (!isAuthenticated || !userId) {
-    return songs; // Can't sync without authentication
+  if (!auth.currentUser) {
+    console.log("Not logged in, skipping server sync");
+    return songs;
   }
   
-  // Firebase Sync - if we have a Firebase user, sync with Firestore
-  const firebaseUser = auth.currentUser;
-  if (firebaseUser) {
-    try {
-      console.log("Syncing liked songs with Firestore...");
+  const userId = auth.currentUser.uid;
+  console.log("Syncing liked songs with Firestore...");
+
+  try {
+    // Get songs from Firestore
+    const likedSongsRef = collection(db, "likedSongs");
+    const q = query(likedSongsRef, where("userId", "==", userId));
+    const querySnapshot = await getDocs(q);
+    
+    // Map of server song IDs for quick lookup
+    const serverSongMap = new Map();
+    // Array of songs from the server that we'll merge with local songs
+    const serverSongs: Song[] = [];
+    
+    // Process songs from server
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      const serverSong = {
+        id: data.songId,  // Use the actual song ID, not the compound doc ID
+        title: data.title,
+        artist: data.artist,
+        imageUrl: data.imageUrl || '',
+        audioUrl: data.audioUrl || '',
+        duration: data.duration || 0,
+        album: data.albumName || ''
+      };
       
-      // Get all the user's liked songs from Firestore
-      const likedSongsRef = collection(db, "likedSongs");
-      const q = query(likedSongsRef, where("userId", "==", firebaseUser.uid));
-      const querySnapshot = await getDocs(q);
-      
-      // Convert to local Song format
-      const firestoreSongs: Song[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        firestoreSongs.push({
-          id: data.songId,
-          title: data.title,
-          artist: data.artist,
-          imageUrl: data.imageUrl,
-          audioUrl: data.audioUrl,
-          duration: data.duration || 0,
-          album: data.albumName || '',
-          year: data.year || ''
-        });
-      });
-      
-      // Compare with local songs to find ones that need to be added to Firestore
-      const localOnlySongs = songs.filter(localSong => 
-        !firestoreSongs.some(fsSong => fsSong.id === localSong.id)
-      );
-      
-      // Add local songs to Firestore
-      for (const song of localOnlySongs) {
-        const likedSongId = generateLikedSongId(firebaseUser.uid, song.id);
+      serverSongMap.set(data.songId, serverSong);
+      serverSongs.push(serverSong);
+    });
+    
+    // Normalize songs for comparison
+    const normalizedLocalSongs = songs.map(song => {
+      // Ensure all songs have an id property for consistent comparison
+      if (!song.id && (song as any)._id) {
+        return {
+          ...song,
+          id: (song as any)._id
+        };
+      }
+      return song;
+    });
+    
+    // Map of local song IDs for quick lookup
+    const localSongMap = new Map();
+    normalizedLocalSongs.forEach(song => {
+      // Ensure we're using a consistent ID property
+      const songId = song.id;
+      if (songId) {
+        localSongMap.set(songId, song);
+      }
+    });
+    
+    // Songs to add to Firestore (exist locally but not on server)
+    const songsToAdd = normalizedLocalSongs.filter(song => {
+      const songId = song.id;
+      return songId && !serverSongMap.has(songId);
+    });
+    
+    // Songs to add locally (exist on server but not locally)
+    const songsToAddLocally = serverSongs.filter(song => {
+      return !localSongMap.has(song.id);
+    });
+    
+    // Add songs to Firestore in batch
+    for (const song of songsToAdd) {
+      try {
+        const songId = song.id;
+        if (!songId) continue;
+        
+        const likedSongId = generateLikedSongId(userId, songId);
         const likedSongRef = doc(db, "likedSongs", likedSongId);
         
-        // Add to Firestore
         await setDoc(likedSongRef, {
-          songId: song.id,
-          userId: firebaseUser.uid,
-          title: song.title,
-          artist: song.artist,
+          songId: songId,
+          userId: userId,
+          title: song.title || 'Unknown Title',
+          artist: song.artist || 'Unknown Artist',
           albumName: song.album || '',
-          imageUrl: song.imageUrl,
-          audioUrl: song.audioUrl,
+          imageUrl: song.imageUrl || '',
+          audioUrl: song.audioUrl || '',
           duration: song.duration || 0,
           likedAt: serverTimestamp()
         });
-      }
-      
-      // Find songs in Firestore that aren't in local storage
-      const firestoreOnlySongs = firestoreSongs.filter(fsSong => 
-        !songs.some(localSong => localSong.id === fsSong.id)
-      );
-      
-      // Merge all songs together
-      const mergedSongs = [...songs, ...firestoreOnlySongs];
-      
-      // Update local storage
-      localStorage.setItem(getUserLikedSongsKey(userId), JSON.stringify(mergedSongs));
-      localStorage.setItem(LAST_SYNC_TIMESTAMP, Date.now().toString());
-      localStorage.setItem(LIKED_SONGS_CACHE_EXPIRY, (Date.now() + 24 * 60 * 60 * 1000).toString());
-      
-      console.log(`Synced ${localOnlySongs.length} songs to Firestore, ${firestoreOnlySongs.length} songs from Firestore`);
-      
-      return mergedSongs;
-    } catch (error) {
-      console.error("Error syncing liked songs with Firestore:", error);
-      // Continue with API sync as fallback
-    }
-  }
-  
-  // API Sync with backend - as fallback
-  try {
-    console.log("Syncing liked songs with server API...");
-    
-    // Check if sync endpoint exists by first making a HEAD request
-    try {
-      await axiosInstance.head('/api/liked-songs/sync');
-    } catch (headError) {
-      // If we get a 404, the endpoint doesn't exist yet
-      if ((headError as any)?.response?.status === 404) {
-        console.warn("Liked songs sync endpoint not available yet. Using local data only.");
-        // Store timestamp anyway to prevent frequent retries
-        localStorage.setItem(LAST_SYNC_TIMESTAMP, Date.now().toString());
-        return songs;
+      } catch (error) {
+        console.error("Error adding song to Firestore:", error);
       }
     }
     
-    // Send local songs to server and get updated list
-    const response = await axiosInstance.post('/api/liked-songs/sync', { songs });
+    // Merge local and server songs (prefer local versions if song exists in both)
+    let mergedSongs = [...normalizedLocalSongs];
     
-    if (response.data && response.data.success && Array.isArray(response.data.data)) {
-      // Convert server format to local format
-      const serverSongs = response.data.data.map((song: any) => ({
-        id: song.songId,
-        title: song.title,
-        artist: song.artist,
-        imageUrl: song.imageUrl,
-        audioUrl: song.audioUrl,
-        duration: song.duration || 0,
-        album: song.album || '',
-        year: song.year || ''
-      }));
-      
-      console.log(`Received ${serverSongs.length} songs from server`);
-      
-      // Clear previous liked songs for this user to avoid any desync
-      localStorage.setItem(getUserLikedSongsKey(userId), JSON.stringify(serverSongs));
-      
-      // Update last sync timestamp
-      localStorage.setItem(LAST_SYNC_TIMESTAMP, Date.now().toString());
-      localStorage.setItem(LIKED_SONGS_CACHE_EXPIRY, (Date.now() + 24 * 60 * 60 * 1000).toString());
-      
-      // Notify listeners that liked songs have been updated
-      document.dispatchEvent(new Event('likedSongsUpdated'));
-      
-      return serverSongs;
+    // Add songs from server that don't exist locally
+    songsToAddLocally.forEach(serverSong => {
+      if (!localSongMap.has(serverSong.id)) {
+        mergedSongs.push(serverSong);
+      }
+    });
+    
+    // Update local storage with merged songs
+    if (mergedSongs.length !== normalizedLocalSongs.length) {
+      saveLikedSongs(mergedSongs);
     }
     
-    return songs; // Return original songs if response format is unexpected
+    // Update last sync timestamp
+    localStorage.setItem(LAST_SYNC_TIMESTAMP, Date.now().toString());
+    
+    console.log(`Synced ${songsToAdd.length} songs to Firestore, ${songsToAddLocally.length} songs from Firestore`);
+    
+    // Return the merged songs
+    return mergedSongs;
   } catch (error) {
-    console.error("Error syncing liked songs with server:", error);
-    
-    // Handle specific error cases
-    if ((error as any)?.response?.status === 404) {
-      console.warn("Liked songs sync endpoint not available. Using local data only.");
-      // Store timestamp anyway to prevent frequent retries
-      localStorage.setItem(LAST_SYNC_TIMESTAMP, Date.now().toString());
-    } else if ((error as any)?.response?.status === 401) {
-      console.warn("Authentication expired, will retry after re-login");
-    }
-    
-    // For any errors, return original songs and let caller decide on retry
+    console.error("Error syncing with server:", error);
+    // Return original songs on error
     return songs;
   }
 };

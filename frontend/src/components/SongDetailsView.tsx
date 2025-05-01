@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { Button } from './ui/button';
-import { ChevronDown, MoreHorizontal, Share2, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, ListMusic } from 'lucide-react';
+import { ChevronDown, Heart, MoreHorizontal, Share2, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, ListMusic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Slider } from './ui/slider';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { toast } from 'sonner';
-import { LikeButton } from './LikeButton';
 
 interface SongDetailsViewProps {
   isOpen: boolean;
@@ -14,10 +13,10 @@ interface SongDetailsViewProps {
 }
 
 const formatTime = (seconds: number) => {
-  if (!seconds) return '0:00';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  if (isNaN(seconds)) return "0:00";
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
 
 const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
@@ -39,6 +38,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const [duration, setDuration] = useState(0);
   const [isRepeating, setIsRepeating] = useState(false);
   const [albumArtLoaded, setAlbumArtLoaded] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
   // Make sure liked songs are loaded
@@ -46,9 +46,19 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     loadLikedSongs();
   }, [loadLikedSongs]);
   
-  // Get liked state from the liked songs store if possible
-  const songId = currentSong ? ((currentSong as any).id || currentSong._id) : null;
-  const isLiked = songId ? likedSongIds?.has(songId) : false;
+  // Update like status whenever the current song or likedSongIds changes
+  useEffect(() => {
+    if (!currentSong) return;
+    
+    // Check if the song is liked by checking both possible ID formats
+    const songId = (currentSong as any).id || currentSong._id;
+    const liked = songId ? likedSongIds?.has(songId) : false;
+    
+    // Log the status for debugging
+    console.log(`SongDetails - Song ID: ${songId}, Liked: ${liked}, LikedSongIds size: ${likedSongIds?.size}`);
+    
+    setIsLiked(liked);
+  }, [currentSong, likedSongIds]);
 
   useEffect(() => {
     audioRef.current = document.querySelector("audio");
@@ -83,15 +93,19 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   // Listen for like updates from other components
   useEffect(() => {
     const handleLikeUpdate = () => {
-      // Force re-render to reflect updated like status
-      setCurrentTime(prev => prev);
+      if (!currentSong) return;
+      
+      // Re-check if the song is liked after an update event
+      const songId = (currentSong as any).id || currentSong._id;
+      const liked = songId ? likedSongIds?.has(songId) : false;
+      setIsLiked(liked);
     };
     
     document.addEventListener('likedSongsUpdated', handleLikeUpdate);
     return () => {
       document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
     };
-  }, []);
+  }, [currentSong, likedSongIds]);
 
   const handleSeek = (value: number[]) => {
     if (audioRef.current) {
@@ -99,6 +113,20 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       setCurrentTime(value[0]);
       if (setStoreCurrentTime) setStoreCurrentTime(value[0]);
     }
+  };
+
+  const handleLikeToggle = () => {
+    if (!currentSong) return;
+    
+    // Get the song ID consistently
+    const songId = (currentSong as any).id || currentSong._id;
+    console.log(`Toggling like for song ID: ${songId}, current status: ${isLiked}`);
+    
+    // Optimistically update the UI immediately
+    setIsLiked(!isLiked);
+    
+    // Perform the actual toggle
+    toggleLikeSong(currentSong);
   };
 
   const handleShare = () => {
@@ -180,14 +208,20 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             <h1 className="text-2xl font-bold truncate text-white">{currentSong.title}</h1>
             <p className="text-sm text-zinc-300 mt-1">{currentSong.artist}</p>
           </div>
-          
-          <LikeButton
-            songId={songId}
-            song={currentSong}
-            className="hover:bg-white/10"
+          <Button
+            variant="ghost"
             size="icon"
-            fillColor="text-green-500"
-          />
+            className={cn(
+              'text-white hover:bg-white/10',
+              isLiked && 'text-green-500'
+            )}
+            onClick={handleLikeToggle}
+          >
+            <Heart
+              className="h-6 w-6"
+              fill={isLiked ? 'currentColor' : 'none'}
+            />
+          </Button>
         </div>
 
         {/* Progress Bar */}

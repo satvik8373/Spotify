@@ -24,11 +24,21 @@ export const PlaybackControls = () => {
 	const [isTransitioning, setIsTransitioning] = useState(false);
 	const [showSongDetails, setShowSongDetails] = useState(false);
 	const [isRepeating, setIsRepeating] = useState(false);
+	const [isLiked, setIsLiked] = useState(false);
 	const audioRef = useRef<HTMLAudioElement | null>(null);
 	const playerRef = useRef<HTMLDivElement>(null);
 
 	// Get liked state from the liked songs store if possible
-	const isLiked = currentSong ? likedSongIds?.has((currentSong as any).id || currentSong._id) : false;
+	useEffect(() => {
+		if (!currentSong) return;
+		
+		const songId = (currentSong as any).id || currentSong._id;
+		const isCurrentSongLiked = songId ? likedSongIds?.has(songId) : false;
+		
+		console.log(`PlaybackControls - Song ID: ${songId}, Liked: ${isCurrentSongLiked}, LikedSongIds size: ${likedSongIds?.size}`);
+		
+		setIsLiked(isCurrentSongLiked);
+	}, [currentSong, likedSongIds]);
 
 	// Handle audio element events
 	useEffect(() => {
@@ -66,6 +76,22 @@ export const PlaybackControls = () => {
 			audio.removeEventListener("ended", handleEnded);
 		};
 	}, [currentSong, volume, isRepeating]);
+
+	// Listen for like updates from other components
+	useEffect(() => {
+		const handleLikeUpdate = () => {
+			if (!currentSong) return;
+			
+			// Re-check if the song is liked after an update event
+			const songId = (currentSong as any).id || currentSong._id;
+			setIsLiked(likedSongIds?.has(songId));
+		};
+		
+		document.addEventListener('likedSongsUpdated', handleLikeUpdate);
+		return () => {
+			document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
+		};
+	}, [currentSong, likedSongIds]);
 
 	// Smooth song changes and handle navigation
 	useEffect(() => {
@@ -105,10 +131,20 @@ export const PlaybackControls = () => {
 		}
 	};
 	
-	const handleLikeToggle = () => {
-		if (currentSong) {
-			toggleLikeSong(currentSong);
-		}
+	const handleLikeToggle = (e: React.MouseEvent) => {
+		// Stop event propagation to prevent the song details view from opening
+		e.stopPropagation();
+		
+		if (!currentSong) return;
+		
+		const songId = (currentSong as any).id || currentSong._id;
+		console.log(`Toggling like for song ID: ${songId}, current status: ${isLiked}`);
+		
+		// Optimistically update UI
+		setIsLiked(!isLiked);
+		
+		// Actually toggle the like status
+		toggleLikeSong(currentSong);
 	};
 	
 	const toggleRepeat = () => {
@@ -155,7 +191,7 @@ export const PlaybackControls = () => {
 									size='icon'
 									variant='ghost'
 									className={`hover:text-white ${isLiked ? 'text-green-500' : 'text-zinc-400'}`}
-									onClick={handleLikeToggle}
+									onClick={(e) => handleLikeToggle(e)}
 								>
 									<Heart className='h-4 w-4' fill={isLiked ? 'currentColor' : 'none'} />
 								</Button>
