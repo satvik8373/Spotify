@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader, Play, Pause, Heart, RefreshCcw, ChevronDown, Clock, Music, X, Share2, Download, MoreHorizontal, ArrowLeft, Volume2 } from "lucide-react";
+import { Loader, Play, Pause, RefreshCcw, ChevronDown, Clock, Music, X, Share2, Download, MoreHorizontal, ArrowLeft, Volume2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useMusicStore } from "@/stores/useMusicStore";
 import { useAuth } from "../contexts/AuthContext";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { loadLikedSongs, addLikedSong, removeLikedSong } from "@/services/likedSongsService";
+import { loadLikedSongs } from "@/services/likedSongsService";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { LikeButton } from "./LikeButton";
 
 interface BaseSong {
   id: string;
@@ -260,37 +261,6 @@ const IndianMusicPlayer = () => {
     toast.error("Song details not available at the moment");
   };
 
-  const toggleLikeSong = (song: Song, event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    
-    if (!isAuthenticated) {
-      setShowLoginDialog(true);
-      return;
-    }
-    
-    try {
-      const songId = song.id;
-      if (likedSongIds.has(songId)) {
-        // Remove from liked songs
-        removeLikedSong(songId);
-        setLikedSongIds(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(songId);
-          return newSet;
-        });
-        toast.success(`Removed "${song.title}" from Liked Songs`);
-      } else {
-        // Add to liked songs
-        addLikedSong(song);
-        setLikedSongIds(prev => new Set([...prev, songId]));
-        toast.success(`Added "${song.title}" to Liked Songs`);
-      }
-    } catch (error) {
-      console.error("Error toggling like status:", error);
-      toast.error("Failed to update liked songs");
-    }
-  };
-
   const handleShare = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     
@@ -333,48 +303,42 @@ const IndianMusicPlayer = () => {
 
   const renderSongCard = (song: Song) => (
     <div 
-      key={song.id}
       className="p-4 bg-zinc-800 rounded-md hover:bg-zinc-700 transition cursor-pointer group relative flex flex-col"
-      onClick={() => {
-        playSong(song);
-      }}
+      onClick={() => playSong(song)}
     >
-      <div className="relative mb-3 aspect-square overflow-hidden rounded-md">
+      <div className="relative aspect-square mb-3">
         <img 
           src={song.image || '/default-album.png'} 
           alt={song.title} 
-          className="object-cover w-full h-full" 
+          className="w-full h-full object-cover rounded-md" 
         />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50">
-          <Button 
-            size="icon" 
-            className="size-12 rounded-full bg-green-500 hover:bg-green-600 transition shadow-lg"
-            onClick={(e) => {
-              e.stopPropagation();
-              playSong(song);
-            }}
-          >
-            {isSongPlaying(song) ? (
-              <Pause className="size-6" />
-            ) : (
-              <Play className="size-6" />
-            )}
-          </Button>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
+          {isSongPlaying(song) ? (
+            <div className="flex items-center justify-center space-x-0.5">
+              {animationBars.map((height, i) => (
+                <div 
+                  key={i} 
+                  className="w-0.5 bg-white" 
+                  style={{ height: `${height}%`, maxHeight: '60%', minHeight: '20%' }}
+                ></div>
+              ))}
+            </div>
+          ) : (
+            <Play className="h-10 w-10 text-white" />
+          )}
         </div>
       </div>
-      <div className="flex-1">
-        <h3 className="font-semibold truncate">{song.title}</h3>
-        <p className="text-sm text-zinc-400 truncate">{song.artist || 'Unknown Artist'}</p>
-      </div>
-      <div className="mt-3 flex justify-between items-center">
-        <Button 
-          variant={likedSongIds.has(song.id) ? "default" : "ghost"} 
+      <h3 className="font-medium text-sm truncate">{song.title}</h3>
+      <p className="text-xs text-zinc-400 truncate">{song.artist || 'Unknown Artist'}</p>
+      <div className="flex items-center justify-between mt-2">
+        <LikeButton
+          songId={song.id as string}
+          song={song}
+          variant={likedSongIds.has(song.id as string) ? "default" : "ghost"} 
           size="icon" 
-          className={`size-9 rounded-full ${likedSongIds.has(song.id) ? 'bg-green-500 hover:bg-green-600' : ''}`}
-          onClick={(e) => toggleLikeSong(song, e)}
-        >
-          <Heart className={`size-5 ${likedSongIds.has(song.id) ? 'fill-white' : ''}`} />
-        </Button>
+          className={`size-9 rounded-full ${likedSongIds.has(song.id as string) ? 'bg-green-500 hover:bg-green-600' : ''}`}
+          showToasts={false}
+        />
         {song.duration && (
           <span className="text-xs text-zinc-400">{song.duration}</span>
         )}
@@ -417,14 +381,15 @@ const IndianMusicPlayer = () => {
         <p className="text-sm text-zinc-400 truncate">{song.artist || 'Unknown Artist'}</p>
       </div>
       <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button 
-          variant="ghost" 
+        <LikeButton
+          songId={song.id as string}
+          song={song}
+          variant="ghost"
           size="icon" 
           className="size-8 rounded-full"
-          onClick={(e) => toggleLikeSong(song, e)}
-        >
-          <Heart className={`size-4 ${likedSongIds.has(song.id) ? 'fill-green-500 text-green-500' : ''}`} />
-        </Button>
+          showToasts={false}
+          fillColor="fill-green-500 text-green-500"
+        />
         <span className="text-xs text-zinc-400 w-12 text-right">
           {song.duration || '--:--'}
         </span>
@@ -465,51 +430,63 @@ const IndianMusicPlayer = () => {
               )}
             </div>
             
-            <div className="flex justify-between w-full mb-8">
+            <div className="flex items-center space-x-4 mb-6">
               <Button 
-                variant={likedSongIds.has(selectedSong.id) ? "default" : "ghost"} 
-                size="icon"
-                className={`size-10 rounded-full ${likedSongIds.has(selectedSong.id) ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                onClick={(e) => toggleLikeSong(selectedSong, e)}
+                variant="default" 
+                className="bg-green-500 hover:bg-green-600 text-white rounded-full"
+                onClick={() => playSong(selectedSong)}
               >
-                <Heart className={`size-5 ${likedSongIds.has(selectedSong.id) ? 'fill-white' : ''}`} />
+                {isSongPlaying(selectedSong) ? <Pause className="size-5 mr-2" /> : <Play className="size-5 mr-2" />}
+                {isSongPlaying(selectedSong) ? 'Pause' : 'Play'}
               </Button>
               
-              <Button variant="ghost" size="icon" className="size-10 rounded-full" onClick={handleShare}>
-                <Share2 className="size-5" />
-              </Button>
-              
-              <Button variant="ghost" size="icon" className="size-10 rounded-full">
-                <Download className="size-5" />
-              </Button>
-              
-              <Button variant="ghost" size="icon" className="size-10 rounded-full">
-                <MoreHorizontal className="size-5" />
-              </Button>
+              <LikeButton
+                songId={selectedSong.id as string}
+                song={selectedSong}
+                variant="outline"
+                className="rounded-full"
+              />
             </div>
             
-            {isPlaying && currentSong && currentSong.id === selectedSong.id && (
-              <div className="w-full mb-6">
-                <div className="w-full bg-zinc-700 h-1 rounded-full mb-2">
-                  <div 
-                    className="bg-green-500 h-full rounded-full" 
-                    style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-                  ></div>
+            <div className="grid grid-cols-1 gap-4 w-full">
+              {selectedSong.year && (
+                <div className="flex justify-between items-center border-b border-zinc-700 pb-2">
+                  <p className="text-zinc-400">Year</p>
+                  <p className="font-medium">{selectedSong.year}</p>
                 </div>
-                <div className="flex justify-between text-xs text-zinc-400">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
+              )}
+              
+              {selectedSong.album && (
+                <div className="flex justify-between items-center border-b border-zinc-700 pb-2">
+                  <p className="text-zinc-400">Album</p>
+                  <p className="font-medium truncate max-w-[200px]">{selectedSong.album}</p>
                 </div>
+              )}
+              
+              <div className="flex justify-end space-x-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="rounded-full"
+                  onClick={(e) => handleShare(e)}
+                >
+                  <Share2 className="size-4 mr-2" />
+                  Share
+                </Button>
+                
+                {selectedSong.url && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="rounded-full"
+                    onClick={() => window.open(selectedSong.url, '_blank')}
+                  >
+                    <Download className="size-4 mr-2" />
+                    Source
+                  </Button>
+                )}
               </div>
-            )}
-            
-            <Button 
-              size="lg" 
-              className="w-full bg-green-500 hover:bg-green-600 text-lg font-semibold rounded-full"
-              onClick={() => playSong(selectedSong)}
-            >
-              {isSongPlaying(selectedSong) ? 'Pause' : 'Play'}
-            </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

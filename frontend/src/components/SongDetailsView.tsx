@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { Button } from './ui/button';
-import { ChevronDown, Heart, MoreHorizontal, Share2, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, ListMusic } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, Share2, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, ListMusic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Slider } from './ui/slider';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { toast } from 'sonner';
+import { LikeButton } from './LikeButton';
 
 interface SongDetailsViewProps {
   isOpen: boolean;
@@ -13,10 +14,10 @@ interface SongDetailsViewProps {
 }
 
 const formatTime = (seconds: number) => {
-  if (isNaN(seconds)) return "0:00";
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  if (!seconds) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 };
 
 const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
@@ -100,12 +101,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     }
   };
 
-  const handleLikeToggle = () => {
-    if (currentSong) {
-      toggleLikeSong(currentSong);
-    }
-  };
-
   const handleShare = () => {
     if (!currentSong) return;
     
@@ -185,20 +180,14 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             <h1 className="text-2xl font-bold truncate text-white">{currentSong.title}</h1>
             <p className="text-sm text-zinc-300 mt-1">{currentSong.artist}</p>
           </div>
-          <Button
-            variant="ghost"
+          
+          <LikeButton
+            songId={songId}
+            song={currentSong}
+            className="hover:bg-white/10"
             size="icon"
-            className={cn(
-              'text-white hover:bg-white/10',
-              isLiked && 'text-green-500'
-            )}
-            onClick={handleLikeToggle}
-          >
-            <Heart
-              className="h-6 w-6"
-              fill={isLiked ? 'currentColor' : 'none'}
-            />
-          </Button>
+            fillColor="text-green-500"
+          />
         </div>
 
         {/* Progress Bar */}

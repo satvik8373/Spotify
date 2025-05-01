@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Heart, Music, Play, Pause, AlertCircle } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Heart, Music, Play, Pause, AlertCircle, Clock, MoreHorizontal, ChevronLeft } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { loadLikedSongs, removeLikedSong, syncWithServer } from '@/services/likedSongsService';
@@ -7,6 +7,15 @@ import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Song } from '@/types';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { TouchRipple } from '@/components/ui/touch-ripple';
+import { useNavigate } from 'react-router-dom';
 
 // Convert liked song format to player song format
 const adaptToPlayerSong = (likedSong: any): Song => {
@@ -23,11 +32,25 @@ const adaptToPlayerSong = (likedSong: any): Song => {
   };
 };
 
+// Format time
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+};
+
 const LikedSongsPage = () => {
   const [likedSongs, setLikedSongs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [syncedWithServer, setSyncedWithServer] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [headerOpacity, setHeaderOpacity] = useState(0);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  
   const { currentSong, isPlaying, playAlbum, togglePlay } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
 
@@ -108,13 +131,6 @@ const LikedSongsPage = () => {
     }
   };
 
-  // Format time
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
   // Play all liked songs
   const playAllSongs = () => {
     if (likedSongs.length > 0) {
@@ -143,153 +159,411 @@ const LikedSongsPage = () => {
   const unlikeSong = (id: string) => {
     removeLikedSong(id);
     setLikedSongs(prev => prev.filter(song => song.id !== id));
+    toast.success('Removed from Liked Songs');
   };
 
-  return (
-    <main className="rounded-md overflow-hidden h-full bg-gradient-to-b from-indigo-900 to-zinc-900">
-      <ScrollArea className="h-[calc(100vh-180px)]">
-        <div className="p-4 sm:p-6">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row gap-6 items-center md:items-end mb-8">
-            <div className="w-48 h-48 md:w-56 md:h-56 flex-shrink-0 bg-gradient-to-br from-indigo-600 to-blue-400 rounded-lg shadow-xl flex items-center justify-center">
-              <Heart className="w-24 h-24 text-white" />
-            </div>
-            
-            <div className="text-center md:text-left">
-              <p className="text-sm uppercase font-medium mb-1">Playlist</p>
-              <h1 className="text-4xl md:text-6xl font-bold mb-2">Liked Songs</h1>
-              <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
-                <p className="text-zinc-400">
-                  {isLoading 
-                    ? 'Loading songs...' 
-                    : `${likedSongs.length} songs${isAuthenticated && syncedWithServer && !syncError ? ' (synced)' : ''}`
-                  }
-                </p>
-                
-                {syncError && (
-                  <div className="flex items-center text-amber-400 text-sm">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    <span>{syncError}</span>
-                  </div>
-                )}
-                
-                {isAuthenticated && syncError && (
-                  <Button 
-                    onClick={handleManualSync}
-                    size="sm" 
-                    variant="outline"
-                    className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                    disabled={isLoading}
-                  >
-                    Retry Sync
-                  </Button>
-                )}
-              </div>
-              
-              {likedSongs.length > 0 && (
-                <Button 
-                  onClick={playAllSongs}
-                  className="bg-green-500 hover:bg-green-600 rounded-full px-8"
-                >
-                  <Play className="h-5 w-5 mr-2" />
-                  Play
-                </Button>
-              )}
+  // Handle scroll events to update header opacity
+  const handleScroll = useCallback(() => {
+    if (scrollRef.current) {
+      const scrollPosition = scrollRef.current.scrollTop;
+      const opacity = Math.min(scrollPosition / 300, 1);
+      setHeaderOpacity(opacity);
+    }
+  }, []);
+
+  // Add touch handlers for pull-to-refresh
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (scrollRef.current?.scrollTop === 0) {
+      setTouchStartY(e.touches[0].clientY);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY !== null && scrollRef.current?.scrollTop === 0) {
+      const touchDiff = e.touches[0].clientY - touchStartY;
+      if (touchDiff > 70 && !refreshing) {
+        setRefreshing(true);
+        loadAndSetLikedSongs().then(() => {
+          setTimeout(() => setRefreshing(false), 1000);
+        });
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStartY(null);
+  };
+
+  // Check for mobile viewport
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Empty state component when no liked songs
+  const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center py-12 px-4 text-center h-[50vh]">
+      <div className="w-24 h-24 bg-gradient-to-br from-indigo-600 to-blue-400 rounded-full flex items-center justify-center mb-6">
+        <Heart className="w-12 h-12 text-white" />
+      </div>
+      <h2 className="text-2xl font-bold mb-2">Songs you like will appear here</h2>
+      <p className="text-zinc-400 max-w-md mb-6">
+        Save songs by tapping the heart icon.
+      </p>
+      <Button 
+        variant="outline" 
+        className="bg-white/10 text-white hover:bg-white/20 border-0"
+        onClick={() => window.location.href = '/search'}
+      >
+        Find songs
+      </Button>
+    </div>
+  );
+
+  // Skeleton loader for songs
+  const SkeletonLoader = () => (
+    <div className="space-y-2 animate-pulse pb-8">
+      {[...Array(10)].map((_, i) => (
+        <div key={i} className="grid grid-cols-[16px_1fr_auto] md:grid-cols-[16px_4fr_2fr_1fr_auto] gap-4 p-2 hover:bg-white/5 group relative">
+          <div className="w-4 h-4 bg-zinc-800 rounded-sm mx-auto self-center"></div>
+          <div className="flex items-center min-w-0">
+            <div className="w-10 h-10 bg-zinc-800 rounded mr-3"></div>
+            <div className="flex-1 min-w-0 space-y-1">
+              <div className="h-4 bg-zinc-800 rounded w-36"></div>
+              <div className="h-3 bg-zinc-800/70 rounded w-24"></div>
             </div>
           </div>
+          <div className="hidden md:block">
+            <div className="h-4 bg-zinc-800 rounded w-24"></div>
+          </div>
+          <div className="hidden md:flex justify-end">
+            <div className="h-4 bg-zinc-800 rounded w-10"></div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <div className="h-8 w-8 rounded-full bg-zinc-800/40"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <main className="relative h-full overflow-hidden bg-gradient-to-b from-indigo-900/80 to-black">
+      {/* Sticky header with dynamic background */}
+      <div
+        className="absolute top-0 left-0 right-0 z-10 h-16 transition-colors duration-300"
+        style={{
+          backgroundColor: `rgba(76, 29, 149, ${headerOpacity})`,
+          borderBottom: headerOpacity > 0.8 ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'
+        }}
+      >
+        <div className="flex items-center h-full px-4 sm:px-6 justify-between">
+          {isMobile && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-white mr-2"
+              onClick={() => navigate(-1)}
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+          )}
           
-          {/* Song list */}
-          {likedSongs.length > 0 ? (
-            <div className="space-y-2">
-              {likedSongs.map((song, index) => (
-                <div 
-                  key={song.id}
-                  className="flex items-center gap-4 p-2 hover:bg-white/5 rounded-md group relative"
-                >
-                  <div className="w-10 text-center text-zinc-400 group-hover:hidden">
-                    {index + 1}
-                  </div>
-                  <div className="w-10 hidden group-hover:flex items-center justify-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-white"
-                      onClick={() => playSong(song, index)}
-                    >
-                      {isSongPlaying(song) ? (
-                        <Pause className="h-5 w-5" />
-                      ) : (
-                        <Play className="h-5 w-5 ml-0.5" />
-                      )}
-                    </Button>
-                  </div>
+          <h1 
+            className={cn(
+              "font-bold transition-all",
+              headerOpacity > 0.7 
+                ? "text-xl opacity-100" 
+                : "text-sm opacity-0"
+            )}
+          >
+            Liked Songs
+          </h1>
+          
+          {likedSongs.length > 0 && (
+            <Button 
+              onClick={playAllSongs}
+              className={cn(
+                "bg-green-500 hover:bg-green-600 rounded-full w-10 h-10 p-0 flex-shrink-0 shadow-lg transition-opacity",
+                headerOpacity > 0.7 ? "opacity-100" : "opacity-0"
+              )}
+              disabled={likedSongs.length === 0}
+            >
+              <Play className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Pull to refresh indicator */}
+      {refreshing && (
+        <div className="absolute top-0 left-0 right-0 z-20 flex justify-center items-center py-2 bg-indigo-900/80 text-white text-sm">
+          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+          Refreshing...
+        </div>
+      )}
+
+      {/* Scrollable content */}
+      <ScrollArea 
+        className="h-[calc(100vh-5rem)] pb-20" 
+        ref={scrollRef}
+        onScroll={handleScroll}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className={cn("pt-4", isMobile ? "px-0" : "px-4 sm:px-6")}>
+          {/* Header with gradient background */}
+          <div className={cn(
+            "relative z-0 bg-gradient-to-b from-indigo-800 to-black py-8 mb-6",
+            isMobile ? "pt-14 px-4" : "rounded-t-lg px-4 sm:px-6"
+          )}>
+            <div className={cn(
+              "flex flex-col mb-4 gap-6",
+              isMobile ? "items-center" : "sm:flex-row sm:items-end"
+            )}>
+              <div className={cn(
+                "flex-shrink-0 bg-gradient-to-br from-indigo-600 to-blue-400 rounded-lg shadow-xl flex items-center justify-center",
+                isMobile ? "w-[200px] h-[200px]" : "w-48 h-48"
+              )}>
+                <Heart className={cn(
+                  "text-white",
+                  isMobile ? "w-32 h-32" : "w-24 h-24"
+                )} />
+              </div>
+              
+              <div className={cn(
+                "flex-1 min-w-0",
+                isMobile ? "text-center" : "text-center sm:text-left"
+              )}>
+                <p className="text-xs uppercase font-medium mb-2 text-white/70">Playlist</p>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 text-white">Liked Songs</h1>
+                <div className={cn(
+                  "flex mb-4 gap-2",
+                  isMobile ? "flex-col items-center" : "flex-col sm:flex-row sm:items-center"
+                )}>
+                  <p className="text-white/70">
+                    {isLoading 
+                      ? 'Loading songs...' 
+                      : `${likedSongs.length} songs${isAuthenticated && syncedWithServer && !syncError ? ' · Synced' : ''}`
+                    }
+                  </p>
                   
-                  <div className="w-10 h-10 flex-shrink-0 bg-zinc-800 rounded overflow-hidden">
-                    {song.imageUrl ? (
-                      <img 
-                        src={song.imageUrl} 
-                        alt={song.title} 
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          // Replace broken image with fallback
-                          e.currentTarget.src = '';
-                          e.currentTarget.style.background = 'linear-gradient(135deg, #8a2387, #e94057, #f27121)';
-                          e.currentTarget.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center">
-                            <Music class="h-5 w-5 text-zinc-400" />
-                          </div>`;
-                        }}
-                      />
+                  {syncError && (
+                    <div className={cn(
+                      "flex items-center text-amber-400 text-sm",
+                      isMobile ? "justify-center" : ""
+                    )}>
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      <span className="truncate">{syncError}</span>
+                    </div>
+                  )}
+                  
+                  {isAuthenticated && syncError && (
+                    <div className={isMobile ? "flex justify-center" : ""}>
+                      <TouchRipple>
+                        <Button 
+                          onClick={handleManualSync}
+                          size="sm" 
+                          variant="outline"
+                          className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                          disabled={isLoading}
+                        >
+                          Retry Sync
+                        </Button>
+                      </TouchRipple>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {likedSongs.length > 0 && (
+              <div className={isMobile ? "flex justify-center mt-6" : "mt-6"}>
+                <TouchRipple color="rgba(255, 255, 255, 0.2)">
+                  <Button 
+                    onClick={playAllSongs}
+                    className="bg-green-500 hover:bg-green-600 rounded-full px-8 h-12 shadow-lg"
+                  >
+                    <Play className="h-5 w-5 mr-2" />
+                    Play
+                  </Button>
+                </TouchRipple>
+              </div>
+            )}
+          </div>
+          
+          {/* Table Header - show only on desktop */}
+          {likedSongs.length > 0 && !isLoading && !isMobile && (
+            <div className="grid grid-cols-[16px_1fr_auto] md:grid-cols-[16px_4fr_2fr_1fr_auto] gap-4 py-2 px-4 text-sm font-medium text-zinc-400 border-b border-zinc-800">
+              <div className="text-center">#</div>
+              <div>TITLE</div>
+              <div className="hidden md:block">ALBUM</div>
+              <div className="hidden md:block text-right">
+                <Clock className="h-4 w-4 inline" />
+              </div>
+              <div></div>
+            </div>
+          )}
+          
+          {/* Song list or empty state */}
+          {isLoading ? (
+            <SkeletonLoader />
+          ) : likedSongs.length > 0 ? (
+            <div className="pb-20">
+              {likedSongs.map((song, index) => (
+                <TouchRipple 
+                  key={song.id}
+                  color="rgba(255, 255, 255, 0.05)"
+                  className="rounded-md"
+                >
+                  <div className={cn(
+                    "group relative hover:bg-white/5 rounded-md",
+                    isMobile 
+                      ? "grid grid-cols-[auto_1fr_auto] gap-3 p-3 px-4" 
+                      : "grid grid-cols-[16px_1fr_auto] md:grid-cols-[16px_4fr_2fr_1fr_auto] gap-4 p-2 px-4"
+                  )}>
+                    {/* Index/Play column - hide on mobile */}
+                    {!isMobile ? (
+                      <div className="flex items-center justify-center">
+                        <span className="group-hover:hidden text-sm text-zinc-400">
+                          {index + 1}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="hidden group-hover:flex h-8 w-8 text-white"
+                          onClick={() => playSong(song, index)}
+                        >
+                          {isSongPlaying(song) ? (
+                            <Pause className="h-4 w-4" />
+                          ) : (
+                            <Play className="h-4 w-4 ml-0.5" />
+                          )}
+                        </Button>
+                      </div>
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center">
-                        <Music className="h-5 w-5 text-zinc-100" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 text-white flex-shrink-0"
+                        onClick={() => playSong(song, index)}
+                      >
+                        {isSongPlaying(song) ? (
+                          <Pause className="h-5 w-5" />
+                        ) : (
+                          <Play className="h-5 w-5 ml-0.5" />
+                        )}
+                      </Button>
+                    )}
+                    
+                    {/* Title and artist column */}
+                    <div className="flex items-center min-w-0">
+                      <div className={cn(
+                        "flex-shrink-0 bg-zinc-800 rounded overflow-hidden mr-3",
+                        isMobile ? "w-12 h-12" : "w-10 h-10"
+                      )}>
+                        {song.imageUrl ? (
+                          <img 
+                            src={song.imageUrl} 
+                            alt={song.title} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = '';
+                              e.currentTarget.style.background = 'linear-gradient(135deg, #8a2387, #e94057, #f27121)';
+                              e.currentTarget.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center">
+                                <Music class="h-5 w-5 text-zinc-400" />
+                              </div>`;
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center">
+                            <Music className="h-5 w-5 text-zinc-100" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="min-w-0 pr-2">
+                        <p className={`font-medium truncate ${isSongPlaying(song) ? 'text-green-500' : 'text-white'}`}>
+                          {song.title}
+                        </p>
+                        <p className="text-sm text-zinc-400 truncate">{song.artist}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Album column - hidden on mobile */}
+                    {!isMobile && (
+                      <div className="hidden md:block text-sm text-zinc-400 truncate self-center">
+                        {song.album || '-'}
                       </div>
                     )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <p className={`font-medium truncate ${isSongPlaying(song) ? 'text-green-500' : 'text-white'}`}>
-                      {song.title}
-                    </p>
-                    <p className="text-sm text-zinc-400 truncate">
-                      {song.artist}
-                    </p>
-                  </div>
-                  
-                  <div className="text-zinc-400 text-sm hidden md:block">
-                    {song.album}
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => unlikeSong(song.id)}
-                    >
-                      <Heart className="h-5 w-5 fill-green-500" />
-                    </Button>
                     
-                    <span className="text-zinc-400 text-sm min-w-[40px] text-right">
-                      {formatTime(song.duration || 0)}
-                    </span>
+                    {/* Duration column - hidden on mobile */}
+                    {!isMobile && (
+                      <div className="hidden md:flex text-sm text-zinc-400 justify-end self-center">
+                        {song.duration ? formatTime(song.duration) : '-:--'}
+                      </div>
+                    )}
+                    
+                    {/* Actions column */}
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "text-red-500 hover:text-red-400",
+                          isMobile ? "h-10 w-10" : "h-8 w-8"
+                        )}
+                        onClick={() => unlikeSong(song.id)}
+                      >
+                        <Heart className={cn(
+                          "fill-current",
+                          isMobile ? "h-5 w-5" : "h-4 w-4"
+                        )} />
+                      </Button>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "text-zinc-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity",
+                              isMobile ? "h-10 w-10" : "h-8 w-8",
+                              isMobile && "!opacity-100"
+                            )}
+                          >
+                            <MoreHorizontal className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => unlikeSong(song.id)}>
+                            Remove from Liked Songs
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            if (navigator.clipboard) {
+                              navigator.clipboard.writeText(`${song.title} by ${song.artist}`);
+                              toast.success('Copied to clipboard');
+                            }
+                          }}>
+                            Copy song info
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => playSong(song, index)}>
+                            {isSongPlaying(song) ? 'Pause' : 'Play'}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
-                </div>
+                </TouchRipple>
               ))}
             </div>
           ) : (
-            <div className="bg-zinc-800/50 rounded-lg p-8 text-center">
-              <Heart className="h-12 w-12 mx-auto mb-4 text-zinc-500" />
-              <h2 className="text-xl font-semibold mb-2">Songs you like will appear here</h2>
-              <p className="text-zinc-400 mb-6">
-                Save songs by tapping the heart icon
-              </p>
-              <Button 
-                onClick={() => window.location.href = '/'}
-                className="bg-white text-black hover:bg-zinc-200"
-              >
-                Find Songs
-              </Button>
-            </div>
+            <EmptyState />
           )}
         </div>
       </ScrollArea>

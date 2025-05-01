@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { Heart, SkipBack, SkipForward, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { SkipBack, SkipForward, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { usePlayerStore } from '@/stores/usePlayerStore';
-import { isSongLiked, addLikedSong, removeLikedSong } from '@/services/likedSongsService';
+import { LikeButton } from '@/components/LikeButton';
 
 const PlaybackControls = () => {
   // Get player state and methods
@@ -18,7 +18,6 @@ const PlaybackControls = () => {
   } = usePlayerStore();
   
   // Local state
-  const [isLiked, setIsLiked] = useState(false);
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -67,41 +66,6 @@ const PlaybackControls = () => {
       }
     }
   };
-  
-  useEffect(() => {
-    if (currentSong) {
-      setIsLiked(isSongLiked(currentSong._id));
-      
-      const handleLikedSongsUpdated = () => {
-        setIsLiked(isSongLiked(currentSong._id));
-      };
-      
-      document.addEventListener('likedSongsUpdated', handleLikedSongsUpdated);
-      return () => {
-        document.removeEventListener('likedSongsUpdated', handleLikedSongsUpdated);
-      };
-    }
-  }, [currentSong]);
-
-  const toggleLike = () => {
-    if (!currentSong) return;
-    
-    if (isLiked) {
-      removeLikedSong(currentSong._id);
-    } else {
-      addLikedSong({
-        id: currentSong._id,
-        title: currentSong.title,
-        artist: currentSong.artist,
-        imageUrl: currentSong.imageUrl || '', // Provide fallback for empty URLs
-        audioUrl: currentSong.audioUrl,
-        duration: currentSong.duration || 0,
-        album: currentSong.albumId || '' // Using albumId instead of album
-      });
-    }
-    
-    setIsLiked(!isLiked);
-  };
 
   return (
     <div className="px-2 py-2 bg-zinc-900 border-t border-zinc-800 flex flex-col">
@@ -120,13 +84,16 @@ const PlaybackControls = () => {
       </div>
       
       <div className="flex items-center justify-between">
-        <button
-          onClick={toggleLike}
-          className={`p-2 rounded-full ${isLiked ? 'text-green-500' : 'text-zinc-400 hover:text-white'}`}
-          aria-label={isLiked ? "Unlike song" : "Like song"}
-        >
-          <Heart className={isLiked ? "fill-green-500" : ""} size={20} />
-        </button>
+        {currentSong && (
+          <LikeButton 
+            songId={currentSong._id} 
+            song={currentSong}
+            className="p-2 rounded-full" 
+            fillColor="text-green-500"
+            size="icon"
+            showToasts={false}
+          />
+        )}
         
         <div className="flex items-center gap-4">
           <button
