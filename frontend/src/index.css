@@ -81,6 +81,47 @@
 	}
 }
 
+/* Error page styling */
+.error-page {
+	@apply flex flex-col items-center justify-center h-full bg-background text-foreground p-6 space-y-4;
+}
+.error-page h1 {
+	@apply text-2xl font-bold text-destructive mb-2;
+}
+.error-page p {
+	@apply text-center max-w-md mb-2;
+}
+.error-page .error-details {
+	@apply text-sm bg-muted p-3 rounded-md w-full max-w-lg overflow-auto text-muted-foreground;
+}
+.error-page button {
+	@apply bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md mt-4 
+	transition-colors duration-200;
+}
+
+/* PWA install prompt styling */
+.pwa-install-prompt {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 100;
+	padding-bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
+	animation: slide-up 0.3s ease-out forwards;
+	box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes slide-up {
+	from {
+		transform: translateY(100%);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
 /* Utility classes */
 .pb-safe {
 	padding-bottom: env(safe-area-inset-bottom, 0.5rem);
@@ -270,13 +311,4 @@ button, .button, a.button {
 .scroll-container {
 	-webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 	scroll-behavior: smooth;
-}
-
-/* Add a mobile app install prompt banner */
-.pwa-install-prompt {
-	position: fixed;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	z-index: 100;
 }

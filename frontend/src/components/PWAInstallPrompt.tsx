@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -11,15 +11,24 @@ interface CustomNavigator extends Navigator {
   standalone?: boolean;
 }
 
+// Extend window with proper typing
+declare global {
+  interface Window {
+    MSStream?: any;
+  }
+}
+
 const PWAInstallPrompt = () => {
   const [showPrompt, setShowPrompt] = useState(false);
+  const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if iOS device - using proper TypeScript approach
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
-                  !(window as any).MSStream; // Use type assertion for legacy property
+                  !window.MSStream; // Use global window definition
     
     const nav = window.navigator as CustomNavigator;
     const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
@@ -53,6 +62,17 @@ const PWAInstallPrompt = () => {
     
     // Add event listener
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    // Listen for update messages from service worker
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        const data = event.data;
+        if (data && data.type === 'NEW_VERSION') {
+          setAppVersion(data.version);
+          setShowUpdatePrompt(true);
+        }
+      });
+    }
     
     // Show iOS prompt based on conditions
     if (isIOS && !isInStandaloneMode) {
@@ -102,11 +122,68 @@ const PWAInstallPrompt = () => {
     // Save dismissal time to not show again for 7 days
     localStorage.setItem('pwa-prompt-dismissed', new Date().getTime().toString());
   };
+
+  const updateApp = () => {
+    // Clear cache using caches API if available
+    if ('caches' in window) {
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            return caches.delete(cacheName);
+          })
+        );
+      }).then(() => {
+        // Use document.location for reloading the page
+        document.location.reload();
+      });
+    } else {
+      // Force reload from server
+      document.location.reload();
+    }
+    setShowUpdatePrompt(false);
+  };
+
+  const dismissUpdate = () => {
+    setShowUpdatePrompt(false);
+  };
   
-  if (!showPrompt) return null;
+  if (!showPrompt && !showUpdatePrompt) return null;
   
+  // Show update notification if available
+  if (showUpdatePrompt) {
+    return (
+      <div className="pwa-install-prompt bg-green-800/90 text-white shadow-lg flex items-center justify-between p-3 px-4">
+        <div>
+          <p className="text-sm md:text-base font-medium">
+            New version available! (v{appVersion})
+          </p>
+          <p className="text-xs text-green-100/80">
+            Update now for new features and improvements
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={updateApp}
+            className="bg-white text-green-900 text-sm px-3 py-1 rounded-full flex items-center gap-1"
+          >
+            <RefreshCw size={14} />
+            <span>Update</span>
+          </button>
+          <button 
+            onClick={dismissUpdate}
+            className="rounded-full p-1 bg-black/20"
+            aria-label="Dismiss"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show install prompt
   return (
-    <div className={`pwa-install-prompt ${showPrompt ? 'show' : ''}`}>
+    <div className="pwa-install-prompt bg-zinc-800/90 text-white shadow-lg flex items-center justify-between p-3 px-4">
       <div>
         <p className="text-sm md:text-base">
           {isIOSDevice 
@@ -116,7 +193,10 @@ const PWAInstallPrompt = () => {
       </div>
       <div className="flex items-center gap-2">
         {!isIOSDevice && (
-          <button onClick={installPWA} className="text-sm">
+          <button 
+            onClick={installPWA} 
+            className="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded-full"
+          >
             Install
           </button>
         )}

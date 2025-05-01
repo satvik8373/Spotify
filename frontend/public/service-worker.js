@@ -1,7 +1,10 @@
 // Service Worker for Spotify x Mavrix
-const CACHE_NAME = 'spotify-mavrix-v1';
+const CACHE_VERSION = '1.2.3'; // Increment this version whenever you make changes
+const CACHE_NAME = `spotify-mavrix-v${CACHE_VERSION}`;
+const APP_SHELL_CACHE = 'app-shell-v' + CACHE_VERSION;
+const DYNAMIC_CACHE = 'dynamic-v' + CACHE_VERSION;
 
-// Resources to cache
+// Resources to cache immediately 
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -19,32 +22,71 @@ const EXCLUDE_FROM_CACHE = [
   'chrome-extension://'
 ];
 
+// Force update check interval (6 hours)
+const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000;
+
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
+  console.log('[Service Worker] Installing new version:', CACHE_VERSION);
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(APP_SHELL_CACHE)
       .then((cache) => {
-        console.log('Opened cache');
+        console.log('[Service Worker] Caching app shell');
         return cache.addAll(STATIC_ASSETS);
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        // Force activation - don't wait for old service worker to stop controlling clients
+        console.log('[Service Worker] Skipping waiting for immediate activation');
+        return self.skipWaiting();
+      })
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
+  console.log('[Service Worker] Activating new version:', CACHE_VERSION);
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+          // Delete any old caches that don't match our current version
+          if (
+            !cacheName.includes(CACHE_VERSION) && 
+            (cacheName.startsWith('spotify-mavrix-') || 
+             cacheName.startsWith('app-shell-') || 
+             cacheName.startsWith('dynamic-'))
+          ) {
+            console.log('[Service Worker] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
-        })
+        }).filter(Boolean)
       );
-    }).then(() => self.clients.claim())
+    })
+    .then(() => {
+      // Take control of all clients immediately
+      console.log('[Service Worker] Claiming all clients');
+      return self.clients.claim();
+    })
+    .then(() => {
+      // Force clients to reload to get the new version
+      return self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'NEW_VERSION',
+            version: CACHE_VERSION
+          });
+        });
+      });
+    })
   );
+});
+
+// Periodic update check
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'CHECK_UPDATE') {
+    console.log('[Service Worker] Update check requested by client');
+    checkForUpdates();
+  }
 });
 
 // Fetch event - serve from cache or network
@@ -54,13 +96,42 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For navigation requests (HTML pages)
+  // For navigation requests (HTML pages) - always try network first then fallback to cache
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
+        .then(response => {
+          // Clone the response for caching
+          const responseToCache = response.clone();
+          caches.open(APP_SHELL_CACHE).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+          return response;
+        })
         .catch(() => {
           // If offline, serve the cached index.html
-          return caches.match('/');
+          console.log('[Service Worker] Falling back to cached page for:', event.request.url);
+          return caches.match('/index.html');
+        })
+    );
+    return;
+  }
+
+  // For JavaScript and CSS files - network first with cache fallback
+  if (event.request.url.match(/\.(js|css)$/)) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // Cache the fresh response
+          const responseToCache = response.clone();
+          caches.open(DYNAMIC_CACHE).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+          return response;
+        })
+        .catch(() => {
+          // Fallback to cache if network fails
+          return caches.match(event.request);
         })
     );
     return;
@@ -87,7 +158,7 @@ self.addEventListener('fetch', (event) => {
             const responseToCache = response.clone();
 
             // Cache the fetched resource
-            caches.open(CACHE_NAME)
+            caches.open(DYNAMIC_CACHE)
               .then((cache) => {
                 cache.put(event.request, responseToCache);
               });
@@ -99,9 +170,28 @@ self.addEventListener('fetch', (event) => {
             if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg|webp)$/)) {
               return caches.match('/pwa-icons/spotify-mavrix-icon.svg');
             }
+            return null;
           });
       })
   );
+});
+
+// Check for updates periodically
+function checkForUpdates() {
+  console.log('[Service Worker] Checking for updates...');
+  
+  // Unregister and re-register to force update
+  self.registration.update().then(() => {
+    console.log('[Service Worker] Update check complete');
+  });
+}
+
+// Set up periodic update checks
+self.addEventListener('activate', (event) => {
+  // Set up periodic update checks
+  setInterval(() => {
+    checkForUpdates();
+  }, UPDATE_CHECK_INTERVAL);
 });
 
 // Background sync for offline actions
