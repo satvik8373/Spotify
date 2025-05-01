@@ -227,7 +227,10 @@ export const PlaybackControls = () => {
 								onClick={togglePlay}
 								disabled={!currentSong}
 							>
-								{isPlaying ? <Pause className='h-4 w-4' /> : <Play className='h-4 w-4 ml-0.5' />}
+								{isPlaying ? 
+									<Pause className='h-4 w-4' /> : 
+									<Play className='h-4 w-4 ml-[2px]' />
+								}
 							</Button>
 							
 							<Button
@@ -355,7 +358,7 @@ export const PlaybackControls = () => {
 							{isPlaying ? (
 								<Pause className="h-3.5 w-3.5" />
 							) : (
-								<Play className="h-3.5 w-3.5 ml-0.5" />
+								<Play className="h-3.5 w-3.5 ml-[2px]" />
 							)}
 						</Button>
 

@@ -23,20 +23,30 @@ const EXCLUDE_FROM_CACHE = [
 ];
 
 // Force update check interval (6 hours)
-const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000;
+const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // Changed to 24 hours to reduce checks
+
+// Debug mode - set to false to disable verbose logging
+const DEBUG_MODE = false;
+
+// Logger function that only logs in debug mode
+const logDebug = (message) => {
+  if (DEBUG_MODE) {
+    console.log(message);
+  }
+};
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing new version:', CACHE_VERSION);
+  logDebug('[Service Worker] Installing new version: ' + CACHE_VERSION);
   event.waitUntil(
     caches.open(APP_SHELL_CACHE)
       .then((cache) => {
-        console.log('[Service Worker] Caching app shell');
+        logDebug('[Service Worker] Caching app shell');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
         // Force activation - don't wait for old service worker to stop controlling clients
-        console.log('[Service Worker] Skipping waiting for immediate activation');
+        logDebug('[Service Worker] Skipping waiting for immediate activation');
         return self.skipWaiting();
       })
   );
@@ -44,7 +54,7 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating new version:', CACHE_VERSION);
+  logDebug('[Service Worker] Activating new version: ' + CACHE_VERSION);
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -56,7 +66,7 @@ self.addEventListener('activate', (event) => {
              cacheName.startsWith('app-shell-') || 
              cacheName.startsWith('dynamic-'))
           ) {
-            console.log('[Service Worker] Deleting old cache:', cacheName);
+            logDebug('[Service Worker] Deleting old cache: ' + cacheName);
             return caches.delete(cacheName);
           }
         }).filter(Boolean)
@@ -64,7 +74,7 @@ self.addEventListener('activate', (event) => {
     })
     .then(() => {
       // Take control of all clients immediately
-      console.log('[Service Worker] Claiming all clients');
+      logDebug('[Service Worker] Claiming all clients');
       return self.clients.claim();
     })
     .then(() => {
@@ -84,7 +94,7 @@ self.addEventListener('activate', (event) => {
 // Periodic update check
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'CHECK_UPDATE') {
-    console.log('[Service Worker] Update check requested by client');
+    // Removed console log to prevent spam
     checkForUpdates();
   }
 });
@@ -110,7 +120,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           // If offline, serve the cached index.html
-          console.log('[Service Worker] Falling back to cached page for:', event.request.url);
+          logDebug('[Service Worker] Falling back to cached page for: ' + event.request.url);
           return caches.match('/index.html');
         })
     );
@@ -178,11 +188,11 @@ self.addEventListener('fetch', (event) => {
 
 // Check for updates periodically
 function checkForUpdates() {
-  console.log('[Service Worker] Checking for updates...');
+  // Removed console log to prevent spam
   
   // Unregister and re-register to force update
   self.registration.update().then(() => {
-    console.log('[Service Worker] Update check complete');
+    // Removed console log to prevent spam
   });
 }
 
