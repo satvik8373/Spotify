@@ -5,7 +5,7 @@
 		<link rel="icon" type="image/svg+xml" href="/pwa-icons/spotify-mavrix-icon.svg" />
 		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
 		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
 		<meta name="description" content="Spotify x Mavrix - A better Spotify experience with real-time features" />
 		<meta name="theme-color" content="#1DB954" />
 		
@@ -33,20 +33,48 @@
 		<!-- Web app manifest for PWA support -->
 		<link rel="manifest" href="/manifest.json" />
 		
+		<!-- Preloading critical resources -->
+		<link rel="preconnect" href="https://res.cloudinary.com">
+		
+		<!-- DNS prefetch for external domains -->
+		<link rel="dns-prefetch" href="//res.cloudinary.com">
+		<link rel="dns-prefetch" href="//api.deezer.com">
+		
 		<title>Spotify x Mavrix</title>
 		
 		<!-- Spotify Web Playback SDK -->
-		<script src="https://sdk.scdn.co/spotify-player.js"></script>
+		<script src="https://sdk.scdn.co/spotify-player.js" defer></script>
 		<script>
 			window.onSpotifyWebPlaybackSDKReady = () => {
 				// The Spotify SDK is ready, this empty function just prevents the error
 				console.log("Spotify Web Playback SDK is ready");
 				window.SpotifyPlayerReady = true;
 			};
+			
+			// Disable pinch zoom for iOS 10+ using a combination of techniques
+			document.addEventListener('gesturestart', function(e) {
+				e.preventDefault();
+			});
+			
+			// Force disable zooming on iOS
+			document.addEventListener('touchmove', function(e) {
+				if (e.scale !== 1) { e.preventDefault(); }
+			}, { passive: false });
+			
+			// Detect if standalone mode and apply appropriate classes
+			if (window.navigator.standalone) {
+				document.documentElement.classList.add('standalone-mode');
+			}
 		</script>
 	</head>
 	<body>
 		<div id="root"></div>
 		<script type="module" src="/src/main.tsx"></script>
+		<noscript>
+			<div style="padding: 2rem; text-align: center; max-width: 40rem; margin: 0 auto;">
+				<h1>JavaScript Required</h1>
+				<p>This app requires JavaScript to run. Please enable JavaScript in your browser settings and reload the page.</p>
+			</div>
+		</noscript>
 	</body>
 </html>
