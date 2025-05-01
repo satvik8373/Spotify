@@ -9,6 +9,9 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import SongDetailsView from '@/components/SongDetailsView';
 
+// Add a cache for preloaded audio sources
+const audioSourceCache = new Map();
+
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
   if (!url) return false;
@@ -18,6 +21,35 @@ const isValidUrl = (url: string): boolean => {
     return true;
   } catch (e) {
     return false;
+  }
+};
+
+// Helper to preload the next song in the queue
+const preloadNextSong = (nextSong: any) => {
+  if (!nextSong || !nextSong.audioUrl || !isValidUrl(nextSong.audioUrl)) return;
+  
+  // Skip if already in cache
+  if (audioSourceCache.has(nextSong.audioUrl)) return;
+  
+  try {
+    const audio = new Audio();
+    audio.src = nextSong.audioUrl;
+    audio.preload = 'metadata';
+    
+    // Add to cache
+    audioSourceCache.set(nextSong.audioUrl, {
+      preloaded: true,
+      timestamp: Date.now()
+    });
+    
+    // Clean cache if it gets too big (keep only 5 most recent)
+    if (audioSourceCache.size > 5) {
+      const oldestKey = [...audioSourceCache.entries()]
+        .sort((a, b) => a[1].timestamp - b[1].timestamp)[0][0];
+      audioSourceCache.delete(oldestKey);
+    }
+  } catch (error) {
+    console.warn('Error preloading next song:', error);
   }
 };
 
@@ -225,43 +257,47 @@ const AudioPlayer = () => {
     return () => audio?.removeEventListener('ended', handleEnded);
   }, []);
 
-  // handle song changes
+  // Handle song change, set up preloading, and reload audio
   useEffect(() => {
-    if (!audioRef.current || !currentSong) return;
-
+    if (!audioRef.current || !currentSong || !currentSong.audioUrl) return;
+    
     const audio = audioRef.current;
     const songUrl = currentSong.audioUrl;
-
+    
     // Validate the URL
     if (!isValidUrl(songUrl)) {
       console.error('Invalid audio URL:', songUrl);
       toast.error('Cannot play this song: Invalid audio source');
       return;
     }
-
-    // check if this is actually a new song
+    
+    // Reset loading states
+    setIsLoading(true);
+    loadStarted.current = false;
+    
+    // Check if this is actually a new song
     const isSongChange = prevSongRef.current !== songUrl;
+    
     if (isSongChange) {
       console.log('Loading audio source:', songUrl);
-
+      
       try {
         // Indicate loading state to prevent play attempts during load
-        setIsLoading(true);
         isHandlingPlayback.current = true;
-
+        
         // Clear any existing timeout
         if (playTimeoutRef.current) {
           clearTimeout(playTimeoutRef.current);
         }
-
+        
         // Pause current playback before changing source
         audio.pause();
-
+        
         // Set up event listeners for this specific load sequence
         const handleCanPlay = () => {
           setIsLoading(false);
           prevSongRef.current = songUrl;
-
+          
           if (isPlaying) {
             // Wait a bit before playing to avoid interruption errors
             playTimeoutRef.current = setTimeout(() => {
@@ -280,14 +316,14 @@ const AudioPlayer = () => {
           } else {
             isHandlingPlayback.current = false;
           }
-
+          
           // Remove the one-time listener
           audio.removeEventListener('canplay', handleCanPlay);
         };
-
+        
         // Listen for the canplay event which indicates the audio is ready
         audio.addEventListener('canplay', handleCanPlay);
-
+        
         // Set the new source
         audio.src = songUrl;
         audio.load(); // Explicitly call load to begin fetching the new audio
@@ -298,7 +334,30 @@ const AudioPlayer = () => {
         isHandlingPlayback.current = false;
       }
     }
-  }, [currentSong, isPlaying, setIsPlaying]);
+    
+    // Keep track of previous song to detect changes
+    prevSongRef.current = currentSong.audioUrl;
+    
+    // Log for debugging lock screen controls
+    console.log('Song changed to:', currentSong.title, '- URL:', currentSong.audioUrl);
+    
+    // Preload the next song in queue for smoother transitions
+    if (queue && queue.length > 0) {
+      const currentIndex = queue.findIndex(song => {
+        // Handle both _id and id properties safely with type checking
+        const currentSongId = (currentSong as any)._id || (currentSong as any).id;
+        const queueSongId = (song as any)._id || (song as any).id;
+        return currentSongId === queueSongId;
+      });
+      
+      if (currentIndex !== -1 && currentIndex < queue.length - 1) {
+        // Preload next track in sequence
+        const nextSong = queue[currentIndex + 1];
+        console.log('Preloading next song:', nextSong.title);
+        preloadNextSong(nextSong);
+      }
+    }
+  }, [currentSong, isPlaying, setIsPlaying, queue]);
 
   // Handle audio errors
   useEffect(() => {
@@ -359,20 +418,44 @@ const AudioPlayer = () => {
     // Only proceed if we have a current song
     if (!currentSong) return;
 
+    // Track if metadata has been set to prevent flickering
+    let metadataHasBeenSet = false;
+
     try {
-      // Set metadata for lock screen display
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentSong.title || 'Unknown Title',
-        artist: currentSong.artist || 'Unknown Artist',
-        album: 'Music',  // Use a generic album name since Song doesn't have album title
-        artwork: [
-          {
-            src: currentSong.imageUrl || '',
-            sizes: '512x512',
-            type: 'image/jpeg',
+      // Create image cache to prevent flickering
+      const artworkUrl = currentSong.imageUrl || '';
+      const loadArtworkAndSetMetadata = async () => {
+        // Pre-cache the image before setting the metadata
+        if (artworkUrl) {
+          try {
+            // Attempt to preload the image
+            const response = await fetch(artworkUrl, { method: 'HEAD' });
+            if (!response.ok) throw new Error('Artwork not available');
+          } catch (err) {
+            console.warn('Could not preload artwork, using fallback', err);
           }
-        ]
-      });
+        }
+
+        // Only update metadata if component is still mounted and image has loaded
+        if (!metadataHasBeenSet) {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: currentSong.title || 'Unknown Title',
+            artist: currentSong.artist || 'Unknown Artist',
+            album: 'Music',  // Use a generic album name since Song doesn't have album title
+            artwork: [
+              {
+                src: artworkUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+                sizes: '512x512',
+                type: 'image/jpeg',
+              }
+            ]
+          });
+          metadataHasBeenSet = true;
+        }
+      };
+
+      // Start the image loading and metadata setting process
+      loadArtworkAndSetMetadata();
 
       // Set action handlers for media keys and lock screen controls
       navigator.mediaSession.setActionHandler('play', () => {
@@ -438,11 +521,18 @@ const AudioPlayer = () => {
     
     try {
       if ('setPositionState' in navigator.mediaSession) {
-        navigator.mediaSession.setPositionState({
-          duration: duration || 0,
-          position: currentTime || 0,
-          playbackRate: 1.0,
-        });
+        // Throttle position state updates to reduce flickering
+        const updatePositionState = () => {
+          navigator.mediaSession.setPositionState({
+            duration: duration || 0,
+            position: currentTime || 0,
+            playbackRate: 1.0,
+          });
+        };
+        
+        // Use requestAnimationFrame for smoother updates
+        const frameId = requestAnimationFrame(updatePositionState);
+        return () => cancelAnimationFrame(frameId);
       }
     } catch (error) {
       console.error('Error updating MediaSession position state:', error);
@@ -579,9 +669,21 @@ const AudioPlayer = () => {
   // Handle audio element errors
   const handleError = (e: any) => {
     console.error('AudioPlayer error:', e);
+    
+    // More detailed error logging
+    if (audioRef.current) {
+      const errorCode = audioRef.current.error ? audioRef.current.error.code : 'unknown';
+      const errorMessage = audioRef.current.error ? audioRef.current.error.message : 'Unknown error';
+      console.error(`Audio error details: Code ${errorCode}, Message: ${errorMessage}`);
+    }
+    
     // If the current song fails to load, try to play the next song
     if (currentSong) {
-      setTimeout(() => playNext(), 1000);
+      // Show toast notification
+      toast.error('Unable to play this track. Trying next song...');
+      
+      // Just move to the next song after a short delay
+      setTimeout(() => playNext(), 500);
     }
   };
 
