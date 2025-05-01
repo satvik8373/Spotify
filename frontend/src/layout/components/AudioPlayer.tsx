@@ -29,6 +29,11 @@ const formatTime = (seconds: number) => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
 
+// Check if MediaSession API is supported
+const isMediaSessionSupported = () => {
+  return 'mediaSession' in navigator;
+};
+
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const prevSongRef = useRef<string | null>(null);
@@ -73,6 +78,92 @@ const AudioPlayer = () => {
     };
   }, []);
 
+  // Update MediaSession metadata and action handlers
+  useEffect(() => {
+    // Only proceed if MediaSession API is supported and we have a current song
+    if (!isMediaSessionSupported() || !currentSong) {
+      return;
+    }
+
+    // Update metadata
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentSong.title || 'Unknown Title',
+      artist: currentSong.artist || 'Unknown Artist',
+      album: currentSong.album || '',
+      artwork: [
+        {
+          src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+          sizes: '512x512',
+          type: 'image/jpeg'
+        }
+      ]
+    });
+
+    // Set up media session action handlers
+    navigator.mediaSession.setActionHandler('play', () => {
+      setIsPlaying(true);
+    });
+
+    navigator.mediaSession.setActionHandler('pause', () => {
+      setIsPlaying(false);
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      playPrevious();
+    });
+
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      playNext();
+    });
+
+    // Seeking handlers (optional but useful)
+    try {
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (audioRef.current && details.seekTime !== undefined) {
+          audioRef.current.currentTime = details.seekTime;
+          setLocalCurrentTime(details.seekTime);
+          if (setCurrentTime) {
+            setCurrentTime(details.seekTime);
+          }
+        }
+      });
+    } catch (error) {
+      console.warn('Seek actions not supported', error);
+    }
+
+    // Position state (shows progress on lock screen for supported browsers)
+    try {
+      if ('setPositionState' in navigator.mediaSession) {
+        const updatePositionState = () => {
+          if (audioRef.current && !isNaN(audioRef.current.duration)) {
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration,
+              playbackRate: audioRef.current.playbackRate,
+              position: audioRef.current.currentTime
+            });
+          }
+        };
+        
+        // Update position state initially and on time update
+        updatePositionState();
+        audioRef.current?.addEventListener('timeupdate', updatePositionState);
+        
+        return () => {
+          audioRef.current?.removeEventListener('timeupdate', updatePositionState);
+        };
+      }
+    } catch (error) {
+      console.warn('Position state not supported', error);
+    }
+  }, [currentSong, setIsPlaying, playNext, playPrevious, setCurrentTime]);
+
+  // Update playback state in MediaSession
+  useEffect(() => {
+    if (isMediaSessionSupported()) {
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    }
+  }, [isPlaying]);
+
   // Update like status whenever the current song or likedSongIds changes
   useEffect(() => {
     if (!currentSong) return;
@@ -81,41 +172,6 @@ const AudioPlayer = () => {
     const liked = songId ? likedSongIds?.has(songId) : false;
     
     setIsLiked(liked);
-  }, [currentSong, likedSongIds]);
-
-  // Listen for like updates from other components
-  useEffect(() => {
-    const handleLikeUpdate = (e: Event) => {
-      if (!currentSong) return;
-      
-      const songId = (currentSong as any).id || currentSong._id;
-      
-      // Check if this event includes details about which song was updated
-      if (e instanceof CustomEvent && e.detail) {
-        // If we have details and it's not for our current song, ignore
-        if (e.detail.songId && e.detail.songId !== songId) {
-          return;
-        }
-        
-        // If we have explicit like state in the event, use it
-        if (typeof e.detail.isLiked === 'boolean') {
-          setIsLiked(e.detail.isLiked);
-          return;
-        }
-      }
-      
-      // Otherwise do a fresh check from the store
-      const freshCheck = songId ? likedSongIds?.has(songId) : false;
-      setIsLiked(freshCheck);
-    };
-    
-    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
-    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
-    
-    return () => {
-      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
-      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
-    };
   }, [currentSong, likedSongIds]);
 
   // Keyboard controls for mobile player
@@ -390,7 +446,7 @@ const AudioPlayer = () => {
     }
   };
 
-  // Share audio time with other components
+  // Share audio time with other components and update MediaSession
   const updateAudioMetadata = () => {
     if (audioRef.current) {
       const currentTime = audioRef.current.currentTime;
@@ -408,6 +464,19 @@ const AudioPlayer = () => {
       }
       if (setDuration && !isNaN(duration)) {
         setDuration(duration);
+      }
+      
+      // Update MediaSession position state if supported
+      if (isMediaSessionSupported() && 'setPositionState' in navigator.mediaSession && !isNaN(duration)) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: duration,
+            playbackRate: audioRef.current.playbackRate,
+            position: currentTime
+          });
+        } catch (error) {
+          // Ignore position state errors
+        }
       }
     }
   };

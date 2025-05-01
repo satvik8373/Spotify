@@ -9,6 +9,19 @@ import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import SongDetailsView from '@/components/SongDetailsView';
 import { signOut } from '@/services/hybridAuthService';
 
+/**
+ * Mobile Navigation with Profile Menu and Lockscreen Controls
+ * 
+ * Features:
+ * - Profile dropdown with logout functionality
+ * - Integration with Media Session API in AudioPlayer.tsx for lockscreen controls
+ * - Background audio playback support (iOS/Android)
+ * 
+ * Note: For full lockscreen controls to work properly on mobile devices:
+ * - iOS: Activate video to fullscreen mode, then swipe up to home screen
+ * - Android: Enable background play in browser settings (Menu > Settings > Media > Background play)
+ */
+
 const MobileNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
