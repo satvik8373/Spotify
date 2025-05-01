@@ -9,9 +9,6 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import SongDetailsView from '@/components/SongDetailsView';
 
-// Add a cache for preloaded audio sources
-const audioSourceCache = new Map();
-
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
   if (!url) return false;
@@ -21,35 +18,6 @@ const isValidUrl = (url: string): boolean => {
     return true;
   } catch (e) {
     return false;
-  }
-};
-
-// Helper to preload the next song in the queue
-const preloadNextSong = (nextSong: any) => {
-  if (!nextSong || !nextSong.audioUrl || !isValidUrl(nextSong.audioUrl)) return;
-  
-  // Skip if already in cache
-  if (audioSourceCache.has(nextSong.audioUrl)) return;
-  
-  try {
-    const audio = new Audio();
-    audio.src = nextSong.audioUrl;
-    audio.preload = 'metadata';
-    
-    // Add to cache
-    audioSourceCache.set(nextSong.audioUrl, {
-      preloaded: true,
-      timestamp: Date.now()
-    });
-    
-    // Clean cache if it gets too big (keep only 5 most recent)
-    if (audioSourceCache.size > 5) {
-      const oldestKey = [...audioSourceCache.entries()]
-        .sort((a, b) => a[1].timestamp - b[1].timestamp)[0][0];
-      audioSourceCache.delete(oldestKey);
-    }
-  } catch (error) {
-    console.warn('Error preloading next song:', error);
   }
 };
 
@@ -257,47 +225,43 @@ const AudioPlayer = () => {
     return () => audio?.removeEventListener('ended', handleEnded);
   }, []);
 
-  // Handle song change, set up preloading, and reload audio
+  // handle song changes
   useEffect(() => {
-    if (!audioRef.current || !currentSong || !currentSong.audioUrl) return;
-    
+    if (!audioRef.current || !currentSong) return;
+
     const audio = audioRef.current;
     const songUrl = currentSong.audioUrl;
-    
+
     // Validate the URL
     if (!isValidUrl(songUrl)) {
       console.error('Invalid audio URL:', songUrl);
       toast.error('Cannot play this song: Invalid audio source');
       return;
     }
-    
-    // Reset loading states
-    setIsLoading(true);
-    loadStarted.current = false;
-    
-    // Check if this is actually a new song
+
+    // check if this is actually a new song
     const isSongChange = prevSongRef.current !== songUrl;
-    
     if (isSongChange) {
       console.log('Loading audio source:', songUrl);
-      
+
       try {
         // Indicate loading state to prevent play attempts during load
+        setIsLoading(true);
         isHandlingPlayback.current = true;
-        
+
         // Clear any existing timeout
         if (playTimeoutRef.current) {
           clearTimeout(playTimeoutRef.current);
         }
-        
+
         // Pause current playback before changing source
         audio.pause();
-        
+
         // Set up event listeners for this specific load sequence
         const handleCanPlay = () => {
           setIsLoading(false);
           prevSongRef.current = songUrl;
-          
+
           if (isPlaying) {
             // Wait a bit before playing to avoid interruption errors
             playTimeoutRef.current = setTimeout(() => {
@@ -316,14 +280,14 @@ const AudioPlayer = () => {
           } else {
             isHandlingPlayback.current = false;
           }
-          
+
           // Remove the one-time listener
           audio.removeEventListener('canplay', handleCanPlay);
         };
-        
+
         // Listen for the canplay event which indicates the audio is ready
         audio.addEventListener('canplay', handleCanPlay);
-        
+
         // Set the new source
         audio.src = songUrl;
         audio.load(); // Explicitly call load to begin fetching the new audio
@@ -334,30 +298,7 @@ const AudioPlayer = () => {
         isHandlingPlayback.current = false;
       }
     }
-    
-    // Keep track of previous song to detect changes
-    prevSongRef.current = currentSong.audioUrl;
-    
-    // Log for debugging lock screen controls
-    console.log('Song changed to:', currentSong.title, '- URL:', currentSong.audioUrl);
-    
-    // Preload the next song in queue for smoother transitions
-    if (queue && queue.length > 0) {
-      const currentIndex = queue.findIndex(song => {
-        // Handle both _id and id properties safely with type checking
-        const currentSongId = (currentSong as any)._id || (currentSong as any).id;
-        const queueSongId = (song as any)._id || (song as any).id;
-        return currentSongId === queueSongId;
-      });
-      
-      if (currentIndex !== -1 && currentIndex < queue.length - 1) {
-        // Preload next track in sequence
-        const nextSong = queue[currentIndex + 1];
-        console.log('Preloading next song:', nextSong.title);
-        preloadNextSong(nextSong);
-      }
-    }
-  }, [currentSong, isPlaying, setIsPlaying, queue]);
+  }, [currentSong, isPlaying, setIsPlaying]);
 
   // Handle audio errors
   useEffect(() => {
@@ -407,232 +348,6 @@ const AudioPlayer = () => {
     }
   }, [setCurrentSong, currentSong, setIsPlaying]);
 
-  // Set up MediaSession API for lock screen controls
-  useEffect(() => {
-    // Check if the browser supports Media Session API
-    if (!('mediaSession' in navigator)) {
-      console.log('MediaSession API not supported in this browser');
-      return;
-    }
-
-    // Only proceed if we have a current song
-    if (!currentSong) return;
-
-    // Track if metadata has been set to prevent flickering
-    let metadataHasBeenSet = false;
-
-    try {
-      // Create image cache to prevent flickering
-      const artworkUrl = currentSong.imageUrl || '';
-      const loadArtworkAndSetMetadata = async () => {
-        // Pre-cache the image before setting the metadata
-        if (artworkUrl) {
-          try {
-            // Attempt to preload the image
-            const response = await fetch(artworkUrl, { method: 'HEAD' });
-            if (!response.ok) throw new Error('Artwork not available');
-          } catch (err) {
-            console.warn('Could not preload artwork, using fallback', err);
-          }
-        }
-
-        // Only update metadata if component is still mounted and image has loaded
-        if (!metadataHasBeenSet) {
-          navigator.mediaSession.metadata = new MediaMetadata({
-            title: currentSong.title || 'Unknown Title',
-            artist: currentSong.artist || 'Unknown Artist',
-            album: 'Music',  // Use a generic album name since Song doesn't have album title
-            artwork: [
-              {
-                src: artworkUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-                sizes: '512x512',
-                type: 'image/jpeg',
-              }
-            ]
-          });
-          metadataHasBeenSet = true;
-        }
-      };
-
-      // Start the image loading and metadata setting process
-      loadArtworkAndSetMetadata();
-
-      // Set action handlers for media keys and lock screen controls
-      navigator.mediaSession.setActionHandler('play', () => {
-        console.log('MediaSession: play action');
-        if (!isPlaying) {
-          playerStore.setIsPlaying(true);
-          playerStore.setUserInteracted();
-        }
-      });
-
-      navigator.mediaSession.setActionHandler('pause', () => {
-        console.log('MediaSession: pause action');
-        if (isPlaying) {
-          playerStore.setIsPlaying(false);
-        }
-      });
-
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        console.log('MediaSession: previous track action');
-        playPrevious();
-      });
-
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        console.log('MediaSession: next track action');
-        playNext();
-      });
-
-      // Update playback state
-      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-
-    } catch (error) {
-      console.error('Error setting up MediaSession:', error);
-    }
-
-    // Clean up function
-    return () => {
-      try {
-        // Remove action handlers when component unmounts
-        navigator.mediaSession.setActionHandler('play', null);
-        navigator.mediaSession.setActionHandler('pause', null);
-        navigator.mediaSession.setActionHandler('previoustrack', null);
-        navigator.mediaSession.setActionHandler('nexttrack', null);
-      } catch (error) {
-        console.error('Error cleaning up MediaSession:', error);
-      }
-    };
-  }, [currentSong, isPlaying, playNext, playPrevious, playerStore]);
-
-  // Update MediaSession playback state when playing state changes
-  useEffect(() => {
-    if ('mediaSession' in navigator) {
-      try {
-        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-      } catch (error) {
-        console.error('Error updating MediaSession playback state:', error);
-      }
-    }
-  }, [isPlaying]);
-
-  // Update MediaSession position state for lock screen progress bar
-  useEffect(() => {
-    if (!('mediaSession' in navigator) || !audioRef.current) return;
-    
-    try {
-      if ('setPositionState' in navigator.mediaSession) {
-        // Throttle position state updates to reduce flickering
-        const updatePositionState = () => {
-          navigator.mediaSession.setPositionState({
-            duration: duration || 0,
-            position: currentTime || 0,
-            playbackRate: 1.0,
-          });
-        };
-        
-        // Use requestAnimationFrame for smoother updates
-        const frameId = requestAnimationFrame(updatePositionState);
-        return () => cancelAnimationFrame(frameId);
-      }
-    } catch (error) {
-      console.error('Error updating MediaSession position state:', error);
-    }
-  }, [currentTime, duration]);
-
-  // Handle wake lock to prevent screen from turning off during playback on mobile
-  useEffect(() => {
-    let wakeLock: any = null;
-    
-    const requestWakeLock = async () => {
-      if (isPlaying && 'wakeLock' in navigator) {
-        try {
-          wakeLock = await (navigator as any).wakeLock.request('screen');
-          console.log('Wake Lock activated');
-          
-          wakeLock.addEventListener('release', () => {
-            console.log('Wake Lock released');
-          });
-        } catch (err) {
-          console.error('Wake Lock error:', err);
-        }
-      }
-    };
-    
-    const releaseWakeLock = () => {
-      if (wakeLock) {
-        wakeLock.release()
-          .then(() => {
-            wakeLock = null;
-          })
-          .catch((err: any) => {
-            console.error('Error releasing Wake Lock:', err);
-          });
-      }
-    };
-    
-    // Request wake lock when playing, release when paused
-    if (isPlaying) {
-      requestWakeLock();
-    } else {
-      releaseWakeLock();
-    }
-    
-    // Clean up on unmount
-    return () => {
-      releaseWakeLock();
-    };
-  }, [isPlaying]);
-
-  // Listen for visibility change to handle background play state
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Update UI state when tab becomes visible again
-        if (audioRef.current) {
-          setLocalCurrentTime(audioRef.current.currentTime);
-          if (!isNaN(audioRef.current.duration)) {
-            setLocalDuration(audioRef.current.duration);
-          }
-        }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  // Add audio focus handling for Android
-  useEffect(() => {
-    // Handle audio focus for Android with AudioFocus API (if available)
-    const handleAudioFocus = () => {
-      if ('AudioFocus' in window) {
-        const audioFocus = (window as any).AudioFocus;
-        
-        if (isPlaying) {
-          audioFocus.request(() => {
-            console.log('Audio focus granted');
-          }, () => {
-            console.log('Audio focus lost, pausing playback');
-            playerStore.setIsPlaying(false);
-          });
-        } else {
-          audioFocus.abandon();
-        }
-      }
-    };
-    
-    // Try to use the AudioFocus API if available
-    try {
-      handleAudioFocus();
-    } catch (error) {
-      console.error('AudioFocus API error:', error);
-    }
-    
-  }, [isPlaying, playerStore]);
-
   // Save player state on song changes and unmount
   useEffect(() => {
     // Only save if we have a current song
@@ -669,21 +384,9 @@ const AudioPlayer = () => {
   // Handle audio element errors
   const handleError = (e: any) => {
     console.error('AudioPlayer error:', e);
-    
-    // More detailed error logging
-    if (audioRef.current) {
-      const errorCode = audioRef.current.error ? audioRef.current.error.code : 'unknown';
-      const errorMessage = audioRef.current.error ? audioRef.current.error.message : 'Unknown error';
-      console.error(`Audio error details: Code ${errorCode}, Message: ${errorMessage}`);
-    }
-    
     // If the current song fails to load, try to play the next song
     if (currentSong) {
-      // Show toast notification
-      toast.error('Unable to play this track. Trying next song...');
-      
-      // Just move to the next song after a short delay
-      setTimeout(() => playNext(), 500);
+      setTimeout(() => playNext(), 1000);
     }
   };
 
