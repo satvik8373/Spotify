@@ -390,24 +390,195 @@ const AudioPlayer = () => {
     }
   };
 
-  // Share audio time with other components
+  // Update position state periodically (for seekbar on lock screen)
+  useEffect(() => {
+    let positionUpdateTimeout: NodeJS.Timeout | null = null;
+    let lastReportedTime = -1;
+    
+    // Only run if MediaSession API is available with position state
+    if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+      
+      const updatePositionState = () => {
+        if (!audioRef.current) return;
+        
+        // Only update if time has changed by at least 1 second to reduce updates
+        if (Math.abs(audioRef.current.currentTime - lastReportedTime) < 1) {
+          positionUpdateTimeout = setTimeout(updatePositionState, 1000);
+          return;
+        }
+        
+        try {
+          lastReportedTime = audioRef.current.currentTime;
+          
+          navigator.mediaSession.setPositionState({
+            duration: audioRef.current.duration || 0,
+            playbackRate: audioRef.current.playbackRate,
+            position: audioRef.current.currentTime || 0
+          });
+        } catch (e) {
+          console.warn('Error updating position state:', e);
+        }
+        
+        positionUpdateTimeout = setTimeout(updatePositionState, 1000);
+      };
+      
+      // Start the update cycle
+      positionUpdateTimeout = setTimeout(updatePositionState, 1000);
+      
+      // Also update immediately when playback state changes
+      const handlePlayPause = () => {
+        if (audioRef.current) {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration || 0,
+              playbackRate: audioRef.current.playbackRate,
+              position: audioRef.current.currentTime || 0
+            });
+          } catch (e) {
+            console.warn('Error updating position state:', e);
+          }
+        }
+      };
+      
+      audioRef.current?.addEventListener('play', handlePlayPause);
+      audioRef.current?.addEventListener('pause', handlePlayPause);
+      
+      return () => {
+        if (positionUpdateTimeout) {
+          clearTimeout(positionUpdateTimeout);
+        }
+        audioRef.current?.removeEventListener('play', handlePlayPause);
+        audioRef.current?.removeEventListener('pause', handlePlayPause);
+      };
+    }
+  }, []);
+
+  // Replace existing MediaSession effect with an improved version
+  useEffect(() => {
+    // Only run if MediaSession API is available
+    if (!('mediaSession' in navigator)) return;
+
+    let metadataUpdateTimeout: NodeJS.Timeout | null = null;
+    
+    // Function to update metadata with debouncing
+    const updateMediaSessionMetadata = () => {
+      if (metadataUpdateTimeout) {
+        clearTimeout(metadataUpdateTimeout);
+      }
+      
+      metadataUpdateTimeout = setTimeout(() => {
+        if (!currentSong) return;
+        
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: currentSong.title || 'Unknown Title',
+            artist: currentSong.artist || 'Unknown Artist',
+            album: (currentSong as any).album || currentSong.albumId?.toString() || '',
+            artwork: [
+              {
+                src: currentSong.imageUrl || '',
+                sizes: '512x512',
+                type: 'image/jpeg'
+              }
+            ]
+          });
+          
+          // Update playback state in the same operation
+          navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+        } catch (e) {
+          console.warn('Error updating media session metadata:', e);
+        }
+      }, 50);
+    };
+    
+    // Set media session action handlers
+    try {
+      navigator.mediaSession.setActionHandler('play', () => {
+        console.log('MediaSession: play action');
+        playerStore.setIsPlaying(true);
+      });
+      
+      navigator.mediaSession.setActionHandler('pause', () => {
+        console.log('MediaSession: pause action');
+        playerStore.setIsPlaying(false);
+      });
+      
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        console.log('MediaSession: previous track action');
+        playPrevious();
+      });
+      
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        console.log('MediaSession: next track action');
+        playNext();
+      });
+      
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (audioRef.current && details.seekTime !== undefined) {
+          audioRef.current.currentTime = details.seekTime;
+          setLocalCurrentTime(details.seekTime);
+          if (setCurrentTime) {
+            setCurrentTime(details.seekTime);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('Error setting media session handlers:', e);
+    }
+    
+    // Update metadata when current song changes
+    updateMediaSessionMetadata();
+    
+    // Clean up on unmount
+    return () => {
+      if (metadataUpdateTimeout) {
+        clearTimeout(metadataUpdateTimeout);
+      }
+      
+      // Clear action handlers
+      try {
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('previoustrack', null);
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('seekto', null);
+      } catch (e) {
+        console.warn('Error clearing media session handlers:', e);
+      }
+    };
+  }, [currentSong, playNext, playPrevious, playerStore, setCurrentTime, isPlaying]);
+  
+  // Update the audio time update handler for smoother updates
   const updateAudioMetadata = () => {
-    if (audioRef.current) {
-      const currentTime = audioRef.current.currentTime;
-      const duration = audioRef.current.duration;
-      
-      // Update local state
-      setLocalCurrentTime(currentTime);
-      if (!isNaN(duration)) {
-        setLocalDuration(duration);
-      }
-      
-      // Only call these functions if they exist in the store
-      if (setCurrentTime) {
-        setCurrentTime(currentTime);
-      }
-      if (setDuration && !isNaN(duration)) {
-        setDuration(duration);
+    if (!audioRef.current) return;
+    
+    const currentTime = audioRef.current.currentTime;
+    const duration = audioRef.current.duration;
+    
+    // Update local state
+    setLocalCurrentTime(currentTime);
+    if (!isNaN(duration)) {
+      setLocalDuration(duration);
+    }
+    
+    // Only call these functions if they exist in the store
+    if (setCurrentTime) {
+      setCurrentTime(currentTime);
+    }
+    if (setDuration && !isNaN(duration)) {
+      setDuration(duration);
+    }
+    
+    // Update lock screen position if playing (reduces updates when paused)
+    if (isPlaying && 'mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: duration || 0,
+          playbackRate: audioRef.current.playbackRate,
+          position: currentTime || 0
+        });
+      } catch (e) {
+        // Silently fail - we'll update in the regular interval
       }
     }
   };
@@ -472,101 +643,6 @@ const AudioPlayer = () => {
     playNext();
   };
 
-  // Add support for MediaSession API
-  useEffect(() => {
-    // Only run if MediaSession API is available
-    if ('mediaSession' in navigator) {
-      // Function to update metadata
-      const updateMediaSessionMetadata = () => {
-        if (!currentSong) return;
-        
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: currentSong.title || 'Unknown Title',
-          artist: currentSong.artist || 'Unknown Artist',
-          album: (currentSong as any).album || currentSong.albumId?.toString() || '',
-          artwork: [
-            {
-              src: currentSong.imageUrl || '',
-              sizes: '512x512',
-              type: 'image/jpeg'
-            }
-          ]
-        });
-      };
-      
-      // Set media session action handlers
-      navigator.mediaSession.setActionHandler('play', () => {
-        console.log('MediaSession: play action');
-        playerStore.setIsPlaying(true);
-      });
-      
-      navigator.mediaSession.setActionHandler('pause', () => {
-        console.log('MediaSession: pause action');
-        playerStore.setIsPlaying(false);
-      });
-      
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        console.log('MediaSession: previous track action');
-        playPrevious();
-      });
-      
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        console.log('MediaSession: next track action');
-        playNext();
-      });
-      
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (audioRef.current && details.seekTime) {
-          audioRef.current.currentTime = details.seekTime;
-          setLocalCurrentTime(details.seekTime);
-          if (setCurrentTime) {
-            setCurrentTime(details.seekTime);
-          }
-        }
-      });
-      
-      // Update position state periodically (for seekbar on lock screen)
-      const updatePositionState = () => {
-        if (!audioRef.current || !('setPositionState' in navigator.mediaSession)) return;
-        
-        try {
-          navigator.mediaSession.setPositionState({
-            duration: audioRef.current.duration || 0,
-            playbackRate: audioRef.current.playbackRate,
-            position: audioRef.current.currentTime || 0
-          });
-        } catch (e) {
-          console.warn('Error updating position state:', e);
-        }
-      };
-      
-      // Set up periodic position state updates
-      const positionUpdateInterval = setInterval(updatePositionState, 1000);
-      
-      // Update metadata when current song changes
-      updateMediaSessionMetadata();
-      
-      // Clean up on unmount
-      return () => {
-        clearInterval(positionUpdateInterval);
-        
-        // Clear action handlers
-        navigator.mediaSession.setActionHandler('play', null);
-        navigator.mediaSession.setActionHandler('pause', null);
-        navigator.mediaSession.setActionHandler('previoustrack', null);
-        navigator.mediaSession.setActionHandler('nexttrack', null);
-        navigator.mediaSession.setActionHandler('seekto', null);
-      };
-    }
-  }, [currentSong, playNext, playPrevious, playerStore, setCurrentTime]);
-  
-  // Update MediaSession playback state when isPlaying changes
-  useEffect(() => {
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-    }
-  }, [isPlaying]);
-  
   // Global keyboard shortcuts for media control
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -894,6 +970,10 @@ const AudioPlayer = () => {
         // Add data attributes for PWA and lock screen support
         data-testid="audio-element"
         data-mediasession="true"
+        // Fix for iOS flickering issues - use data attributes for non-standard props
+        x-webkit-airplay="allow"
+        data-webkit-playsinline="true"
+        data-controlslist="nodownload"
       />
     </>
   );
