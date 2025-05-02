@@ -120,6 +120,7 @@ const Header = ({ className }: HeaderProps) => {
     try {
       await signOut();
       useAuthStore.getState().reset();
+      navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -129,7 +130,7 @@ const Header = ({ className }: HeaderProps) => {
     <header className={`bg-black/95 py-4 px-6 z-50 sticky top-0 ${className}`}>
       <div className="max-w-[1800px] mx-auto flex items-center justify-between">
         {/* Logo and Brand */}
-        <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity min-w-[200px]">
+        <Link to={user ? "/home" : "/"} className="flex items-center gap-3 hover:opacity-90 transition-opacity min-w-[200px]">
           <div className="flex items-center">
             <svg viewBox="0 0 16 16" className="h-10 w-10 text-[#1DB954]" aria-label="Spotify">
               <path

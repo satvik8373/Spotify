@@ -9,15 +9,15 @@ import AlbumPage from './pages/album/AlbumPage';
 import { PlaylistPage } from './pages/playlist/PlaylistPage';
 import { useState, useEffect } from "react";
 import SplashScreen from './components/SplashScreen';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 // @ts-ignore
 import ApiDebugPage from './pages/debug/ApiDebugPage.jsx';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
+import Welcome from './pages/Welcome';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
-import RequireAuth from './components/RequireAuth';
-import WelcomePage from './pages/WelcomePage';
+import { Navigate, useLocation } from 'react-router-dom';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -44,13 +44,35 @@ const ErrorFallback = () => (
 	</div>
 );
 
+// Auth gate that redirects to login if not authenticated
+const AuthGate = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+
+  // Don't redirect while auth is still loading
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-zinc-900">
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
+
+  // If not authenticated, redirect to login with return URL
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  // User is authenticated, render children
+  return <>{children}</>;
+};
+
 // Configure the router with React Router v6
 const router = createBrowserRouter(
 	[
 		{
 			path: '/',
-			element: <WelcomePage />,
-			index: true
+			element: <Welcome />
 		},
 		{
 			path: '/login',
@@ -65,41 +87,35 @@ const router = createBrowserRouter(
 			element: <ResetPassword />
 		},
 		{
-			path: '/app',
 			element: <MainLayout />,
 			errorElement: <ErrorFallback />,
 			children: [
 				{
-					index: true,
-					element: <HomePage />
+					path: '/home',
+					element: <AuthGate><HomePage /></AuthGate>
 				},
 				{
-					element: <RequireAuth />,
-					children: [
-						{
-							path: 'albums/:albumId',
-							element: <AlbumPage />
-						},
-						{
-							path: 'library',
-							element: <LibraryPage />
-						},
-						{
-							path: 'liked-songs',
-							element: <LikedSongsPage />
-						},
-						{
-							path: 'playlist/:id',
-							element: <PlaylistPage />
-						},
-					]
+					path: '/albums/:albumId',
+					element: <AuthGate><AlbumPage /></AuthGate>
 				},
 				{
-					path: 'search',
-					element: <SearchPage />
+					path: '/library',
+					element: <AuthGate><LibraryPage /></AuthGate>
 				},
 				{
-					path: 'debug/api',
+					path: '/liked-songs',
+					element: <AuthGate><LikedSongsPage /></AuthGate>
+				},
+				{
+					path: '/search',
+					element: <AuthGate><SearchPage /></AuthGate>
+				},
+				{
+					path: '/playlist/:id',
+					element: <AuthGate><PlaylistPage /></AuthGate>
+				},
+				{
+					path: '/debug/api',
 					element: <ApiDebugPage />
 				},
 				{

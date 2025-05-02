@@ -76,7 +76,7 @@ const MobileNav = () => {
     {
       label: 'Home',
       icon: Home,
-      path: '/',
+      path: '/home',
     },
     {
       label: 'Search',
@@ -96,8 +96,8 @@ const MobileNav = () => {
   ];
 
   const isActive = (path: string) => {
-    if (path === '/' && location.pathname === '/') return true;
-    if (path !== '/' && location.pathname.startsWith(path)) return true;
+    if (path === '/home' && location.pathname === '/home') return true;
+    if (path !== '/home' && location.pathname.startsWith(path)) return true;
     return false;
   };
 
@@ -157,7 +157,7 @@ const MobileNav = () => {
       <div className="fixed top-0 left-0 right-0 z-30 bg-zinc-900 md:hidden">
         <div className="flex items-center justify-between px-3 py-2">
           {/* Spotify Logo */}
-          <Link to="/" className="flex items-center">
+          <Link to={isAuthenticated ? "/home" : "/"} className="flex items-center">
             <svg viewBox="0 0 16 16" className="h-6 w-6 text-[#1DB954]" aria-label="Spotify">
               <path
                 fill="currentColor"

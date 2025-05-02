@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { register, signInWithGoogle } from '@/services/hybridAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '@/stores/useAuthStore';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -16,19 +15,6 @@ const Register = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-  const { isAuthenticated } = useAuthStore();
-  
-  // Get the return_to parameter from URL query
-  const searchParams = new URLSearchParams(location.search);
-  const returnTo = searchParams.get('return_to') || '/';
-
-  // Redirect to returnTo if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(returnTo);
-    }
-  }, [isAuthenticated, navigate, returnTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +34,7 @@ const Register = () => {
     try {
       await register(email, password, fullName);
       toast.success('Account created successfully');
-      navigate(returnTo);
+      navigate('/home');
     } catch (error: any) {
       console.error('Registration error:', error);
       
@@ -70,7 +56,7 @@ const Register = () => {
     try {
       await signInWithGoogle();
       toast.success('Signed up with Google successfully');
-      navigate(returnTo);
+      navigate('/home');
     } catch (error: any) {
       console.error('Google signup error:', error);
       toast.error(error.message || 'Failed to sign up with Google');
@@ -190,7 +176,7 @@ const Register = () => {
         <div className="text-center">
           <p className="text-zinc-400 mb-4">Already have an account?</p>
           <Link 
-            to={`/login${returnTo !== '/' ? `?return_to=${encodeURIComponent(returnTo)}` : ''}`}
+            to="/login" 
             className="inline-block border border-zinc-700 text-white rounded-full px-8 py-3 font-bold hover:border-white transition-colors"
           >
             Log in to Spotify

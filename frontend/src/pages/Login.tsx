@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { login, signInWithGoogle } from '@/services/hybridAuthService';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '@/stores/useAuthStore';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -16,18 +15,9 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuthStore();
-  
-  // Get the return_to parameter from URL query
-  const searchParams = new URLSearchParams(location.search);
-  const returnTo = searchParams.get('return_to') || '/';
 
-  // Redirect to returnTo if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(returnTo);
-    }
-  }, [isAuthenticated, navigate, returnTo]);
+  // Get the return URL from location state, default to home page
+  const from = (location.state as { from?: string })?.from || '/home';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +32,7 @@ const Login = () => {
     try {
       await login(email, password);
       toast.success('Logged in successfully');
-      navigate(returnTo);
+      navigate(from); // Navigate to the return URL
     } catch (error: any) {
       console.error('Login error:', error);
       
@@ -64,7 +54,7 @@ const Login = () => {
     try {
       await signInWithGoogle();
       toast.success('Logged in with Google successfully');
-      navigate(returnTo);
+      navigate(from); // Navigate to the return URL
     } catch (error: any) {
       console.error('Google login error:', error);
       toast.error(error.message || 'Failed to login with Google');
@@ -172,7 +162,7 @@ const Login = () => {
         <div className="text-center">
           <p className="text-zinc-400 mb-4">Don't have an account?</p>
           <Link 
-            to={`/register${returnTo !== '/' ? `?return_to=${encodeURIComponent(returnTo)}` : ''}`}
+            to="/register" 
             className="inline-block border border-zinc-700 text-white rounded-full px-8 py-3 font-bold hover:border-white transition-colors"
           >
             Sign up for Spotify
