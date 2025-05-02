@@ -846,9 +846,9 @@ export function PlaylistPage() {
             background: `linear-gradient(180deg, ${dominantColor} 0%, rgba(18, 18, 18, 0.8) 90%)`,
           }}
         >
-          <div className="flex flex-col md:flex-row items-end md:items-end gap-6 relative z-10 pb-4">
+          <div className="flex flex-col md:flex-row items-center md:items-end gap-6 relative z-10 pb-4">
             {/* Playlist cover image - larger on desktop */}
-            <div className="w-36 h-36 sm:w-48 sm:h-48 md:w-60 md:h-60 flex-shrink-0 shadow-2xl">
+            <div className="w-48 h-48 sm:w-56 sm:h-56 md:w-60 md:h-60 flex-shrink-0 shadow-2xl mx-auto md:mx-0">
               <img
                 src={currentPlaylist.imageUrl || '/default-playlist.jpg'}
                 alt={currentPlaylist.name}
@@ -857,7 +857,7 @@ export function PlaylistPage() {
             </div>
             
             {/* Playlist info */}
-            <div className="flex flex-col justify-end text-white">
+            <div className="flex flex-col justify-end text-white text-center md:text-left w-full">
               <p className="text-xs sm:text-sm uppercase font-medium mt-2">Playlist</p>
               <h1 className="text-2xl sm:text-4xl md:text-7xl font-bold mt-2 mb-2 sm:mb-4 drop-shadow-md">
                 {currentPlaylist.name}
@@ -865,10 +865,10 @@ export function PlaylistPage() {
               
               {/* Description and metadata */}
               {currentPlaylist.description && (
-                <p className="text-sm text-gray-200 mb-4 max-w-xl">{currentPlaylist.description}</p>
+                <p className="text-sm text-gray-200 mb-4 max-w-xl mx-auto md:mx-0">{currentPlaylist.description}</p>
               )}
               
-              <div className="flex items-center gap-1 text-sm text-gray-300">
+              <div className="flex items-center gap-1 text-sm text-gray-300 justify-center md:justify-start flex-wrap">
                 <span className="font-medium text-white">{currentPlaylist.createdBy.fullName}</span>
                 <span>•</span>
                 <span>{metrics.likes} likes</span>
