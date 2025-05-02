@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Play, Loader, Heart, Search, XCircle } from 'lucide-react';
+import { Play, Loader, Heart, Search, XCircle, ListMusic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '../../contexts/AuthContext';
 import { loadLikedSongs, saveLikedSongs } from '@/services/likedSongsService';
 import IndianMusicPlayer from '@/components/IndianMusicPlayer';
+import { PlaylistCard } from '@/components/playlist/PlaylistCard';
+import { Playlist } from '@/types';
 import { debounce } from 'lodash';
 
 const SearchPage = () => {
@@ -20,6 +23,7 @@ const SearchPage = () => {
   const query = searchParams.get('q') || '';
 
   const { isIndianMusicLoading, searchIndianSongs, indianSearchResults } = useMusicStore();
+  const { searchPlaylists, searchResults: playlistResults, isSearching } = usePlaylistStore();
   const { isAuthenticated, user } = useAuth();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
@@ -27,10 +31,15 @@ const SearchPage = () => {
   useEffect(() => {
     if (query) {
       setSearchQuery(query);
-      const searchPromise = searchIndianSongs(query);
-
-      // Handle completion
-      searchPromise
+      
+      // Create an array of promises for all search operations
+      const searchPromises = [
+        searchIndianSongs(query),
+        searchPlaylists(query)
+      ];
+      
+      // Wait for all searches to complete
+      Promise.all(searchPromises)
         .then(() => {
           setIsInitialLoad(false);
         })
@@ -41,9 +50,10 @@ const SearchPage = () => {
     } else {
       // Clear search results if no query
       useMusicStore.setState({ indianSearchResults: [] });
+      usePlaylistStore.setState({ searchResults: [] });
       setIsInitialLoad(false);
     }
-  }, [query, searchIndianSongs]);
+  }, [query, searchIndianSongs, searchPlaylists]);
 
   // Update auth store with current user info
   useEffect(() => {
@@ -76,10 +86,31 @@ const SearchPage = () => {
       </div>
       <h2 className="text-xl font-semibold text-white mb-2">Search for music</h2>
       <p className="text-zinc-400 max-w-md">
-        Search for songs, artists, or albums to start listening
+        Search for songs, artists, or playlists to start listening
       </p>
     </div>
   );
+
+  const renderPlaylistResults = () => {
+    if (playlistResults.length === 0) return null;
+    
+    return (
+      <div className="mb-8">
+        <h2 className="text-xl font-bold mb-4">Playlists</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
+          {playlistResults.map((playlist: Playlist) => (
+            <PlaylistCard 
+              key={playlist._id}
+              playlist={playlist}
+              size="small"
+              showDescription={false}
+              className="w-full max-w-full h-full"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <main className="rounded-md overflow-hidden h-full bg-gradient-to-b from-zinc-800 to-zinc-900">
@@ -119,8 +150,24 @@ const SearchPage = () => {
               <Loader className="w-8 h-8 animate-spin text-zinc-500" />
             </div>
           ) : query ? (
-            // Display IndianMusicPlayer which contains search results
-            <IndianMusicPlayer />
+            <div className="space-y-6">
+              {/* Playlist Results */}
+              {renderPlaylistResults()}
+              
+              {/* Song Results */}
+              <div>
+                <h2 className="text-xl font-bold mb-4">Songs</h2>
+                <IndianMusicPlayer />
+              </div>
+              
+              {/* Show message if no results */}
+              {indianSearchResults.length === 0 && playlistResults.length === 0 && (
+                <div className="py-8 text-center">
+                  <p className="text-zinc-400">No results found for "{query}"</p>
+                  <p className="text-zinc-500 text-sm mt-2">Try different keywords or check the spelling</p>
+                </div>
+              )}
+            </div>
           ) : (
             // Empty state when no search query
             renderEmptyState()

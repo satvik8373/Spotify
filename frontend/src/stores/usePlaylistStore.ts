@@ -24,7 +24,9 @@ interface PlaylistStore {
   featuredPlaylists: Playlist[];
   publicPlaylists: Playlist[];
   currentPlaylist: Playlist | null;
+  searchResults: Playlist[];
   isLoading: boolean;
+  isSearching: boolean;
   isCreating: boolean;
   isUpdating: boolean;
   isDeleting: boolean;
@@ -35,6 +37,7 @@ interface PlaylistStore {
   fetchFeaturedPlaylists: () => Promise<void>;
   fetchPublicPlaylists: () => Promise<void>;
   fetchPlaylistById: (id: string) => Promise<Playlist | null>;
+  searchPlaylists: (query: string) => Promise<Playlist[]>;
   createPlaylist: (
     name: string,
     description?: string,
@@ -57,7 +60,9 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   featuredPlaylists: [],
   publicPlaylists: [],
   currentPlaylist: null,
+  searchResults: [],
   isLoading: false,
+  isSearching: false,
   isCreating: false,
   isUpdating: false,
   isDeleting: false,
@@ -180,6 +185,53 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       toast.error('Failed to fetch playlist');
       set({ isLoading: false });
       return null;
+    }
+  },
+
+  searchPlaylists: async (query: string) => {
+    if (!query.trim()) {
+      set({ searchResults: [] });
+      return [];
+    }
+    
+    try {
+      set({ isSearching: true });
+      
+      // Get all playlists we can search through
+      const userPlaylists = get().userPlaylists;
+      const publicPlaylists = get().publicPlaylists;
+      const featuredPlaylists = get().featuredPlaylists;
+      
+      // Combine all playlists
+      let allPlaylists = [...userPlaylists];
+      
+      // Add public and featured playlists that aren't already in user playlists
+      publicPlaylists.forEach(playlist => {
+        if (!allPlaylists.some(p => p._id === playlist._id)) {
+          allPlaylists.push(playlist);
+        }
+      });
+      
+      featuredPlaylists.forEach(playlist => {
+        if (!allPlaylists.some(p => p._id === playlist._id)) {
+          allPlaylists.push(playlist);
+        }
+      });
+      
+      // Filter playlists based on query
+      const normalizedQuery = query.toLowerCase();
+      const results = allPlaylists.filter(playlist => {
+        const nameMatch = playlist.name.toLowerCase().includes(normalizedQuery);
+        const descriptionMatch = playlist.description?.toLowerCase().includes(normalizedQuery);
+        return nameMatch || descriptionMatch;
+      });
+      
+      set({ searchResults: results, isSearching: false });
+      return results;
+    } catch (error) {
+      console.error('Error searching playlists:', error);
+      set({ isSearching: false });
+      return [];
     }
   },
 
@@ -376,7 +428,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       // Update the current playlist in state
       set({ currentPlaylist: updatedPlaylist });
       
-      toast.success('Song removed from playlist');
+      // Remove success toast notification
     } catch (error: any) {
       console.error('Error removing song from playlist:', error);
       toast.error('Failed to remove song from playlist');

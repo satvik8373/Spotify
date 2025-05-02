@@ -16,15 +16,28 @@ import { cn } from '@/lib/utils';
 
 interface PlaylistCardProps {
   playlist: Playlist;
-  isOwner: boolean;
+  isOwner?: boolean;
+  size?: 'small' | 'medium' | 'large';
+  showDescription?: boolean;
+  className?: string;
 }
 
-export function PlaylistCard({ playlist, isOwner }: PlaylistCardProps) {
+export function PlaylistCard({ 
+  playlist, 
+  isOwner = false,
+  size = 'medium',
+  showDescription = true,
+  className
+}: PlaylistCardProps) {
   const navigate = useNavigate();
-  const { playAlbum } = usePlayerStore();
+  const { playAlbum, isPlaying, currentSong } = usePlayerStore();
   const { deletePlaylist } = usePlaylistStore();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+
+  // Check if this playlist is currently playing
+  const isCurrentPlaylist = isPlaying && 
+    playlist.songs.some(song => song._id === currentSong?._id);
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -46,105 +59,143 @@ export function PlaylistCard({ playlist, isOwner }: PlaylistCardProps) {
     }
   };
 
+  // Set up size-based styles
+  const sizeStyles = {
+    small: {
+      container: "max-w-[180px]",
+      imageWrapper: "w-full aspect-square",
+      title: "text-sm mt-2",
+      description: "text-xs mt-1 line-clamp-1",
+      playButton: "w-10 h-10 right-2 bottom-2",
+      playIcon: "w-4 h-4"
+    },
+    medium: {
+      container: "max-w-[220px]",
+      imageWrapper: "w-full aspect-square",
+      title: "text-base mt-3",
+      description: "text-xs mt-1 line-clamp-2",
+      playButton: "w-12 h-12 right-2 bottom-2",
+      playIcon: "w-5 h-5 ml-0.5"
+    },
+    large: {
+      container: "max-w-[280px]",
+      imageWrapper: "w-full aspect-square", 
+      title: "text-lg mt-3 font-bold",
+      description: "text-sm mt-2 line-clamp-2",
+      playButton: "w-14 h-14 right-3 bottom-3",
+      playIcon: "w-6 h-6 ml-0.5"
+    }
+  };
+
+  const styles = sizeStyles[size];
+
   return (
     <>
       <div 
-        className="relative group bg-zinc-800/40 rounded-md overflow-hidden cursor-pointer hover:bg-zinc-800/70 transition-all duration-300"
+        className={cn(
+          "group bg-zinc-800/40 rounded-lg p-4 hover:bg-zinc-700/40 transition-all duration-300",
+          "cursor-pointer flex flex-col",
+          styles.container,
+          className
+        )}
         onClick={handleCardClick}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
-        {/* Card Content */}
-        <div className="p-3 flex flex-col h-full">
-          {/* Cover Image Container */}
-          <div className="relative w-full mb-3 rounded-md aspect-square overflow-hidden shadow-md">
-            {/* Image */}
-            <img
-              src={playlist.imageUrl || 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image'}
-              alt={playlist.name}
+        {/* Cover Image Container */}
+        <div className={cn("relative mb-3 rounded-md overflow-hidden shadow-md", styles.imageWrapper)}>
+          {/* Image */}
+          <img
+            src={playlist.imageUrl || '/default-playlist.jpg'}
+            alt={playlist.name}
+            className="w-full h-full object-cover transition-all duration-300"
+            onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
+          />
+          
+          {/* Play Button Overlay */}
+          <div 
+            className={cn(
+              "absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
+              "flex items-center justify-center"
+            )}
+          >
+            <button
               className={cn(
-                "w-full h-full object-cover transition-all duration-300",
-                isHovering ? "brightness-80" : "brightness-100"
+                "absolute flex items-center justify-center rounded-full bg-green-500 shadow-xl",
+                "transform translate-y-8 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105 hover:bg-green-400",
+                "transition-all duration-300 ease-out",
+                styles.playButton
               )}
-              onError={e => ((e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image')}
-            />
+              onClick={handlePlay}
+              aria-label="Play playlist"
+            >
+              <Play className={cn("text-black fill-current", styles.playIcon)} />
+            </button>
+          </div>
             
-            {/* Play Button Overlay */}
+          {/* Owner Options */}
+          {isOwner && (
             <div 
               className={cn(
-                "absolute inset-0 flex items-end justify-end p-2",
-                "transition-all duration-300 ease-in-out",
-                isHovering ? "opacity-100" : "opacity-0"
+                "absolute top-2 right-2 z-10",
+                "transition-opacity duration-200 opacity-0 group-hover:opacity-100"
               )}
             >
-              <button
-                className={cn(
-                  "flex items-center justify-center rounded-full bg-green-500 hover:bg-green-400 shadow-xl",
-                  "w-10 h-10 transform transition-transform duration-300",
-                  isHovering ? "translate-y-0 scale-100" : "translate-y-3 scale-90"
-                )}
-                onClick={handlePlay}
-                aria-label="Play playlist"
-              >
-                <Play className="h-5 w-5 text-black fill-current" />
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 hover:bg-black/80 transition-colors"
+                    onClick={e => e.stopPropagation()}
+                    aria-label="Menu options"
+                  >
+                    <MoreHorizontal className="h-4 w-4 text-white" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-[#282828] border-zinc-700 text-white min-w-[160px]">
+                  <DropdownMenuItem
+                    className="hover:bg-white/10 text-[14px] py-2.5"
+                    onClick={(e: any) => {
+                      e.stopPropagation();
+                      setShowEditDialog(true);
+                    }}
+                  >
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="hover:bg-white/10 text-[14px] py-2.5 text-red-400 focus:text-red-400"
+                    onClick={handleDelete}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            
-            {/* Owner Options */}
-            {isOwner && (
-              <div 
-                className={cn(
-                  "absolute top-2 right-2 z-10",
-                  "transition-opacity duration-200",
-                  isHovering ? "opacity-100" : "opacity-0"
-                )}
-              >
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 hover:bg-black/80 transition-colors"
-                      onClick={e => e.stopPropagation()}
-                      aria-label="Menu options"
-                    >
-                      <MoreHorizontal className="h-4 w-4 text-white" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-[#282828] border-zinc-700 text-white min-w-[160px]">
-                    <DropdownMenuItem
-                      className="hover:bg-white/10 text-[14px] py-2.5"
-                      onClick={(e: any) => {
-                        e.stopPropagation();
-                        setShowEditDialog(true);
-                      }}
-                    >
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="hover:bg-white/10 text-[14px] py-2.5 text-red-400 focus:text-red-400"
-                      onClick={handleDelete}
-                    >
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
-          </div>
+          )}
           
-          {/* Playlist Info */}
-          <div>
-            <h3 className="font-bold text-white text-sm truncate">{playlist.name}</h3>
-            <p className="text-xs text-zinc-400 line-clamp-2 mt-2">
+          {/* Now Playing Indicator */}
+          {isCurrentPlaylist && (
+            <div className="absolute bottom-2 left-2 bg-green-500 text-black text-xs font-medium px-2 py-0.5 rounded">
+              Playing
+            </div>
+          )}
+        </div>
+        
+        {/* Playlist Info */}
+        <div className="flex-1 flex flex-col">
+          <h3 className={cn("font-bold text-white truncate", styles.title)}>{playlist.name}</h3>
+          
+          {showDescription && (
+            <p className={cn("text-zinc-400", styles.description)}>
               {playlist.description || (
                 <>
-                  By {playlist.createdBy.fullName}
+                  By {playlist.createdBy?.fullName || 'Unknown'}
                   {playlist.songs.length > 0 && (
                     <> • {playlist.songs.length} {playlist.songs.length === 1 ? 'song' : 'songs'}</>
                   )}
                 </>
               )}
             </p>
-          </div>
+          )}
         </div>
       </div>
 

@@ -83,6 +83,12 @@ const Topbar = () => {
     setShowSearchSuggestions(false);
   };
 
+  const handleSelectPlaylist = (playlistId: string) => {
+    setSearchQuery('');
+    navigate(`/playlist/${playlistId}`);
+    setShowSearchSuggestions(false);
+  };
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -126,6 +132,7 @@ const Topbar = () => {
             isVisible={showSearchSuggestions}
             query={searchQuery}
             onSelectSong={handleSelectSong}
+            onSelectPlaylist={handleSelectPlaylist}
           />
         </form>
 

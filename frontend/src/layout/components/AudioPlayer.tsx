@@ -8,6 +8,7 @@ import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import SongDetailsView from '@/components/SongDetailsView';
+import { useMusicStore } from '@/stores/useMusicStore';
 
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
@@ -291,7 +292,78 @@ const AudioPlayer = () => {
     // Validate the URL
     if (!isValidUrl(songUrl)) {
       console.error('Invalid audio URL:', songUrl);
-      toast.error('Cannot play this song: Invalid audio source');
+      
+      // Try to find audio for this song
+      toast.loading(`Searching for "${currentSong.title}" by ${currentSong.artist}...`);
+      
+      // Use setTimeout to avoid blocking the UI
+      setTimeout(async () => {
+        try {
+          // Search for the song using the music API
+          const searchQuery = `${currentSong.title} ${currentSong.artist}`.trim();
+          await useMusicStore.getState().searchIndianSongs(searchQuery);
+          
+          const results = useMusicStore.getState().indianSearchResults;
+          
+          if (results && results.length > 0) {
+            // Found a match, update the song with the audio URL
+            const foundSong = results[0];
+            
+            // Update the currentSong with the found audio URL
+            const updatedSong = {
+              ...currentSong,
+              audioUrl: foundSong.url || '',
+              imageUrl: currentSong.imageUrl || foundSong.image
+            };
+            
+            // Update the song in the queue
+            const currentQueue = usePlayerStore.getState().queue;
+            const currentIndex = usePlayerStore.getState().currentIndex;
+            
+            const updatedQueue = currentQueue.map((song, idx) => 
+              idx === currentIndex ? updatedSong : song
+            );
+            
+            // Update the player store with the new queue and song
+            usePlayerStore.setState({
+              queue: updatedQueue,
+              currentSong: updatedSong
+            });
+            
+            // Update the player UI state
+            setCurrentSong(updatedSong);
+            
+            toast.success(`Found audio for "${currentSong.title}"`);
+            
+            // Give a small delay for the state to update
+            setTimeout(() => {
+              // Force a play attempt with the new URL
+              if (isPlaying) {
+                audioRef.current?.load();
+                audioRef.current?.play().catch(err => {
+                  console.error('Error playing audio after finding URL:', err);
+                  toast.error('Playback error: ' + err.message);
+                });
+              }
+            }, 300);
+          } else {
+            // No results found
+            toast.error(`Could not find audio for "${currentSong.title}"`);
+            // Skip to the next song after a short delay
+            setTimeout(() => {
+              playNext();
+            }, 1500);
+          }
+        } catch (error) {
+          console.error('Error searching for song:', error);
+          toast.error('Failed to find audio for this song');
+          // Skip to the next song after a short delay
+          setTimeout(() => {
+            playNext();
+          }, 1500);
+        }
+      }, 100);
+      
       return;
     }
 
