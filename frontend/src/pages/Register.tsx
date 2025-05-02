@@ -54,8 +54,15 @@ const Register = () => {
   const handleGoogleSignup = async () => {
     setGoogleLoading(true);
     try {
+      // Show a loading toast notification for better UX
+      const loadingToast = toast.loading('Setting up your account with Google...');
+      
       await signInWithGoogle();
+      
+      // Replace the loading toast with a success message
+      toast.dismiss(loadingToast);
       toast.success('Signed up with Google successfully');
+      
       navigate('/home');
     } catch (error: any) {
       console.error('Google signup error:', error);

@@ -110,9 +110,12 @@ const MobileNav = () => {
   const handleLogout = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await signOut();
-      setShowProfileMenu(false);
+      // Navigate first for immediate UI response
       navigate('/');
+      setShowProfileMenu(false);
+      
+      // Then perform the signout operation
+      await signOut();
     } catch (error) {
       console.error('Error signing out:', error);
     }
