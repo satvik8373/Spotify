@@ -47,7 +47,7 @@ interface UserProfile {
 }
 
 // Sign in with email and password
-export const login = async (email: string, password: string): Promise<User | null> => {
+export const login = async (email: string, password: string): Promise<UserProfile | null> => {
   try {
     // Generate a cache key
     const cacheKey = `${email}:${Date.now()}`;
@@ -213,7 +213,7 @@ async function syncWithBackend(idToken: string, firebaseUser: any) {
 }
 
 // Register new user
-export const register = async (email: string, password: string, fullName: string) => {
+export const register = async (email: string, password: string, fullName: string): Promise<UserProfile> => {
   try {
     // Create user in Firebase Authentication
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -232,6 +232,14 @@ export const register = async (email: string, password: string, fullName: string
       createdAt: new Date().toISOString(),
       isAdmin: false,
     });
+    
+    // Create a user profile object
+    const userProfile: UserProfile = {
+      id: user.uid,
+      email: user.email,
+      name: fullName,
+      picture: null
+    };
     
     // Synchronize with backend if it's available
     if (API_URL) {
@@ -265,7 +273,7 @@ export const register = async (email: string, password: string, fullName: string
     useAuthStore.getState().setAuthStatus(true, user.uid);
     useAuthStore.getState().setUserProfile(fullName, undefined);
     
-    return user;
+    return userProfile;
   } catch (error: any) {
     console.error("Error in register:", error);
     throw new Error(error.message || "Failed to register");
@@ -466,7 +474,7 @@ export const getCurrentUser = () => {
 };
 
 // Sign in with Google
-export const signInWithGoogle = async () => {
+export const signInWithGoogle = async (): Promise<UserProfile> => {
   try {
     // Cache check - prevent duplicate signins
     const cacheKey = `google:${Date.now()}`;
@@ -480,11 +488,19 @@ export const signInWithGoogle = async () => {
     const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
     
+    // Create a user profile object
+    const userProfile: UserProfile = {
+      id: user.uid,
+      email: user.email,
+      name: user.displayName || user.email?.split('@')[0] || 'User',
+      picture: user.photoURL,
+    };
+    
     // Update auth store immediately for faster UI response
     useAuthStore.getState().setAuthStatus(true, user.uid);
     useAuthStore.getState().setUserProfile(
-      user.displayName || "",
-      user.photoURL || undefined
+      userProfile.name,
+      userProfile.picture || undefined
     );
     
     // Perform Firestore and backend operations in the background 
@@ -541,7 +557,7 @@ export const signInWithGoogle = async () => {
       }
     })();
     
-    return user;
+    return userProfile;
   } catch (error: any) {
     console.error("Error in Google login:", error);
     throw new Error(error.message || "Failed to login with Google");
@@ -549,7 +565,7 @@ export const signInWithGoogle = async () => {
 };
 
 // Add a refresh user data function that can be called from components
-export const refreshUserData = async (): Promise<User | null> => {
+export const refreshUserData = async (): Promise<UserProfile | null> => {
   try {
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -578,7 +594,7 @@ export const refreshUserData = async (): Promise<User | null> => {
     useAuthStore.getState().setAuthStatus(true, currentUser.uid);
     useAuthStore.getState().setUserProfile(userProfile.name, userProfile.picture || undefined);
     
-    return currentUser;
+    return userProfile;
   } catch (error) {
     console.error("Error refreshing user data:", error);
     return null;

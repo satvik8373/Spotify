@@ -63,6 +63,9 @@ app.use(express.json()); // to parse req.body
 
 // Firebase authentication middleware
 app.use(async (req, res, next) => {
+  // Initialize req.auth if not set
+  req.auth = req.auth || {};
+  
   const authHeader = req.headers.authorization;
   
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -76,6 +79,7 @@ app.use(async (req, res, next) => {
         email: decodedToken.email,
         firebase: decodedToken
       };
+      console.log(`Firebase auth successful for user: ${decodedToken.uid}`);
     } catch (error) {
       console.log("Firebase auth failed, continuing with other auth methods:", error.message);
       // Don't fail the request - allow other auth methods to be checked
