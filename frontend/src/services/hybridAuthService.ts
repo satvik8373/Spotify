@@ -28,6 +28,9 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 // Cache login attempts to prevent duplicate calls
 const loginCache = new Map();
 
+// Cache for Google login attempts
+const googleLoginCache = new Map();
+
 // Define FirestoreUser interface
 interface FirestoreUser {
   uid: string;
@@ -465,65 +468,109 @@ export const getCurrentUser = () => {
 // Sign in with Google
 export const signInWithGoogle = async () => {
   try {
-    const provider = new GoogleAuthProvider();
-    const userCredential = await signInWithPopup(auth, provider);
-    const user = userCredential.user;
+    // Generate a cache key based on timestamp to prevent duplicate calls
+    const cacheKey = `google_login:${Date.now()}`;
     
-    // Check if user already exists in Firestore
-    const userDoc = await getDoc(doc(db, "users", user.uid));
+    // Check if we have an ongoing Google login attempt
+    const existingPromise = googleLoginCache.get('google_login');
+    if (existingPromise) {
+      console.log("Using cached Google login promise");
+      return existingPromise;
+    }
     
-    if (!userDoc.exists()) {
-      // Create user document in Firestore if this is their first sign in
-      await setDoc(doc(db, "users", user.uid), {
-        email: user.email,
-        fullName: user.displayName,
-        imageUrl: user.photoURL,
-        createdAt: new Date().toISOString(),
-        isAdmin: false,
+    // Create a promise for this login attempt and cache it
+    const loginPromise = (async () => {
+      const provider = new GoogleAuthProvider();
+      // Add scopes for faster authentication
+      provider.setCustomParameters({
+        prompt: 'select_account',
       });
-    }
-    
-    // Synchronize with backend if it's available
-    if (API_URL) {
-      try {
-        // Get Firebase ID token
-        const idToken = await user.getIdToken();
+      
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+      
+      // Immediately update auth store for faster UI response
+      useAuthStore.getState().setAuthStatus(true, user.uid);
+      useAuthStore.getState().setUserProfile(
+        user.displayName || "",
+        user.photoURL || undefined
+      );
+      
+      // Perform non-critical operations in the background
+      Promise.all([
+        // Check if user exists in Firestore and create if needed
+        (async () => {
+          try {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            
+            if (!userDoc.exists()) {
+              await setDoc(doc(db, "users", user.uid), {
+                email: user.email,
+                fullName: user.displayName,
+                imageUrl: user.photoURL,
+                createdAt: new Date().toISOString(),
+                isAdmin: false,
+              });
+            }
+          } catch (error) {
+            console.warn('Firestore user creation failed, but auth successful:', error);
+          }
+        })(),
         
-        // Call backend API to sync user
-        const response = await fetch(`${API_URL}/api/auth/sync`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({
-            email: user.email,
-            uid: user.uid,
-            displayName: user.displayName,
-            photoURL: user.photoURL
-          })
-        });
+        // Sync with backend API
+        (async () => {
+          if (API_URL) {
+            try {
+              const idToken = await user.getIdToken();
+              
+              fetch(`${API_URL}/api/auth/sync`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${idToken}`
+                },
+                body: JSON.stringify({
+                  email: user.email,
+                  uid: user.uid,
+                  displayName: user.displayName,
+                  photoURL: user.photoURL
+                })
+              }).catch(error => {
+                console.warn('Backend sync failed for Google login, but auth successful:', error);
+              });
+            } catch (error) {
+              console.warn('Failed to get ID token for backend sync, but auth successful:', error);
+            }
+          }
+        })(),
         
-        if (!response.ok) {
-          console.warn('Failed to sync Google user with backend, but Firebase auth successful');
-        }
-      } catch (error) {
-        console.warn('Backend sync failed for Google login, but Firebase auth successful:', error);
-      }
-    }
+        // Migrate liked songs
+        (async () => {
+          try {
+            await migrateAnonymousLikedSongs(user.uid);
+          } catch (error) {
+            console.warn('Error migrating liked songs, but auth successful:', error);
+          }
+        })()
+      ]).catch(error => {
+        console.warn('Some background tasks failed, but login successful:', error);
+      });
+      
+      return user;
+    })();
     
-    // Update auth store
-    useAuthStore.getState().setAuthStatus(true, user.uid);
-    useAuthStore.getState().setUserProfile(
-      user.displayName || "",
-      user.photoURL || undefined
-    );
+    // Store the promise in the cache
+    googleLoginCache.set('google_login', loginPromise);
     
-    // Migrate any liked songs from anonymous user
-    migrateAnonymousLikedSongs(user.uid);
+    // Set a timeout to clear the cache entry
+    setTimeout(() => {
+      googleLoginCache.delete('google_login');
+    }, 10000); // Clear after 10 seconds
     
-    return user;
+    return await loginPromise;
   } catch (error: any) {
+    // Clear cache on error
+    googleLoginCache.delete('google_login');
     console.error("Error in Google login:", error);
     throw new Error(error.message || "Failed to login with Google");
   }

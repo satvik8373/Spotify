@@ -1,17 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import LeftSidebar from './components/LeftSidebar';
 import AudioPlayer from './components/AudioPlayer';
 import { PlaybackControls } from './components/PlaybackControls';
 import MobileNav from './components/MobileNav';
 import Header from '@/components/Header';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(false);
   const { currentSong } = usePlayerStore();
+  const { isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
   const hasActiveSong = !!currentSong;
+
+  // Redirect unauthenticated users to welcome page
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     const checkMobile = () => {

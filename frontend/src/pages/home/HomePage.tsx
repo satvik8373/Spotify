@@ -180,6 +180,13 @@ const HomePage = () => {
 
   const { setCurrentSong } = usePlayerStore();
 
+  // Redirect unauthenticated users to welcome page
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   useEffect(() => {
     fetchFeaturedPlaylists();
     fetchPublicPlaylists();

@@ -16,6 +16,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import RequireAuth from './components/RequireAuth';
+import WelcomePage from './pages/WelcomePage';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -46,6 +48,11 @@ const ErrorFallback = () => (
 const router = createBrowserRouter(
 	[
 		{
+			path: '/',
+			element: <WelcomePage />,
+			index: true
+		},
+		{
 			path: '/login',
 			element: <Login />
 		},
@@ -58,35 +65,41 @@ const router = createBrowserRouter(
 			element: <ResetPassword />
 		},
 		{
+			path: '/app',
 			element: <MainLayout />,
 			errorElement: <ErrorFallback />,
 			children: [
 				{
-					path: '/',
+					index: true,
 					element: <HomePage />
 				},
 				{
-					path: '/albums/:albumId',
-					element: <AlbumPage />
+					element: <RequireAuth />,
+					children: [
+						{
+							path: 'albums/:albumId',
+							element: <AlbumPage />
+						},
+						{
+							path: 'library',
+							element: <LibraryPage />
+						},
+						{
+							path: 'liked-songs',
+							element: <LikedSongsPage />
+						},
+						{
+							path: 'playlist/:id',
+							element: <PlaylistPage />
+						},
+					]
 				},
 				{
-					path: '/library',
-					element: <LibraryPage />
-				},
-				{
-					path: '/liked-songs',
-					element: <LikedSongsPage />
-				},
-				{
-					path: '/search',
+					path: 'search',
 					element: <SearchPage />
 				},
 				{
-					path: '/playlist/:id',
-					element: <PlaylistPage />
-				},
-				{
-					path: '/debug/api',
+					path: 'debug/api',
 					element: <ApiDebugPage />
 				},
 				{
