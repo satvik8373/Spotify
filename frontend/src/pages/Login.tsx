@@ -52,16 +52,10 @@ const Login = () => {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
-      // Show a loading toast notification for better UX
-      const loadingToast = toast.loading('Logging in with Google...');
-      
       await signInWithGoogle();
-      
-      // Replace the loading toast with a success message
-      toast.dismiss(loadingToast);
       toast.success('Logged in with Google successfully');
-      
-      navigate(from); // Navigate to the return URL
+      // Immediately navigate to the home page or return URL for faster perceived performance
+      navigate(from, { replace: true });
     } catch (error: any) {
       console.error('Google login error:', error);
       toast.error(error.message || 'Failed to login with Google');

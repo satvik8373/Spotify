@@ -172,8 +172,7 @@ export const login = async (email: string, password: string): Promise<User | nul
       }
       
       console.log("Login completed successfully for", email);
-      // Return the Firebase user instead of the userProfile to fix type error
-      return firebaseUser;
+      return userProfile;
     })();
     
     // Store the promise in the cache
@@ -276,44 +275,39 @@ export const register = async (email: string, password: string, fullName: string
 // Sign out
 export const signOut = async () => {
   try {
-    // Start timer for performance tracking
-    const startTime = performance.now();
-    
     // Get current user ID before signing out
     const userId = auth.currentUser?.uid;
     
-    // Reset auth store immediately for faster UI response
+    // Reset auth store before Firebase signout for faster UI response
     useAuthStore.getState().reset();
     
-    // Create a promise for Firebase signout
-    const firebaseSignOutPromise = firebaseSignOut(auth);
+    // Sign out from Firebase (can be slow sometimes)
+    await firebaseSignOut(auth);
     
-    // If we have a backend API and user ID, create a promise for backend signout
-    let backendSignOutPromise = Promise.resolve();
+    // Sign out from backend if it's available (do in background)
     if (API_URL && userId) {
-      backendSignOutPromise = (async () => {
-        try {
-          await fetch(`${API_URL}/api/auth/logout`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid: userId })
-          });
-        } catch (error) {
-          console.warn('Backend logout failed, but Firebase logout will still proceed:', error);
-        }
-      })();
+      fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ uid: userId })
+      }).catch(error => {
+        console.warn('Backend logout error:', error);
+      });
     }
     
-    // Wait for both operations to complete
-    await Promise.all([firebaseSignOutPromise, backendSignOutPromise]);
+    // Clear any auth-related localStorage items
+    localStorage.removeItem('firebase:authUser');
     
-    // Clear any auth-related cached data
-    localStorage.removeItem('firebase:previous_websocket_failure');
-    
-    console.log(`Signout completed in ${Math.round(performance.now() - startTime)}ms`);
+    return { success: true };
   } catch (error: any) {
     console.error("Error in signOut:", error);
-    throw new Error(error.message || "Failed to sign out");
+    // Still reset store even if Firebase logout fails
+    useAuthStore.getState().reset();
+    
+    // Don't throw error, just return success: false
+    return { success: false, error: error.message };
   }
 };
 
@@ -474,112 +468,81 @@ export const getCurrentUser = () => {
 // Sign in with Google
 export const signInWithGoogle = async () => {
   try {
-    // Start timer for performance tracking
-    const startTime = performance.now();
+    // Cache check - prevent duplicate signins
+    const cacheKey = `google:${Date.now()}`;
     
-    // Configure Google provider with optimized settings
+    // Create a new GoogleAuthProvider instance with optimal settings
     const provider = new GoogleAuthProvider();
+    // Add select_account to force the account picker every time
+    provider.setCustomParameters({ prompt: 'select_account' });
     
-    // Add login hint for faster authentication if user has logged in before
-    provider.setCustomParameters({
-      prompt: 'select_account',
-      // Enable one-tap sign-in for returning users
-      'login_hint': localStorage.getItem('lastGoogleEmail') || ''
-    });
-    
-    // Start Firebase popup authentication
-    const userCredentialPromise = signInWithPopup(auth, provider);
-    
-    // Set loading state to true 
-    useAuthStore.getState().isLoading = true;
-    
-    // Wait for Firebase authentication
-    const userCredential = await userCredentialPromise;
+    // Start Firebase authentication
+    const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
     
-    // Store email for faster future logins
-    if (user.email) {
-      localStorage.setItem('lastGoogleEmail', user.email);
-    }
-    
-    // Optimistically update auth store immediately after authentication
-    // Don't wait for Firestore or backend sync
+    // Update auth store immediately for faster UI response
     useAuthStore.getState().setAuthStatus(true, user.uid);
     useAuthStore.getState().setUserProfile(
       user.displayName || "",
       user.photoURL || undefined
     );
     
-    console.log(`Google auth completed in ${Math.round(performance.now() - startTime)}ms`);
-    
-    // Now we can perform the following operations in parallel
-    // since we've already authenticated the user
-    
-    // Create a batch of promises to run in parallel
-    const promises = [];
-    
-    // 1. Check if user exists in Firestore and create if needed
-    promises.push((async () => {
-      const userDocRef = doc(db, "users", user.uid);
-      const userDoc = await getDoc(userDocRef);
-      
-      if (!userDoc.exists()) {
-        // Create user document in Firestore
-        await setDoc(userDocRef, {
-          email: user.email,
-          fullName: user.displayName,
-          imageUrl: user.photoURL,
-          createdAt: new Date().toISOString(),
-          isAdmin: false,
-        });
-      }
-    })());
-    
-    // 2. Handle backend sync if API_URL is available
-    if (API_URL) {
-      promises.push((async () => {
-        try {
-          // Get Firebase ID token - no need to force refresh
-          const idToken = await user.getIdToken();
-          
-          // Set auth header for all future requests
-          axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
-          
-          // Call backend API to sync user
-          await axiosInstance.post('/api/auth/sync', {
+    // Perform Firestore and backend operations in the background 
+    // without blocking the UI response
+    (async () => {
+      try {
+        // Get Firebase ID token
+        const idToken = await user.getIdToken();
+        
+        // Check if user exists in Firestore
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        
+        if (!userDoc.exists()) {
+          // Create user document in Firestore if this is their first sign in
+          await setDoc(doc(db, "users", user.uid), {
             email: user.email,
-            uid: user.uid,
-            displayName: user.displayName,
-            photoURL: user.photoURL
-          }).catch(err => {
-            console.warn('Failed to sync Google user with backend, but Firebase auth successful');
+            fullName: user.displayName,
+            imageUrl: user.photoURL,
+            createdAt: new Date().toISOString(),
+            isAdmin: false,
           });
-        } catch (error) {
-          // Don't block the authentication flow if backend sync fails
-          console.warn('Backend sync failed for Google login, but Firebase auth successful:', error);
         }
-      })());
-    }
+        
+        // Synchronize with backend if available (non-blocking)
+        if (API_URL) {
+          try {
+            // Call backend API to sync user
+            const response = await fetch(`${API_URL}/api/auth/sync`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+              },
+              body: JSON.stringify({
+                email: user.email,
+                uid: user.uid,
+                displayName: user.displayName,
+                photoURL: user.photoURL
+              })
+            });
+            
+            if (!response.ok) {
+              console.warn('Failed to sync Google user with backend, but Firebase auth successful');
+            }
+          } catch (error) {
+            console.warn('Backend sync failed for Google login, but Firebase auth successful:', error);
+          }
+        }
+        
+        // Migrate any liked songs from anonymous user
+        await migrateAnonymousLikedSongs(user.uid);
+      } catch (error) {
+        console.error("Background operations failed, but user is authenticated:", error);
+      }
+    })();
     
-    // 3. Migrate any liked songs from anonymous user
-    promises.push(migrateAnonymousLikedSongs(user.uid).catch(error => {
-      console.warn('Failed to migrate liked songs, but login successful:', error);
-    }));
-    
-    // Wait for all the promises to complete - but don't block the UI
-    // This runs in the background
-    Promise.all(promises).then(() => {
-      console.log(`Complete Google login flow finished in ${Math.round(performance.now() - startTime)}ms`);
-    }).catch(error => {
-      console.warn("Background tasks completed with some errors:", error);
-    }).finally(() => {
-      useAuthStore.getState().isLoading = false;
-    });
-    
-    // Return authenticated user immediately
     return user;
   } catch (error: any) {
-    useAuthStore.getState().isLoading = false;
     console.error("Error in Google login:", error);
     throw new Error(error.message || "Failed to login with Google");
   }

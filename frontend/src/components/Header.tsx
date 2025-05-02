@@ -17,7 +17,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from 'react-hot-toast';
 
 interface HeaderProps {
   className?: string;
@@ -119,15 +118,18 @@ const Header = ({ className }: HeaderProps) => {
 
   const handleLogout = async () => {
     try {
-      // Navigate first to ensure immediate UI response
-      navigate('/');
+      // Navigate to welcome page first for faster perceived performance
+      navigate('/', { replace: true });
       
-      // Then perform the signout operation
-      await signOut();
-      useAuthStore.getState().reset();
+      // Then perform the actual logout
+      const result = await signOut();
+      if (!result.success) {
+        console.error('Error during logout:', result.error);
+      }
     } catch (error) {
       console.error('Error signing out:', error);
-      toast.error('Failed to sign out');
+      // Still reset auth store in case of error
+      useAuthStore.getState().reset();
     }
   };
 

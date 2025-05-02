@@ -110,14 +110,19 @@ const MobileNav = () => {
   const handleLogout = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      // Navigate first for immediate UI response
-      navigate('/');
+      // Navigate to welcome page first for faster perceived performance
       setShowProfileMenu(false);
+      navigate('/', { replace: true });
       
-      // Then perform the signout operation
-      await signOut();
+      // Then perform the actual logout
+      const result = await signOut();
+      if (!result.success) {
+        console.error('Error during logout:', result.error);
+      }
     } catch (error) {
       console.error('Error signing out:', error);
+      // Still close the menu and reset auth store
+      setShowProfileMenu(false);
     }
   };
 
