@@ -197,10 +197,6 @@ const MusicPlayer = () => {
       audioRef.current.setAttribute('x5-playsinline', '');
       audioRef.current.setAttribute('x5-video-player-type', 'h5');
       audioRef.current.setAttribute('x5-video-player-fullscreen', 'false');
-      // Lock orientation to portrait mode
-      audioRef.current.setAttribute('x5-orientation', 'portrait');
-      // Prevent iOS from entering fullscreen mode
-      audioRef.current.setAttribute('x-webkit-airplay', 'allow');
       audioRef.current.setAttribute('preload', 'auto');
     }
 

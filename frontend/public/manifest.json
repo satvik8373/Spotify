@@ -6,7 +6,7 @@
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#1DB954",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/spotify-icon-192.png",

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Song } from '../types';
 import { 
   MoreHorizontal, 
@@ -28,11 +28,63 @@ export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: 
   const [showAddToPlaylistDialog, setShowAddToPlaylistDialog] = useState(false);
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   
-  const isLiked = likedSongIds.has((song as any).id || song._id);
+  const songId = (song as any).id || song._id;
+  const [songLiked, setSongLiked] = useState(likedSongIds.has(songId));
+  
+  // Update state when likedSongIds changes
+  useEffect(() => {
+    setSongLiked(likedSongIds.has(songId));
+  }, [likedSongIds, songId]);
+  
+  // Listen for like updates from other components
+  useEffect(() => {
+    const handleLikeUpdate = (e: Event) => {
+      // Check if this event includes details about which song was updated
+      if (e instanceof CustomEvent && e.detail) {
+        // If we have details and it's not for our current song, ignore
+        if (e.detail.songId && e.detail.songId !== songId) {
+          return;
+        }
+        
+        // If we have explicit like state in the event, use it
+        if (typeof e.detail.isLiked === 'boolean') {
+          setSongLiked(e.detail.isLiked);
+          return;
+        }
+      }
+      
+      // Otherwise do a fresh check from the store
+      setSongLiked(likedSongIds.has(songId));
+    };
+    
+    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
+    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
+    
+    return () => {
+      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
+      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
+    };
+  }, [songId, likedSongIds]);
 
   const handleLikeSong = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Optimistically update UI
+    setSongLiked(!songLiked);
+    
+    // Perform the toggle
     toggleLikeSong(song);
+    
+    // Also dispatch an event for other components
+    document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
+      detail: {
+        songId,
+        song,
+        isLiked: !songLiked,
+        timestamp: Date.now(),
+        source: 'SongMenu'
+      }
+    }));
   };
 
   const handleShare = (e: React.MouseEvent) => {
@@ -45,8 +97,8 @@ export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: 
         title: song.title,
         text: shareText,
         url: window.location.href,
-      }).catch(error => {
-        console.error('Error sharing:', error);
+      }).catch(() => {
+        // Silent error handling
       });
     } else {
       // Fallback for browsers that don't support Web Share API
@@ -69,8 +121,8 @@ export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: 
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onClick={handleLikeSong}>
-            <Heart className={`mr-2 h-4 w-4 ${isLiked ? 'fill-green-500 text-green-500' : ''}`} />
-            {isLiked ? 'Remove from Liked Songs' : 'Add to Liked Songs'}
+            <Heart className={`mr-2 h-4 w-4 ${songLiked ? 'fill-green-500 text-green-500' : ''}`} />
+            {songLiked ? 'Remove from Liked Songs' : 'Add to Liked Songs'}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setShowAddToPlaylistDialog(true)}>
             <ListPlus className="mr-2 h-4 w-4" />

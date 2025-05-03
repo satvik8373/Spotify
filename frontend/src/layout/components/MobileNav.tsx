@@ -36,6 +36,49 @@ const MobileNav = () => {
   
   // Check if current song is liked
   const isLiked = currentSong ? likedSongIds?.has((currentSong as any).id || currentSong._id) : false;
+  
+  // State to track liked status independently
+  const [songLiked, setSongLiked] = useState(isLiked);
+
+  // Update songLiked whenever isLiked changes
+  useEffect(() => {
+    setSongLiked(isLiked);
+  }, [isLiked]);
+
+  // Listen for like updates from other components
+  useEffect(() => {
+    const handleLikeUpdate = (e: Event) => {
+      if (!currentSong) return;
+      
+      const songId = (currentSong as any).id || currentSong._id;
+      
+      // Check if this event includes details about which song was updated
+      if (e instanceof CustomEvent && e.detail) {
+        // If we have details and it's not for our current song, ignore
+        if (e.detail.songId && e.detail.songId !== songId) {
+          return;
+        }
+        
+        // If we have explicit like state in the event, use it
+        if (typeof e.detail.isLiked === 'boolean') {
+          setSongLiked(e.detail.isLiked);
+          return;
+        }
+      }
+      
+      // Otherwise do a fresh check from the store
+      const freshCheck = songId ? likedSongIds?.has(songId) : false;
+      setSongLiked(freshCheck);
+    };
+    
+    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
+    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
+    
+    return () => {
+      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
+      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
+    };
+  }, [currentSong, likedSongIds]);
 
   // Disable pinch zoom using touch-action CSS property
   useEffect(() => {
@@ -135,7 +178,25 @@ const MobileNav = () => {
   const handleLikeToggle = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent opening song details
     if (currentSong) {
+      // Get the song ID consistently
+      const songId = (currentSong as any).id || currentSong._id;
+      
+      // Optimistically update UI
+      setSongLiked(!songLiked);
+      
+      // Perform the actual toggle
       toggleLikeSong(currentSong);
+      
+      // Also dispatch a direct event for immediate notification
+      document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
+        detail: {
+          songId,
+          song: currentSong,
+          isLiked: !songLiked,
+          timestamp: Date.now(),
+          source: 'MobileNav'
+        }
+      }));
     }
   };
   
@@ -260,9 +321,9 @@ const MobileNav = () => {
             <div className="flex items-center">
               <button
                 onClick={handleLikeToggle}
-                className={`mr-2 h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 ${isLiked ? 'text-green-500' : 'text-zinc-400'} active:bg-zinc-800`}
+                className={`mr-2 h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 ${songLiked ? 'text-green-500' : 'text-zinc-400'} active:bg-zinc-800`}
               >
-                <Heart className="h-4 w-4" fill={isLiked ? 'currentColor' : 'none'} />
+                <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
               </button>
               <button
                 onClick={(e) => {

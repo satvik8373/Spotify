@@ -237,7 +237,6 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
         if (get().isSaving) return;
         
         const isLiked = get().likedSongIds.has(songId);
-        console.log(`Toggling song ${songId}, current liked status: ${isLiked}`);
         
         try {
           if (isLiked) {
@@ -273,5 +272,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
 // Initialize the store by loading liked songs
 // This must be done outside of any component to ensure it's only called once
 setTimeout(() => {
-  useLikedSongsStore.getState().loadLikedSongs().catch(console.error);
+  useLikedSongsStore.getState().loadLikedSongs().catch(() => {
+    // Error handling without logging
+  });
 }, 0);

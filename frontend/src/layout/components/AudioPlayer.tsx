@@ -42,8 +42,7 @@ const AudioPlayer = () => {
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isHandlingPlayback = useRef(false);
   const loadStarted = useRef<boolean>(false);
-  // Force portrait mode always even in fullscreen (renamed for clarity)
-  const [isFullDetailView, setIsFullDetailView] = useState(false);
+  const [isFullscreenMobile, setIsFullscreenMobile] = useState(false);
   const [currentTime, setLocalCurrentTime] = useState(0);
   const [duration, setLocalDuration] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
@@ -639,10 +638,45 @@ const AudioPlayer = () => {
     setIsLiked(liked);
   }, [currentSong, likedSongIds]);
 
+  // Listen for like updates from other components
+  useEffect(() => {
+    const handleLikeUpdate = (e: Event) => {
+      if (!currentSong) return;
+      
+      const songId = (currentSong as any).id || currentSong._id;
+      
+      // Check if this event includes details about which song was updated
+      if (e instanceof CustomEvent && e.detail) {
+        // If we have details and it's not for our current song, ignore
+        if (e.detail.songId && e.detail.songId !== songId) {
+          return;
+        }
+        
+        // If we have explicit like state in the event, use it
+        if (typeof e.detail.isLiked === 'boolean') {
+          setIsLiked(e.detail.isLiked);
+          return;
+        }
+      }
+      
+      // Otherwise do a fresh check from the store
+      const freshCheck = songId ? likedSongIds?.has(songId) : false;
+      setIsLiked(freshCheck);
+    };
+    
+    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
+    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
+    
+    return () => {
+      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
+      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
+    };
+  }, [currentSong, likedSongIds]);
+
   // Keyboard controls for mobile player
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isFullDetailView) return;
+      if (!isFullscreenMobile) return;
       
       if (e.code === 'Space') {
         e.preventDefault();
@@ -652,13 +686,13 @@ const AudioPlayer = () => {
       } else if (e.code === 'ArrowRight') {
         playNext();
       } else if (e.code === 'Escape') {
-        setIsFullDetailView(false);
+        setIsFullscreenMobile(false);
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullDetailView, playNext, playPrevious, playerStore]);
+  }, [isFullscreenMobile, playNext, playPrevious, playerStore]);
 
   // handle play/pause logic
   useEffect(() => {
@@ -841,11 +875,11 @@ const AudioPlayer = () => {
               const playPromise = audioRef.current.play();
               
               if (playPromise !== undefined) {
-                playPromise
-                  .then(() => {
-                    isHandlingPlayback.current = false;
-                  })
-                  .catch(error => {
+              playPromise
+                .then(() => {
+                  isHandlingPlayback.current = false;
+                })
+                .catch(error => {
                     // Handle AbortError specifically
                     if (error.name === 'AbortError') {
                       // Wait for any pending operations to complete
@@ -853,7 +887,7 @@ const AudioPlayer = () => {
                         // Only attempt retry if we're still supposed to be playing
                         if (isPlaying && audioRef.current) {
                           audioRef.current.play().catch(retryError => {
-                            setIsPlaying(false);
+                  setIsPlaying(false);
                           });
                         }
                       }, 500);
@@ -861,8 +895,8 @@ const AudioPlayer = () => {
                       setIsPlaying(false);
                     }
                     
-                    isHandlingPlayback.current = false;
-                  });
+                  isHandlingPlayback.current = false;
+                });
               } else {
                 isHandlingPlayback.current = false;
               }
@@ -919,7 +953,7 @@ const AudioPlayer = () => {
             
             // Set mini player to show immediately
             if (!currentSong) {
-              setIsFullDetailView(false);
+              setIsFullscreenMobile(false);
             }
 
             // Don't autoplay immediately on page refresh
