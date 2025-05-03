@@ -77,14 +77,10 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const playlists = await playlistService.getUserPlaylists();
         set({ playlists, isLoading: false });
       } catch (error) {
-        console.error('Error fetching playlists:', error);
         // Use mock data as fallback
-        console.log('Using mock playlist data as fallback');
         set({ playlists: mockPlaylists, isLoading: false });
       }
     } catch (error: any) {
-      console.error('Error fetching playlists:', error);
-      toast.error('Failed to fetch playlists');
       set({ isLoading: false });
     }
   },
@@ -92,21 +88,16 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   fetchUserPlaylists: async () => {
     try {
       set({ isLoading: true });
-      console.log('Fetching user playlists from Firestore');
       
       try {
         // Get user playlists from Firestore
         const userPlaylists = await playlistService.getUserPlaylists();
         set({ userPlaylists, isLoading: false });
       } catch (error) {
-        console.error('Error fetching user playlists:', error);
         // Use mock data as fallback
-        console.log('Using mock user playlist data as fallback');
         set({ userPlaylists: mockUserPlaylists, isLoading: false });
       }
     } catch (error: any) {
-      console.error('Error fetching user playlists:', error);
-      toast.error('Failed to fetch your playlists');
       set({ isLoading: false });
     }
   },
@@ -120,16 +111,12 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const featuredPlaylists = await playlistService.getFeaturedPlaylists();
         set({ featuredPlaylists, isLoading: false });
       } catch (error) {
-        console.error('Error fetching featured playlists:', error);
         // Use mock data as fallback
-        console.log('Using mock featured playlist data as fallback');
         // Filter mock playlists to only include featured ones
         const featured = mockPlaylists.filter(playlist => playlist.featured);
         set({ featuredPlaylists: featured, isLoading: false });
       }
     } catch (error: any) {
-      console.error('Error fetching featured playlists:', error);
-      toast.error('Failed to fetch featured playlists');
       set({ isLoading: false });
     }
   },
@@ -143,16 +130,12 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const publicPlaylists = await playlistService.getPublicPlaylists();
         set({ publicPlaylists, isLoading: false });
       } catch (error) {
-        console.error('Error fetching public playlists:', error);
         // Use mock data as fallback
-        console.log('Using mock public playlist data as fallback');
         // Filter mock playlists to only include public ones
         const public_playlists = mockPlaylists.filter(playlist => playlist.isPublic);
         set({ publicPlaylists: public_playlists, isLoading: false });
       }
     } catch (error: any) {
-      console.error('Error fetching public playlists:', error);
-      toast.error('Failed to fetch public playlists');
       set({ isLoading: false });
     }
   },
@@ -167,9 +150,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         set({ currentPlaylist: playlist, isLoading: false });
         return playlist;
       } catch (error) {
-        console.error('Error fetching playlist:', error);
         // Use mock data as fallback
-        console.log('Using mock playlist data as fallback');
         // Find a mock playlist with the matching ID
         const mockPlaylist = [...mockPlaylists, ...mockUserPlaylists].find(p => p._id === id);
         if (mockPlaylist) {
@@ -181,8 +162,6 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       set({ isLoading: false });
       return null;
     } catch (error: any) {
-      console.error('Error fetching playlist:', error);
-      toast.error('Failed to fetch playlist');
       set({ isLoading: false });
       return null;
     }
@@ -229,7 +208,6 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       set({ searchResults: results, isSearching: false });
       return results;
     } catch (error) {
-      console.error('Error searching playlists:', error);
       set({ isSearching: false });
       return [];
     }
@@ -247,13 +225,9 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const userPlaylists = [...get().userPlaylists, playlist];
         set({ userPlaylists, isCreating: false });
 
-        toast.success('Playlist created successfully');
         return playlist;
       } catch (firestoreError) {
-        console.error('Error creating playlist in Firestore:', firestoreError);
-        
         // Use mock data as fallback
-        console.log('Using mock data to simulate playlist creation');
         const mockPlaylist: Playlist = {
           _id: `mock-playlist-${Date.now()}`,
           name,
@@ -276,12 +250,9 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const userPlaylists = [...get().userPlaylists, mockPlaylist];
         set({ userPlaylists, isCreating: false });
         
-        toast.success('Playlist created successfully');
         return mockPlaylist;
       }
     } catch (error) {
-      console.error('Fatal error creating playlist:', error);
-      toast.error('Failed to create playlist');
       set({ isCreating: false });
       return null;
     }
@@ -312,10 +283,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         isUpdating: false,
       });
 
-      toast.success('Playlist updated successfully');
     } catch (error: any) {
-      console.error('Error updating playlist:', error);
-      toast.error('Failed to update playlist');
       set({ isUpdating: false });
     }
   },
@@ -340,10 +308,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         isDeleting: false,
       });
 
-      toast.success('Playlist deleted successfully');
     } catch (error: any) {
-      console.error('Error deleting playlist:', error);
-      toast.error('Failed to delete playlist');
       set({ isDeleting: false });
     }
   },
@@ -353,7 +318,6 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       const playlist = get().currentPlaylist;
       
       if (!playlist) {
-        toast.error('Playlist not found');
         return;
       }
       
@@ -403,20 +367,14 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         // Update the current playlist in state
         set({ currentPlaylist: updatedPlaylist });
         
-        toast.success('Song added to playlist');
       } catch (error) {
-        console.error('Error adding song to playlist:', error);
-        
         // Fallback: Update locally if Firebase fails
         const updatedSongs = [...playlist.songs, song];
         const updatedPlaylist = { ...playlist, songs: updatedSongs };
         
         set({ currentPlaylist: updatedPlaylist });
-        toast.success('Song added to playlist (locally)');
       }
     } catch (error: any) {
-      console.error('Error adding song to playlist:', error);
-      toast.error('Failed to add song to playlist');
     }
   },
 
@@ -428,10 +386,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       // Update the current playlist in state
       set({ currentPlaylist: updatedPlaylist });
       
-      // Remove success toast notification
     } catch (error: any) {
-      console.error('Error removing song from playlist:', error);
-      toast.error('Failed to remove song from playlist');
     }
   },
 }));

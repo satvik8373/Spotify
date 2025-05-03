@@ -1,6 +1,5 @@
 import axiosInstance from '../lib/axios';
 import { Album, Song, Stats } from '@/types';
-import toast from 'react-hot-toast';
 import { create } from 'zustand';
 
 interface IndianSong {
@@ -153,10 +152,8 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
       set(state => ({
         songs: state.songs.filter(song => song._id !== id),
       }));
-      toast.success('Song deleted successfully');
     } catch (error: any) {
-      console.log('Error in deleteSong', error);
-      toast.error('Error deleting song');
+      // Silent error handling
     } finally {
       set({ isLoading: false });
     }
@@ -174,9 +171,8 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
             : song
         ),
       }));
-      toast.success('Album deleted successfully');
     } catch (error: any) {
-      toast.error('Failed to delete album: ' + error.message);
+      // Silent error handling
     } finally {
       set({ isLoading: false });
     }
@@ -317,7 +313,6 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
         }
       }
     } catch (error: any) {
-      console.error('Error fetching Indian trending songs:', error);
       // Ensure we have fallback data
       set({ indianTrendingSongs: mockTrendingSongs });
     } finally {
@@ -363,7 +358,7 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
         set({ bollywoodSongs: formattedResults });
       }
     } catch (error: any) {
-      console.error('Error fetching Bollywood songs:', error);
+      // Silent error handling
     } finally {
       set({ isIndianMusicLoading: false });
     }
@@ -407,7 +402,7 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
         set({ hollywoodSongs: formattedResults });
       }
     } catch (error: any) {
-      console.error('Error fetching Hollywood songs:', error);
+      // Silent error handling
     } finally {
       set({ isIndianMusicLoading: false });
     }
@@ -451,7 +446,7 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
         set({ officialTrendingSongs: formattedResults });
       }
     } catch (error: any) {
-      console.error('Error fetching official trending songs:', error);
+      // Silent error handling
     } finally {
       set({ isIndianMusicLoading: false });
     }
@@ -495,7 +490,7 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
         set({ hindiSongs: formattedResults });
       }
     } catch (error: any) {
-      console.error('Error fetching Hindi songs:', error);
+      // Silent error handling
     } finally {
       set({ isIndianMusicLoading: false });
     }
@@ -539,7 +534,7 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
         set({ indianNewReleases: formattedResults });
       }
     } catch (error: any) {
-      console.error('Error fetching Indian new releases:', error);
+      // Silent error handling
     } finally {
       set({ isIndianMusicLoading: false });
     }
@@ -585,7 +580,7 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
         set({ indianSearchResults: formattedResults });
       }
     } catch (error: any) {
-      console.error('Error searching Indian songs:', error);
+      // Silent error handling
     } finally {
       set({ isIndianMusicLoading: false });
     }

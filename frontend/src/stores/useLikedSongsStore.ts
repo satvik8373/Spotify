@@ -121,7 +121,6 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
             set({ likedSongs: songs, likedSongIds: songIds });
           }
         } catch (error) {
-          console.error('Error loading liked songs:', error);
           // Don't clear existing songs on error, just keep what we have
         } finally {
           set({ isLoading: false });
@@ -136,7 +135,6 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Get the song ID consistently
           const songId = song._id;
           if (!songId) {
-            console.error('Cannot add song without ID');
             return;
           }
           
@@ -173,20 +171,17 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
               audioUrl: song.audioUrl,
               duration: song.duration,
               albumName: song.albumId || ''
-            }).catch(error => {
-              console.error('Error adding song to Firestore:', error);
-              // We've already updated local state, so just show a warning
-              toast.error('Song added locally, but sync failed');
+            }).catch(() => {
+              // Error handled silently
             });
           }
           
           // Notify listeners through event
           document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
           
-          toast.success('Added to Liked Songs');
+          // Success without notification
         } catch (error) {
-          console.error('Error adding liked song:', error);
-          toast.error('Failed to add to Liked Songs');
+          // Error handled silently
         } finally {
           set({ isSaving: false });
         }
@@ -216,20 +211,17 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Update Firestore if user is authenticated - don't await to prevent UI blocking
           const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
-            likedSongsFirestoreService.removeLikedSong(songId).catch(error => {
-              console.error('Error removing song from Firestore:', error);
-              // We've already updated local state, so just show a warning
-              toast.error('Song removed locally, but sync failed');
+            likedSongsFirestoreService.removeLikedSong(songId).catch(() => {
+              // Error handled silently
             });
           }
           
           // Notify listeners through event
           document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
           
-          toast.success('Removed from Liked Songs');
+          // Success without notification
         } catch (error) {
-          console.error('Error removing liked song:', error);
-          toast.error('Failed to remove from Liked Songs');
+          // Error handled silently
         } finally {
           set({ isSaving: false });
         }
@@ -238,7 +230,6 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
       toggleLikeSong: async (song: Song) => {
         const songId = song._id;
         if (!songId) {
-          console.error('Cannot toggle like for song without ID');
           return;
         }
         
@@ -265,8 +256,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           document.dispatchEvent(new CustomEvent('likedSongsUpdated', { detail }));
           document.dispatchEvent(new CustomEvent('songLikeStateChanged', { detail }));
         } catch (error) {
-          console.error('Error toggling liked song:', error);
-          toast.error('Failed to update liked status');
+          // Error handled silently
         }
       },
     }),

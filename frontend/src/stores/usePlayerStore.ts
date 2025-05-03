@@ -32,6 +32,22 @@ export interface PlayerState {
   setUserInteracted: () => void;
 }
 
+// Helper to get a random index that's different from the current one
+const getRandomIndex = (currentIndex: number, length: number): number => {
+  if (length <= 1) return 0;
+  
+  // Create array of all possible indices except current
+  const potentialIndices = Array.from({ length }, (_, i) => i)
+    .filter(i => i !== currentIndex);
+    
+  if (potentialIndices.length > 0) {
+    return potentialIndices[Math.floor(Math.random() * potentialIndices.length)];
+  } else {
+    // Fallback (should not happen with length > 1)
+    return currentIndex;
+  }
+};
+
 export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, get) => ({
@@ -59,14 +75,14 @@ export const usePlayerStore = create<PlayerState>()(
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
         } catch (error) {
-          console.error('Error saving player state:', error);
+          // Error handling without logging
         }
       },
       
       setIsPlaying: (isPlaying) => {
         // If trying to play but user hasn't interacted, don't allow
         if (isPlaying && !get().hasUserInteracted) {
-          console.log('Attempted to play without user interaction, setting hasUserInteracted to true');
+          // console.log('Attempted to play without user interaction, setting hasUserInteracted to true');
           set({ isPlaying, hasUserInteracted: true });
         } else {
           set({ isPlaying });
@@ -107,7 +123,7 @@ export const usePlayerStore = create<PlayerState>()(
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
         } catch (error) {
-          console.error('Error saving player state:', error);
+          // Error handling without logging
         }
       },
       
@@ -116,24 +132,9 @@ export const usePlayerStore = create<PlayerState>()(
         
         if (queue.length === 0) return;
         
-        let newIndex;
-        if (isShuffled) {
-          // In shuffle mode, pick a random song excluding current
-          const potentialIndices = Array.from({ length: queue.length }, (_, i) => i)
-            .filter(i => i !== currentIndex);
-            
-          if (potentialIndices.length > 0) {
-            newIndex = potentialIndices[Math.floor(Math.random() * potentialIndices.length)];
-          } else {
-            // If only one song in queue, play it again
-            newIndex = currentIndex;
-          }
-        } else {
-          // In order mode, go to next song or loop back to start
-          newIndex = (currentIndex + 1) % queue.length;
-        }
-        
-        console.log(`Playing next song: ${currentIndex} -> ${newIndex} (queue size: ${queue.length})`);
+        const newIndex = isShuffled 
+          ? getRandomIndex(currentIndex, queue.length)
+          : currentIndex >= queue.length - 1 ? 0 : currentIndex + 1;
         
         // Save current state before changing
         const currentState = {
@@ -160,7 +161,7 @@ export const usePlayerStore = create<PlayerState>()(
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
         } catch (error) {
-          console.error('Error saving player state:', error);
+          // Error handling without logging
         }
       },
       
@@ -185,7 +186,7 @@ export const usePlayerStore = create<PlayerState>()(
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
         } catch (error) {
-          console.error('Error saving player state:', error);
+          // Error handling without logging
         }
       },
       
@@ -222,11 +223,11 @@ export const usePlayerStore = create<PlayerState>()(
 setTimeout(() => {
   // Auto-restore interrupted playback state from before refresh
   const store = usePlayerStore.getState();
-  console.log('Player store initialized with:', store.currentSong?.title || 'no song');
+  // console.log('Player store initialized with:', store.currentSong?.title || 'no song');
   
   // If we have a song but no queue, try to reconstruct minimum queue
   if (store.currentSong && store.queue.length === 0) {
-    console.log('Detected song but no queue, reconstructing minimal queue');
+    // console.log('Detected song but no queue, reconstructing minimal queue');
     store.playAlbum([store.currentSong], 0);
   }
   
@@ -239,11 +240,11 @@ setTimeout(() => {
       
       // If the last update was recent (within 5 minutes) and playback was active
       if (timeSinceLastUpdate < 5 * 60 * 1000 && isPlaying) {
-        console.log('Resuming playback from saved state');
+        // console.log('Resuming playback from saved state');
         store.setIsPlaying(true);
       }
     }
   } catch (error) {
-    console.error('Error checking saved playback state:', error);
+    // Error handling without logging
   }
 }, 0);

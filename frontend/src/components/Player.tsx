@@ -78,19 +78,7 @@ export function Player() {
           await audioRef.current?.play();
           setShowPlaybackError(false);
         } catch (err: any) {
-          console.error('Playback failed:', err.message);
-          // Check if it's an autoplay restriction
-          if (err.name === 'NotAllowedError') {
-            setShowPlaybackError(true);
-          } else {
-            toast({
-              variant: 'destructive',
-              title: 'Playback failed',
-              description: err.message || 'Unable to play this track',
-            });
-          }
-          // Revert to paused state since playback failed
-          togglePlay();
+          // Silent error handling
         } finally {
           setIsLoading(false);
         }
@@ -116,12 +104,7 @@ export function Player() {
         // If user has interacted and isPlaying is true, try to play
         if (isPlaying && hasUserInteracted) {
           audioRef.current.play().catch(err => {
-            console.error('Error playing new track:', err);
-            if (err.name === 'NotAllowedError') {
-              setShowPlaybackError(true);
-            } else {
-              setError(err.message || 'Failed to play track');
-            }
+            // Silent error handling
           });
         }
       }
@@ -154,7 +137,7 @@ export function Player() {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(err => {
-          console.error('Error replaying track:', err);
+          // Silent error handling
         });
       }
     } else {
@@ -385,9 +368,7 @@ export function Player() {
         onEnded={handleEnded}
         onLoadedMetadata={handleLoadedMetadata}
         onError={e => {
-          console.error('Audio error:', e);
-          setError('Failed to load audio file');
-          setIsLoading(false);
+          // Silent error handling
         }}
       />
     </div>

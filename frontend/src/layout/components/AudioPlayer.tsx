@@ -180,8 +180,6 @@ const AudioPlayer = () => {
       
       // Handle when audio is interrupted (likely by a call)
       const handleAudioPause = () => {
-        console.log("Audio paused by system");
-        
         // Store the state so we can resume after the interruption
         if (isPlaying) {
           usePlayerStore.setState({ wasPlayingBeforeInterruption: true });
@@ -190,15 +188,11 @@ const AudioPlayer = () => {
       
       // Handle resuming audio after interruption ends
       const handleAudioResume = () => {
-        console.log("Audio focus regained, checking if we should resume");
-        
         // Get the latest state
         const state = usePlayerStore.getState();
         
         // Check if we were playing before the interruption
         if (state.wasPlayingBeforeInterruption) {
-          console.log("Resuming playback after interruption");
-          
           // Resume playback with a slight delay to let the system stabilize
           setTimeout(() => {
             // Make sure user is marked as having interacted to enable autoplay
@@ -212,7 +206,7 @@ const AudioPlayer = () => {
             
             if (audioRef.current?.paused) {
               audioRef.current.play().catch(err => {
-                console.error("Failed to resume after interruption:", err);
+                // Error handling without logging
               });
             }
           }, 500);
@@ -250,7 +244,7 @@ const AudioPlayer = () => {
             });
           }
         } catch (e) {
-          console.warn('AudioContext not fully supported:', e);
+          // AudioContext not fully supported
         }
       }
       
@@ -273,7 +267,6 @@ const AudioPlayer = () => {
     const handleEnded = () => {
       // Get the current state for logging and better control
       const state = usePlayerStore.getState();
-      console.log("Song ended, current queue:", state.queue.length, "items, index:", state.currentIndex);
       
       // Mark that user has interacted to enable autoplay for next song
       state.setUserInteracted();
@@ -291,19 +284,16 @@ const AudioPlayer = () => {
         // Explicitly attempt to play after state updates to ensure next song starts
         if (audioRef.current) {
           audioRef.current.play().catch(err => {
-            console.error("Failed to play next song after current ended:", err);
             // If initial play fails, try again with another slight delay
             setTimeout(() => {
               if (audioRef.current) {
                 audioRef.current.play().catch(e => {
-                  console.error("Failed second play attempt:", e);
+                  // Error handling without logging
                 });
               }
             }, 300);
           });
         }
-        
-        console.log("Playing next song, new index:", usePlayerStore.getState().currentIndex);
       }, 100);
     };
 
@@ -327,7 +317,6 @@ const AudioPlayer = () => {
           
           // Check if this is the last timeupdate before end (to avoid duplicates)
           if (audio.currentTime < audio.duration) {
-            console.log("Near song end detected via timeupdate, advancing to next track");
             handleEnded();
             
             // Ensure we don't trigger again by pausing
@@ -357,9 +346,8 @@ const AudioPlayer = () => {
             handleTimeUpdate();
           } else {
             // If audio is paused but shouldn't be, try to resume
-            console.log("Background check detected paused audio, attempting resume");
             audio.play().catch(err => {
-              console.error("Failed to resume in background check:", err);
+              // Error handling without logging
             });
           }
         }
@@ -381,8 +369,6 @@ const AudioPlayer = () => {
     // Only set up if we have an active song
     if (!currentSong || !audioRef.current) return;
     
-    console.log("Setting up background playback maintenance");
-    
     // Use service worker techniques to keep audio alive in background
     const keepAliveInterval = setInterval(() => {
       // Only execute when in background
@@ -395,15 +381,13 @@ const AudioPlayer = () => {
         
         // Check if audio is playing as expected
         if (audio.paused && state.isPlaying) {
-          console.log("Background maintenance: detected paused audio, resuming");
           audio.play().catch(err => {
-            console.error("Failed to resume in background:", err);
+            // Error handling without logging
           });
         }
         
         // Check if we need to advance to next song
         if (audio.ended || (audio.currentTime >= audio.duration - 0.5 && audio.currentTime > 0)) {
-          console.log("Background maintenance: detected song end, advancing");
           // Increment to next song
           state.playNext();
           // Ensure playing state is maintained
@@ -413,7 +397,7 @@ const AudioPlayer = () => {
           setTimeout(() => {
             if (audioRef.current) {
               audioRef.current.play().catch(err => {
-                console.error("Failed to play next song in background:", err);
+                // Error handling without logging
               });
             }
           }, 300);
@@ -450,8 +434,6 @@ const AudioPlayer = () => {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     if (!isIOS) return;
     
-    console.log("Setting up iOS-specific background fixes");
-    
     // The audio session configuration for iOS
     const configureAudioSession = () => {
       // Set up audio to continue in background
@@ -486,7 +468,6 @@ const AudioPlayer = () => {
     const handleIOSVisibilityChange = () => {
       if (document.hidden) {
         // App going to background
-        console.log("iOS app going to background");
         
         // Save the current time and song for restoration
         if (audioRef.current && currentSong) {
@@ -500,12 +481,11 @@ const AudioPlayer = () => {
           try {
             localStorage.setItem('ios_audio_restoration', JSON.stringify(restorationData));
           } catch (e) {
-            console.error("Failed to save iOS audio state:", e);
+            // Error handling without logging
           }
         }
       } else {
         // App coming to foreground
-        console.log("iOS app returning to foreground");
         
         // Check if we need to restore or advance
         try {
@@ -522,16 +502,14 @@ const AudioPlayer = () => {
               
               // If expected position exceeds song duration, we should have advanced
               if (expectedPosition >= audioRef.current.duration - 2) {
-                console.log("iOS restoration: song should have ended, advancing");
                 usePlayerStore.getState().playNext();
                 usePlayerStore.getState().setIsPlaying(wasPlaying);
               } else {
                 // Otherwise just ensure we're at the right position
-                console.log("iOS restoration: resuming at correct position");
                 audioRef.current.currentTime = expectedPosition;
                 if (wasPlaying && audioRef.current.paused) {
                   audioRef.current.play().catch(err => {
-                    console.error("iOS restoration play failed:", err);
+                    // Error handling without logging
                   });
                 }
               }
@@ -541,7 +519,7 @@ const AudioPlayer = () => {
             localStorage.removeItem('ios_audio_restoration');
           }
         } catch (e) {
-          console.error("Failed to restore iOS audio state:", e);
+          // Error handling without logging
         }
       }
     };
@@ -619,8 +597,6 @@ const AudioPlayer = () => {
     
     // Handle stalled playback
     const handleStalled = () => {
-      console.log("Playback stalled");
-      
       // If we're supposed to be playing but stalled
       if (isPlaying) {
         setTimeout(() => {
@@ -628,7 +604,7 @@ const AudioPlayer = () => {
           const currentTime = audio.currentTime;
           audio.currentTime = currentTime;
           audio.play().catch(err => {
-            console.error("Failed to recover from stalled playback:", err);
+            // Error handling without logging
           });
         }, 2000);
       }
@@ -705,17 +681,14 @@ const AudioPlayer = () => {
               isHandlingPlayback.current = false;
             })
             .catch(error => {
-              console.error('Error playing audio:', error);
               if (error.message.includes('interrupted')) {
                 // If the error was due to interruption, try again after a short delay
                 setTimeout(() => {
                   audioRef.current?.play().catch(e => {
-                    toast.error('Playback error: ' + e.message);
                     setIsPlaying(false);
                   });
                 }, 300);
               } else {
-                toast.error('Playback error: ' + error.message);
                 setIsPlaying(false);
               }
               isHandlingPlayback.current = false;
@@ -751,10 +724,7 @@ const AudioPlayer = () => {
 
     // Validate the URL
     if (!isValidUrl(songUrl)) {
-      console.error('Invalid audio URL:', songUrl);
-      
       // Try to find audio for this song
-      toast.loading(`Searching for "${currentSong.title}" by ${currentSong.artist}...`);
       
       // Use setTimeout to avoid blocking the UI
       setTimeout(async () => {
@@ -793,30 +763,24 @@ const AudioPlayer = () => {
             // Update the player UI state
             setCurrentSong(updatedSong);
             
-            toast.success(`Found audio for "${currentSong.title}"`);
-            
             // Give a small delay for the state to update
             setTimeout(() => {
               // Force a play attempt with the new URL
               if (isPlaying) {
                 audioRef.current?.load();
                 audioRef.current?.play().catch(err => {
-                  console.error('Error playing audio after finding URL:', err);
-                  toast.error('Playback error: ' + err.message);
+                  // Error handling without toast
                 });
               }
             }, 300);
           } else {
             // No results found
-            toast.error(`Could not find audio for "${currentSong.title}"`);
             // Skip to the next song after a short delay
             setTimeout(() => {
               playNext();
             }, 1500);
           }
         } catch (error) {
-          console.error('Error searching for song:', error);
-          toast.error('Failed to find audio for this song');
           // Skip to the next song after a short delay
           setTimeout(() => {
             playNext();
@@ -827,12 +791,17 @@ const AudioPlayer = () => {
       return;
     }
 
-    // check if this is actually a new song
+    // Check if this is actually a new song
     const isSongChange = prevSongRef.current !== songUrl;
     if (isSongChange) {
-      console.log('Loading audio source:', songUrl);
-
       try {
+        // Use a loading lock to prevent race conditions
+        const loadingLock = Date.now();
+        const currentLoadingOperation = loadingLock;
+        
+        // Store the current loading operation to check for conflicts
+        (audioRef.current as any)._currentLoadingOperation = loadingLock;
+        
         // Indicate loading state to prevent play attempts during load
         setIsLoading(true);
         isHandlingPlayback.current = true;
@@ -842,29 +811,61 @@ const AudioPlayer = () => {
           clearTimeout(playTimeoutRef.current);
         }
 
-        // Pause current playback before changing source
+        // Pause current playback before changing source to prevent conflicts
         audio.pause();
 
         // Set up event listeners for this specific load sequence
         const handleCanPlay = () => {
+          // Check if this is still the current loading operation
+          if ((audioRef.current as any)._currentLoadingOperation !== currentLoadingOperation) {
+            return;
+          }
+          
+          // Update state
           setIsLoading(false);
           prevSongRef.current = songUrl;
 
           if (isPlaying) {
             // Wait a bit before playing to avoid interruption errors
+            const playDelayMs = 300;
+            
             playTimeoutRef.current = setTimeout(() => {
-              const playPromise = audio.play();
-              playPromise
-                .then(() => {
-                  isHandlingPlayback.current = false;
-                })
-                .catch(error => {
-                  console.error('Error playing audio after load:', error);
-                  toast.error(`Playback error: ${error.message}`);
-                  setIsPlaying(false);
-                  isHandlingPlayback.current = false;
-                });
-            }, 300);
+              if (!audioRef.current) return;
+              
+              // Check again if loading operation is still current
+              if ((audioRef.current as any)._currentLoadingOperation !== currentLoadingOperation) {
+                return;
+              }
+              
+              const playPromise = audioRef.current.play();
+              
+              if (playPromise !== undefined) {
+                playPromise
+                  .then(() => {
+                    isHandlingPlayback.current = false;
+                  })
+                  .catch(error => {
+                    // Handle AbortError specifically
+                    if (error.name === 'AbortError') {
+                      // Wait for any pending operations to complete
+                      setTimeout(() => {
+                        // Only attempt retry if we're still supposed to be playing
+                        if (isPlaying && audioRef.current) {
+                          audioRef.current.play().catch(retryError => {
+                            setIsPlaying(false);
+                          });
+                        }
+                      }, 500);
+                    } else {
+                      setIsPlaying(false);
+                    }
+                    
+                    isHandlingPlayback.current = false;
+                  });
+              } else {
+                isHandlingPlayback.current = false;
+              }
+            }, playDelayMs);
           } else {
             isHandlingPlayback.current = false;
           }
@@ -880,13 +881,11 @@ const AudioPlayer = () => {
         audio.src = songUrl;
         audio.load(); // Explicitly call load to begin fetching the new audio
       } catch (error) {
-        console.error('Error setting audio source:', error);
-        toast.error('Cannot play this song: Error loading audio');
         setIsLoading(false);
         isHandlingPlayback.current = false;
       }
     }
-  }, [currentSong, isPlaying, setIsPlaying]);
+  }, [currentSong, isPlaying, setIsPlaying, playNext, setCurrentSong]);
 
   // Handle audio errors
   useEffect(() => {
@@ -894,8 +893,6 @@ const AudioPlayer = () => {
     if (!audio) return;
 
     const handleError = (e: ErrorEvent) => {
-      console.error('Audio element error:', e);
-      toast.error('Error playing song - please try another');
       setIsLoading(false);
       setIsPlaying(false);
       isHandlingPlayback.current = false;
@@ -926,12 +923,10 @@ const AudioPlayer = () => {
 
             // Don't autoplay immediately on page refresh
             setIsPlaying(false);
-            
-            console.log('Restored player state from localStorage:', playerState.currentSong.title);
           }
         }
       } catch (error) {
-        console.error('Error restoring player state in AudioPlayer:', error);
+        // Error handling without logging
       }
     }
   }, [setCurrentSong, currentSong, setIsPlaying]);
@@ -948,7 +943,7 @@ const AudioPlayer = () => {
       try {
         localStorage.setItem('player_state', JSON.stringify(playerState));
       } catch (error) {
-        console.error('Error saving player state:', error);
+        // Error handling without logging
       }
     }
     
@@ -963,7 +958,7 @@ const AudioPlayer = () => {
         try {
           localStorage.setItem('player_state', JSON.stringify(playerState));
         } catch (error) {
-          console.error('Error saving player state on unmount:', error);
+          // Error handling without logging
         }
       }
     };
@@ -971,7 +966,6 @@ const AudioPlayer = () => {
 
   // Handle audio element errors
   const handleError = (e: any) => {
-    console.error('AudioPlayer error:', e);
     // If the current song fails to load, try to play the next song
     if (currentSong) {
       setTimeout(() => playNext(), 1000);

@@ -66,10 +66,7 @@ const MusicPlayer = () => {
           await audioRef.current.play();
           setShowPlaybackError(false);
         } catch (err: any) {
-          console.error('Error playing song:', err);
-          if (err.name === 'NotAllowedError') {
-            setShowPlaybackError(true);
-          }
+          // Silent error handling
           togglePlay(); // Revert to paused state since playback failed
         }
       } else if (!isPlaying && audioRef.current && !audioRef.current.paused) {
@@ -97,10 +94,7 @@ const MusicPlayer = () => {
       // Try to autoplay if user has interacted
       if (isPlaying && hasUserInteracted) {
         audioRef.current.play().catch(err => {
-          console.error('Error playing new track:', err);
-          if (err.name === 'NotAllowedError') {
-            setShowPlaybackError(true);
-          }
+          // Silent error handling
         });
       }
     }
@@ -127,7 +121,7 @@ const MusicPlayer = () => {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(err => {
-          console.error('Error replaying track:', err);
+          // Silent error handling
         });
       }
     } else {
@@ -175,7 +169,7 @@ const MusicPlayer = () => {
         // When going to background, ensure audio continues playing
         if (isPlaying && audioRef.current?.paused) {
           audioRef.current.play().catch(err => {
-            console.error('Error resuming playback in background:', err);
+            // Silent error handling
           });
         }
       }
@@ -185,7 +179,7 @@ const MusicPlayer = () => {
       // If paused by system, try to resume if we should be playing
       if (isPlaying && audioRef.current?.paused) {
         audioRef.current.play().catch(err => {
-          console.error('Error resuming playback after pause:', err);
+          // Silent error handling
         });
       }
     };

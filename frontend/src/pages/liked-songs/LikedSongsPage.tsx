@@ -61,7 +61,6 @@ const LikedSongsPage = () => {
 
     // Subscribe to liked songs updates
     const handleLikedSongsUpdated = () => {
-      console.log("LikedSongsPage: Received likedSongsUpdated event");
       loadAndSetLikedSongs();
     };
 
@@ -79,9 +78,8 @@ const LikedSongsPage = () => {
       const playerStore = usePlayerStore.getState();
       // If we have songs but queue is empty or very small, set it up
       if (likedSongs.length > 0 && (playerStore.queue.length === 0 || playerStore.queue.length < likedSongs.length / 2)) {
-        console.log("LikedSongsPage: Initializing queue on focus with", likedSongs.length, "songs");
         const playerSongs = likedSongs.map(adaptToPlayerSong);
-        
+         
         // If there's a current song playing, try to find its index
         let startIndex = 0;
         if (playerStore.currentSong) {
@@ -91,10 +89,10 @@ const LikedSongsPage = () => {
             startIndex = matchingIndex;
           }
         }
-        
+         
         // Use playAlbum with correct index to ensure queue is set up
         playerStore.playAlbum(playerSongs, startIndex);
-        
+         
         // If already playing, make sure it stays playing
         if (playerStore.isPlaying) {
           setTimeout(() => {
@@ -203,7 +201,12 @@ const LikedSongsPage = () => {
     }
   };
 
-  // Play all liked songs
+  // Debug function to log player state
+  const debugPlayerState = () => {
+    // Function kept as a no-op but all console logs removed
+  };
+
+  // Play all liked songs function - remove debugPlayerState() call  
   const playAllSongs = () => {
     if (likedSongs.length > 0) {
       const playerSongs = likedSongs.map(adaptToPlayerSong);
@@ -216,60 +219,11 @@ const LikedSongsPage = () => {
         const store = usePlayerStore.getState();
         store.setIsPlaying(true);
         store.setUserInteracted(); // Ensure user is marked as interacted
-        console.log("Playing all songs, queue size:", store.queue.length);
-        
-        // Debug player state
-        debugPlayerState();
       }, 100);
     }
   };
   
-  // Debug function to log player state
-  const debugPlayerState = () => {
-    const store = usePlayerStore.getState();
-    console.log("PLAYER DEBUG:", {
-      queueLength: store.queue.length,
-      currentIndex: store.currentIndex,
-      isPlaying: store.isPlaying,
-      shuffled: store.isShuffled,
-      currentSong: store.currentSong ? {
-        id: (store.currentSong as any).id || store.currentSong._id,
-        title: store.currentSong.title
-      } : null
-    });
-    
-    // Check if audio element exists and log its state
-    const audio = document.querySelector('audio');
-    if (audio) {
-      console.log("AUDIO ELEMENT:", {
-        src: audio.src,
-        paused: audio.paused,
-        ended: audio.ended,
-        currentTime: audio.currentTime,
-        duration: audio.duration,
-        readyState: audio.readyState,
-        eventListeners: getEventListeners(audio)
-      });
-    } else {
-      console.log("AUDIO ELEMENT: Not found in DOM");
-    }
-    
-    // Helper to get event listeners (in development)
-    function getEventListeners(element: HTMLAudioElement) {
-      try {
-        return {
-          ended: element.onended !== null,
-          timeupdate: element.ontimeupdate !== null,
-          canplay: element.oncanplay !== null,
-          error: element.onerror !== null
-        };
-      } catch (e) {
-        return "Unable to inspect event listeners";
-      }
-    }
-  };
-
-  // Smart shuffle function to play songs in random order
+  // Smart shuffle function - remove debugPlayerState() call
   const smartShuffle = () => {
     if (likedSongs.length > 0) {
       // Create a copy of the songs array to shuffle
@@ -292,15 +246,11 @@ const LikedSongsPage = () => {
         store.setIsPlaying(true);
         store.setUserInteracted();
         toast.success("Shuffling your liked songs");
-        console.log("Shuffling songs, queue size:", store.queue.length);
-        
-        // Debug player state
-        debugPlayerState();
       }, 100);
     }
   };
 
-  // Handle playing a specific song
+  // Handle playing a specific song - remove debugPlayerState() call
   const playSong = (song: any, index: number) => {
     const playerSongs = likedSongs.map(adaptToPlayerSong);
     
@@ -315,10 +265,6 @@ const LikedSongsPage = () => {
         const store = usePlayerStore.getState();
         store.setIsPlaying(true);
         store.setUserInteracted(); // Ensure user is marked as interacted
-        console.log("Playing song at index:", index, "queue size:", store.queue.length);
-        
-        // Debug player state
-        debugPlayerState();
       }, 100);
     }
   };

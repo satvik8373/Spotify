@@ -85,8 +85,7 @@ function AddSongsDialog({
             handleSearchFallback(query);
           }
         })
-        .catch(error => {
-          console.error('Failed to search songs:', error);
+        .catch(() => {
           // Use fallback when search API fails
           handleSearchFallback(query);
         });
@@ -111,11 +110,6 @@ function AddSongsDialog({
       indianSearchResults: fallbackResults,
       isIndianMusicLoading: false
     });
-    
-    toast.error('Song search API is currently unavailable. Using fallback results.', {
-      duration: 3000,
-      id: 'search-fallback-toast'
-    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -127,16 +121,8 @@ function AddSongsDialog({
   const handleAddSong = async (song: Song) => {
     try {
       await addSongToPlaylist(playlistId, song._id);
-      toast.success(`Added "${song.title}" to playlist`, {
-        description: "Keep adding songs or click Done to finish",
-        action: {
-          label: "Done",
-          onClick: () => onClose()
-        }
-      });
     } catch (error) {
-      console.error('Error adding song:', error);
-      toast.error('Failed to add song to playlist');
+      // Silent error handling
     }
   };
 
@@ -147,18 +133,8 @@ function AddSongsDialog({
       
       // Add converted song directly to playlist without validation notification
       await addSongToPlaylist(playlistId, convertedSong);
-      
-      // Show success message with cleaner UI
-      toast.success(`Added "${song.title || 'Unknown'}" to playlist`, {
-        description: "Song added successfully",
-        action: {
-          label: "View",
-          onClick: () => onClose()
-        }
-      });
     } catch (error) {
-      console.error('Error adding Indian song:', error);
-      toast.error('Failed to add song to playlist');
+      // Silent error handling
     }
   };
 
@@ -340,6 +316,22 @@ export function PlaylistPage() {
   const isCurrentPlaylistPlaying = playerIsPlaying && 
     currentPlaylist?.songs.some(song => song._id === currentSong?._id);
 
+  // Track shuffle state
+  const [isShuffleOn, setIsShuffleOn] = useState(false);
+  
+  // Keep shuffle state in sync with player store
+  useEffect(() => {
+    // Initial state
+    setIsShuffleOn(usePlayerStore.getState().isShuffled);
+    
+    // Subscribe to changes
+    const unsubscribe = usePlayerStore.subscribe((state) => {
+      setIsShuffleOn(state.isShuffled);
+    });
+    
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     if (id) {
       fetchPlaylistById(id);
@@ -358,7 +350,7 @@ export function PlaylistPage() {
         const playedPlaylists = JSON.parse(localStorage.getItem('user_played_playlists') || '[]');
         setHasPlayed(playedPlaylists.includes(id));
       } catch (error) {
-        console.error('Error loading playlist metrics:', error);
+        // Silent error handling
       }
     }
 
@@ -409,7 +401,7 @@ export function PlaylistPage() {
         [metric]: prev[metric] + 1,
       }));
     } catch (error) {
-      console.error('Error updating metrics:', error);
+      // Silent error handling
     }
   };
 
@@ -421,7 +413,6 @@ export function PlaylistPage() {
     }
 
     if (!isAuthenticated) {
-      toast.error('Please sign in to like playlists');
       return;
     }
 
@@ -443,7 +434,7 @@ export function PlaylistPage() {
         }
       }
     } catch (error) {
-      console.error('Error updating liked status:', error);
+      // Silent error handling
     }
   };
 
@@ -468,8 +459,6 @@ export function PlaylistPage() {
       // Fallback to clipboard
       const shareUrl = window.location.href;
       navigator.clipboard.writeText(shareUrl);
-      toast.success('Playlist link copied to clipboard');
-      updateMetrics('shares');
     }
   };
 
@@ -513,7 +502,6 @@ export function PlaylistPage() {
     }
 
     if (!currentPlaylist || currentPlaylist.songs.length === 0) {
-      toast.error('This playlist has no songs');
       return;
     }
 
@@ -553,8 +541,7 @@ export function PlaylistPage() {
         setIsPlaying(false);
       }, 300);
     } catch (error) {
-      console.error('Error playing playlist:', error);
-      toast.error('Failed to play playlist');
+      // Silent error handling
       setIsPlaying(false);
     }
   };
@@ -568,7 +555,6 @@ export function PlaylistPage() {
     }
 
     if (!currentPlaylist || currentPlaylist.songs.length === 0) {
-      toast.error('This playlist has no songs');
       return;
     }
 
@@ -608,8 +594,7 @@ export function PlaylistPage() {
         setIsPlaying(false);
       }, 300);
     } catch (error) {
-      console.error('Error shuffling playlist:', error);
-      toast.error('Failed to shuffle playlist');
+      // Silent error handling
       setIsPlaying(false);
     }
   };
@@ -622,7 +607,6 @@ export function PlaylistPage() {
     }
 
     if (!currentPlaylist) {
-      toast.error('Playlist not found');
       return;
     }
 
@@ -642,8 +626,6 @@ export function PlaylistPage() {
 
       // Check if the song has a valid audio URL
       if (!song.audioUrl) {
-        toast.info(`Searching for "${song.title}" by ${song.artist}...`);
-        
         // Try to search for the song to get its audio URL
         try {
           const searchQuery = `${song.title} ${song.artist}`.trim();
@@ -678,14 +660,12 @@ export function PlaylistPage() {
             setTimeout(() => setPlayingSongId(null), 300);
             return;
           } else {
-            toast.error(`Could not find audio for "${song.title}"`);
             setIsPlaying(false);
             setPlayingSongId(null);
             return;
           }
         } catch (error) {
-          console.error('Error searching for song:', error);
-          toast.error('Failed to find audio for this song');
+          // Silent error handling
           setIsPlaying(false);
           setPlayingSongId(null);
           return;
@@ -714,8 +694,7 @@ export function PlaylistPage() {
         setTimeout(() => setPlayingSongId(null), 300);
       }, 300);
     } catch (error) {
-      console.error('Error playing song:', error);
-      toast.error('Failed to play song');
+      // Silent error handling
       setIsPlaying(false);
       setPlayingSongId(null);
     }
@@ -736,12 +715,9 @@ export function PlaylistPage() {
     }
 
     if (!currentPlaylist) {
-      toast.error('Playlist not found');
       return;
     }
 
-    toast.success(`Searching for "${song.title}" by ${song.artist}...`);
-    
     try {
       // Search for the song to get its audio URL
       const searchQuery = `${song.title} ${song.artist}`.trim();
@@ -771,14 +747,11 @@ export function PlaylistPage() {
             songs: updatedSongs
           }
         });
-        
-        toast.success(`Found audio for "${song.title}"`);
       } else {
-        toast.error(`Could not find audio for "${song.title}"`);
+        // Silent error handling
       }
     } catch (error) {
-      console.error('Error searching for song:', error);
-      toast.error('Failed to find audio for this song');
+      // Silent error handling
     }
   };
 
@@ -787,11 +760,9 @@ export function PlaylistPage() {
     if (confirm('Are you sure you want to delete this playlist?')) {
       try {
         await deletePlaylist(currentPlaylist!._id);
-        toast.success('Playlist deleted');
         navigate('/library');
       } catch (error) {
-        console.error('Error deleting playlist:', error);
-        toast.error('Failed to delete playlist');
+        // Silent error handling
       }
     }
   };
@@ -805,8 +776,7 @@ export function PlaylistPage() {
     try {
       await removeSongFromPlaylist(currentPlaylist!._id, songId);
     } catch (error) {
-      console.error('Error removing song:', error);
-      toast.error('Failed to remove song');
+      // Silent error handling
     }
   };
 
@@ -960,6 +930,24 @@ export function PlaylistPage() {
                 onClick={handleLike}
               >
                 <Heart className="h-5 w-5" fill={isLiked ? 'currentColor' : 'none'} />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon" 
+                className={cn(
+                  'w-10 h-10 rounded-full text-gray-400 hover:text-white',
+                  isShuffleOn && 'text-green-500'
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Toggle shuffle first
+                  usePlayerStore.getState().toggleShuffle();
+                  // Then get the new state after toggling
+                  const newShuffleState = !isShuffleOn;
+                }}
+              >
+                <Shuffle className="h-5 w-5" />
               </Button>
 
               <Button

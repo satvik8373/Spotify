@@ -51,9 +51,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const songId = (currentSong as any).id || currentSong._id;
     const liked = songId ? likedSongIds?.has(songId) : false;
     
-    // Log the status for debugging
-    console.log(`SongDetails - Checked like status - Song ID: ${songId}, Liked: ${liked}, LikedSongIds size: ${likedSongIds?.size}`);
-    
     setIsLiked(liked);
   }, [currentSong, likedSongIds]);
 
@@ -103,7 +100,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         
         // If we have explicit like state in the event, use it
         if (typeof e.detail.isLiked === 'boolean') {
-          console.log(`SongDetails - Received event with like state: ${e.detail.isLiked}`);
           setIsLiked(e.detail.isLiked);
           return;
         }
@@ -111,7 +107,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       
       // Otherwise do a fresh check from the store
       const freshCheck = songId ? likedSongIds?.has(songId) : false;
-      console.log(`SongDetails - Received like update event, fresh check: ${freshCheck}`);
       setIsLiked(freshCheck);
     };
     
@@ -137,7 +132,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     
     // Get the song ID consistently
     const songId = (currentSong as any).id || currentSong._id;
-    console.log(`SongDetails - Toggling like for song ID: ${songId}, current status: ${isLiked}`);
     
     // Optimistically update the UI immediately
     setIsLiked(!isLiked);
@@ -168,7 +162,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         text: shareText,
         url: window.location.href,
       }).catch(error => {
-        console.error('Error sharing:', error);
+        // Silent error handling
       });
     } else {
       // Fallback for browsers that don't support Web Share API
