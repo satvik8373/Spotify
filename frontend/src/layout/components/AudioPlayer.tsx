@@ -613,26 +613,18 @@ const AudioPlayer = () => {
     playNext();
   };
 
-  // Add this useEffect for audio element configuration
+  // Add this useEffect for background playback handling
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    // Configure audio for background playback
-    audio.setAttribute('playsinline', '');
-    audio.setAttribute('webkit-playsinline', '');
-    audio.setAttribute('x5-playsinline', '');
-    audio.setAttribute('x5-video-player-type', 'h5');
-    audio.setAttribute('x5-video-player-fullscreen', 'false');
-    audio.setAttribute('preload', 'auto');
-    
-    // Add event listeners for background playback
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // When going to background, ensure audio continues playing
-        if (isPlaying && audio.paused) {
-          audio.play().catch(err => {
+        if (isPlaying && audioRef.current?.paused) {
+          audioRef.current.play().catch(err => {
             console.error('Error resuming playback in background:', err);
+            // If playback fails, try to play the next song
+            if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
+              playNext();
+            }
           });
         }
       }
@@ -640,21 +632,92 @@ const AudioPlayer = () => {
 
     const handlePause = () => {
       // If paused by system, try to resume if we should be playing
-      if (isPlaying && audio.paused) {
-        audio.play().catch(err => {
+      if (isPlaying && audioRef.current?.paused) {
+        audioRef.current.play().catch(err => {
           console.error('Error resuming playback after pause:', err);
+          // If playback fails, try to play the next song
+          if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
+            playNext();
+          }
         });
       }
     };
 
+    // Add event listeners for background playback
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    audio.addEventListener('pause', handlePause);
+    if (audioRef.current) {
+      audioRef.current.addEventListener('pause', handlePause);
+    }
+
+    // Handle audio element setup
+    if (audioRef.current) {
+      audioRef.current.setAttribute('playsinline', '');
+      audioRef.current.setAttribute('webkit-playsinline', '');
+      audioRef.current.setAttribute('x5-playsinline', '');
+      audioRef.current.setAttribute('x5-video-player-type', 'h5');
+      audioRef.current.setAttribute('x5-video-player-fullscreen', 'false');
+      audioRef.current.setAttribute('preload', 'auto');
+      audioRef.current.setAttribute('crossorigin', 'anonymous');
+    }
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      audio.removeEventListener('pause', handlePause);
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('pause', handlePause);
+      }
     };
-  }, [isPlaying]);
+  }, [isPlaying, playNext]);
+
+  // Add this useEffect for handling song end in background
+  useEffect(() => {
+    const handleEnded = () => {
+      if (isShuffled) {
+        // If repeat is on, restart the current song
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(err => {
+            console.error('Error replaying track:', err);
+            // If replay fails, try to play the next song
+            if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
+              playNext();
+            }
+          });
+        }
+      } else {
+        // Play next song
+        playNext();
+      }
+    };
+
+    if (audioRef.current) {
+      audioRef.current.addEventListener('ended', handleEnded);
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('ended', handleEnded);
+      }
+    };
+  }, [isShuffled, playNext]);
+
+  // Add this useEffect for handling audio errors
+  useEffect(() => {
+    const handleError = (e: ErrorEvent) => {
+      console.error('Audio error:', e);
+      // If there's an error playing the current song, try to play the next one
+      playNext();
+    };
+
+    if (audioRef.current) {
+      audioRef.current.addEventListener('error', handleError as any);
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('error', handleError as any);
+      }
+    };
+  }, [playNext]);
 
   if (!currentSong) {
     return (
