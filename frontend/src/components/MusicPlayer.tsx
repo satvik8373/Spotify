@@ -16,14 +16,14 @@ const MusicPlayer = () => {
     queue,
     currentIndex,
     isShuffled,
-    nextSong,
-    previousSong,
+    playNext,
+    playPrevious,
     toggleShuffle,
     setCurrentTime,
     setDuration,
     currentTime,
     duration,
-    userInteracted,
+    hasUserInteracted,
     setUserInteracted,
     autoplayBlocked,
   } = usePlayerStore();
@@ -95,7 +95,7 @@ const MusicPlayer = () => {
       audioRef.current.load();
 
       // Try to autoplay if user has interacted
-      if (isPlaying && userInteracted) {
+      if (isPlaying && hasUserInteracted) {
         audioRef.current.play().catch(err => {
           console.error('Error playing new track:', err);
           if (err.name === 'NotAllowedError') {
@@ -104,7 +104,7 @@ const MusicPlayer = () => {
         });
       }
     }
-  }, [currentSong, isPlaying, userInteracted]);
+  }, [currentSong, isPlaying, hasUserInteracted]);
 
   // Update volume
   useEffect(() => {
@@ -132,7 +132,7 @@ const MusicPlayer = () => {
       }
     } else {
       // Play next song
-      nextSong();
+      playNext();
     }
   };
 
@@ -167,6 +167,52 @@ const MusicPlayer = () => {
   const handleToggleRepeat = () => {
     setIsRepeat(!isRepeat);
   };
+
+  // Add this useEffect for background playback handling
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // When going to background, ensure audio continues playing
+        if (isPlaying && audioRef.current?.paused) {
+          audioRef.current.play().catch(err => {
+            console.error('Error resuming playback in background:', err);
+          });
+        }
+      }
+    };
+
+    const handlePause = () => {
+      // If paused by system, try to resume if we should be playing
+      if (isPlaying && audioRef.current?.paused) {
+        audioRef.current.play().catch(err => {
+          console.error('Error resuming playback after pause:', err);
+        });
+      }
+    };
+
+    // Add event listeners for background playback
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    if (audioRef.current) {
+      audioRef.current.addEventListener('pause', handlePause);
+    }
+
+    // Handle audio element setup
+    if (audioRef.current) {
+      audioRef.current.setAttribute('playsinline', '');
+      audioRef.current.setAttribute('webkit-playsinline', '');
+      audioRef.current.setAttribute('x5-playsinline', '');
+      audioRef.current.setAttribute('x5-video-player-type', 'h5');
+      audioRef.current.setAttribute('x5-video-player-fullscreen', 'false');
+      audioRef.current.setAttribute('preload', 'auto');
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('pause', handlePause);
+      }
+    };
+  }, [isPlaying]);
 
   // No song selected
   if (!currentSong) {
@@ -243,7 +289,7 @@ const MusicPlayer = () => {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
-                onClick={previousSong}
+                onClick={playPrevious}
                 title="Previous"
                 disabled={queue.length <= 1}
               >
@@ -268,7 +314,7 @@ const MusicPlayer = () => {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
-                onClick={() => nextSong()}
+                onClick={() => playNext()}
                 title="Next"
                 disabled={queue.length <= 1}
               >

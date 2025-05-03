@@ -13,6 +13,7 @@ interface PlayerState {
   hasUserInteracted: boolean;
   currentTime: number;
   duration: number;
+  autoplayBlocked: boolean;
   
   // Actions
   setCurrentSong: (song: Song) => void;
@@ -38,6 +39,7 @@ export const usePlayerStore = create<PlayerState>()(
       hasUserInteracted: false,
       currentTime: 0,
       duration: 0,
+      autoplayBlocked: false,
 
       setCurrentSong: (song) => {
         set({ currentSong: song });
@@ -107,8 +109,7 @@ export const usePlayerStore = create<PlayerState>()(
         
         if (queue.length === 0) return;
         
-        let newIndex = 0;
-        
+        let newIndex;
         if (isShuffled) {
           // In shuffle mode, pick a random song excluding current
           const potentialIndices = Array.from({ length: queue.length }, (_, i) => i)
@@ -127,17 +128,28 @@ export const usePlayerStore = create<PlayerState>()(
         
         console.log(`Playing next song: ${currentIndex} -> ${newIndex} (queue size: ${queue.length})`);
         
+        // Save current state before changing
+        const currentState = {
+          currentSong: queue[currentIndex],
+          currentIndex,
+          timestamp: new Date().toISOString()
+        };
+        
+        // Update to new song
         set({
           currentIndex: newIndex,
           currentSong: queue[newIndex],
-          hasUserInteracted: true
+          hasUserInteracted: true,
+          isPlaying: true // Ensure playback continues
         });
         
         // Save to localStorage as a backup
         try {
           const playerState = { 
             currentSong: queue[newIndex],
-            timestamp: new Date().toISOString()
+            currentIndex: newIndex,
+            timestamp: new Date().toISOString(),
+            previousState: currentState // Store previous state for recovery
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
         } catch (error) {
@@ -184,7 +196,10 @@ export const usePlayerStore = create<PlayerState>()(
         currentSong: state.currentSong,
         queue: state.queue,
         currentIndex: state.currentIndex,
-        isShuffled: state.isShuffled
+        isShuffled: state.isShuffled,
+        isPlaying: state.isPlaying,
+        hasUserInteracted: state.hasUserInteracted,
+        autoplayBlocked: state.autoplayBlocked
       })
     }
   )
@@ -200,5 +215,22 @@ setTimeout(() => {
   if (store.currentSong && store.queue.length === 0) {
     console.log('Detected song but no queue, reconstructing minimal queue');
     store.playAlbum([store.currentSong], 0);
+  }
+  
+  // Check if we should resume playback
+  try {
+    const savedState = localStorage.getItem('player_state');
+    if (savedState) {
+      const { timestamp, isPlaying } = JSON.parse(savedState);
+      const timeSinceLastUpdate = Date.now() - new Date(timestamp).getTime();
+      
+      // If the last update was recent (within 5 minutes) and playback was active
+      if (timeSinceLastUpdate < 5 * 60 * 1000 && isPlaying) {
+        console.log('Resuming playback from saved state');
+        store.setIsPlaying(true);
+      }
+    }
+  } catch (error) {
+    console.error('Error checking saved playback state:', error);
   }
 }, 0);

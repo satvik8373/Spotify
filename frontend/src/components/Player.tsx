@@ -22,13 +22,13 @@ export function Player() {
     currentSong,
     isPlaying,
     togglePlay,
-    nextSong,
-    previousSong,
+    playNext,
+    playPrevious,
     currentTime,
     duration,
     setCurrentTime,
     setDuration,
-    userInteracted,
+    hasUserInteracted,
     setUserInteracted,
     autoplayBlocked,
   } = usePlayerStore();
@@ -114,7 +114,7 @@ export function Player() {
         audioRef.current.volume = volume;
 
         // If user has interacted and isPlaying is true, try to play
-        if (isPlaying && userInteracted) {
+        if (isPlaying && hasUserInteracted) {
           audioRef.current.play().catch(err => {
             console.error('Error playing new track:', err);
             if (err.name === 'NotAllowedError') {
@@ -126,7 +126,7 @@ export function Player() {
         }
       }
     }
-  }, [currentSong, volume, isPlaying, userInteracted]);
+  }, [currentSong, volume, isPlaying, hasUserInteracted]);
 
   // Update volume
   useEffect(() => {
@@ -159,7 +159,7 @@ export function Player() {
       }
     } else {
       // Otherwise, go to the next song
-      nextSong(shuffle);
+      playNext();
     }
   };
 
@@ -276,7 +276,7 @@ export function Player() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
-                    onClick={() => previousSong()}
+                    onClick={() => playPrevious()}
                   >
                     <SkipBack className="h-4 w-4 md:h-5 md:w-5" />
                   </Button>
@@ -312,7 +312,7 @@ export function Player() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
-                    onClick={() => nextSong(shuffle)}
+                    onClick={() => playNext()}
                   >
                     <SkipForward className="h-4 w-4 md:h-5 md:w-5" />
                   </Button>

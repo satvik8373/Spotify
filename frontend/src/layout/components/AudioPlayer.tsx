@@ -613,6 +613,49 @@ const AudioPlayer = () => {
     playNext();
   };
 
+  // Add this useEffect for audio element configuration
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    // Configure audio for background playback
+    audio.setAttribute('playsinline', '');
+    audio.setAttribute('webkit-playsinline', '');
+    audio.setAttribute('x5-playsinline', '');
+    audio.setAttribute('x5-video-player-type', 'h5');
+    audio.setAttribute('x5-video-player-fullscreen', 'false');
+    audio.setAttribute('preload', 'auto');
+    
+    // Add event listeners for background playback
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // When going to background, ensure audio continues playing
+        if (isPlaying && audio.paused) {
+          audio.play().catch(err => {
+            console.error('Error resuming playback in background:', err);
+          });
+        }
+      }
+    };
+
+    const handlePause = () => {
+      // If paused by system, try to resume if we should be playing
+      if (isPlaying && audio.paused) {
+        audio.play().catch(err => {
+          console.error('Error resuming playback after pause:', err);
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    audio.addEventListener('pause', handlePause);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      audio.removeEventListener('pause', handlePause);
+    };
+  }, [isPlaying]);
+
   if (!currentSong) {
     return (
       <audio
