@@ -48,9 +48,22 @@ const ErrorFallback = () => (
 const AuthGate = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
+  
+  // Check if we previously saved auth info in localStorage as a quick check
+  // before the full authentication process completes
+  const hasCachedAuth = Boolean(
+    localStorage.getItem('auth-store') && 
+    JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
+  );
 
   // Don't redirect while auth is still loading
   if (loading) {
+    // If we have cached auth, render children optimistically
+    if (hasCachedAuth) {
+      return <>{children}</>;
+    }
+    
+    // Otherwise show loading indicator
     return (
       <div className="flex items-center justify-center h-screen bg-zinc-900">
         <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-green-500"></div>
@@ -60,6 +73,7 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 
   // If not authenticated, redirect to login with return URL
   if (!isAuthenticated) {
+    // Store the redirect path so we can redirect back after login
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 

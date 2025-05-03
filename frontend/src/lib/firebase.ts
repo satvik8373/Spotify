@@ -1,6 +1,6 @@
 // Import Firebase SDK
 import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged, User } from "firebase/auth";
+import { getAuth, onAuthStateChanged, User, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
@@ -19,6 +19,22 @@ const firebaseConfig = {
 // Initialize Firebase services
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// Initialize persistence for auth - do this asynchronously
+const initializeAuth = async () => {
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+    console.log("Firebase persistence set to LOCAL");
+  } catch (error) {
+    console.error("Error setting persistence:", error);
+  }
+};
+
+// Call initialize function
+initializeAuth().catch(error => {
+  console.error("Failed to initialize auth persistence:", error);
+});
+
 export const db = getFirestore(app);
 
 // Initialize Firebase Storage with CORS configuration

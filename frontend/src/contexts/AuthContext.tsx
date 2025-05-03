@@ -157,26 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Set up auth state listener
   useEffect(() => {
-    // Listen for Firebase auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      // Don't set loading to true if initial load is completed
-      if (!initialLoadCompletedRef.current) setLoading(true);
-      
-      if (firebaseUser) {
-        // User is signed in
-        loadUser();
-      } else {
-        // User is signed out
-        setUser(null);
-        setLoading(false);
-        // Reset auth store
-        useAuthStore.getState().reset();
-      }
-      
-      authStateCheckedRef.current = true;
-    });
-    
-    // If cached user exists in auth store, use it while waiting for Firebase
+    // If cached user exists in auth store, use it immediately
     const authStore = useAuthStore.getState();
     if (authStore.isAuthenticated && authStore.userId && !user) {
       const cachedUser: User = {
@@ -187,8 +168,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       setUser(cachedUser);
-      // Loading still true until Firebase confirms
+      console.log("Using cached user from auth store while waiting for Firebase");
     }
+
+    // Listen for Firebase auth state changes
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      // Don't set loading to true if initial load is completed
+      if (!initialLoadCompletedRef.current) setLoading(true);
+      
+      if (firebaseUser) {
+        // User is signed in
+        console.log("Firebase auth state changed: User is signed in");
+        loadUser();
+      } else {
+        // User is signed out
+        console.log("Firebase auth state changed: User is signed out");
+        setUser(null);
+        setLoading(false);
+        // Reset auth store
+        useAuthStore.getState().reset();
+      }
+      
+      authStateCheckedRef.current = true;
+    });
     
     // Cleanup subscription
     return () => unsubscribe();
@@ -203,6 +205,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (authStore.isAuthenticated && authStore.userId && !user && initialLoadCompletedRef.current) {
         console.log('Auth inconsistency detected - forcing refresh');
         loadUser(true);
+      } else if (!authStore.isAuthenticated && user) {
+        // Also check the reverse inconsistency
+        console.log('Reverse auth inconsistency detected - user in AuthContext but not in authStore');
+        setUser(null);
       }
     }, 3000); // Check every 3 seconds
     

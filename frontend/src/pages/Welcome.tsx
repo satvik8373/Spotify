@@ -1,7 +1,18 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Welcome = () => {
+  const { isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect authenticated users to home page
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      navigate('/home', { replace: true });
+    }
+  }, [isAuthenticated, loading, navigate]);
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-between bg-gradient-to-b from-green-900 to-black p-6">
       {/* Header */}

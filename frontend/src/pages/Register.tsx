@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register, signInWithGoogle } from '@/services/hybridAuthService';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -15,6 +16,19 @@ const Register = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { isAuthenticated, loading: authLoading } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    // Check both context auth and localStorage
+    const hasLocalAuth = localStorage.getItem('auth-store') && 
+      JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated;
+    
+    if ((isAuthenticated || hasLocalAuth) && !authLoading) {
+      console.log("Already authenticated, redirecting to home");
+      navigate('/home', { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

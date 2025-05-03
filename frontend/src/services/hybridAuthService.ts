@@ -305,8 +305,25 @@ export const signOut = async () => {
       });
     }
     
-    // Clear any auth-related localStorage items
-    localStorage.removeItem('firebase:authUser');
+    // Clear auth-related localStorage items
+    localStorage.removeItem('firebase:authUser:AIzaSyBWgv_mE8ZAnG2kUJSacCOUgkbo1RxxSpE:[DEFAULT]');
+    localStorage.removeItem('auth-store');
+    
+    // Clear any potential Firebase auth related items
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('firebase') || key.includes('auth'))) {
+        localStorage.removeItem(key);
+      }
+    }
+    
+    // Also clear session storage
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && (key.includes('firebase') || key.includes('auth'))) {
+        sessionStorage.removeItem(key);
+      }
+    }
     
     return { success: true };
   } catch (error: any) {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { login, signInWithGoogle } from '@/services/hybridAuthService';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -15,9 +16,22 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
-  // Get the return URL from location state, default to home page
-  const from = (location.state as { from?: string })?.from || '/home';
+  // Redirect if already authenticated
+  useEffect(() => {
+    // Check both context auth and localStorage
+    const hasLocalAuth = localStorage.getItem('auth-store') && 
+      JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated;
+    
+    if ((isAuthenticated || hasLocalAuth) && !authLoading) {
+      console.log("Already authenticated, redirecting to home");
+      
+      // If we have a from location, use it, otherwise use home
+      const redirectTo = location.state?.from || '/home';
+      navigate(redirectTo, { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate, location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +46,7 @@ const Login = () => {
     try {
       await login(email, password);
       toast.success('Logged in successfully');
-      navigate(from); // Navigate to the return URL
+      navigate(location.state?.from || '/home'); // Navigate to the return URL
     } catch (error: any) {
       console.error('Login error:', error);
       
@@ -55,7 +69,7 @@ const Login = () => {
       await signInWithGoogle();
       toast.success('Logged in with Google successfully');
       // Immediately navigate to the home page or return URL for faster perceived performance
-      navigate(from, { replace: true });
+      navigate(location.state?.from || '/home', { replace: true });
     } catch (error: any) {
       console.error('Google login error:', error);
       toast.error(error.message || 'Failed to login with Google');
