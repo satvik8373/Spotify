@@ -62,27 +62,27 @@ export function PlaylistCard({
   // Set up size-based styles
   const sizeStyles = {
     small: {
-      container: "max-w-[180px]",
-      imageWrapper: "w-full aspect-square",
-      title: "text-sm mt-2",
+      container: "w-full max-w-[170px]",
+      imageWrapper: "aspect-square shadow-md",
+      title: "text-sm font-medium mt-2",
       description: "text-xs mt-1 line-clamp-1",
-      playButton: "w-10 h-10 right-2 bottom-2",
+      playButton: "w-10 h-10",
       playIcon: "w-4 h-4"
     },
     medium: {
-      container: "max-w-[220px]",
-      imageWrapper: "w-full aspect-square",
-      title: "text-base mt-3",
+      container: "w-full max-w-[200px]",
+      imageWrapper: "aspect-square shadow-md",
+      title: "text-base font-medium mt-3",
       description: "text-xs mt-1 line-clamp-2",
-      playButton: "w-12 h-12 right-2 bottom-2",
+      playButton: "w-12 h-12",
       playIcon: "w-5 h-5 ml-0.5"
     },
     large: {
-      container: "max-w-[280px]",
-      imageWrapper: "w-full aspect-square", 
+      container: "w-full max-w-[250px]",
+      imageWrapper: "aspect-square shadow-md", 
       title: "text-lg mt-3 font-bold",
       description: "text-sm mt-2 line-clamp-2",
-      playButton: "w-14 h-14 right-3 bottom-3",
+      playButton: "w-14 h-14",
       playIcon: "w-6 h-6 ml-0.5"
     }
   };
@@ -93,7 +93,7 @@ export function PlaylistCard({
     <>
       <div 
         className={cn(
-          "group bg-zinc-800/40 rounded-lg p-4 hover:bg-zinc-700/40 transition-all duration-300",
+          "group transition-all duration-300",
           "cursor-pointer flex flex-col",
           styles.container,
           className
@@ -103,26 +103,27 @@ export function PlaylistCard({
         onMouseLeave={() => setIsHovering(false)}
       >
         {/* Cover Image Container */}
-        <div className={cn("relative mb-3 rounded-md overflow-hidden shadow-md", styles.imageWrapper)}>
+        <div className={cn("relative overflow-hidden rounded-md", styles.imageWrapper)}>
           {/* Image */}
           <img
             src={playlist.imageUrl || '/default-playlist.jpg'}
             alt={playlist.name}
-            className="w-full h-full object-cover transition-all duration-300"
+            className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105 group-hover:brightness-90"
             onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
           />
           
           {/* Play Button Overlay */}
           <div 
             className={cn(
-              "absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
-              "flex items-center justify-center"
+              "absolute inset-0 flex items-end justify-end p-2",
+              "bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100",
+              "transition-opacity duration-300"
             )}
           >
             <button
               className={cn(
-                "absolute flex items-center justify-center rounded-full bg-green-500 shadow-xl",
-                "transform translate-y-8 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105 hover:bg-green-400",
+                "flex items-center justify-center rounded-full bg-green-500 shadow-xl",
+                "transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105 hover:bg-green-400",
                 "transition-all duration-300 ease-out",
                 styles.playButton
               )}
@@ -174,14 +175,14 @@ export function PlaylistCard({
           
           {/* Now Playing Indicator */}
           {isCurrentPlaylist && (
-            <div className="absolute bottom-2 left-2 bg-green-500 text-black text-xs font-medium px-2 py-0.5 rounded">
+            <div className="absolute bottom-2 left-2 bg-green-500 text-black text-xs font-medium px-2 py-0.5 rounded-full">
               Playing
             </div>
           )}
         </div>
         
         {/* Playlist Info */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col pt-2 pb-4">
           <h3 className={cn("font-bold text-white truncate", styles.title)}>{playlist.name}</h3>
           
           {showDescription && (
