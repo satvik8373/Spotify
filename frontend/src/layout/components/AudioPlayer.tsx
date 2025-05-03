@@ -35,6 +35,16 @@ const isMediaSessionSupported = () => {
   return 'mediaSession' in navigator;
 };
 
+// Add AudioContext singleton for better audio control and preventing multiple instances
+let audioContext: AudioContext | null = null;
+
+const getAudioContext = () => {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  return audioContext;
+};
+
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const prevSongRef = useRef<string | null>(null);
@@ -48,6 +58,9 @@ const AudioPlayer = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [volume, setVolume] = useState(75);
   const [showSongDetails, setShowSongDetails] = useState(false);
+  const errorNotificationRef = useRef<{ [key: string]: boolean }>({});
+  const interruptionRef = useRef<boolean>(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const { 
     currentSong, 
@@ -59,7 +72,8 @@ const AudioPlayer = () => {
     currentTime: storeCurrentTime,
     duration: storeDuration,
     isShuffled,
-    toggleShuffle
+    toggleShuffle,
+    setSystemInterruption
   } = usePlayerStore();
 
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
@@ -69,6 +83,64 @@ const AudioPlayer = () => {
   const setCurrentTime = playerStore.setCurrentTime;
   const setDuration = playerStore.setDuration;
   const playPrevious = playerStore.playPrevious;
+  
+  // Prevent multiple audio instances by managing the audio context
+  useEffect(() => {
+    // Initialize audio context on first user interaction
+    const initAudioContext = () => {
+      try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = getAudioContext();
+          
+          // Resume the context if it's suspended
+          if (audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume().catch(err => {
+              console.error('Failed to resume AudioContext:', err);
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize AudioContext:', error);
+      }
+    };
+    
+    // Listen for user interaction to initialize audio context
+    const userInteractionEvents = ['click', 'touchstart', 'keydown'];
+    
+    const handleUserInteraction = () => {
+      initAudioContext();
+      
+      // Remove listeners after first interaction
+      userInteractionEvents.forEach(event => {
+        document.removeEventListener(event, handleUserInteraction);
+      });
+    };
+    
+    // Add listeners for user interaction
+    userInteractionEvents.forEach(event => {
+      document.addEventListener(event, handleUserInteraction);
+    });
+    
+    // Suspend audio context when page is hidden
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setSystemInterruption();
+        if (audioRef.current && !audioRef.current.paused) {
+          audioRef.current.pause();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      // Clean up event listeners
+      userInteractionEvents.forEach(event => {
+        document.removeEventListener(event, handleUserInteraction);
+      });
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [setSystemInterruption]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -76,8 +148,151 @@ const AudioPlayer = () => {
       if (playTimeoutRef.current) {
         clearTimeout(playTimeoutRef.current);
       }
+      
+      // Pause audio and clean up audio context
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
     };
   }, []);
+
+  // Enhanced phone call and interruption detection
+  useEffect(() => {
+    // Function to detect audio focus changes
+    const detectAudioFocusChange = () => {
+      if (audioRef.current?.paused && isPlaying) {
+        // Audio was paused externally while we think it's playing
+        interruptionRef.current = true;
+        setSystemInterruption();
+      }
+    };
+    
+    // Check periodically for focus changes
+    const focusCheckInterval = setInterval(detectAudioFocusChange, 1000);
+    
+    // iOS-specific handling
+    const handleBeforeUnload = () => {
+      if (isPlaying) {
+        setSystemInterruption();
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Handle pause events from system
+    const handleSystemPause = () => {
+      if (isPlaying && !isHandlingPlayback.current) {
+        // This pause wasn't initiated by our code - likely system interruption
+        interruptionRef.current = true;
+        setSystemInterruption();
+      }
+    };
+    
+    if (audioRef.current) {
+      audioRef.current.addEventListener('pause', handleSystemPause);
+    }
+    
+    return () => {
+      clearInterval(focusCheckInterval);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('pause', handleSystemPause);
+      }
+    };
+  }, [isPlaying, setSystemInterruption]);
+
+  // Add/update the handle song ends function to ensure it doesn't auto-restart after interruptions
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const handleEnded = () => {
+      // Get the current state for logging and better control
+      const state = usePlayerStore.getState();
+      
+      // Reset interruption state when song naturally ends
+      interruptionRef.current = false;
+      
+      // Make sure user is marked as having interacted to enable autoplay
+      state.setUserInteracted();
+      
+      // Force a slight delay to ensure proper state updates
+      setTimeout(() => {
+        // Call playNext directly from store for more reliable progression
+        state.playNext();
+        
+        // Force playing state to be true only if we should auto-resume
+        if (state.shouldAutoResume()) {
+          state.setIsPlaying(true);
+        } else {
+          // Don't auto-resume if we shouldn't
+          state.setIsPlaying(false);
+        }
+      }, 100);
+    };
+
+    audio?.addEventListener('ended', handleEnded);
+
+    return () => audio?.removeEventListener('ended', handleEnded);
+  }, []);
+
+  // Improved error handling with debouncing
+  const showErrorOnce = (errorMessage: string, errorId: string) => {
+    // Only show each unique error once
+    if (!errorNotificationRef.current[errorId]) {
+      errorNotificationRef.current[errorId] = true;
+      toast.error(errorMessage, {
+        id: errorId,
+        duration: 3000,
+      });
+      
+      // Reset after some time so we can show the error again later if needed
+      setTimeout(() => {
+        errorNotificationRef.current[errorId] = false;
+      }, 10000); // Reset after 10 seconds
+    }
+  };
+
+  // Handle audio errors with better error reporting
+  const handleError = (e: any) => {
+    console.error('AudioPlayer error:', e);
+    
+    const errorCode = audioRef.current?.error?.code;
+    let errorMessage = 'Unable to play this song';
+    let errorId = 'audio-error';
+    
+    // Mark as interrupted
+    interruptionRef.current = true;
+    setSystemInterruption();
+    
+    switch(errorCode) {
+      case 1: // MEDIA_ERR_ABORTED
+        // User aborted - don't show error
+        return;
+      case 2: // MEDIA_ERR_NETWORK
+        errorMessage = 'Network error - check your connection';
+        errorId = 'network-error';
+        break;
+      case 3: // MEDIA_ERR_DECODE
+        errorMessage = 'Audio format not supported';
+        errorId = 'format-error';
+        break;
+      case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+        errorMessage = 'Audio source not available';
+        errorId = 'source-error';
+        break;
+      default:
+        // Unknown error
+        break;
+    }
+    
+    // Show error message only once per error type
+    showErrorOnce(errorMessage, errorId);
+    
+    // Try to play next song if there was a media error
+    if (errorCode === 3 || errorCode === 4) {
+      setTimeout(() => playNext(), 1000);
+    }
+  };
 
   // Update MediaSession metadata and action handlers
   useEffect(() => {
@@ -102,7 +317,10 @@ const AudioPlayer = () => {
 
     // Set up media session action handlers
     navigator.mediaSession.setActionHandler('play', () => {
-      setIsPlaying(true);
+      // Only allow play if not interrupted by a system event
+      if (!interruptionRef.current) {
+        setIsPlaying(true);
+      }
     });
 
     navigator.mediaSession.setActionHandler('pause', () => {
@@ -196,49 +414,155 @@ const AudioPlayer = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreenMobile, playNext, playPrevious, playerStore]);
 
-  // handle play/pause logic
+  // Enhance MediaSession with proper interruption handling
+  useEffect(() => {
+    if (!isMediaSessionSupported() || !currentSong) {
+      return;
+    }
+
+    // Set up interruption handler for iOS Safari
+    const handleVisibilityChange = () => {
+      if (document.hidden && isPlaying) {
+        // Mark as interrupted when app goes to background while playing
+        interruptionRef.current = true;
+        // Pause audio when app goes to background
+        setIsPlaying(false);
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+      }
+    };
+
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Set up media session event handlers
+    navigator.mediaSession.setActionHandler('play', () => {
+      // Only allow play if not interrupted by a system event
+      if (!interruptionRef.current) {
+        setIsPlaying(true);
+      }
+    });
+
+    navigator.mediaSession.setActionHandler('pause', () => {
+      setIsPlaying(false);
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      playPrevious();
+    });
+
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      playNext();
+    });
+
+    // Add specific handler for Android audio focus changes
+    if ('onStateChange' in navigator.mediaSession) {
+      // @ts-ignore - This is available in Chrome/Android but not typed
+      navigator.mediaSession.onStateChange = (event: any) => {
+        if (event.state === 'interrupted') {
+          // Mark as interrupted and pause playback
+          interruptionRef.current = true;
+          setIsPlaying(false);
+          if (audioRef.current) {
+            audioRef.current.pause();
+          }
+        }
+      };
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if ('onStateChange' in navigator.mediaSession) {
+        // @ts-ignore
+        navigator.mediaSession.onStateChange = null;
+      }
+    };
+  }, [currentSong, isPlaying, setIsPlaying, playNext, playPrevious]);
+
+  // Handle system interruption events (like phone calls)
+  useEffect(() => {
+    const handleAudioInterruption = () => {
+      if (audioRef.current?.paused && isPlaying) {
+        // If audio is paused externally while we think it's playing
+        // Mark as interrupted and update our state
+        interruptionRef.current = true;
+        setIsPlaying(false);
+      }
+    };
+
+    // Check for audio interruptions regularly
+    const interruptionCheck = setInterval(handleAudioInterruption, 1000);
+
+    // iOS specific events for interruptions
+    const handlePause = () => {
+      if (isPlaying) {
+        // If system paused the audio while our state is playing
+        interruptionRef.current = true;
+        setIsPlaying(false);
+      }
+    };
+
+    if (audioRef.current) {
+      audioRef.current.addEventListener('pause', handlePause);
+    }
+
+    return () => {
+      clearInterval(interruptionCheck);
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('pause', handlePause);
+      }
+    };
+  }, [isPlaying, setIsPlaying]);
+
+  // Modified play/pause logic with interruption handling
   useEffect(() => {
     if (!audioRef.current || isLoading || isHandlingPlayback.current) return;
 
     if (isPlaying) {
-      // Use a flag to prevent concurrent play/pause operations
-      isHandlingPlayback.current = true;
+      // Only attempt to play if not interrupted
+      if (!interruptionRef.current) {
+        // Use a flag to prevent concurrent play/pause operations
+        isHandlingPlayback.current = true;
 
-      // Clear any existing timeout
-      if (playTimeoutRef.current) {
-        clearTimeout(playTimeoutRef.current);
-      }
-
-      // Small delay to ensure any previous pause operation is complete
-      playTimeoutRef.current = setTimeout(() => {
-        const playPromise = audioRef.current?.play();
-        if (playPromise) {
-          playPromise
-            .then(() => {
-              isHandlingPlayback.current = false;
-            })
-            .catch(error => {
-              console.error('Error playing audio:', error);
-              if (error.message.includes('interrupted')) {
-                // If the error was due to interruption, try again after a short delay
-                setTimeout(() => {
-                  audioRef.current?.play().catch(e => {
-                    toast.error('Playback error: ' + e.message);
-                    setIsPlaying(false);
-                  });
-                }, 300);
-              } else {
-                toast.error('Playback error: ' + error.message);
-                setIsPlaying(false);
-              }
-              isHandlingPlayback.current = false;
-            });
-        } else {
-          isHandlingPlayback.current = false;
+        // Clear any existing timeout
+        if (playTimeoutRef.current) {
+          clearTimeout(playTimeoutRef.current);
         }
-      }, 250);
+
+        // Small delay to ensure any previous pause operation is complete
+        playTimeoutRef.current = setTimeout(() => {
+          const playPromise = audioRef.current?.play();
+          if (playPromise) {
+            playPromise
+              .then(() => {
+                isHandlingPlayback.current = false;
+                // Clear interruption state on successful play
+                interruptionRef.current = false;
+              })
+              .catch(error => {
+                console.error('Error playing audio:', error);
+                // If play fails, we're still in an interrupted state
+                interruptionRef.current = true;
+                setIsPlaying(false);
+                isHandlingPlayback.current = false;
+                
+                // Show toast only for user-actionable errors, not system interruptions
+                if (!error.message.includes('interrupted') && 
+                    !error.message.includes('NotAllowedError')) {
+                  toast.error('Playback error: Try again');
+                }
+              });
+          } else {
+            isHandlingPlayback.current = false;
+          }
+        }, 250);
+      } else {
+        // If interrupted, update our state to match reality
+        setIsPlaying(false);
+      }
     } else {
-      // Also handle pause with a flag to prevent conflicts
+      // Handle pause with a flag to prevent conflicts
       isHandlingPlayback.current = true;
 
       // Clear any existing timeout
@@ -255,11 +579,62 @@ const AudioPlayer = () => {
     }
   }, [isPlaying, isLoading, setIsPlaying]);
 
-  // handle song ends
+  // Background audio focus handler
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    // Add event listeners for audio focus events
+    const handleAudioFocusLoss = () => {
+      if (isPlaying) {
+        interruptionRef.current = true;
+        setIsPlaying(false);
+      }
+    };
+
+    // Listen for external media pause events
+    audio.addEventListener('pause', () => {
+      if (isPlaying && !isHandlingPlayback.current) {
+        // If paused externally and not by our own code
+        interruptionRef.current = true;
+        setIsPlaying(false);
+      }
+    });
+
+    // Setup audio focus listeners for different platforms
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && isPlaying) {
+        interruptionRef.current = true;
+        setIsPlaying(false);
+      }
+    });
+
+    // Listen for page unload/refresh
+    window.addEventListener('beforeunload', handleAudioFocusLoss);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleAudioFocusLoss);
+    };
+  }, [isPlaying, setIsPlaying]);
+
+  // Cleanup interruption state when user explicitly plays
+  const handlePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isPlaying) {
+      // User is explicitly playing - clear interruption state
+      interruptionRef.current = false;
+    }
+    playerStore.togglePlay();
+  };
+
+  // Integrate with the existing handleEnded function
   useEffect(() => {
     const audio = audioRef.current;
 
     const handleEnded = () => {
+      // Reset interruption state when song ends naturally
+      interruptionRef.current = false;
+      
       // Get the current state for logging and better control
       const state = usePlayerStore.getState();
       console.log("Song ended, current queue:", state.queue.length, "items, index:", state.currentIndex);
@@ -271,7 +646,7 @@ const AudioPlayer = () => {
       setTimeout(() => {
         // Call playNext directly from store for more reliable progression
         state.playNext();
-        // Force playing state to be true
+        // Force playing state to be true for next song
         state.setIsPlaying(true);
         console.log("Playing next song, new index:", usePlayerStore.getState().currentIndex);
       }, 100);
@@ -281,6 +656,31 @@ const AudioPlayer = () => {
 
     return () => audio?.removeEventListener('ended', handleEnded);
   }, []);
+
+  // Handle audio errors more gracefully
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleError = (e: ErrorEvent) => {
+      console.error('Audio element error:', e);
+      // Mark as interrupted
+      interruptionRef.current = true;
+      setIsPlaying(false);
+      isHandlingPlayback.current = false;
+      
+      // Check if we need to switch to next song
+      const errorCode = audio.error?.code;
+      if (errorCode === 3 || errorCode === 4) { // MEDIA_ERR_DECODE or MEDIA_ERR_SRC_NOT_SUPPORTED
+        // Only show error once
+        toast.error('Unable to play this song - skipping to next', { id: 'audio-playback-error' });
+        setTimeout(() => playNext(), 1000);
+      }
+    };
+
+    audio.addEventListener('error', handleError as any);
+    return () => audio.removeEventListener('error', handleError as any);
+  }, [setIsPlaying, playNext]);
 
   // handle song changes
   useEffect(() => {
@@ -428,23 +828,6 @@ const AudioPlayer = () => {
     }
   }, [currentSong, isPlaying, setIsPlaying]);
 
-  // Handle audio errors
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleError = (e: ErrorEvent) => {
-      console.error('Audio element error:', e);
-      toast.error('Error playing song - please try another');
-      setIsLoading(false);
-      setIsPlaying(false);
-      isHandlingPlayback.current = false;
-    };
-
-    audio.addEventListener('error', handleError as any);
-    return () => audio.removeEventListener('error', handleError as any);
-  }, [setIsPlaying]);
-
   // Try to restore playback state on mount
   useEffect(() => {
     // This ensures we only try to restore on initial page load, not on remounts
@@ -508,15 +891,6 @@ const AudioPlayer = () => {
       }
     };
   }, [currentSong]);
-
-  // Handle audio element errors
-  const handleError = (e: any) => {
-    console.error('AudioPlayer error:', e);
-    // If the current song fails to load, try to play the next song
-    if (currentSong) {
-      setTimeout(() => playNext(), 1000);
-    }
-  };
 
   // Share audio time with other components and update MediaSession
   const updateAudioMetadata = () => {
@@ -595,12 +969,6 @@ const AudioPlayer = () => {
     }));
   };
   
-  // Toggle play/pause
-  const handlePlayPause = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    playerStore.togglePlay();
-  };
-  
   // Skip back
   const handlePrevious = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -612,112 +980,6 @@ const AudioPlayer = () => {
     e.stopPropagation();
     playNext();
   };
-
-  // Add this useEffect for background playback handling
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // When going to background, ensure audio continues playing
-        if (isPlaying && audioRef.current?.paused) {
-          audioRef.current.play().catch(err => {
-            console.error('Error resuming playback in background:', err);
-            // If playback fails, try to play the next song
-            if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
-              playNext();
-            }
-          });
-        }
-      }
-    };
-
-    const handlePause = () => {
-      // If paused by system, try to resume if we should be playing
-      if (isPlaying && audioRef.current?.paused) {
-        audioRef.current.play().catch(err => {
-          console.error('Error resuming playback after pause:', err);
-          // If playback fails, try to play the next song
-          if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
-            playNext();
-          }
-        });
-      }
-    };
-
-    // Add event listeners for background playback
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    if (audioRef.current) {
-      audioRef.current.addEventListener('pause', handlePause);
-    }
-
-    // Handle audio element setup
-    if (audioRef.current) {
-      audioRef.current.setAttribute('playsinline', '');
-      audioRef.current.setAttribute('webkit-playsinline', '');
-      audioRef.current.setAttribute('x5-playsinline', '');
-      audioRef.current.setAttribute('x5-video-player-type', 'h5');
-      audioRef.current.setAttribute('x5-video-player-fullscreen', 'false');
-      audioRef.current.setAttribute('preload', 'auto');
-      audioRef.current.setAttribute('crossorigin', 'anonymous');
-    }
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (audioRef.current) {
-        audioRef.current.removeEventListener('pause', handlePause);
-      }
-    };
-  }, [isPlaying, playNext]);
-
-  // Add this useEffect for handling song end in background
-  useEffect(() => {
-    const handleEnded = () => {
-      if (isShuffled) {
-        // If repeat is on, restart the current song
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play().catch(err => {
-            console.error('Error replaying track:', err);
-            // If replay fails, try to play the next song
-            if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
-              playNext();
-            }
-          });
-        }
-      } else {
-        // Play next song
-        playNext();
-      }
-    };
-
-    if (audioRef.current) {
-      audioRef.current.addEventListener('ended', handleEnded);
-    }
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.removeEventListener('ended', handleEnded);
-      }
-    };
-  }, [isShuffled, playNext]);
-
-  // Add this useEffect for handling audio errors
-  useEffect(() => {
-    const handleError = (e: ErrorEvent) => {
-      console.error('Audio error:', e);
-      // If there's an error playing the current song, try to play the next one
-      playNext();
-    };
-
-    if (audioRef.current) {
-      audioRef.current.addEventListener('error', handleError as any);
-    }
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.removeEventListener('error', handleError as any);
-      }
-    };
-  }, [playNext]);
 
   if (!currentSong) {
     return (
@@ -905,12 +1167,18 @@ const AudioPlayer = () => {
       
       <audio
         ref={audioRef}
-        src={currentSong.audioUrl}
-        autoPlay={isPlaying}
+        src={currentSong?.audioUrl || ''}
+        autoPlay={false} // Never auto-play - we'll handle this manually
         onTimeUpdate={updateAudioMetadata}
         onLoadedMetadata={updateAudioMetadata}
         onError={handleError}
         preload="auto"
+        playsInline
+        // Add better mobile attributes
+        x-webkit-airplay="allow"
+        controlsList="nodownload"
+        disableRemotePlayback={false}
+        crossOrigin="anonymous"
       />
     </>
   );

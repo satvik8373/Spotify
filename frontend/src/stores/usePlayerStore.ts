@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { devtools, persist } from 'zustand/middleware';
 import { Song } from '@/types';
 
 export type Queue = Song[];
@@ -14,6 +14,11 @@ interface PlayerState {
   currentTime: number;
   duration: number;
   autoplayBlocked: boolean;
+  wasInterrupted: boolean;
+  systemPaused: boolean;
+  lastActiveTime: number;
+  volume: number;
+  isRepeating: boolean;
   
   // Actions
   setCurrentSong: (song: Song) => void;
@@ -26,182 +31,224 @@ interface PlayerState {
   playPrevious: () => void;
   toggleShuffle: () => void;
   setUserInteracted: () => void;
+  setSystemInterruption: () => void;
+  toggleRepeat: () => void;
+  setVolume: (volume: number) => void;
+  shouldAutoResume: () => boolean;
 }
 
 export const usePlayerStore = create<PlayerState>()(
-  persist(
-    (set, get) => ({
-      currentSong: null,
-      queue: [],
-      currentIndex: 0,
-      isPlaying: false,
-      isShuffled: false,
-      hasUserInteracted: false,
-      currentTime: 0,
-      duration: 0,
-      autoplayBlocked: false,
+  devtools(
+    persist(
+      (set, get) => ({
+        currentSong: null,
+        queue: [],
+        currentIndex: 0,
+        isPlaying: false,
+        isShuffled: false,
+        hasUserInteracted: false,
+        currentTime: 0,
+        duration: 0,
+        autoplayBlocked: false,
+        wasInterrupted: false,
+        systemPaused: false,
+        lastActiveTime: Date.now(),
+        volume: 75,
+        isRepeating: false,
 
-      setCurrentSong: (song) => {
-        set({ currentSong: song });
-        
-        // Save to localStorage as a backup for components that need it directly
-        try {
-          const playerState = { 
-            currentSong: song,
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (error) {
-          console.error('Error saving player state:', error);
-        }
-      },
-      
-      setIsPlaying: (isPlaying) => {
-        // If trying to play but user hasn't interacted, don't allow
-        if (isPlaying && !get().hasUserInteracted) {
-          console.log('Attempted to play without user interaction, setting hasUserInteracted to true');
-          set({ isPlaying, hasUserInteracted: true });
-        } else {
-          set({ isPlaying });
-        }
-      },
-      
-      setCurrentTime: (time) => set({ currentTime: time }),
-      
-      setDuration: (duration) => set({ duration }),
-      
-      togglePlay: () => {
-        const { isPlaying } = get();
-        set({ 
-          isPlaying: !isPlaying,
-          hasUserInteracted: true // User must have interacted to toggle play
-        });
-      },
-      
-      playAlbum: (songs, startIndex) => {
-        if (songs.length === 0) return;
-        
-        // Validate index
-        const validIndex = Math.max(0, Math.min(startIndex, songs.length - 1));
-        
-        // Set player state
-        set({
-          queue: songs,
-          currentIndex: validIndex,
-          currentSong: songs[validIndex],
-          hasUserInteracted: true // Assume user interaction when explicitly playing
-        });
-        
-        // Save to localStorage as a backup for components that need it directly
-        try {
-          const playerState = { 
-            currentSong: songs[validIndex],
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (error) {
-          console.error('Error saving player state:', error);
-        }
-      },
-      
-      playNext: () => {
-        const { queue, currentIndex, isShuffled } = get();
-        
-        if (queue.length === 0) return;
-        
-        let newIndex;
-        if (isShuffled) {
-          // In shuffle mode, pick a random song excluding current
-          const potentialIndices = Array.from({ length: queue.length }, (_, i) => i)
-            .filter(i => i !== currentIndex);
-            
-          if (potentialIndices.length > 0) {
-            newIndex = potentialIndices[Math.floor(Math.random() * potentialIndices.length)];
-          } else {
-            // If only one song in queue, play it again
-            newIndex = currentIndex;
+        setCurrentSong: (song) => {
+          set({ currentSong: song });
+          
+          // Save to localStorage as a backup for components that need it directly
+          try {
+            const playerState = { 
+              currentSong: song,
+              timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('player_state', JSON.stringify(playerState));
+          } catch (error) {
+            console.error('Error saving player state:', error);
           }
-        } else {
-          // In order mode, go to next song or loop back to start
-          newIndex = (currentIndex + 1) % queue.length;
+        },
+        
+        setIsPlaying: (isPlaying) => {
+          const state = get();
+          
+          if (isPlaying) {
+            // When explicitly playing, mark as active and clear interruption flags
+            set({ 
+              isPlaying,
+              wasInterrupted: false,
+              systemPaused: false,
+              lastActiveTime: Date.now()
+            });
+          } else {
+            // When pausing, preserve the current interruption state
+            set({ isPlaying });
+          }
+        },
+        
+        setCurrentTime: (time) => set({ currentTime: time }),
+        
+        setDuration: (duration) => set({ duration }),
+        
+        togglePlay: () => {
+          const { isPlaying, wasInterrupted, currentSong } = get();
+          
+          // Only toggle if we have a current song
+          if (!currentSong) return;
+          
+          if (!isPlaying) {
+            // When resuming, clear interruption flags
+            set({ 
+              isPlaying: true, 
+              wasInterrupted: false,
+              systemPaused: false,
+              lastActiveTime: Date.now()
+            });
+          } else {
+            // Normal pause
+            set({ isPlaying: false });
+          }
+        },
+        
+        playAlbum: (songs, startIndex) => {
+          if (songs.length === 0) return;
+          
+          // Validate index
+          const validIndex = Math.max(0, Math.min(startIndex, songs.length - 1));
+          
+          // Set player state
+          set({
+            queue: songs,
+            currentIndex: validIndex,
+            currentSong: songs[validIndex],
+            hasUserInteracted: true, // Assume user interaction when explicitly playing
+            wasInterrupted: false,
+            systemPaused: false,
+            lastActiveTime: Date.now()
+          });
+          
+          // Save to localStorage as a backup for components that need it directly
+          try {
+            const playerState = { 
+              currentSong: songs[validIndex],
+              timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('player_state', JSON.stringify(playerState));
+          } catch (error) {
+            console.error('Error saving player state:', error);
+          }
+        },
+        
+        playNext: () => {
+          const { queue, currentIndex, isShuffled, isRepeating } = get();
+          
+          if (queue.length === 0) return;
+          
+          let nextIndex;
+          
+          if (isShuffled) {
+            // Random index that's different from current
+            const random = () => Math.floor(Math.random() * queue.length);
+            nextIndex = queue.length > 1 
+              ? (() => {
+                  let idx = random();
+                  while (idx === currentIndex && queue.length > 1) idx = random();
+                  return idx;
+                })()
+              : 0;
+          } else {
+            // Standard sequential playback
+            nextIndex = currentIndex + 1;
+            
+            // Handle repeat behavior or wrap around
+            if (nextIndex >= queue.length) {
+              nextIndex = isRepeating ? 0 : 0;
+            }
+          }
+          
+          // Update state with the next song
+          set({
+            currentIndex: nextIndex,
+            currentSong: queue[nextIndex],
+            // Don't touch isPlaying here - that should be managed separately
+          });
+        },
+        
+        playPrevious: () => {
+          const { queue, currentIndex, isShuffled } = get();
+          
+          if (queue.length === 0) return;
+          
+          let prevIndex;
+          
+          if (isShuffled) {
+            // Random previous song
+            prevIndex = Math.floor(Math.random() * queue.length);
+          } else {
+            // Go to previous song or wrap to end
+            prevIndex = currentIndex - 1;
+            if (prevIndex < 0) prevIndex = queue.length - 1;
+          }
+          
+          set({
+            currentIndex: prevIndex,
+            currentSong: queue[prevIndex]
+          });
+        },
+        
+        toggleShuffle: () => {
+          set(state => ({ isShuffled: !state.isShuffled }));
+        },
+        
+        toggleRepeat: () => {
+          const { isRepeating } = get();
+          set({ isRepeating: !isRepeating });
+        },
+        
+        setUserInteracted: () => {
+          set({ hasUserInteracted: true });
+        },
+        
+        setSystemInterruption: () => {
+          set({ 
+            isPlaying: false, 
+            wasInterrupted: true,
+            systemPaused: true,
+            lastActiveTime: Date.now()
+          });
+        },
+        
+        setVolume: (volume: number) => 
+          set({ volume }),
+        
+        shouldAutoResume: () => {
+          const { wasInterrupted, systemPaused, lastActiveTime } = get();
+          
+          // If it was interrupted by the system, never auto-resume
+          if (wasInterrupted || systemPaused) return false;
+          
+          // Check if the interruption was recent (within last 30 seconds)
+          const thirtySecondsAgo = Date.now() - 30000;
+          return lastActiveTime > thirtySecondsAgo;
         }
-        
-        console.log(`Playing next song: ${currentIndex} -> ${newIndex} (queue size: ${queue.length})`);
-        
-        // Save current state before changing
-        const currentState = {
-          currentSong: queue[currentIndex],
-          currentIndex,
-          timestamp: new Date().toISOString()
-        };
-        
-        // Update to new song
-        set({
-          currentIndex: newIndex,
-          currentSong: queue[newIndex],
-          hasUserInteracted: true,
-          isPlaying: true // Ensure playback continues
-        });
-        
-        // Save to localStorage as a backup
-        try {
-          const playerState = { 
-            currentSong: queue[newIndex],
-            currentIndex: newIndex,
-            timestamp: new Date().toISOString(),
-            previousState: currentState // Store previous state for recovery
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (error) {
-          console.error('Error saving player state:', error);
-        }
-      },
-      
-      playPrevious: () => {
-        const { queue, currentIndex } = get();
-        
-        if (queue.length === 0) return;
-        
-        const newIndex = (currentIndex - 1 + queue.length) % queue.length;
-        
-        set({
-          currentIndex: newIndex,
-          currentSong: queue[newIndex],
-          hasUserInteracted: true
-        });
-        
-        // Save to localStorage as a backup
-        try {
-          const playerState = { 
-            currentSong: queue[newIndex],
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (error) {
-          console.error('Error saving player state:', error);
-        }
-      },
-      
-      toggleShuffle: () => {
-        set(state => ({ isShuffled: !state.isShuffled }));
-      },
-      
-      setUserInteracted: () => {
-        set({ hasUserInteracted: true });
+      }),
+      {
+        name: 'player-storage',
+        partialize: (state) => ({
+          currentSong: state.currentSong,
+          queue: state.queue,
+          currentIndex: state.currentIndex,
+          isShuffled: state.isShuffled,
+          isRepeating: state.isRepeating,
+          hasUserInteracted: state.hasUserInteracted,
+          lastActiveTime: state.lastActiveTime,
+          volume: state.volume,
+          autoplayBlocked: state.autoplayBlocked
+        })
       }
-    }),
-    {
-      name: 'player-storage',
-      partialize: (state) => ({
-        currentSong: state.currentSong,
-        queue: state.queue,
-        currentIndex: state.currentIndex,
-        isShuffled: state.isShuffled,
-        isPlaying: state.isPlaying,
-        hasUserInteracted: state.hasUserInteracted,
-        autoplayBlocked: state.autoplayBlocked
-      })
-    }
+    )
   )
 );
 
