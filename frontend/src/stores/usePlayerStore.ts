@@ -1,19 +1,22 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Song } from '@/types';
 
 export type Queue = Song[];
 
-interface PlayerState {
+export interface PlayerState {
   currentSong: Song | null;
-  queue: Queue;
-  currentIndex: number;
   isPlaying: boolean;
   isShuffled: boolean;
-  hasUserInteracted: boolean;
+  isRepeating: boolean;
+  queue: Song[];
+  currentIndex: number;
   currentTime: number;
   duration: number;
+  volume: number;
+  hasUserInteracted: boolean;
   autoplayBlocked: boolean;
+  wasPlayingBeforeInterruption: boolean;
   
   // Actions
   setCurrentSong: (song: Song) => void;
@@ -21,10 +24,11 @@ interface PlayerState {
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
   togglePlay: () => void;
-  playAlbum: (songs: Song[], startIndex: number) => void;
+  playAlbum: (songs: Song[], initialIndex: number) => void;
   playNext: () => void;
   playPrevious: () => void;
   toggleShuffle: () => void;
+  toggleRepeat: () => void;
   setUserInteracted: () => void;
 }
 
@@ -32,14 +36,17 @@ export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, get) => ({
       currentSong: null,
-      queue: [],
-      currentIndex: 0,
       isPlaying: false,
       isShuffled: false,
-      hasUserInteracted: false,
+      isRepeating: false,
+      queue: [],
+      currentIndex: 0,
       currentTime: 0,
       duration: 0,
+      volume: 100,
+      hasUserInteracted: false,
       autoplayBlocked: false,
+      wasPlayingBeforeInterruption: false,
 
       setCurrentSong: (song) => {
         set({ currentSong: song });
@@ -78,11 +85,11 @@ export const usePlayerStore = create<PlayerState>()(
         });
       },
       
-      playAlbum: (songs, startIndex) => {
+      playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
         
         // Validate index
-        const validIndex = Math.max(0, Math.min(startIndex, songs.length - 1));
+        const validIndex = Math.max(0, Math.min(initialIndex, songs.length - 1));
         
         // Set player state
         set({
@@ -186,20 +193,26 @@ export const usePlayerStore = create<PlayerState>()(
         set(state => ({ isShuffled: !state.isShuffled }));
       },
       
+      toggleRepeat: () => {
+        set(state => ({ isRepeating: !state.isRepeating }));
+      },
+      
       setUserInteracted: () => {
         set({ hasUserInteracted: true });
       }
     }),
     {
-      name: 'player-storage',
+      name: 'player-store',
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         currentSong: state.currentSong,
         queue: state.queue,
         currentIndex: state.currentIndex,
         isShuffled: state.isShuffled,
-        isPlaying: state.isPlaying,
+        isRepeating: state.isRepeating,
         hasUserInteracted: state.hasUserInteracted,
-        autoplayBlocked: state.autoplayBlocked
+        autoplayBlocked: state.autoplayBlocked,
+        wasPlayingBeforeInterruption: state.wasPlayingBeforeInterruption,
       })
     }
   )

@@ -156,7 +156,276 @@ const AudioPlayer = () => {
     } catch (error) {
       console.warn('Position state not supported', error);
     }
-  }, [currentSong, setIsPlaying, playNext, playPrevious, setCurrentTime]);
+
+    // Make sure we have proper initialization for lock screen controls
+    if (currentSong.audioUrl && isPlaying) {
+      setTimeout(() => {
+        if (audioRef.current && !isNaN(audioRef.current.duration) && 'setPositionState' in navigator.mediaSession) {
+          navigator.mediaSession.setPositionState({
+            duration: audioRef.current.duration,
+            playbackRate: audioRef.current.playbackRate,
+            position: audioRef.current.currentTime
+          });
+        }
+      }, 500);
+    }
+  }, [currentSong, setIsPlaying, playNext, playPrevious, setCurrentTime, isPlaying]);
+
+  // Enhanced phone call and audio focus handling
+  useEffect(() => {
+    // Define handler for audio interruptions
+    const handleAudioInterruption = () => {
+      // Track if we were playing before interruption
+      const wasPlaying = isPlaying;
+      
+      // Handle when audio is interrupted (likely by a call)
+      const handleAudioPause = () => {
+        console.log("Audio paused by system");
+        
+        // Store the state so we can resume after the interruption
+        if (isPlaying) {
+          usePlayerStore.setState({ wasPlayingBeforeInterruption: true });
+        }
+      };
+      
+      // Handle resuming audio after interruption ends
+      const handleAudioResume = () => {
+        console.log("Audio focus regained, checking if we should resume");
+        
+        // Get the latest state
+        const state = usePlayerStore.getState();
+        
+        // Check if we were playing before the interruption
+        if (state.wasPlayingBeforeInterruption) {
+          console.log("Resuming playback after interruption");
+          
+          // Resume playback with a slight delay to let the system stabilize
+          setTimeout(() => {
+            // Make sure user is marked as having interacted to enable autoplay
+            state.setUserInteracted();
+            
+            // Force playing state to be true
+            state.setIsPlaying(true);
+            
+            // Reset the flag
+            usePlayerStore.setState({ wasPlayingBeforeInterruption: false });
+            
+            if (audioRef.current?.paused) {
+              audioRef.current.play().catch(err => {
+                console.error("Failed to resume after interruption:", err);
+              });
+            }
+          }, 500);
+        }
+      };
+      
+      // Add event listeners for various audio interruption events
+      document.addEventListener('visibilitychange', () => {
+        // When document becomes visible again after being hidden
+        if (!document.hidden && wasPlaying) {
+          handleAudioResume();
+        } else if (document.hidden && isPlaying) {
+          // Mark that we were playing when hidden
+          usePlayerStore.setState({ wasPlayingBeforeInterruption: true });
+        }
+      });
+      
+      // Handle audio interruptions via the audio event listeners
+      if (audioRef.current) {
+        audioRef.current.addEventListener('pause', handleAudioPause);
+        audioRef.current.addEventListener('play', handleAudioResume);
+      }
+      
+      // Add support for audio focus changes (especially for mobile)
+      if ('AudioContext' in window) {
+        try {
+          const audioContext = new AudioContext();
+          if (audioContext.state === 'suspended') {
+            audioContext.addEventListener('statechange', () => {
+              if (audioContext.state === 'running' && wasPlaying) {
+                handleAudioResume();
+              } else if (audioContext.state === 'suspended' && isPlaying) {
+                handleAudioPause();
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('AudioContext not fully supported:', e);
+        }
+      }
+      
+      return () => {
+        if (audioRef.current) {
+          audioRef.current.removeEventListener('pause', handleAudioPause);
+          audioRef.current.removeEventListener('play', handleAudioResume);
+        }
+      };
+    };
+    
+    const cleanup = handleAudioInterruption();
+    return cleanup;
+  }, [isPlaying]);
+
+  // Enhanced song end handling
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const handleEnded = () => {
+      // Get the current state for logging and better control
+      const state = usePlayerStore.getState();
+      console.log("Song ended, current queue:", state.queue.length, "items, index:", state.currentIndex);
+      
+      // Mark that user has interacted to enable autoplay for next song
+      state.setUserInteracted();
+      
+      // Set the wasPlaying flag to true to ensure we continue playing
+      state.wasPlayingBeforeInterruption = true;
+      
+      // Force a slight delay to ensure proper state updates
+      setTimeout(() => {
+        // Call playNext directly from store for more reliable progression
+        state.playNext();
+        // Force playing state to be true
+        state.setIsPlaying(true);
+        
+        // Explicitly attempt to play after state updates to ensure next song starts
+        if (audioRef.current) {
+          audioRef.current.play().catch(err => {
+            console.error("Failed to play next song after current ended:", err);
+            // If initial play fails, try again with another slight delay
+            setTimeout(() => {
+              if (audioRef.current) {
+                audioRef.current.play().catch(e => {
+                  console.error("Failed second play attempt:", e);
+                });
+              }
+            }, 300);
+          });
+        }
+        
+        console.log("Playing next song, new index:", usePlayerStore.getState().currentIndex);
+      }, 100);
+    };
+
+    // Improved event handler that works better across browsers
+    if (audio) {
+      audio.addEventListener('ended', handleEnded);
+      
+      // On iOS, "ended" event might not fire properly on background, so use timeupdate as backup
+      audio.addEventListener('timeupdate', () => {
+        // Only trigger handleEnded if we're very close to the end
+        if (audio.currentTime > 0 && audio.duration > 0 && audio.currentTime >= audio.duration - 0.5) {
+          // Reset the current time to avoid multiple triggers
+          if (!audio.paused) {
+            // Only handle if not already handling
+            handleEnded();
+            // Force stop playing current song to prevent duplicate events
+            audio.pause();
+          }
+        }
+      });
+    }
+
+    return () => {
+      if (audio) {
+        audio.removeEventListener('ended', handleEnded);
+        // Also clean up the timeupdate handler when component unmounts
+        audio.removeEventListener('timeupdate', () => {});
+      }
+    };
+  }, []);
+
+  // Update audio element configuration for better mobile support
+  useEffect(() => {
+    if (audioRef.current) {
+      // Configure audio element for better mobile background playback
+      audioRef.current.setAttribute('playsinline', '');
+      audioRef.current.setAttribute('webkit-playsinline', '');
+      audioRef.current.setAttribute('preload', 'auto');
+      
+      // Critical for audio focus handling in iOS Safari
+      audioRef.current.setAttribute('x-webkit-airplay', 'allow');
+      
+      // Ensure audio continues to play when locked and mixed with other sounds
+      if ('mozAudioChannelType' in audioRef.current) {
+        // Firefox OS
+        (audioRef.current as any).mozAudioChannelType = 'content';
+      }
+    }
+  }, []);
+
+  // Handle audio focus changes on mobile
+  useEffect(() => {
+    // Function to request audio focus and handle focus change events
+    const setupAudioFocus = () => {
+      // Ensure we run only in browser environments
+      if (!window || !navigator) return;
+      
+      // Register to handle phone call interruptions (iOS)
+      document.addEventListener('pause', () => {
+        // App going to background (iOS only event - different from audio pause)
+        if (isPlaying) {
+          usePlayerStore.setState({ wasPlayingBeforeInterruption: true });
+        }
+      });
+      
+      document.addEventListener('resume', () => {
+        // App resuming from background (iOS only event)
+        if (usePlayerStore.getState().wasPlayingBeforeInterruption) {
+          setTimeout(() => {
+            usePlayerStore.getState().setUserInteracted();
+            usePlayerStore.getState().setIsPlaying(true);
+            usePlayerStore.setState({ wasPlayingBeforeInterruption: false });
+          }, 500);
+        }
+      });
+    };
+    
+    setupAudioFocus();
+    
+    // No cleanup needed for these global event listeners (they're app-level)
+  }, [isPlaying]);
+  
+  // Add buffering state detection
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const handleWaiting = () => {
+      setIsLoading(true);
+    };
+    
+    const handlePlaying = () => {
+      setIsLoading(false);
+    };
+    
+    // Handle stalled playback
+    const handleStalled = () => {
+      console.log("Playback stalled");
+      
+      // If we're supposed to be playing but stalled
+      if (isPlaying) {
+        setTimeout(() => {
+          // Try to restart the current song
+          const currentTime = audio.currentTime;
+          audio.currentTime = currentTime;
+          audio.play().catch(err => {
+            console.error("Failed to recover from stalled playback:", err);
+          });
+        }, 2000);
+      }
+    };
+    
+    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('playing', handlePlaying);
+    audio.addEventListener('stalled', handleStalled);
+    
+    return () => {
+      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('playing', handlePlaying);
+      audio.removeEventListener('stalled', handleStalled);
+    };
+  }, [isPlaying]);
 
   // Update playback state in MediaSession
   useEffect(() => {
@@ -254,33 +523,6 @@ const AudioPlayer = () => {
       }, 200);
     }
   }, [isPlaying, isLoading, setIsPlaying]);
-
-  // handle song ends
-  useEffect(() => {
-    const audio = audioRef.current;
-
-    const handleEnded = () => {
-      // Get the current state for logging and better control
-      const state = usePlayerStore.getState();
-      console.log("Song ended, current queue:", state.queue.length, "items, index:", state.currentIndex);
-      
-      // Make sure user is marked as having interacted to enable autoplay
-      state.setUserInteracted();
-      
-      // Force a slight delay to ensure proper state updates
-      setTimeout(() => {
-        // Call playNext directly from store for more reliable progression
-        state.playNext();
-        // Force playing state to be true
-        state.setIsPlaying(true);
-        console.log("Playing next song, new index:", usePlayerStore.getState().currentIndex);
-      }, 100);
-    };
-
-    audio?.addEventListener('ended', handleEnded);
-
-    return () => audio?.removeEventListener('ended', handleEnded);
-  }, []);
 
   // handle song changes
   useEffect(() => {
@@ -613,112 +855,6 @@ const AudioPlayer = () => {
     playNext();
   };
 
-  // Add this useEffect for background playback handling
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // When going to background, ensure audio continues playing
-        if (isPlaying && audioRef.current?.paused) {
-          audioRef.current.play().catch(err => {
-            console.error('Error resuming playback in background:', err);
-            // If playback fails, try to play the next song
-            if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
-              playNext();
-            }
-          });
-        }
-      }
-    };
-
-    const handlePause = () => {
-      // If paused by system, try to resume if we should be playing
-      if (isPlaying && audioRef.current?.paused) {
-        audioRef.current.play().catch(err => {
-          console.error('Error resuming playback after pause:', err);
-          // If playback fails, try to play the next song
-          if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
-            playNext();
-          }
-        });
-      }
-    };
-
-    // Add event listeners for background playback
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    if (audioRef.current) {
-      audioRef.current.addEventListener('pause', handlePause);
-    }
-
-    // Handle audio element setup
-    if (audioRef.current) {
-      audioRef.current.setAttribute('playsinline', '');
-      audioRef.current.setAttribute('webkit-playsinline', '');
-      audioRef.current.setAttribute('x5-playsinline', '');
-      audioRef.current.setAttribute('x5-video-player-type', 'h5');
-      audioRef.current.setAttribute('x5-video-player-fullscreen', 'false');
-      audioRef.current.setAttribute('preload', 'auto');
-      audioRef.current.setAttribute('crossorigin', 'anonymous');
-    }
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (audioRef.current) {
-        audioRef.current.removeEventListener('pause', handlePause);
-      }
-    };
-  }, [isPlaying, playNext]);
-
-  // Add this useEffect for handling song end in background
-  useEffect(() => {
-    const handleEnded = () => {
-      if (isShuffled) {
-        // If repeat is on, restart the current song
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play().catch(err => {
-            console.error('Error replaying track:', err);
-            // If replay fails, try to play the next song
-            if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
-              playNext();
-            }
-          });
-        }
-      } else {
-        // Play next song
-        playNext();
-      }
-    };
-
-    if (audioRef.current) {
-      audioRef.current.addEventListener('ended', handleEnded);
-    }
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.removeEventListener('ended', handleEnded);
-      }
-    };
-  }, [isShuffled, playNext]);
-
-  // Add this useEffect for handling audio errors
-  useEffect(() => {
-    const handleError = (e: ErrorEvent) => {
-      console.error('Audio error:', e);
-      // If there's an error playing the current song, try to play the next one
-      playNext();
-    };
-
-    if (audioRef.current) {
-      audioRef.current.addEventListener('error', handleError as any);
-    }
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.removeEventListener('error', handleError as any);
-      }
-    };
-  }, [playNext]);
-
   if (!currentSong) {
     return (
       <audio
@@ -905,12 +1041,16 @@ const AudioPlayer = () => {
       
       <audio
         ref={audioRef}
-        src={currentSong.audioUrl}
+        src={currentSong?.audioUrl}
         autoPlay={isPlaying}
         onTimeUpdate={updateAudioMetadata}
         onLoadedMetadata={updateAudioMetadata}
         onError={handleError}
         preload="auto"
+        playsInline
+        webkit-playsinline="true"
+        x-webkit-airplay="allow"
+        controls={false}
       />
     </>
   );
