@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, LogOut, Download, X } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,7 +16,6 @@ import { signOut } from '@/services/hybridAuthService';
  * - Profile dropdown with logout functionality
  * - Integration with Media Session API in AudioPlayer.tsx for lockscreen controls
  * - Background audio playback support (iOS/Android)
- * - App installation banner for Android users
  * 
  * Note: For full lockscreen controls to work properly on mobile devices:
  * - iOS: Activate video to fullscreen mode, then swipe up to home screen
@@ -31,11 +30,6 @@ const MobileNav = () => {
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  
-  // PWA installation states
-  const [isAndroid, setIsAndroid] = useState(false);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
@@ -45,70 +39,6 @@ const MobileNav = () => {
   
   // State to track liked status independently
   const [songLiked, setSongLiked] = useState(isLiked);
-
-  // Detect Android devices and handle PWA installation
-  useEffect(() => {
-    // Check if this is an Android device
-    const userAgent = navigator.userAgent.toLowerCase();
-    const isAndroidDevice = /android/.test(userAgent);
-    setIsAndroid(isAndroidDevice);
-    
-    // Don't show the banner if already installed or previously dismissed
-    const installBannerDismissed = localStorage.getItem('installBannerDismissed');
-    if (isAndroidDevice && !installBannerDismissed) {
-      setShowInstallBanner(true);
-    }
-    
-    // Listen for the beforeinstallprompt event
-    const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent Chrome 67 and earlier from automatically showing the prompt
-      e.preventDefault();
-      // Stash the event so it can be triggered later
-      setDeferredPrompt(e);
-      // Show the install banner
-      setShowInstallBanner(true);
-    };
-    
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  // Handle app installation
-  const handleInstallApp = async () => {
-    if (deferredPrompt) {
-      // Show the installation prompt
-      deferredPrompt.prompt();
-      
-      // Wait for the user to respond to the prompt
-      const choiceResult = await deferredPrompt.userChoice;
-      
-      if (choiceResult.outcome === 'accepted') {
-        // User accepted the install prompt
-        setShowInstallBanner(false);
-      }
-      
-      // Clear the saved prompt since it can't be used again
-      setDeferredPrompt(null);
-    } else {
-      // If no prompt is available but we're on Android, we can direct to a manual installation guide
-      alert('To install the app: tap the menu button in your browser and select "Add to Home screen" or "Install App"');
-    }
-  };
-  
-  // Handle dismissing the install banner
-  const handleDismissBanner = () => {
-    setShowInstallBanner(false);
-    // Remember this choice for 7 days
-    localStorage.setItem('installBannerDismissed', Date.now().toString());
-    
-    // Cleanup after 7 days
-    setTimeout(() => {
-      localStorage.removeItem('installBannerDismissed');
-    }, 7 * 24 * 60 * 60 * 1000); // 7 days in milliseconds
-  };
 
   // Update songLiked whenever isLiked changes
   useEffect(() => {
@@ -291,36 +221,9 @@ const MobileNav = () => {
         isOpen={showSongDetails} 
         onClose={() => setShowSongDetails(false)} 
       />
-      
-      {/* Android Install App Banner */}
-      {isAndroid && showInstallBanner && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-green-500 text-white py-2 px-3 flex items-center justify-between">
-          <div className="flex items-center">
-            <Download className="h-5 w-5 mr-2" />
-            <span className="text-sm font-medium">Install app for better experience</span>
-          </div>
-          <div className="flex items-center">
-            <button 
-              className="bg-white text-green-500 text-xs font-medium px-3 py-1 rounded-full mr-2"
-              onClick={handleInstallApp}
-            >
-              Install
-            </button>
-            <button 
-              className="text-white p-1"
-              onClick={handleDismissBanner}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
     
       {/* Mobile Header - Spotify style */}
-      <div className={cn(
-        "fixed left-0 right-0 z-30 bg-zinc-900 md:hidden",
-        isAndroid && showInstallBanner ? "top-10" : "top-0"
-      )}>
+      <div className="fixed top-0 left-0 right-0 z-30 bg-zinc-900 md:hidden">
         <div className="flex items-center justify-between px-3 py-2">
           {/* Spotify Logo */}
           <Link to={isAuthenticated ? "/home" : "/"} className="flex items-center">
