@@ -147,37 +147,6 @@ const MobileNav = () => {
     }
   };
 
-  // Modified play button handler to clear interruption state
-  const handlePlayToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const playerState = usePlayerStore.getState();
-    
-    // If we're going to play, explicitly clear interruption flags
-    if (!isPlaying) {
-      // Access the internal methods directly
-      playerState.setIsPlaying(true);
-    } else {
-      playerState.setIsPlaying(false);
-    }
-  };
-
-  // Additional effect to properly handle visibility changes
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && isPlaying) {
-        // When app goes to background, mark as interrupted
-        usePlayerStore.getState().setSystemInterruption();
-      }
-    };
-    
-    // Add listeners for visibility and app state changes
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isPlaying]);
-
   // Handle profile click
   const handleProfileClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -296,7 +265,10 @@ const MobileNav = () => {
                 <Heart className="h-4 w-4" fill={isLiked ? 'currentColor' : 'none'} />
               </button>
               <button
-                onClick={handlePlayToggle}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  usePlayerStore.getState().togglePlay();
+                }}
                 className="h-8 w-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 active:bg-gray-200"
               >
                 {isPlaying ? (
