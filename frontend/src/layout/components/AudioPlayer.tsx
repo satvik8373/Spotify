@@ -42,7 +42,8 @@ const AudioPlayer = () => {
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isHandlingPlayback = useRef(false);
   const loadStarted = useRef<boolean>(false);
-  const [isFullscreenMobile, setIsFullscreenMobile] = useState(false);
+  // Force portrait mode always even in fullscreen (renamed for clarity)
+  const [isFullDetailView, setIsFullDetailView] = useState(false);
   const [currentTime, setLocalCurrentTime] = useState(0);
   const [duration, setLocalDuration] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
@@ -641,7 +642,7 @@ const AudioPlayer = () => {
   // Keyboard controls for mobile player
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isFullscreenMobile) return;
+      if (!isFullDetailView) return;
       
       if (e.code === 'Space') {
         e.preventDefault();
@@ -651,13 +652,13 @@ const AudioPlayer = () => {
       } else if (e.code === 'ArrowRight') {
         playNext();
       } else if (e.code === 'Escape') {
-        setIsFullscreenMobile(false);
+        setIsFullDetailView(false);
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreenMobile, playNext, playPrevious, playerStore]);
+  }, [isFullDetailView, playNext, playPrevious, playerStore]);
 
   // handle play/pause logic
   useEffect(() => {
@@ -918,7 +919,7 @@ const AudioPlayer = () => {
             
             // Set mini player to show immediately
             if (!currentSong) {
-              setIsFullscreenMobile(false);
+              setIsFullDetailView(false);
             }
 
             // Don't autoplay immediately on page refresh

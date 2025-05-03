@@ -183,8 +183,8 @@ function AppContent() {
 }
 
 function App() {
-	// Set CSS variable for viewport height to handle mobile browsers
 	useEffect(() => {
+		// Set CSS viewport height variable for mobile browsers
 		const setVh = () => {
 			const vh = window.innerHeight * 0.01;
 			document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -194,6 +194,22 @@ function App() {
 		setVh();
 		window.addEventListener('resize', setVh);
 		window.addEventListener('orientationchange', setVh);
+
+		// Lock screen orientation to portrait if the API is available
+		if (typeof screen !== 'undefined' && screen.orientation) {
+			try {
+				// Ensure the lock method exists and is a function
+				const screenOrientation = screen.orientation as any;
+				if (screenOrientation && typeof screenOrientation.lock === 'function') {
+					// Lock to portrait
+					screenOrientation.lock('portrait').catch(() => {
+						// Silently fail if locking is not supported or allowed
+					});
+				}
+			} catch (e) {
+				// Silently fail - some browsers might not support this API
+			}
+		}
 
 		return () => {
 			window.removeEventListener('resize', setVh);
