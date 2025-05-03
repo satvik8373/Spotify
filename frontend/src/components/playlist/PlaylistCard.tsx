@@ -105,12 +105,15 @@ export function PlaylistCard({
         {/* Cover Image Container */}
         <div className={cn("relative overflow-hidden rounded-md", styles.imageWrapper)}>
           {/* Image */}
-          <img
-            src={playlist.imageUrl || '/default-playlist.jpg'}
-            alt={playlist.name}
-            className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105 group-hover:brightness-90"
-            onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
-          />
+          <div className="w-full h-0 pb-[100%] relative">
+            <img
+              src={playlist.imageUrl || '/default-playlist.jpg'}
+              alt={playlist.name}
+              className="absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-105 group-hover:brightness-90"
+              onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
+              loading="lazy"
+            />
+          </div>
           
           {/* Play Button Overlay */}
           <div 
