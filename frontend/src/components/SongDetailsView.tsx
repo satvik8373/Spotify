@@ -140,129 +140,69 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     if (!isOpen || !containerRef.current) return;
     
     const container = containerRef.current;
-    const image = imageRef.current;
-    
-    // Apply hardware acceleration to improve performance
-    container.style.willChange = 'transform, opacity';
-    if (image) image.style.willChange = 'transform';
-    
-    let isSwiping = false;
-    let lastX = 0;
-    let lastY = 0;
-    let swipeStartTime = 0;
     
     const handleTouchStart = (e: TouchEvent) => {
-      // Prevent default behavior that can cause flickering
-      e.preventDefault();
-      
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
-      lastX = touchStartX.current;
-      lastY = touchStartY.current;
-      swipeStartTime = Date.now();
-      isSwiping = true;
-      
-      // Reset any previous transforms
-      if (image) image.style.transform = '';
-      container.style.transition = 'none';
     };
     
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isSwiping || !image) return;
-      
-      // Prevent default to avoid scroll interference
-      e.preventDefault();
+      if (!imageRef.current) return;
       
       // Current touch position
       const currentX = e.touches[0].clientX;
       const currentY = e.touches[0].clientY;
       
-      // Calculate deltas (with smoothing)
+      // Calculate deltas
       const deltaX = currentX - touchStartX.current;
       const deltaY = currentY - touchStartY.current;
-      
-      // Calculate velocity to make animations feel more responsive
-      const velocity = Math.sqrt(
-        Math.pow(currentX - lastX, 2) + 
-        Math.pow(currentY - lastY, 2)
-      ) / ((Date.now() - swipeStartTime) / 1000);
       
       // Determine primary direction
       const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
       
       if (isHorizontal) {
-        // Left/right swipe for changing songs - limit movement to horizontal
-        if (deltaX > 30) {
+        // Left/right swipe for changing songs
+        if (deltaX > 50) {
           setSwipeDirection('right');
-        } else if (deltaX < -30) {
+        } else if (deltaX < -50) {
           setSwipeDirection('left');
         } else {
           setSwipeDirection(null);
         }
         
-        // Apply a damping effect as user swipes further
-        const dampingFactor = Math.min(1, Math.pow(Math.abs(deltaX), 0.7) / Math.abs(deltaX));
-        const transformX = deltaX * 0.15 * dampingFactor;
-        
-        // Move the image slightly with damping effect to provide visual feedback
-        image.style.transform = `translateX(${transformX}px)`;
-        
-        // Very subtle container movement for song change swipes
-        container.style.transform = `translateX(${deltaX * 0.05}px)`;
+        // Move the image slightly to provide visual feedback
+        imageRef.current.style.transform = `translateX(${deltaX * 0.2}px)`;
       } else {
         // Down swipe for closing
-        if (deltaY > 30) {
+        if (deltaY > 50) {
           setSwipeDirection('down');
-          
-          // Apply non-linear resistance for more natural feel
-          const resistance = 0.4 - (deltaY * 0.0005); // Gradually increases resistance
-          const transformY = deltaY * Math.max(0.1, resistance);
-          
-          container.style.transform = `translateY(${transformY}px)`;
-          
-          // Adjust opacity with easing
-          const newOpacity = Math.max(0.5, 1 - (deltaY / 800));
-          container.style.opacity = String(newOpacity);
+          container.style.transform = `translateY(${deltaY * 0.5}px)`;
+          container.style.opacity = `${1 - (deltaY / 500)}`;
         } else {
           setSwipeDirection(null);
           container.style.transform = '';
           container.style.opacity = '1';
         }
       }
-      
-      // Update last position for velocity calculation
-      lastX = currentX;
-      lastY = currentY;
     };
     
     const handleTouchEnd = (e: TouchEvent) => {
-      if (!isSwiping) return;
-      
-      // Calculate final position
       touchEndX.current = e.changedTouches[0].clientX;
       touchEndY.current = e.changedTouches[0].clientY;
       
-      // Calculate swipe metrics
+      // Calculate swipe distance
       const deltaX = touchEndX.current - touchStartX.current;
       const deltaY = touchEndY.current - touchStartY.current;
-      const swipeDuration = Date.now() - swipeStartTime;
-      const velocity = Math.sqrt(deltaX * deltaX + deltaY * deltaY) / (swipeDuration / 1000);
       
-      // Reset styles with smooth transitions
-      if (image) {
-        image.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-        image.style.transform = '';
+      // Reset styles
+      if (imageRef.current) {
+        imageRef.current.style.transform = '';
       }
       
-      // Add transition for smooth movement
-      container.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease-out';
       container.style.opacity = '1';
       
-      // Determine if this was a significant swipe (using velocity for better response)
-      const isQuickSwipe = velocity > 0.5 && swipeDuration < 300;
-      
-      if ((Math.abs(deltaX) > 80 || (isQuickSwipe && Math.abs(deltaX) > 40)) && 
-          Math.abs(deltaX) > Math.abs(deltaY)) {
+      // Determine if this was a significant swipe
+      if (Math.abs(deltaX) > 100 && Math.abs(deltaX) > Math.abs(deltaY)) {
         // Horizontal swipe
         setIsTransitioning(true);
         
@@ -271,101 +211,45 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           container.style.transform = 'translateX(100%)';
           setTimeout(() => {
             playPrevious();
-            // Delay reset to avoid flickering
-            requestAnimationFrame(() => {
-              container.style.transition = 'none';
-              container.style.transform = 'translateX(-100%)';
-              
-              // After a frame, animate back in from opposite side
-              requestAnimationFrame(() => {
-                container.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-                container.style.transform = '';
-                setTimeout(() => setIsTransitioning(false), 300);
-              });
-            });
-          }, 200);
+            container.style.transform = '';
+            setIsTransitioning(false);
+          }, 300);
         } else {
           // Left swipe - play next
           container.style.transform = 'translateX(-100%)';
           setTimeout(() => {
             playNext();
-            // Delay reset to avoid flickering
-            requestAnimationFrame(() => {
-              container.style.transition = 'none';
-              container.style.transform = 'translateX(100%)';
-              
-              // After a frame, animate back in from opposite side
-              requestAnimationFrame(() => {
-                container.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-                container.style.transform = '';
-                setTimeout(() => setIsTransitioning(false), 300);
-              });
-            });
-          }, 200);
+            container.style.transform = '';
+            setIsTransitioning(false);
+          }, 300);
         }
-      } else if (deltaY > 120 || (isQuickSwipe && deltaY > 60)) {
+      } else if (deltaY > 150) {
         // Downward swipe - close
         container.style.transform = 'translateY(100%)';
         setTimeout(() => {
           onClose();
-          
-          // Reset after closing is complete
-          setTimeout(() => {
-            container.style.transition = 'none';
-            container.style.transform = '';
-          }, 50);
+          container.style.transform = '';
         }, 300);
       } else {
-        // Not a significant swipe - reset with spring-like animation
+        // Not a significant swipe - reset
         container.style.transform = '';
       }
       
-      // Reset tracking state
       setSwipeDirection(null);
-      isSwiping = false;
     };
     
-    // Additional handler to prevent flickering on cancel
-    const handleTouchCancel = () => {
-      if (!isSwiping) return;
-      
-      // Reset all states and styles smoothly
-      if (image) {
-        image.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-        image.style.transform = '';
-      }
-      
-      container.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease-out';
-      container.style.transform = '';
-      container.style.opacity = '1';
-      
-      setSwipeDirection(null);
-      isSwiping = false;
-    };
-    
-    // Use passive: false to prevent scrolling while swiping
-    container.addEventListener('touchstart', handleTouchStart, { passive: false });
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchstart', handleTouchStart);
+    container.addEventListener('touchmove', handleTouchMove);
     container.addEventListener('touchend', handleTouchEnd);
-    container.addEventListener('touchcancel', handleTouchCancel);
     
     return () => {
       container.removeEventListener('touchstart', handleTouchStart);
       container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', handleTouchEnd);
-      container.removeEventListener('touchcancel', handleTouchCancel);
       
-      // Clean up styles
-      container.style.willChange = '';
+      // Reset styles when unmounting
       container.style.transform = '';
       container.style.opacity = '1';
-      container.style.transition = '';
-      
-      if (image) {
-        image.style.willChange = '';
-        image.style.transform = '';
-        image.style.transition = '';
-      }
     };
   }, [isOpen, onClose, playNext, playPrevious]);
 
@@ -474,14 +358,14 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         )}
         
         <div className={cn(
-          "aspect-square w-full rounded-lg overflow-hidden shadow-2xl relative transition-all duration-700 transform-gpu",
+          "aspect-square w-full rounded-lg overflow-hidden shadow-2xl relative transition-all duration-700",
           albumArtLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
         )}>
           <img
             ref={imageRef}
             src={currentSong.imageUrl}
             alt={currentSong.title}
-            className="w-full h-full object-cover transition-transform duration-200 transform-gpu"
+            className="w-full h-full object-cover transition-transform duration-200"
             onLoad={() => setAlbumArtLoaded(true)}
             onError={(e) => {
               (e.target as HTMLImageElement).src = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
