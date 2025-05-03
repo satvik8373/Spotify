@@ -307,33 +307,251 @@ const AudioPlayer = () => {
       }, 100);
     };
 
-    // Improved event handler that works better across browsers
-    if (audio) {
+    // Set up advanced detection for song end using multiple methods
+    const setupSongEndDetection = () => {
+      if (!audio) return;
+
+      // Primary method: ended event
       audio.addEventListener('ended', handleEnded);
       
-      // On iOS, "ended" event might not fire properly on background, so use timeupdate as backup
-      audio.addEventListener('timeupdate', () => {
+      // Secondary method: timeupdate backups for iOS background
+      const handleTimeUpdate = () => {
+        if (!audio) return;
+        
         // Only trigger handleEnded if we're very close to the end
-        if (audio.currentTime > 0 && audio.duration > 0 && audio.currentTime >= audio.duration - 0.5) {
-          // Reset the current time to avoid multiple triggers
-          if (!audio.paused) {
-            // Only handle if not already handling
+        // This is critical for background playback on iOS
+        if (audio.currentTime > 0 && 
+            audio.duration > 0 && 
+            !isNaN(audio.duration) &&
+            audio.currentTime >= audio.duration - 0.5) {
+          
+          // Check if this is the last timeupdate before end (to avoid duplicates)
+          if (audio.currentTime < audio.duration) {
+            console.log("Near song end detected via timeupdate, advancing to next track");
             handleEnded();
-            // Force stop playing current song to prevent duplicate events
+            
+            // Ensure we don't trigger again by pausing
             audio.pause();
           }
         }
+      };
+      
+      // Add the timeupdate listener with throttling for performance
+      let lastCheck = 0;
+      audio.addEventListener('timeupdate', () => {
+        const now = Date.now();
+        // Only check every second to reduce CPU usage
+        if (now - lastCheck > 1000) {
+          lastCheck = now;
+          handleTimeUpdate();
+        }
       });
-    }
-
-    return () => {
-      if (audio) {
+      
+      // Tertiary method: periodic background checks for locked devices
+      // This is especially important for iOS in background
+      const backgroundCheckInterval = setInterval(() => {
+        if (document.hidden && audio && isPlaying) {
+          // If we're in background and supposedly playing
+          if (!audio.paused) {
+            // Check if we're near the end and should advance
+            handleTimeUpdate();
+          } else {
+            // If audio is paused but shouldn't be, try to resume
+            console.log("Background check detected paused audio, attempting resume");
+            audio.play().catch(err => {
+              console.error("Failed to resume in background check:", err);
+            });
+          }
+        }
+      }, 5000); // Check every 5 seconds
+      
+      return () => {
         audio.removeEventListener('ended', handleEnded);
-        // Also clean up the timeupdate handler when component unmounts
-        audio.removeEventListener('timeupdate', () => {});
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        clearInterval(backgroundCheckInterval);
+      };
+    };
+    
+    const cleanup = setupSongEndDetection();
+    return cleanup;
+  }, [isPlaying]);
+
+  // Add a dedicated background playback maintenance system
+  useEffect(() => {
+    // Only set up if we have an active song
+    if (!currentSong || !audioRef.current) return;
+    
+    console.log("Setting up background playback maintenance");
+    
+    // Use service worker techniques to keep audio alive in background
+    const keepAliveInterval = setInterval(() => {
+      // Only execute when in background
+      if (document.hidden && isPlaying) {
+        // Get latest state to ensure we're working with current data
+        const state = usePlayerStore.getState();
+        const audio = audioRef.current;
+        
+        if (!audio) return;
+        
+        // Check if audio is playing as expected
+        if (audio.paused && state.isPlaying) {
+          console.log("Background maintenance: detected paused audio, resuming");
+          audio.play().catch(err => {
+            console.error("Failed to resume in background:", err);
+          });
+        }
+        
+        // Check if we need to advance to next song
+        if (audio.ended || (audio.currentTime >= audio.duration - 0.5 && audio.currentTime > 0)) {
+          console.log("Background maintenance: detected song end, advancing");
+          // Increment to next song
+          state.playNext();
+          // Ensure playing state is maintained
+          state.setIsPlaying(true);
+          
+          // Actually play the audio
+          setTimeout(() => {
+            if (audioRef.current) {
+              audioRef.current.play().catch(err => {
+                console.error("Failed to play next song in background:", err);
+              });
+            }
+          }, 300);
+        }
+        
+        // Send wake-up ping to keep service worker alive
+        if (navigator.serviceWorker) {
+          navigator.serviceWorker.ready.then(registration => {
+            if (registration.active) {
+              try {
+                registration.active.postMessage({
+                  type: 'KEEP_ALIVE',
+                  timestamp: Date.now()
+                });
+              } catch (error) {
+                // Ignore errors, this is just a best-effort ping
+              }
+            }
+          }).catch(() => {
+            // Ignore errors if service worker isn't available
+          });
+        }
+      }
+    }, 10000); // Check every 10 seconds
+    
+    return () => {
+      clearInterval(keepAliveInterval);
+    };
+  }, [currentSong, isPlaying]);
+
+  // Handle iOS-specific background playback issues 
+  useEffect(() => {
+    // Only run on iOS devices
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    if (!isIOS) return;
+    
+    console.log("Setting up iOS-specific background fixes");
+    
+    // The audio session configuration for iOS
+    const configureAudioSession = () => {
+      // Set up audio to continue in background
+      if (audioRef.current) {
+        // iOS-specific attributes
+        audioRef.current.setAttribute('x-webkit-airplay', 'allow');
+        audioRef.current.setAttribute('webkit-playsinline', 'true');
+        audioRef.current.setAttribute('playsinline', '');
+        
+        // Force iOS to keep audio session active
+        document.addEventListener('touchstart', function iosTouchHandler() {
+          // Play and immediately pause to activate audio session
+          const silentPlay = audioRef.current?.play();
+          if (silentPlay) {
+            silentPlay.then(() => {
+              if (!isPlaying) {
+                audioRef.current?.pause();
+              }
+              // Remove the handler after first touch
+              document.removeEventListener('touchstart', iosTouchHandler);
+            }).catch(() => {
+              // Just ignore errors here
+            });
+          }
+        }, { once: true });
       }
     };
-  }, []);
+    
+    configureAudioSession();
+    
+    // Special handling for iOS background audio session
+    const handleIOSVisibilityChange = () => {
+      if (document.hidden) {
+        // App going to background
+        console.log("iOS app going to background");
+        
+        // Save the current time and song for restoration
+        if (audioRef.current && currentSong) {
+          const restorationData = {
+            song: currentSong,
+            position: audioRef.current.currentTime,
+            isPlaying: isPlaying,
+            timestamp: Date.now()
+          };
+          
+          try {
+            localStorage.setItem('ios_audio_restoration', JSON.stringify(restorationData));
+          } catch (e) {
+            console.error("Failed to save iOS audio state:", e);
+          }
+        }
+      } else {
+        // App coming to foreground
+        console.log("iOS app returning to foreground");
+        
+        // Check if we need to restore or advance
+        try {
+          const savedData = localStorage.getItem('ios_audio_restoration');
+          if (savedData && audioRef.current) {
+            const { song, position, isPlaying: wasPlaying, timestamp } = JSON.parse(savedData);
+            const currentTime = Date.now();
+            const timePassed = (currentTime - timestamp) / 1000; // in seconds
+            
+            // If we have the same song still
+            if (song._id === currentSong?._id) {
+              // Calculate where we should be now
+              const expectedPosition = position + timePassed;
+              
+              // If expected position exceeds song duration, we should have advanced
+              if (expectedPosition >= audioRef.current.duration - 2) {
+                console.log("iOS restoration: song should have ended, advancing");
+                usePlayerStore.getState().playNext();
+                usePlayerStore.getState().setIsPlaying(wasPlaying);
+              } else {
+                // Otherwise just ensure we're at the right position
+                console.log("iOS restoration: resuming at correct position");
+                audioRef.current.currentTime = expectedPosition;
+                if (wasPlaying && audioRef.current.paused) {
+                  audioRef.current.play().catch(err => {
+                    console.error("iOS restoration play failed:", err);
+                  });
+                }
+              }
+            }
+            
+            // Clean up
+            localStorage.removeItem('ios_audio_restoration');
+          }
+        } catch (e) {
+          console.error("Failed to restore iOS audio state:", e);
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleIOSVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleIOSVisibilityChange);
+    };
+  }, [currentSong, isPlaying]);
 
   // Update audio element configuration for better mobile support
   useEffect(() => {
