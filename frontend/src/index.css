@@ -235,12 +235,15 @@ img.object-cover.bg-zinc-800 {
 .fixed.bottom-0.z-30 {
 	bottom: 0;
 	padding-bottom: env(safe-area-inset-bottom, 0px);
+	-webkit-backdrop-filter: blur(10px);
+	backdrop-filter: blur(10px);
 }
 
 /* Mobile mini player styles */
 .player-active {
   display: flex;
   flex-direction: column;
+  background: transparent;
 }
 
 /* Mini player play/pause button styles */
@@ -259,8 +262,17 @@ img.object-cover.bg-zinc-800 {
 	padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0rem));
 }
 
-.pb-32 {
-	padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0rem));
+/* Ensure content doesn't get hidden behind transparent nav */
+.h-screen {
+	height: 100vh;
+	height: calc(var(--vh, 1vh) * 100);
+}
+
+/* Transparent nav appearance improvements */
+.bg-black\/70 {
+	background-color: rgba(0, 0, 0, 0.7);
+	-webkit-backdrop-filter: blur(10px);
+	backdrop-filter: blur(10px);
 }
 
 /* Hide scrollbars but maintain functionality */

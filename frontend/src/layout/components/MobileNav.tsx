@@ -233,7 +233,7 @@ const MobileNav = () => {
       {/* Bottom Navigation */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black to-black/90 border-t border-zinc-800/50 md:hidden",
+          "fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/90 to-transparent backdrop-blur-md border-t border-zinc-800/20 md:hidden",
           hasActiveSong ? "player-active" : ""
         )}
         style={{
@@ -242,7 +242,7 @@ const MobileNav = () => {
       >
         {/* Add mini player when song is active */}
         {hasActiveSong && (
-          <div className="flex items-center justify-between px-3 py-2 bg-zinc-900/90 border-b border-zinc-800/50">
+          <div className="flex items-center justify-between px-3 py-2 bg-black/50 backdrop-blur-md border-b border-zinc-800/30">
             <div 
               className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-zinc-800/30 rounded-md py-1"
               onClick={handleSongTap}
@@ -281,7 +281,7 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-14">
+        <div className="grid grid-cols-4 h-14 bg-black/70">
           {navItems.map(item => (
             <Link
               key={item.path}
@@ -289,13 +289,13 @@ const MobileNav = () => {
               className={cn(
                 'flex flex-col items-center justify-center py-1.5 transition-colors',
                 isActive(item.path) 
-                  ? 'text-green-500' 
+                  ? 'text-white' 
                   : 'text-zinc-400 hover:text-zinc-200'
               )}
             >
               <item.icon className={cn(
                 'h-5 w-5 mb-1', 
-                isActive(item.path) && 'text-green-500'
+                isActive(item.path) && 'text-white'
               )} />
               <span className="text-[10px] font-medium">{item.label}</span>
             </Link>

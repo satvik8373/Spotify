@@ -183,6 +183,24 @@ function AppContent() {
 }
 
 function App() {
+	// Set CSS variable for viewport height to handle mobile browsers
+	useEffect(() => {
+		const setVh = () => {
+			const vh = window.innerHeight * 0.01;
+			document.documentElement.style.setProperty('--vh', `${vh}px`);
+		};
+
+		// Set initially and on resize
+		setVh();
+		window.addEventListener('resize', setVh);
+		window.addEventListener('orientationchange', setVh);
+
+		return () => {
+			window.removeEventListener('resize', setVh);
+			window.removeEventListener('orientationchange', setVh);
+		};
+	}, []);
+
 	return (
 		<AuthProvider>
 			<AppContent />
