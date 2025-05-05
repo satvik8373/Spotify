@@ -18,6 +18,7 @@ import { storage } from '@/lib/firebase';
 import { playlistsService } from './firestore';
 import { Playlist, Song } from '@/types';
 import { FirestorePlaylist, FirestoreSong, firestoreToSong, FirestoreUser } from '@/types/firebase';
+import { createPlaylistCoverCollage, createDominantColorCover } from './playlistImageService';
 
 // Generate a random placeholder image for playlists without images
 const generatePlaceholderImage = (name: string): string => {
@@ -66,6 +67,22 @@ export const convertFirestorePlaylistToPlaylist = (data: any): Playlist => {
       imageUrl: firestorePlaylist.createdBy.imageUrl || ''
     }
   };
+};
+
+// Generate a playlist cover image based on its songs
+export const generatePlaylistCoverFromSongs = async (songs: Song[]): Promise<string> => {
+  try {
+    // If there are no songs, return a default placeholder
+    if (!songs || songs.length === 0) {
+      return '';
+    }
+    
+    // Create a collage image from the songs' cover art
+    return await createPlaylistCoverCollage(songs);
+  } catch (error) {
+    console.error('Error generating playlist cover:', error);
+    return '';
+  }
 };
 
 // Get all user playlists
@@ -217,6 +234,25 @@ export const updatePlaylist = async (
   }
 };
 
+// Update playlist cover image using its songs
+export const updatePlaylistCoverFromSongs = async (playlistId: string, songs: Song[]): Promise<Playlist> => {
+  try {
+    // Generate a collage image from the songs
+    const newCoverUrl = await generatePlaylistCoverFromSongs(songs);
+    
+    // Only update if we got a valid cover
+    if (newCoverUrl) {
+      return await updatePlaylist(playlistId, { imageUrl: newCoverUrl });
+    }
+    
+    // If no cover was generated, return the existing playlist
+    return await getPlaylistById(playlistId);
+  } catch (error) {
+    console.error('Error updating playlist cover:', error);
+    throw error;
+  }
+};
+
 // Delete a playlist
 export const deletePlaylist = async (playlistId: string): Promise<void> => {
   try {
@@ -231,7 +267,7 @@ export const deletePlaylist = async (playlistId: string): Promise<void> => {
 export const addSongToPlaylist = async (playlistId: string, song: Song): Promise<Playlist> => {
   try {
     // Ensure song has all required fields with fallbacks for safety
-    const firestoreSong: FirestoreSong = {
+    let firestoreSong: FirestoreSong = {
       id: song._id || `song-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       title: song.title || 'Unknown Title',
       artist: song.artist || 'Unknown Artist',
@@ -256,8 +292,38 @@ export const addSongToPlaylist = async (playlistId: string, song: Song): Promise
       }
     });
     
+    // Add the song to the playlist
     const updatedPlaylist = await playlistsService.addSongToPlaylist(playlistId, firestoreSong);
-    return convertFirestorePlaylistToPlaylist(updatedPlaylist);
+    const convertedPlaylist = convertFirestorePlaylistToPlaylist(updatedPlaylist);
+    
+    // Get the updated songs list from the playlist
+    const songs = convertedPlaylist.songs;
+    
+    // If there are at least 4 songs and no custom cover (or using a placeholder), 
+    // generate a new cover image automatically
+    if (songs.length >= 1) {
+      // Check if the current image is a placeholder (data URL) or default
+      const currentImageUrl = convertedPlaylist.imageUrl || '';
+      const isPlaceholder = currentImageUrl.startsWith('data:') || 
+                           currentImageUrl.includes('default-playlist') ||
+                           !currentImageUrl;
+      
+      if (isPlaceholder) {
+        try {
+          // Generate a new cover collage and update the playlist
+          const newCoverUrl = await generatePlaylistCoverFromSongs(songs);
+          if (newCoverUrl) {
+            await playlistsService.update(playlistId, { imageUrl: newCoverUrl });
+            convertedPlaylist.imageUrl = newCoverUrl;
+          }
+        } catch (coverError) {
+          console.error('Error generating cover for playlist:', coverError);
+          // Continue without updating the cover
+        }
+      }
+    }
+    
+    return convertedPlaylist;
   } catch (error) {
     console.error('Error adding song to playlist:', error);
     throw error;

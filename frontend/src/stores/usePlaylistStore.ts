@@ -345,6 +345,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
               imageUrl: '',
               audioUrl: '',
               duration: 0,
+              albumId: null,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             };
@@ -367,12 +368,70 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         // Update the current playlist in state
         set({ currentPlaylist: updatedPlaylist });
         
+        // Also update in the user playlists list and playlists list if it exists there
+        const userPlaylists = get().userPlaylists.map(p => 
+          p._id === playlistId ? updatedPlaylist : p
+        );
+        
+        const playlists = get().playlists.map(p => 
+          p._id === playlistId ? updatedPlaylist : p
+        );
+        
+        set({ 
+          userPlaylists,
+          playlists 
+        });
+        
       } catch (error) {
         // Fallback: Update locally if Firebase fails
         const updatedSongs = [...playlist.songs, song];
         const updatedPlaylist = { ...playlist, songs: updatedSongs };
         
         set({ currentPlaylist: updatedPlaylist });
+        
+        // Check if this is the first song being added to the playlist
+        // If so, and the playlist has a default/placeholder image, auto-generate a cover
+        if (playlist.songs.length === 0) {
+          try {
+            // Check if current image is a placeholder (data URL) or default
+            const currentImageUrl = playlist.imageUrl || '';
+            const isPlaceholder = currentImageUrl.startsWith('data:') || 
+                                currentImageUrl.includes('default-playlist') ||
+                                !currentImageUrl;
+            
+            if (isPlaceholder && song.imageUrl) {
+              // Generate a cover from the first song's image
+              const newImageUrl = song.imageUrl;
+              
+              // Update locally
+              const playlistWithCover = { ...updatedPlaylist, imageUrl: newImageUrl };
+              set({ currentPlaylist: playlistWithCover });
+              
+              // Also update in the lists
+              const userPlaylistsUpdated = get().userPlaylists.map(p => 
+                p._id === playlistId ? playlistWithCover : p
+              );
+              
+              const playlistsUpdated = get().playlists.map(p => 
+                p._id === playlistId ? playlistWithCover : p
+              );
+              
+              set({ 
+                userPlaylists: userPlaylistsUpdated,
+                playlists: playlistsUpdated 
+              });
+              
+              // Try to persist the cover update in the background
+              try {
+                playlistService.updatePlaylist(playlistId, { imageUrl: newImageUrl });
+              } catch (coverUpdateError) {
+                // Silent fail - we already have it updated locally
+              }
+            }
+          } catch (coverError) {
+            // Silently ignore cover generation errors - the song was still added
+          }
+        }
       }
     } catch (error: any) {
     }

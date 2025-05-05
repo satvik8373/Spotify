@@ -124,7 +124,7 @@ const AudioPlayer = () => {
       usePlayerStore.getState().setUserInteracted();
       // Call previous from store directly for better state handling
       if (playPrevious) {
-        playPrevious();
+      playPrevious();
         // Force playing state
         setTimeout(() => {
           if (audioRef.current && audioRef.current.paused) {
@@ -1092,9 +1092,9 @@ const AudioPlayer = () => {
               const playPromise = audioRef.current.play();
               
               if (playPromise !== undefined) {
-                playPromise
-                  .then(() => {
-                    isHandlingPlayback.current = false;
+              playPromise
+                .then(() => {
+                  isHandlingPlayback.current = false;
                     
                     // Set up position state for lock screen again
                     if ('setPositionState' in navigator.mediaSession) {
@@ -1108,8 +1108,8 @@ const AudioPlayer = () => {
                         // Ignore any errors with position state
                       }
                     }
-                  })
-                  .catch(error => {
+                })
+                .catch(error => {
                     // Handle AbortError specifically
                     if (error.name === 'AbortError') {
                       // Wait for any pending operations to complete
@@ -1117,7 +1117,7 @@ const AudioPlayer = () => {
                         // Only attempt retry if we're still supposed to be playing
                         if (isPlaying && audioRef.current) {
                           audioRef.current.play().catch(retryError => {
-                            setIsPlaying(false);
+                  setIsPlaying(false);
                           });
                         }
                       }, 250); // Faster retry
@@ -1125,8 +1125,8 @@ const AudioPlayer = () => {
                       setIsPlaying(false);
                     }
                     
-                    isHandlingPlayback.current = false;
-                  });
+                  isHandlingPlayback.current = false;
+                });
               } else {
                 isHandlingPlayback.current = false;
               }

@@ -20,6 +20,9 @@ import {
   FileText,
   Trash,
   Pause,
+  Music2,
+  Image as ImageIcon,
+  Volume2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
@@ -45,6 +48,7 @@ import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { SongFileUploader } from '../../components/playlist/SongFileUploader';
+import { updatePlaylistCoverFromSongs } from '../../services/playlistService';
 
 function AddSongsDialog({
   isOpen,
@@ -305,7 +309,6 @@ export function PlaylistPage() {
   const [hasPlayed, setHasPlayed] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
 
   // New state for scroll behavior
@@ -356,9 +359,6 @@ export function PlaylistPage() {
 
     // Cleanup function
     return () => {
-      if (playTimeoutRef.current) {
-        clearTimeout(playTimeoutRef.current);
-      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -505,39 +505,32 @@ export function PlaylistPage() {
       return;
     }
 
-    // Prevent multiple rapid clicks
+    // If already playing, just return
     if (isPlaying) return;
 
     try {
       setIsPlaying(true);
-
-      // Clear any existing timeout
-      if (playTimeoutRef.current) {
-        clearTimeout(playTimeoutRef.current);
-      }
 
       // Update play count only if user hasn't played this playlist before
       if (!hasPlayed) {
         updateMetrics('plays');
       }
 
-      // Start playback with a small delay to ensure clean state
-      playTimeoutRef.current = setTimeout(() => {
-        // Make sure shuffle is off before playing in order
-        const playerStore = usePlayerStore.getState();
-        if (playerStore.isShuffled) {
-          playerStore.toggleShuffle();
-        }
-        
-        // Play the playlist from the beginning
-        playAlbum(currentPlaylist.songs, 0);
-        
-        // Force playback to start
-        setTimeout(() => {
-          usePlayerStore.getState().setUserInteracted();
-          usePlayerStore.getState().setIsPlaying(true);
-        }, 100);
-        
+      // Make sure shuffle is off before playing in order
+      const playerStore = usePlayerStore.getState();
+      if (playerStore.isShuffled) {
+        playerStore.toggleShuffle();
+      }
+      
+      // Play the playlist from the beginning
+      playAlbum(currentPlaylist.songs, 0);
+      
+      // Force playback to start
+      usePlayerStore.getState().setUserInteracted();
+      usePlayerStore.getState().setIsPlaying(true);
+      
+      // Reset isPlaying state after a delay
+      setTimeout(() => {
         setIsPlaying(false);
       }, 300);
     } catch (error) {
@@ -558,39 +551,32 @@ export function PlaylistPage() {
       return;
     }
 
-    // Prevent multiple rapid clicks
+    // If already playing, just return
     if (isPlaying) return;
 
     try {
       setIsPlaying(true);
-
-      // Clear any existing timeout
-      if (playTimeoutRef.current) {
-        clearTimeout(playTimeoutRef.current);
-      }
 
       // Update play count only if user hasn't played this playlist before
       if (!hasPlayed) {
         updateMetrics('plays');
       }
 
-      // Start playback with a small delay to ensure clean state
-      playTimeoutRef.current = setTimeout(() => {
-        // Enable shuffle mode before playing
-        const playerStore = usePlayerStore.getState();
-        if (!playerStore.isShuffled) {
-          playerStore.toggleShuffle();
-        }
-        
-        // Play the playlist
-        playAlbum(currentPlaylist.songs, 0);
-        
-        // Force playback to start
-        setTimeout(() => {
-          usePlayerStore.getState().setUserInteracted();
-          usePlayerStore.getState().setIsPlaying(true);
-        }, 100);
-        
+      // Enable shuffle mode before playing
+      const playerStore = usePlayerStore.getState();
+      if (!playerStore.isShuffled) {
+        playerStore.toggleShuffle();
+      }
+      
+      // Play the playlist
+      playAlbum(currentPlaylist.songs, 0);
+      
+      // Force playback to start
+      usePlayerStore.getState().setUserInteracted();
+      usePlayerStore.getState().setIsPlaying(true);
+      
+      // Reset isPlaying state after a delay
+      setTimeout(() => {
         setIsPlaying(false);
       }, 300);
     } catch (error) {
@@ -610,23 +596,24 @@ export function PlaylistPage() {
       return;
     }
 
-    // Prevent multiple rapid clicks
-    if (isPlaying) return;
+    // Check if this is the currently playing song
+    const playerStore = usePlayerStore.getState();
+    const isThisSongPlaying = playerStore.currentSong?._id === song._id && playerStore.isPlaying;
+    
+    // If this song is already playing, pause it instead of replaying
+    if (isThisSongPlaying) {
+      playerStore.setIsPlaying(false);
+      return;
+    }
 
-    // Track which song is playing
+    // Set loading state and track which song we're trying to play
     setPlayingSongId(song._id);
+    setIsPlaying(true);
 
     try {
-      setIsPlaying(true);
-
-      // Clear any existing timeout
-      if (playTimeoutRef.current) {
-        clearTimeout(playTimeoutRef.current);
-      }
-
-      // Check if the song has a valid audio URL
+      // If song has no audio URL, try to find it
       if (!song.audioUrl) {
-        // Try to search for the song to get its audio URL
+        toast.loading("Finding audio for this song...");
         try {
           const searchQuery = `${song.title} ${song.artist}`.trim();
           await useMusicStore.getState().searchIndianSongs(searchQuery);
@@ -648,53 +635,52 @@ export function PlaylistPage() {
             
             // Play the updated song
             playAlbum(updatedSongs, index);
+            toast.dismiss();
             
             // Force playback to start
-            setTimeout(() => {
-              usePlayerStore.getState().setUserInteracted();
-              usePlayerStore.getState().setIsPlaying(true);
-            }, 100);
+            usePlayerStore.getState().setUserInteracted();
+            usePlayerStore.getState().setIsPlaying(true);
             
+            // Reset states
             setIsPlaying(false);
-            // Reset playingSongId after a delay
-            setTimeout(() => setPlayingSongId(null), 300);
+            setPlayingSongId(null);
             return;
           } else {
+            toast.dismiss();
+            toast.error("Couldn't find audio for this song");
             setIsPlaying(false);
             setPlayingSongId(null);
             return;
           }
         } catch (error) {
-          // Silent error handling
+          toast.dismiss();
+          toast.error("Error finding audio");
           setIsPlaying(false);
           setPlayingSongId(null);
           return;
         }
       }
 
-      // Start playback with a small delay to ensure clean state
-      playTimeoutRef.current = setTimeout(() => {
-        // Make sure shuffle is off to play the chosen song
-        const playerStore = usePlayerStore.getState();
-        if (playerStore.isShuffled) {
-          playerStore.toggleShuffle();
-        }
-        
-        // Play the selected song from the playlist
-        playAlbum(currentPlaylist.songs, index);
-        
-        // Force playback to start
-        setTimeout(() => {
-          usePlayerStore.getState().setUserInteracted();
-          usePlayerStore.getState().setIsPlaying(true);
-        }, 100);
-        
-        setIsPlaying(false);
-        // Reset playingSongId after a delay
-        setTimeout(() => setPlayingSongId(null), 300);
-      }, 300);
+      // Disable shuffle to ensure we play the selected song
+      if (playerStore.isShuffled) {
+        playerStore.toggleShuffle();
+      }
+      
+      // Play the selected song
+      playAlbum(currentPlaylist.songs, index);
+      
+      // Start playback
+      usePlayerStore.getState().setUserInteracted();
+      usePlayerStore.getState().setIsPlaying(true);
+      
+      // Vibrate on mobile devices for tactile feedback (if supported)
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
     } catch (error) {
-      // Silent error handling
+      toast.error("Error playing song");
+    } finally {
+      // Always reset states
       setIsPlaying(false);
       setPlayingSongId(null);
     }
@@ -780,6 +766,48 @@ export function PlaylistPage() {
     }
   };
 
+  // Add a state for the regenerate cover dialog
+  const [showRegenerateCoverDialog, setShowRegenerateCoverDialog] = useState(false);
+  const [isRegeneratingCover, setIsRegeneratingCover] = useState(false);
+  
+  // Add a function to handle regenerating the cover
+  const handleRegenerateCover = async () => {
+    if (!currentPlaylist || !currentPlaylist.songs || currentPlaylist.songs.length === 0) {
+      toast.error('Playlist needs songs to generate a cover');
+      return;
+    }
+    
+    setIsRegeneratingCover(true);
+    try {
+      const updatedPlaylist = await updatePlaylistCoverFromSongs(
+        currentPlaylist._id, 
+        currentPlaylist.songs
+      );
+      
+      // Update the playlist in the local state
+      if (updatedPlaylist) {
+        // Update the playlist in our store
+        usePlaylistStore.getState().updatePlaylist(
+          currentPlaylist._id,
+          { imageUrl: updatedPlaylist.imageUrl }
+        );
+        
+        // Fetch the updated playlist to refresh our local state
+        if (id) {
+          await usePlaylistStore.getState().fetchPlaylistById(id);
+        }
+        
+        toast.success('Playlist cover updated');
+      }
+    } catch (error) {
+      console.error('Error regenerating cover:', error);
+      toast.error('Failed to update cover');
+    } finally {
+      setIsRegeneratingCover(false);
+      setShowRegenerateCoverDialog(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -818,12 +846,26 @@ export function PlaylistPage() {
         >
           <div className="flex flex-col md:flex-row items-center md:items-end gap-6 relative z-10 pb-4">
             {/* Playlist cover image - larger on desktop */}
-            <div className="w-40 h-40 sm:w-56 sm:h-56 md:w-60 md:h-60 flex-shrink-0 shadow-2xl mx-auto md:mx-0">
+            <div className="w-40 h-40 sm:w-56 sm:h-56 md:w-60 md:h-60 flex-shrink-0 shadow-2xl mx-auto md:mx-0 relative group">
               <img
                 src={currentPlaylist.imageUrl || '/default-playlist.jpg'}
                 alt={currentPlaylist.name}
                 className="w-full h-full object-cover"
               />
+              
+              {/* Regenerate cover overlay - only for playlist owners */}
+              {isOwner && (
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button 
+                    variant="ghost" 
+                    className="text-white hover:bg-white/20"
+                    onClick={() => setShowRegenerateCoverDialog(true)}
+                  >
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    Update Cover
+                  </Button>
+                </div>
+              )}
             </div>
             
             {/* Playlist info */}
@@ -901,6 +943,15 @@ export function PlaylistPage() {
                     <Plus className="h-4 w-4 mr-2" />
                     Add songs
                   </DropdownMenuItem>
+                  {isOwner && (
+                    <DropdownMenuItem 
+                      onClick={() => setShowRegenerateCoverDialog(true)} 
+                      className="hover:bg-[#3E3E3E]"
+                    >
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      Generate cover
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={handleSharePlaylist} className="hover:bg-[#3E3E3E]">
                     <Share2 className="h-4 w-4 mr-2" />
                     Share
@@ -919,47 +970,50 @@ export function PlaylistPage() {
             </div>
 
             {/* Right side play button */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-5">
               <Button
                 variant="ghost"
-                size="icon"
-                className={cn(
-                  'w-10 h-10 rounded-full text-gray-400 hover:text-white',
-                  isLiked && 'text-green-500'
-                )}
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full text-gray-400 hover:text-white flex items-center justify-center"
                 onClick={handleLike}
               >
-                <Heart className="h-5 w-5" fill={isLiked ? 'currentColor' : 'none'} />
+                <Heart 
+                  className="h-5 w-5 sm:h-6 sm:w-6" 
+                  fill={isLiked ? 'currentColor' : 'none'} 
+                  stroke={isLiked ? 'none' : 'currentColor'}
+                  color={isLiked ? '#1DB954' : 'currentColor'} 
+                />
               </Button>
 
               <Button
                 variant="ghost"
-                size="icon" 
                 className={cn(
-                  'w-10 h-10 rounded-full text-gray-400 hover:text-white',
-                  isShuffleOn && 'text-green-500'
+                  'w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center',
+                  isShuffleOn ? 'text-green-500' : 'text-gray-400 hover:text-white'
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
                   // Toggle shuffle first
                   usePlayerStore.getState().toggleShuffle();
-                  // Then get the new state after toggling
-                  const newShuffleState = !isShuffleOn;
                 }}
               >
-                <Shuffle className="h-5 w-5" />
+                <Shuffle className="h-5 w-5 sm:h-6 sm:w-6" />
               </Button>
 
               <Button
                 onClick={isCurrentPlaylistPlaying ? handlePausePlaylist : handlePlayPlaylist}
                 disabled={totalSongs === 0 || isPlaying}
-                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-green-500 hover:bg-green-400 hover:scale-105 transition-all shadow-lg text-black flex items-center justify-center"
+                className={cn(
+                  "w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all shadow-lg",
+                  isCurrentPlaylistPlaying 
+                    ? "bg-white text-black hover:bg-gray-200 hover:scale-105" 
+                    : "bg-green-500 text-black hover:bg-green-400 hover:scale-105"
+                )}
                 variant="default"
               >
                 {isCurrentPlaylistPlaying ? (
-                  <Pause className="h-6 w-6 sm:h-7 sm:w-7" />
+                  <Pause className="h-7 w-7 sm:h-8 sm:w-8" />
                 ) : (
-                  <Play className="h-6 w-6 sm:h-7 sm:w-7 ml-1" />
+                  <Play className="h-7 w-7 sm:h-8 sm:w-8 ml-1" />
                 )}
                 <span className="sr-only">{isCurrentPlaylistPlaying ? 'Pause' : 'Play'}</span>
               </Button>
@@ -984,49 +1038,46 @@ export function PlaylistPage() {
               {/* Songs list */}
               {currentPlaylist.songs.map((song, index) => {
                 const isCurrentSong = currentSong?._id === song._id;
+                const isThisSongPlaying = isCurrentSong && playerIsPlaying;
                 
                 return (
                   <div
                     key={song._id}
                     className={cn(
-                      'grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_3fr_minmax(120px,1fr)] items-center py-3 px-4 mx-[-16px] rounded-md group',
-                      'hover:bg-[#2A2A2A] transition-colors duration-200',
+                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_3fr_minmax(120px,1fr)] items-center py-4 px-4 mx-[-16px] rounded-md group',
+                      'hover:bg-[#2A2A2A] active:bg-[#333] transition-colors duration-200',
                       isCurrentSong && 'bg-[#2A2A2A]',
                       !song.audioUrl && 'opacity-60'
                     )}
-                    onClick={e => handlePlaySong(song, index, e)}
+                    onClick={() => handlePlaySong(song, index)}
                   >
-                    {/* Track number/playing indicator */}
-                    <div className="flex items-center justify-center w-6">
-                      <div className="w-4 h-4 flex items-center justify-center text-gray-400 group-hover:hidden">
-                        {isCurrentSong ? (
-                          <div className="w-2 h-2 bg-green-500 rounded-sm"></div>
-                        ) : (
-                          <span className="text-sm">{index + 1}</span>
-                        )}
-                      </div>
-                      <div className="hidden group-hover:flex items-center justify-center text-white">
+                    {/* Play button / track number column - wider for mobile */}
+                    <div className="flex items-center justify-center">
+                      {isThisSongPlaying ? (
+                        <div className="w-8 h-8 flex items-center justify-center">
+                          <div className="w-3 h-3 bg-green-500 rounded-sm animate-pulse"></div>
+                        </div>
+                      ) : (
                         <Button
                           variant="ghost"
-                          size="icon"
-                          className="h-4 w-4 p-0"
+                          size="sm"
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white hover:bg-white/10 p-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePlaySong(song, index);
                           }}
                         >
-                          {isCurrentSong && isPlaying ? (
-                            <Pause className="h-3 w-3" />
-                          ) : (
-                            <Play className="h-3 w-3 ml-0.5" />
-                          )}
+                          <Play className={cn("h-4 w-4 ml-0.5", isCurrentSong && "text-green-500")} />
                         </Button>
-                      </div>
+                      )}
                     </div>
                     
                     {/* Song info with image */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-10 w-10 flex-shrink-0 bg-[#282828] rounded overflow-hidden">
+                      <div className={cn(
+                        "h-10 w-10 flex-shrink-0 bg-[#282828] rounded overflow-hidden",
+                        isCurrentSong && "ring-2 ring-green-500"
+                      )}>
                         <img
                           src={song.imageUrl || '/default-song.jpg'}
                           alt={song.title}
@@ -1055,7 +1106,7 @@ export function PlaylistPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-white"
+                            className="h-8 w-8 text-gray-400 hover:text-white p-0"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleRemoveSong(song._id, e);
@@ -1070,7 +1121,7 @@ export function PlaylistPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white p-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFindAudio(song, index, e);
@@ -1151,6 +1202,73 @@ export function PlaylistPage() {
           </Button>
         </div>
       )}
+
+      {/* New dialog for regenerating cover image */}
+      <Dialog open={showRegenerateCoverDialog} onOpenChange={setShowRegenerateCoverDialog}>
+        <DialogContent className="bg-zinc-900 text-white border-zinc-800 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generate Cover Art</DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Create a new cover art from your playlist's songs
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Preview of existing songs for the collage */}
+              {currentPlaylist.songs.slice(0, 4).map((song, index) => (
+                <div key={index} className="aspect-square bg-zinc-800 rounded overflow-hidden">
+                  <img
+                    src={song.imageUrl || '/default-song.jpg'}
+                    alt={song.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+              
+              {/* Fill empty slots with placeholder if needed */}
+              {Array.from({ length: Math.max(0, 4 - currentPlaylist.songs.length) }).map((_, index) => (
+                <div 
+                  key={`empty-${index}`} 
+                  className="aspect-square bg-zinc-800 rounded flex items-center justify-center"
+                >
+                  <Music2 className="h-8 w-8 text-zinc-600" />
+                </div>
+              ))}
+            </div>
+            
+            <p className="text-sm text-zinc-400">
+              {currentPlaylist.songs.length > 0
+                ? 'This will create a 4-grid collage using your playlist songs as cover art.'
+                : 'Add songs to your playlist first to generate a cover.'}
+            </p>
+          </div>
+          
+          <div className="flex justify-end gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowRegenerateCoverDialog(false)}
+              className="bg-transparent border-zinc-700 text-white hover:bg-zinc-800"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRegenerateCover} 
+              disabled={isRegeneratingCover || currentPlaylist.songs.length === 0}
+              className="bg-green-500 text-black hover:bg-green-600"
+            >
+              {isRegeneratingCover ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                  Processing...
+                </>
+              ) : (
+                'Generate Cover'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
