@@ -335,7 +335,9 @@ const IndianMusicPlayer = () => {
     <div 
       key={song.id}
       className="p-4 bg-zinc-800 rounded-md hover:bg-zinc-700 transition cursor-pointer group relative flex flex-col"
-      onClick={() => {
+      onClick={(e) => {
+        e.preventDefault();
+        // Play song immediately on single click/tap
         playSong(song);
       }}
     >
@@ -386,7 +388,9 @@ const IndianMusicPlayer = () => {
     <div 
       key={song.id}
       className="flex items-center p-2 rounded-md hover:bg-zinc-800 transition cursor-pointer group relative"
-      onClick={() => {
+      onClick={(e) => {
+        e.preventDefault();
+        // Play song immediately on single click/tap
         playSong(song);
       }}
     >

@@ -1,4 +1,4 @@
-import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom';
 import MainLayout from './layout/MainLayout';
 import HomePage from './pages/home/HomePage';
 import SearchPage from './pages/search/SearchPage';
@@ -17,7 +17,7 @@ import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import Welcome from './pages/Welcome';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
-import { Navigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -81,12 +81,38 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Landing page router redirector - checks auth status and redirects accordingly
+const LandingRedirector = () => {
+  const { isAuthenticated, loading } = useAuth();
+  const hasCachedAuth = Boolean(
+    localStorage.getItem('auth-store') && 
+    JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
+  );
+  
+  // If we have cached auth or are authenticated, redirect to home
+  if (hasCachedAuth || isAuthenticated) {
+    return <Navigate to="/home" replace />;
+  }
+  
+  // Still loading, but no cached auth - show loading indicator
+  if (loading && !hasCachedAuth) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-zinc-900">
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
+  
+  // Not authenticated, show welcome page
+  return <Welcome />;
+};
+
 // Configure the router with React Router v6
 const router = createBrowserRouter(
 	[
 		{
 			path: '/',
-			element: <Welcome />
+			element: <LandingRedirector />
 		},
 		{
 			path: '/login',
@@ -145,15 +171,28 @@ function AppContent() {
 	const [showSplash, setShowSplash] = useState(true);
 	const [initialized, setInitialized] = useState(false);
 	
-	// Initialize Firestore data
+	// Initialize Firestore data and check if user is already logged in
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// No longer seeding demo playlists
-				console.log("Application initialized without demo playlists");
+				// Check for cached authentication
+				const hasCachedAuth = Boolean(
+					localStorage.getItem('auth-store') && 
+					JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
+				);
 				
-				// Mark initialization as complete
-				setInitialized(true);
+				// Reduce splash screen time for logged-in users
+				if (hasCachedAuth) {
+					// For logged-in users, reduce splash screen time to minimum
+					setTimeout(() => {
+						setInitialized(true);
+					}, 500); // Reduce to just 500ms for authenticated users
+				} else {
+					// For new visitors, keep the normal timing
+					setTimeout(() => {
+						setInitialized(true);
+					}, 1000);
+				}
 			} catch (error) {
 				console.error("Error initializing app:", error);
 				// Continue anyway in case of initialization errors

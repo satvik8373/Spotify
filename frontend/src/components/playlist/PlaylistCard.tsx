@@ -45,6 +45,7 @@ export function PlaylistCard({
       toast.error('This playlist has no songs');
       return;
     }
+    // Play immediately with no delay
     playAlbum(playlist.songs, 0);
   };
 

@@ -9,6 +9,12 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [isAnimating, setIsAnimating] = useState(true);
   const [showContent, setShowContent] = useState(false);
   
+  // Check for cached authentication to determine splash screen duration
+  const hasCachedAuth = Boolean(
+    localStorage.getItem('auth-store') && 
+    JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
+  );
+  
   // Preload critical assets
   useEffect(() => {
     // Preload logo SVG
@@ -27,14 +33,17 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const handleAnimationComplete = useCallback(() => {
     setIsAnimating(false);
     // Call onComplete after fade out
-    setTimeout(onComplete, 300);
+    setTimeout(onComplete, 200);
   }, [onComplete]);
   
-  // Start exit animation after 2 seconds
+  // Start exit animation based on authentication status
   useEffect(() => {
-    const timer = setTimeout(handleAnimationComplete, 2000);
+    // Shorter display time for authenticated users
+    const animationDuration = hasCachedAuth ? 800 : 2000;
+    
+    const timer = setTimeout(handleAnimationComplete, animationDuration);
     return () => clearTimeout(timer);
-  }, [handleAnimationComplete]);
+  }, [handleAnimationComplete, hasCachedAuth]);
 
   return (
     <AnimatePresence>
@@ -43,7 +52,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.2 }}
           className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50"
         >
           <div className="flex flex-col items-center justify-center space-y-8">
@@ -74,7 +83,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.2 }}
               className="text-white text-3xl font-bold"
             >
               ×
@@ -84,7 +93,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.3 }}
               className="relative"
             >
               <motion.h2 
@@ -109,7 +118,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.4 }}
               className="text-center"
             >
               <h1 className="text-white text-xl font-medium">Spotify x Mavrix</h1>
@@ -120,7 +129,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
               className="mt-4 flex space-x-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
+              transition={{ delay: 0.5 }}
             >
               {[0, 1, 2].map((i) => (
                 <motion.div

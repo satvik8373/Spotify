@@ -610,9 +610,6 @@ export function PlaylistPage() {
       return;
     }
 
-    // Prevent multiple rapid clicks
-    if (isPlaying) return;
-
     // Track which song is playing
     setPlayingSongId(song._id);
 
@@ -650,10 +647,8 @@ export function PlaylistPage() {
             playAlbum(updatedSongs, index);
             
             // Force playback to start
-            setTimeout(() => {
-              usePlayerStore.getState().setUserInteracted();
-              usePlayerStore.getState().setIsPlaying(true);
-            }, 100);
+            usePlayerStore.getState().setUserInteracted();
+            usePlayerStore.getState().setIsPlaying(true);
             
             setIsPlaying(false);
             // Reset playingSongId after a delay
@@ -672,27 +667,22 @@ export function PlaylistPage() {
         }
       }
 
-      // Start playback with a small delay to ensure clean state
-      playTimeoutRef.current = setTimeout(() => {
-        // Make sure shuffle is off to play the chosen song
-        const playerStore = usePlayerStore.getState();
-        if (playerStore.isShuffled) {
-          playerStore.toggleShuffle();
-        }
-        
-        // Play the selected song from the playlist
-        playAlbum(currentPlaylist.songs, index);
-        
-        // Force playback to start
-        setTimeout(() => {
-          usePlayerStore.getState().setUserInteracted();
-          usePlayerStore.getState().setIsPlaying(true);
-        }, 100);
-        
-        setIsPlaying(false);
-        // Reset playingSongId after a delay
-        setTimeout(() => setPlayingSongId(null), 300);
-      }, 300);
+      // Make sure shuffle is off to play the chosen song
+      const playerStore = usePlayerStore.getState();
+      if (playerStore.isShuffled) {
+        playerStore.toggleShuffle();
+      }
+      
+      // Play the selected song from the playlist immediately
+      playAlbum(currentPlaylist.songs, index);
+      
+      // Force playback to start
+      usePlayerStore.getState().setUserInteracted();
+      usePlayerStore.getState().setIsPlaying(true);
+      
+      setIsPlaying(false);
+      // Reset playingSongId after a delay
+      setTimeout(() => setPlayingSongId(null), 300);
     } catch (error) {
       // Silent error handling
       setIsPlaying(false);
