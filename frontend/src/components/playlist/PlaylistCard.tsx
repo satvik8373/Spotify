@@ -45,15 +45,11 @@ export function PlaylistCard({
       toast.error('This playlist has no songs');
       return;
     }
-    
-    // Play immediately with no delay and start playback
+    // Play immediately with no delay
     playAlbum(playlist.songs, 0);
-    usePlayerStore.getState().setUserInteracted();
-    usePlayerStore.getState().setIsPlaying(true);
   };
 
   const handleCardClick = () => {
-    // Navigate to playlist page immediately on single tap
     navigate(`/playlist/${playlist._id}`);
   };
 

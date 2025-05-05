@@ -45,7 +45,6 @@ import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { SongFileUploader } from '../../components/playlist/SongFileUploader';
-import TouchRipple from '../../components/ui/touch-ripple';
 
 function AddSongsDialog({
   isOpen,
@@ -308,7 +307,6 @@ export function PlaylistPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
 
   // New state for scroll behavior
   const [scrollPosition, setScrollPosition] = useState(0);
@@ -320,17 +318,6 @@ export function PlaylistPage() {
 
   // Track shuffle state
   const [isShuffleOn, setIsShuffleOn] = useState(false);
-  
-  // Check for mobile viewport
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    handleResize(); // Set initial state
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
   
   // Keep shuffle state in sync with player store
   useEffect(() => {
@@ -344,7 +331,7 @@ export function PlaylistPage() {
     
     return () => unsubscribe();
   }, []);
-  
+
   useEffect(() => {
     if (id) {
       fetchPlaylistById(id);
@@ -519,6 +506,8 @@ export function PlaylistPage() {
     }
 
     try {
+      setIsPlaying(true);
+
       // Update play count only if user hasn't played this playlist before
       if (!hasPlayed) {
         updateMetrics('plays');
@@ -530,15 +519,17 @@ export function PlaylistPage() {
         playerStore.toggleShuffle();
       }
       
-      // Play the playlist from the beginning immediately
+      // Play the playlist immediately from the beginning
       playAlbum(currentPlaylist.songs, 0);
       
-      // Force playback to start immediately
+      // Force playback to start right away
       usePlayerStore.getState().setUserInteracted();
       usePlayerStore.getState().setIsPlaying(true);
       
+      setIsPlaying(false);
     } catch (error) {
       // Silent error handling
+      setIsPlaying(false);
     }
   };
 
@@ -555,6 +546,8 @@ export function PlaylistPage() {
     }
 
     try {
+      setIsPlaying(true);
+
       // Update play count only if user hasn't played this playlist before
       if (!hasPlayed) {
         updateMetrics('plays');
@@ -569,12 +562,14 @@ export function PlaylistPage() {
       // Play the playlist immediately
       playAlbum(currentPlaylist.songs, 0);
       
-      // Force playback to start immediately
+      // Force playback to start right away
       usePlayerStore.getState().setUserInteracted();
       usePlayerStore.getState().setIsPlaying(true);
       
+      setIsPlaying(false);
     } catch (error) {
       // Silent error handling
+      setIsPlaying(false);
     }
   };
 
@@ -589,7 +584,17 @@ export function PlaylistPage() {
       return;
     }
 
+    // Track which song is playing
+    setPlayingSongId(song._id);
+
     try {
+      setIsPlaying(true);
+
+      // Clear any existing timeout
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
+
       // Check if the song has a valid audio URL
       if (!song.audioUrl) {
         // Try to search for the song to get its audio URL
@@ -612,18 +617,26 @@ export function PlaylistPage() {
               idx === index ? updatedSong : s
             );
             
-            // Play the updated song immediately
+            // Play the updated song
             playAlbum(updatedSongs, index);
             
-            // Force playback to start immediately
+            // Force playback to start
             usePlayerStore.getState().setUserInteracted();
             usePlayerStore.getState().setIsPlaying(true);
+            
+            setIsPlaying(false);
+            // Reset playingSongId after a delay
+            setTimeout(() => setPlayingSongId(null), 300);
             return;
           } else {
+            setIsPlaying(false);
+            setPlayingSongId(null);
             return;
           }
         } catch (error) {
           // Silent error handling
+          setIsPlaying(false);
+          setPlayingSongId(null);
           return;
         }
       }
@@ -637,11 +650,17 @@ export function PlaylistPage() {
       // Play the selected song from the playlist immediately
       playAlbum(currentPlaylist.songs, index);
       
-      // Force playback to start immediately
+      // Force playback to start
       usePlayerStore.getState().setUserInteracted();
       usePlayerStore.getState().setIsPlaying(true);
+      
+      setIsPlaying(false);
+      // Reset playingSongId after a delay
+      setTimeout(() => setPlayingSongId(null), 300);
     } catch (error) {
       // Silent error handling
+      setIsPlaying(false);
+      setPlayingSongId(null);
     }
   };
 
@@ -884,7 +903,13 @@ export function PlaylistPage() {
                   'w-10 h-10 rounded-full text-gray-400 hover:text-white',
                   isShuffleOn && 'text-green-500'
                 )}
-                onClick={handleShufflePlaylist}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Toggle shuffle first
+                  usePlayerStore.getState().toggleShuffle();
+                  // Then get the new state after toggling
+                  const newShuffleState = !isShuffleOn;
+                }}
               >
                 <Shuffle className="h-5 w-5" />
               </Button>
@@ -929,11 +954,11 @@ export function PlaylistPage() {
                     key={song._id}
                     className={cn(
                       'grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_3fr_minmax(120px,1fr)] items-center py-3 px-4 mx-[-16px] rounded-md group',
-                      'hover:bg-[#2A2A2A] transition-colors duration-200 cursor-pointer',
+                      'hover:bg-[#2A2A2A] transition-colors duration-200',
                       isCurrentSong && 'bg-[#2A2A2A]',
                       !song.audioUrl && 'opacity-60'
                     )}
-                    onClick={() => handlePlaySong(song, index)}
+                    onClick={e => handlePlaySong(song, index, e)}
                   >
                     {/* Track number/playing indicator */}
                     <div className="flex items-center justify-center w-6">
@@ -990,7 +1015,7 @@ export function PlaylistPage() {
                     {/* Duration and actions */}
                     <div className="flex items-center justify-end gap-2 sm:gap-4 text-gray-400">
                       {isOwner && (
-                        <div className={cn("transition-opacity", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1009,8 +1034,7 @@ export function PlaylistPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={cn("h-8 w-8 transition-opacity text-gray-400 hover:text-white", 
-                          isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100")}
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFindAudio(song, index, e);

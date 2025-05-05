@@ -76,18 +76,20 @@ export function RecentlyPlayed() {
 
   const handleItemClick = (item: RecentItem) => {
     if (item.type === 'song' && item.data) {
-      // Immediately set the current song and start playing on a single tap
+      // Immediately set the current song on a single click
       setCurrentSong(item.data);
-      // Start playback immediately
-      usePlayerStore.getState().setUserInteracted();
-      usePlayerStore.getState().setIsPlaying(true);
-      // Add to recently played
       addToRecentlyPlayed(item);
+      // Ensure playback starts right away
+      setTimeout(() => {
+        const playerStore = usePlayerStore.getState();
+        playerStore.setUserInteracted();
+        playerStore.setIsPlaying(true);
+      }, 50);
     } else if (item.type === 'playlist' && item.id) {
-      // Navigate to playlist immediately - one tap
+      // Navigate to playlist immediately
       navigate(`/playlist/${item.id}`);
     } else if (item.type === 'album' && item.id) {
-      // Navigate to album immediately - one tap
+      // Navigate to album immediately
       navigate(`/albums/${item.id}`);
     }
   };

@@ -237,27 +237,17 @@ const IndianMusicPlayer = () => {
     if (!song) return;
     
     if (!song.url) {
-      toast.error("Audio not available for this song");
+      await fetchSongDetails(song.id);
       return;
     }
     
     try {
       const secureUrl = ensureHttps(song.url);
-      // Convert the song to the format expected by the player
-      const appSong = {
-        id: song.id,
-        title: song.title,
-        artist: song.artist || 'Unknown Artist',
-        imageUrl: song.image,
-        audioUrl: secureUrl,
-        albumName: song.album,
-        duration: song.duration ? parseInt(song.duration) : 0
-      };
-      
-      // Set as current song and start playing immediately
+      const appSong = convertIndianSongToAppSong({
+        ...song,
+        url: secureUrl
+      });
       setAppCurrentSong(appSong);
-      usePlayerStore.getState().setUserInteracted();
-      usePlayerStore.getState().setIsPlaying(true);
     } catch (error) {
       console.error("Error playing song:", error);
       toast.error("Failed to play song. Please try again.");
@@ -290,16 +280,16 @@ const IndianMusicPlayer = () => {
         });
         toast.success(`Removed "${song.title}" from Liked Songs`);
       } else {
-        // Add to liked songs - convert to the format expected by addLikedSong
-        const likedSong = {
+        // Add to liked songs - convert to expected format
+        const convertedSong = {
           id: song.id,
           title: song.title,
-          artist: song.artist || 'Unknown Artist',
+          artist: song.artist || '',
           imageUrl: song.image,
           audioUrl: song.url || '',
-          duration: song.duration ? parseInt(song.duration) : 0
+          duration: parseInt(song.duration || '0'),
         };
-        addLikedSong(likedSong);
+        addLikedSong(convertedSong);
         setLikedSongIds(prev => new Set([...prev, songId]));
         toast.success(`Added "${song.title}" to Liked Songs`);
       }
@@ -339,11 +329,9 @@ const IndianMusicPlayer = () => {
   };
 
   const isSongPlaying = (song: Song) => {
+    // Compare IDs safely, checking if currentSong has the id property
     return isPlaying && currentSong && 
-      // Compare by ID or title+artist if IDs don't match
-      (currentSong.id === song.id || 
-       (currentSong.title === song.title && 
-        currentSong.artist === song.artist));
+           song.id === (currentSong.id || (currentSong as any)._id);
   };
 
   // UI Components
@@ -357,7 +345,11 @@ const IndianMusicPlayer = () => {
     <div 
       key={song.id}
       className="p-4 bg-zinc-800 rounded-md hover:bg-zinc-700 transition cursor-pointer group relative flex flex-col"
-      onClick={() => playSong(song)}
+      onClick={(e) => {
+        e.preventDefault();
+        // Play song immediately on single click/tap
+        playSong(song);
+      }}
     >
       <div className="relative mb-3 aspect-square overflow-hidden rounded-md">
         <img 
@@ -406,7 +398,11 @@ const IndianMusicPlayer = () => {
     <div 
       key={song.id}
       className="flex items-center p-2 rounded-md hover:bg-zinc-800 transition cursor-pointer group relative"
-      onClick={() => playSong(song)}
+      onClick={(e) => {
+        e.preventDefault();
+        // Play song immediately on single click/tap
+        playSong(song);
+      }}
     >
       <div className="relative size-12 flex-shrink-0 mr-3">
         <img 
@@ -453,6 +449,13 @@ const IndianMusicPlayer = () => {
   const SongDetailView = () => {
     if (!selectedSong) return null;
     
+    // Use a safe access method for checking song ID
+    const getSongId = (song: Song) => song.id;
+    const selectedSongId = getSongId(selectedSong);
+    const isCurrentlyPlaying = isPlaying && currentSong && 
+                              (currentSong.id === selectedSongId || 
+                               (currentSong as any)._id === selectedSongId);
+    
     return (
       <Dialog open={showSongDetails} onOpenChange={setShowSongDetails}>
         <DialogContent className="bg-gradient-to-b from-zinc-800 to-zinc-900 border-zinc-700 max-w-md">
@@ -485,12 +488,12 @@ const IndianMusicPlayer = () => {
             
             <div className="flex justify-between w-full mb-8">
               <Button 
-                variant={likedSongIds.has(selectedSong.id) ? "default" : "ghost"} 
+                variant={likedSongIds.has(selectedSongId) ? "default" : "ghost"} 
                 size="icon"
-                className={`size-10 rounded-full ${likedSongIds.has(selectedSong.id) ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                className={`size-10 rounded-full ${likedSongIds.has(selectedSongId) ? 'bg-green-500 hover:bg-green-600' : ''}`}
                 onClick={(e) => toggleLikeSong(selectedSong, e)}
               >
-                <Heart className={`size-5 ${likedSongIds.has(selectedSong.id) ? 'fill-white' : ''}`} />
+                <Heart className={`size-5 ${likedSongIds.has(selectedSongId) ? 'fill-white' : ''}`} />
               </Button>
               
               <Button variant="ghost" size="icon" className="size-10 rounded-full" onClick={handleShare}>
@@ -506,7 +509,7 @@ const IndianMusicPlayer = () => {
               </Button>
             </div>
             
-            {isPlaying && currentSong && currentSong.id === selectedSong.id && (
+            {isCurrentlyPlaying && (
               <div className="w-full mb-6">
                 <div className="w-full bg-zinc-700 h-1 rounded-full mb-2">
                   <div 
@@ -526,7 +529,7 @@ const IndianMusicPlayer = () => {
               className="w-full bg-green-500 hover:bg-green-600 text-lg font-semibold rounded-full"
               onClick={() => playSong(selectedSong)}
             >
-              {isSongPlaying(selectedSong) ? 'Pause' : 'Play'}
+              {isCurrentlyPlaying ? 'Pause' : 'Play'}
             </Button>
           </div>
         </DialogContent>

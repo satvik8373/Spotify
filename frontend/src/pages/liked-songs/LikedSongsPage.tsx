@@ -261,8 +261,11 @@ const LikedSongsPage = () => {
       usePlayerStore.getState().playAlbum(playerSongs, index);
       
       // Force play state immediately to true regardless of autoplay setting
-      usePlayerStore.getState().setIsPlaying(true);
-      usePlayerStore.getState().setUserInteracted(); // Ensure user is marked as interacted
+      setTimeout(() => {
+        const store = usePlayerStore.getState();
+        store.setIsPlaying(true);
+        store.setUserInteracted(); // Ensure user is marked as interacted
+      }, 100);
     }
   };
 
