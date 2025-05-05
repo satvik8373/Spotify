@@ -1362,9 +1362,9 @@ const AudioPlayer = () => {
         onClose={() => setShowSongDetails(false)} 
       />
       
-      {/* Mobile mini player (bottom bar) */}
+      {/* Mobile mini player (bottom bar) - Redesigned to match Spotify's UI */}
       <div 
-        className="fixed bottom-14 left-0 right-0 bg-gradient-to-b from-zinc-900 to-black border-t border-zinc-800/50 h-16 backdrop-blur-md z-40 sm:hidden transition-all duration-300"
+        className="fixed bottom-14 left-0 right-0 bg-[#0b273b] h-14 z-40 sm:hidden transition-all duration-300 shadow-lg"
         onClick={(e) => {
           e.preventDefault();
           setShowSongDetails(true);
@@ -1372,14 +1372,14 @@ const AudioPlayer = () => {
       >
         <div className="relative h-full flex items-center justify-between px-3">
           {/* Song info / left side */}
-          <div className="flex items-center gap-2 flex-1 min-w-0 max-w-[45%]">
+          <div className="flex items-center gap-3 flex-1 min-w-0 max-w-[60%]">
             {currentSong && (
               <>
-                <div className="h-10 w-10 flex-shrink-0 rounded overflow-hidden cursor-pointer">
+                <div className="h-9 w-9 flex-shrink-0 rounded-sm overflow-hidden cursor-pointer shadow-md">
                   <img
                     src={currentSong.imageUrl}
                     alt={currentSong.title}
-                    className="h-full w-full object-cover bg-zinc-800"
+                    className="h-full w-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
                     }}
@@ -1388,51 +1388,50 @@ const AudioPlayer = () => {
 
                 {/* Song info */}
                 <div className="truncate min-w-0 flex-1">
-                  <h4 className="text-xs font-medium truncate">{currentSong.title || "Unknown Title"}</h4>
-                  <p className="text-[10px] text-zinc-400 truncate">{currentSong.artist || "Unknown Artist"}</p>
+                  <h4 className="text-xs font-semibold text-white truncate">{currentSong.title || "Unknown Title"}</h4>
+                  <p className="text-[11px] text-gray-300 truncate">{currentSong.artist || "Unknown Artist"}</p>
                 </div>
               </>
             )}
           </div>
 
-          {/* Playback controls / right side */}
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-9 w-9 text-white p-0"
-              onClick={handlePrevious}
+          {/* Playback controls / right side with Spotify-style buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              className="h-8 w-8 text-white flex items-center justify-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLikeToggle(e);
+              }}
             >
-              <SkipBack className="h-4 w-4" />
-            </Button>
+              <Heart
+                className="h-5 w-5"
+                fill={isLiked ? '#1ed760' : 'none'}
+                color={isLiked ? '#1ed760' : 'white'}
+                strokeWidth={1.5}
+              />
+            </button>
 
-            <Button
-              size="icon"
-              className="h-8 w-8 rounded-full bg-white text-black flex items-center justify-center p-0"
-              onClick={handlePlayPause}
+            <button
+              className="h-9 w-9 rounded-full bg-white text-[#0b273b] flex items-center justify-center shadow-md"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePlayPause(e);
+              }}
             >
               {isPlaying ? (
-                <Pause className="h-3.5 w-3.5" />
+                <Pause className="h-5 w-5" />
               ) : (
-                <Play className="h-3.5 w-3.5 ml-[2px]" />
+                <Play className="h-5 w-5 ml-0.5" />
               )}
-            </Button>
-
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-9 w-9 text-white p-0"
-              onClick={handleNext}
-            >
-              <SkipForward className="h-4 w-4" />
-            </Button>
+            </button>
           </div>
         </div>
         
-        {/* Progress bar for mobile */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
+        {/* Progress bar for mobile - Spotify style */}
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#0b3d59]">
           <div 
-            className="h-full bg-green-500" 
+            className="h-full bg-[#1ed760]" 
             style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
           />
         </div>

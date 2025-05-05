@@ -179,30 +179,30 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   return (
     <div
       className={cn(
-        'fixed inset-0 bg-gradient-to-b from-black via-zinc-900/90 to-black z-50 transition-transform duration-500 flex flex-col',
+        'fixed inset-0 bg-gradient-to-b from-[#0b273b] via-[#081c2c] to-[#051525] z-50 transition-transform duration-500 flex flex-col',
         isOpen ? 'translate-y-0' : 'translate-y-full'
       )}
     >
       {/* Header */}
-      <div className="safe-area-top flex items-center justify-between p-4 pt-8">
+      <div className="safe-area-top flex items-center justify-between p-4 pt-6">
         <Button
           variant="ghost"
           size="icon"
-          className="text-white hover:bg-white/10"
+          className="text-white/70 hover:text-white hover:bg-white/10"
           onClick={onClose}
         >
           <ChevronDown className="h-6 w-6" />
         </Button>
-        <span className="text-sm font-medium text-white">Now Playing</span>
-        <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
-          <MoreHorizontal className="h-6 w-6" />
+        <span className="text-[13px] font-medium text-white/80 uppercase tracking-wide">Now Playing</span>
+        <Button variant="ghost" size="icon" className="text-white/70 hover:text-white hover:bg-white/10">
+          <MoreHorizontal className="h-5 w-5" />
         </Button>
       </div>
 
       {/* Album Art */}
-      <div className="px-8 mt-4 flex-shrink-0">
+      <div className="px-6 mt-2 flex-shrink-0">
         <div className={cn(
-          "aspect-square w-full rounded-lg overflow-hidden shadow-2xl relative transition-all duration-700",
+          "aspect-square w-full rounded-md overflow-hidden shadow-2xl relative transition-all duration-700",
           albumArtLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
         )}>
           <img
@@ -220,94 +220,161 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       </div>
 
       {/* Song Info */}
-      <div className="px-6 mt-8 flex-1">
+      <div className="px-6 mt-6 flex-1">
         <div className="flex justify-between items-start">
           <div className="flex-1">
-            <h1 className="text-2xl font-bold truncate text-white">{currentSong.title}</h1>
-            <p className="text-sm text-zinc-300 mt-1">{currentSong.artist}</p>
+            <h1 className="text-xl font-bold truncate text-white">{currentSong.title}</h1>
+            <p className="text-sm text-white/70 mt-0.5">{currentSong.artist}</p>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className={cn(
-              'text-white hover:bg-white/10',
-              isLiked && 'text-green-500'
-            )}
+            className="text-white/80 hover:bg-transparent"
             onClick={handleLikeToggle}
           >
             <Heart
-              className="h-6 w-6"
-              fill={isLiked ? 'currentColor' : 'none'}
+              className="h-5 w-5"
+              fill={isLiked ? '#1ed760' : 'none'}
+              color={isLiked ? '#1ed760' : 'white'}
             />
           </Button>
         </div>
 
         {/* Progress Bar */}
-        <div className="mt-8">
-          <Slider
-            value={[currentTime]}
-            max={duration || 100}
-            step={1}
-            className="w-full cursor-pointer"
-            onValueChange={handleSeek}
-          />
+        <div className="mt-6">
+          <div 
+            className="h-1 w-full bg-white/20 rounded-full overflow-hidden relative"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const offsetX = e.clientX - rect.left;
+              const percentage = offsetX / rect.width;
+              const newTime = percentage * duration;
+              handleSeek([newTime]);
+            }}
+            onTouchStart={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const touch = e.touches[0];
+              if (!touch) return;
+              
+              const offsetX = touch.clientX - rect.left;
+              const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+              const newTime = percentage * duration;
+              handleSeek([newTime]);
+            }}
+          >
+            <div 
+              className="h-full bg-[#1ed760] rounded-full"
+              style={{ width: `${progress}%` }}
+            ></div>
+            <div 
+              className="absolute top-1/2 -translate-y-1/2 h-3 w-3 bg-white rounded-full shadow-md cursor-pointer" 
+              style={{ left: `calc(${progress}% - 6px)` }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                
+                // Drag handling logic
+                const handleMouseMove = (moveEvent: MouseEvent) => {
+                  const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                  if (!rect) return;
+                  
+                  const offsetX = moveEvent.clientX - rect.left;
+                  const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+                  const newTime = percentage * duration;
+                  handleSeek([newTime]);
+                };
+                
+                const handleMouseUp = () => {
+                  document.removeEventListener('mousemove', handleMouseMove);
+                  document.removeEventListener('mouseup', handleMouseUp);
+                };
+                
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                
+                // Touch handling logic
+                const handleTouchMove = (touchEvent: TouchEvent) => {
+                  touchEvent.preventDefault();
+                  
+                  const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                  if (!rect || !touchEvent.touches[0]) return;
+                  
+                  const touch = touchEvent.touches[0];
+                  const offsetX = touch.clientX - rect.left;
+                  const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+                  const newTime = percentage * duration;
+                  handleSeek([newTime]);
+                };
+                
+                const handleTouchEnd = () => {
+                  document.removeEventListener('touchmove', handleTouchMove);
+                  document.removeEventListener('touchend', handleTouchEnd);
+                };
+                
+                document.addEventListener('touchmove', handleTouchMove, { passive: false });
+                document.addEventListener('touchend', handleTouchEnd);
+              }}
+            ></div>
+          </div>
           <div className="flex justify-between mt-2">
-            <span className="text-xs text-zinc-400">{formatTime(currentTime)}</span>
-            <span className="text-xs text-zinc-400">{formatTime(duration)}</span>
+            <span className="text-xs text-white/60">{formatTime(currentTime)}</span>
+            <span className="text-xs text-white/60">{formatTime(duration)}</span>
           </div>
         </div>
 
         {/* Playback Controls */}
         <div className="mt-6">
-          <div className="flex items-center justify-center gap-8">
+          <div className="flex items-center justify-center gap-10">
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white/10"
+              className="text-white hover:bg-transparent"
               onClick={playPrevious}
             >
-              <SkipBack className="h-6 w-6" />
+              <SkipBack className="h-7 w-7" />
             </Button>
             <Button
               size="icon"
-              className="bg-white hover:bg-white/90 text-black rounded-full h-16 w-16 transition-transform hover:scale-105"
+              className="bg-white hover:bg-white/90 text-[#081c2c] rounded-full h-14 w-14 transition-transform active:scale-95"
               onClick={togglePlay}
             >
               {isPlaying ? (
-                <Pause className="h-8 w-8" />
+                <Pause className="h-7 w-7" />
               ) : (
-                <Play className="h-8 w-8 ml-1" />
+                <Play className="h-7 w-7 ml-0.5" />
               )}
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white/10"
+              className="text-white hover:bg-transparent"
               onClick={playNext}
             >
-              <SkipForward className="h-6 w-6" />
+              <SkipForward className="h-7 w-7" />
             </Button>
           </div>
         </div>
         
         {/* Additional Controls */}
-        <div className="flex justify-around mt-8 mb-6">
+        <div className="flex justify-around mt-10 mb-8">
           <Button
             variant="ghost"
             size="sm"
-            className="text-zinc-400 hover:text-white hover:bg-white/10 flex flex-col items-center gap-1"
+            className="text-white/60 hover:text-white hover:bg-transparent flex flex-col items-center gap-1"
             onClick={handleShare}
           >
             <Share2 className="h-5 w-5" />
-            <span className="text-xs">Share</span>
+            <span className="text-[11px] font-medium">Share</span>
           </Button>
           <Button
             variant="ghost"
-            size="sm"
-            className="text-zinc-400 hover:text-white hover:bg-white/10 flex flex-col items-center gap-1"
+            size="sm" 
+            className="text-white/60 hover:text-white hover:bg-transparent flex flex-col items-center gap-1"
           >
             <ListMusic className="h-5 w-5" />
-            <span className="text-xs">Queue</span>
+            <span className="text-[11px] font-medium">Queue</span>
           </Button>
         </div>
 
