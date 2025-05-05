@@ -307,7 +307,6 @@ export function PlaylistPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   // New state for scroll behavior
   const [scrollPosition, setScrollPosition] = useState(0);
@@ -507,13 +506,6 @@ export function PlaylistPage() {
     }
 
     try {
-      setIsPlaying(true);
-
-      // Clear any existing timeout
-      if (playTimeoutRef.current) {
-        clearTimeout(playTimeoutRef.current);
-      }
-
       // Update play count only if user hasn't played this playlist before
       if (!hasPlayed) {
         updateMetrics('plays');
@@ -532,10 +524,8 @@ export function PlaylistPage() {
       usePlayerStore.getState().setUserInteracted();
       usePlayerStore.getState().setIsPlaying(true);
       
-      setIsPlaying(false);
     } catch (error) {
       // Silent error handling
-      setIsPlaying(false);
     }
   };
 
@@ -552,13 +542,6 @@ export function PlaylistPage() {
     }
 
     try {
-      setIsPlaying(true);
-
-      // Clear any existing timeout
-      if (playTimeoutRef.current) {
-        clearTimeout(playTimeoutRef.current);
-      }
-
       // Update play count only if user hasn't played this playlist before
       if (!hasPlayed) {
         updateMetrics('plays');
@@ -577,10 +560,8 @@ export function PlaylistPage() {
       usePlayerStore.getState().setUserInteracted();
       usePlayerStore.getState().setIsPlaying(true);
       
-      setIsPlaying(false);
     } catch (error) {
       // Silent error handling
-      setIsPlaying(false);
     }
   };
 
@@ -595,17 +576,7 @@ export function PlaylistPage() {
       return;
     }
 
-    // Track which song is playing
-    setPlayingSongId(song._id);
-
     try {
-      setIsPlaying(true);
-
-      // Clear any existing timeout
-      if (playTimeoutRef.current) {
-        clearTimeout(playTimeoutRef.current);
-      }
-
       // Check if the song has a valid audio URL
       if (!song.audioUrl) {
         // Try to search for the song to get its audio URL
@@ -628,26 +599,18 @@ export function PlaylistPage() {
               idx === index ? updatedSong : s
             );
             
-            // Play the updated song
+            // Play the updated song immediately
             playAlbum(updatedSongs, index);
             
-            // Force playback to start
+            // Force playback to start immediately
             usePlayerStore.getState().setUserInteracted();
             usePlayerStore.getState().setIsPlaying(true);
-            
-            setIsPlaying(false);
-            // Reset playingSongId after a delay
-            setTimeout(() => setPlayingSongId(null), 300);
             return;
           } else {
-            setIsPlaying(false);
-            setPlayingSongId(null);
             return;
           }
         } catch (error) {
           // Silent error handling
-          setIsPlaying(false);
-          setPlayingSongId(null);
           return;
         }
       }
@@ -661,17 +624,11 @@ export function PlaylistPage() {
       // Play the selected song from the playlist immediately
       playAlbum(currentPlaylist.songs, index);
       
-      // Force playback to start
+      // Force playback to start immediately
       usePlayerStore.getState().setUserInteracted();
       usePlayerStore.getState().setIsPlaying(true);
-      
-      setIsPlaying(false);
-      // Reset playingSongId after a delay
-      setTimeout(() => setPlayingSongId(null), 300);
     } catch (error) {
       // Silent error handling
-      setIsPlaying(false);
-      setPlayingSongId(null);
     }
   };
 
@@ -914,13 +871,7 @@ export function PlaylistPage() {
                   'w-10 h-10 rounded-full text-gray-400 hover:text-white',
                   isShuffleOn && 'text-green-500'
                 )}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Toggle shuffle first
-                  usePlayerStore.getState().toggleShuffle();
-                  // Then get the new state after toggling
-                  const newShuffleState = !isShuffleOn;
-                }}
+                onClick={handleShufflePlaylist}
               >
                 <Shuffle className="h-5 w-5" />
               </Button>
@@ -930,12 +881,6 @@ export function PlaylistPage() {
                 disabled={totalSongs === 0 || isPlaying}
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-green-500 hover:bg-green-400 hover:scale-105 transition-all shadow-lg text-black flex items-center justify-center"
                 variant="default"
-                onTouchStart={e => {
-                  if (isMobile) {
-                    e.preventDefault();
-                    isCurrentPlaylistPlaying ? handlePausePlaylist() : handlePlayPlaylist();
-                  }
-                }}
               >
                 {isCurrentPlaylistPlaying ? (
                   <Pause className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -976,12 +921,6 @@ export function PlaylistPage() {
                       !song.audioUrl && 'opacity-60'
                     )}
                     onClick={e => handlePlaySong(song, index, e)}
-                    onTouchStart={e => {
-                      if (isMobile) {
-                        // For mobile devices, ensure a single tap plays the song
-                        handlePlaySong(song, index, e as any);
-                      }
-                    }}
                   >
                     {/* Track number/playing indicator */}
                     <div className="flex items-center justify-center w-6">

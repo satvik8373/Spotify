@@ -237,17 +237,27 @@ const IndianMusicPlayer = () => {
     if (!song) return;
     
     if (!song.url) {
-      await fetchSongDetails(song.id);
+      toast.error("Audio not available for this song");
       return;
     }
     
     try {
       const secureUrl = ensureHttps(song.url);
-      const appSong = convertIndianSongToAppSong({
-        ...song,
-        url: secureUrl
-      });
+      // Convert the song to the format expected by the player
+      const appSong = {
+        id: song.id,
+        title: song.title,
+        artist: song.artist || 'Unknown Artist',
+        imageUrl: song.image,
+        audioUrl: secureUrl,
+        albumName: song.album,
+        duration: song.duration ? parseInt(song.duration) : 0
+      };
+      
+      // Set as current song and start playing immediately
       setAppCurrentSong(appSong);
+      usePlayerStore.getState().setUserInteracted();
+      usePlayerStore.getState().setIsPlaying(true);
     } catch (error) {
       console.error("Error playing song:", error);
       toast.error("Failed to play song. Please try again.");
@@ -280,8 +290,16 @@ const IndianMusicPlayer = () => {
         });
         toast.success(`Removed "${song.title}" from Liked Songs`);
       } else {
-        // Add to liked songs
-        addLikedSong(song);
+        // Add to liked songs - convert to the format expected by addLikedSong
+        const likedSong = {
+          id: song.id,
+          title: song.title,
+          artist: song.artist || 'Unknown Artist',
+          imageUrl: song.image,
+          audioUrl: song.url || '',
+          duration: song.duration ? parseInt(song.duration) : 0
+        };
+        addLikedSong(likedSong);
         setLikedSongIds(prev => new Set([...prev, songId]));
         toast.success(`Added "${song.title}" to Liked Songs`);
       }
@@ -321,7 +339,11 @@ const IndianMusicPlayer = () => {
   };
 
   const isSongPlaying = (song: Song) => {
-    return isPlaying && currentSong && currentSong.id === song.id;
+    return isPlaying && currentSong && 
+      // Compare by ID or title+artist if IDs don't match
+      (currentSong.id === song.id || 
+       (currentSong.title === song.title && 
+        currentSong.artist === song.artist));
   };
 
   // UI Components
@@ -335,11 +357,7 @@ const IndianMusicPlayer = () => {
     <div 
       key={song.id}
       className="p-4 bg-zinc-800 rounded-md hover:bg-zinc-700 transition cursor-pointer group relative flex flex-col"
-      onClick={(e) => {
-        e.preventDefault();
-        // Play song immediately on single click/tap
-        playSong(song);
-      }}
+      onClick={() => playSong(song)}
     >
       <div className="relative mb-3 aspect-square overflow-hidden rounded-md">
         <img 
@@ -388,11 +406,7 @@ const IndianMusicPlayer = () => {
     <div 
       key={song.id}
       className="flex items-center p-2 rounded-md hover:bg-zinc-800 transition cursor-pointer group relative"
-      onClick={(e) => {
-        e.preventDefault();
-        // Play song immediately on single click/tap
-        playSong(song);
-      }}
+      onClick={() => playSong(song)}
     >
       <div className="relative size-12 flex-shrink-0 mr-3">
         <img 

@@ -19,7 +19,6 @@ export function RecentlyPlayed() {
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
   const { setCurrentSong } = usePlayerStore();
   const navigate = useNavigate();
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   useEffect(() => {
     // Load recently played items from localStorage
@@ -77,20 +76,18 @@ export function RecentlyPlayed() {
 
   const handleItemClick = (item: RecentItem) => {
     if (item.type === 'song' && item.data) {
-      // Immediately set the current song on a single click
+      // Immediately set the current song and start playing on a single tap
       setCurrentSong(item.data);
+      // Start playback immediately
+      usePlayerStore.getState().setUserInteracted();
+      usePlayerStore.getState().setIsPlaying(true);
+      // Add to recently played
       addToRecentlyPlayed(item);
-      // Ensure playback starts right away
-      setTimeout(() => {
-        const playerStore = usePlayerStore.getState();
-        playerStore.setUserInteracted();
-        playerStore.setIsPlaying(true);
-      }, 20);
     } else if (item.type === 'playlist' && item.id) {
-      // Navigate to playlist immediately
+      // Navigate to playlist immediately - one tap
       navigate(`/playlist/${item.id}`);
     } else if (item.type === 'album' && item.id) {
-      // Navigate to album immediately
+      // Navigate to album immediately - one tap
       navigate(`/albums/${item.id}`);
     }
   };
@@ -105,13 +102,7 @@ export function RecentlyPlayed() {
           <div
             key={item.id}
             className="group relative overflow-hidden rounded-md bg-zinc-800/50 cursor-pointer transition-all duration-300 hover:bg-zinc-700/60"
-            onClick={(e) => handleItemClick(item)}
-            onTouchStart={(e) => {
-              if (isMobile) {
-                // For mobile, ensure touch actions trigger play immediately
-                handleItemClick(item);
-              }
-            }}
+            onClick={() => handleItemClick(item)}
             onMouseEnter={() => setHoveredItemId(item.id)}
             onMouseLeave={() => setHoveredItemId(null)}
           >
@@ -139,7 +130,7 @@ export function RecentlyPlayed() {
                       ? 'opacity-100 translate-y-0'
                       : 'opacity-0 translate-y-4'
                   )}
-                  onClick={(e) => {
+                  onClick={e => {
                     e.stopPropagation();
                     handleItemClick(item);
                   }}

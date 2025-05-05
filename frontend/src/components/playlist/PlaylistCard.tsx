@@ -34,35 +34,26 @@ export function PlaylistCard({
   const { deletePlaylist } = usePlaylistStore();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   // Check if this playlist is currently playing
   const isCurrentPlaylist = isPlaying && 
     playlist.songs.some(song => song._id === currentSong?._id);
 
-  // This function ONLY handles playing the playlist
-  const handlePlayButtonClick = (e: React.MouseEvent | React.TouchEvent) => {
+  const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
-    e.preventDefault();
-    
     if (playlist.songs.length === 0) {
       toast.error('This playlist has no songs');
       return;
     }
     
-    // Play immediately with no delay
+    // Play immediately with no delay and start playback
     playAlbum(playlist.songs, 0);
-    
-    // Ensure playback starts right away
-    setTimeout(() => {
-      const playerStore = usePlayerStore.getState();
-      playerStore.setUserInteracted();
-      playerStore.setIsPlaying(true);
-    }, 20);
+    usePlayerStore.getState().setUserInteracted();
+    usePlayerStore.getState().setIsPlaying(true);
   };
 
-  // This function ONLY handles navigation to the playlist page
   const handleCardClick = () => {
+    // Navigate to playlist page immediately on single tap
     navigate(`/playlist/${playlist._id}`);
   };
 
@@ -105,7 +96,6 @@ export function PlaylistCard({
 
   return (
     <>
-      {/* Clickable card area - will ALWAYS navigate to playlist detail */}
       <div 
         className={cn(
           "group transition-all duration-300",
@@ -114,15 +104,6 @@ export function PlaylistCard({
           className
         )}
         onClick={handleCardClick}
-        onTouchStart={() => {}}
-        onTouchEnd={(e) => {
-          // This ensures that on mobile devices, tapping anywhere except the play button
-          // will navigate to the playlist detail page
-          if (isMobile) {
-            e.preventDefault();
-            handleCardClick();
-          }
-        }}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
@@ -139,7 +120,7 @@ export function PlaylistCard({
             />
           </div>
           
-          {/* Play Button Overlay - will NEVER navigate, only play */}
+          {/* Play Button Overlay */}
           <div 
             className={cn(
               "absolute inset-0 flex items-end justify-end p-2",
@@ -149,27 +130,13 @@ export function PlaylistCard({
           >
             <button
               className={cn(
-                "flex items-center justify-center rounded-full bg-green-500 shadow-xl z-20",
+                "flex items-center justify-center rounded-full bg-green-500 shadow-xl",
                 "transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105 hover:bg-green-400",
                 "transition-all duration-300 ease-out",
                 styles.playButton
               )}
-              onClick={handlePlayButtonClick}
-              onTouchStart={(e) => {
-                if (isMobile) {
-                  e.stopPropagation();
-                }
-              }}
-              onTouchEnd={(e) => {
-                if (isMobile) {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  // On mobile, force the play button to play without navigating
-                  handlePlayButtonClick(e);
-                }
-              }}
+              onClick={handlePlay}
               aria-label="Play playlist"
-              tabIndex={0}
             >
               <Play className={cn("text-black fill-current", styles.playIcon)} />
             </button>
