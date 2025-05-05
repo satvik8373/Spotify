@@ -33,7 +33,7 @@ export function PlaylistCard({
   const { playAlbum, isPlaying, currentSong } = usePlayerStore();
   const { deletePlaylist } = usePlaylistStore();
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
 
   // Check if this playlist is currently playing
   const isCurrentPlaylist = isPlaying && 
@@ -47,6 +47,13 @@ export function PlaylistCard({
     }
     // Play immediately with no delay
     playAlbum(playlist.songs, 0);
+    
+    // Force playback to start right away
+    setTimeout(() => {
+      const playerStore = usePlayerStore.getState();
+      playerStore.setUserInteracted();
+      playerStore.setIsPlaying(true);
+    }, 50);
   };
 
   const handleCardClick = () => {
@@ -64,7 +71,7 @@ export function PlaylistCard({
   const sizeStyles = {
     small: {
       container: "w-full max-w-[170px]",
-      imageWrapper: "aspect-square shadow-md",
+      imageWrapper: "aspect-square",
       title: "text-sm font-medium mt-2",
       description: "text-xs mt-1 line-clamp-1",
       playButton: "w-10 h-10",
@@ -72,7 +79,7 @@ export function PlaylistCard({
     },
     medium: {
       container: "w-full max-w-[200px]",
-      imageWrapper: "aspect-square shadow-md",
+      imageWrapper: "aspect-square",
       title: "text-base font-medium mt-3",
       description: "text-xs mt-1 line-clamp-2",
       playButton: "w-12 h-12",
@@ -80,7 +87,7 @@ export function PlaylistCard({
     },
     large: {
       container: "w-full max-w-[250px]",
-      imageWrapper: "aspect-square shadow-md", 
+      imageWrapper: "aspect-square", 
       title: "text-lg mt-3 font-bold",
       description: "text-sm mt-2 line-clamp-2",
       playButton: "w-14 h-14",
@@ -94,14 +101,20 @@ export function PlaylistCard({
     <>
       <div 
         className={cn(
-          "group transition-all duration-300",
-          "cursor-pointer flex flex-col",
+          "group transition-all duration-200",
+          "cursor-pointer flex flex-col bg-zinc-800/40 rounded-md p-3",
+          "hover:bg-zinc-800/80 active:bg-zinc-800",
+          isPressed ? "scale-98 opacity-90" : "scale-100 opacity-100",
           styles.container,
           className
         )}
         onClick={handleCardClick}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
+        onMouseDown={() => setIsPressed(true)}
+        onMouseUp={() => setIsPressed(false)}
+        onMouseLeave={() => setIsPressed(false)}
+        onTouchStart={() => setIsPressed(true)}
+        onTouchEnd={() => setIsPressed(false)}
+        onTouchCancel={() => setIsPressed(false)}
       >
         {/* Cover Image Container */}
         <div className={cn("relative overflow-hidden rounded-md", styles.imageWrapper)}>
@@ -110,7 +123,7 @@ export function PlaylistCard({
             <img
               src={playlist.imageUrl || '/default-playlist.jpg'}
               alt={playlist.name}
-              className="absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-105 group-hover:brightness-90"
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
               onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
               loading="lazy"
             />
@@ -120,15 +133,14 @@ export function PlaylistCard({
           <div 
             className={cn(
               "absolute inset-0 flex items-end justify-end p-2",
-              "bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100",
-              "transition-opacity duration-300"
+              "transition-opacity duration-200"
             )}
           >
             <button
               className={cn(
-                "flex items-center justify-center rounded-full bg-green-500 shadow-xl",
-                "transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105 hover:bg-green-400",
-                "transition-all duration-300 ease-out",
+                "flex items-center justify-center rounded-full bg-green-500 shadow-md",
+                "opacity-0 group-hover:opacity-100 hover:scale-105 hover:bg-green-400",
+                "transition-all duration-200",
                 styles.playButton
               )}
               onClick={handlePlay}
@@ -186,7 +198,7 @@ export function PlaylistCard({
         </div>
         
         {/* Playlist Info */}
-        <div className="flex-1 flex flex-col pt-2 pb-4">
+        <div className="flex-1 flex flex-col pt-2 pb-2">
           <h3 className={cn("font-bold text-white truncate", styles.title)}>{playlist.name}</h3>
           
           {showDescription && (

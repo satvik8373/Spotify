@@ -17,6 +17,7 @@ interface RecentItem {
 export function RecentlyPlayed() {
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+  const [pressedItemId, setPressedItemId] = useState<string | null>(null);
   const { setCurrentSong } = usePlayerStore();
   const navigate = useNavigate();
 
@@ -103,18 +104,30 @@ export function RecentlyPlayed() {
         {recentItems.map(item => (
           <div
             key={item.id}
-            className="group relative overflow-hidden rounded-md bg-zinc-800/50 cursor-pointer transition-all duration-300 hover:bg-zinc-700/60"
+            className={cn(
+              "group relative overflow-hidden rounded-md bg-zinc-800/50 cursor-pointer",
+              "transition-all duration-200 hover:bg-zinc-700/60 active:bg-zinc-600/70",
+              pressedItemId === item.id ? "scale-98 opacity-90" : "scale-100 opacity-100"
+            )}
             onClick={() => handleItemClick(item)}
             onMouseEnter={() => setHoveredItemId(item.id)}
-            onMouseLeave={() => setHoveredItemId(null)}
+            onMouseLeave={() => {
+              setHoveredItemId(null);
+              setPressedItemId(null);
+            }}
+            onMouseDown={() => setPressedItemId(item.id)}
+            onMouseUp={() => setPressedItemId(null)}
+            onTouchStart={() => setPressedItemId(item.id)}
+            onTouchEnd={() => setPressedItemId(null)}
+            onTouchCancel={() => setPressedItemId(null)}
           >
             <div className="p-4 flex flex-col h-full">
-              <div className="relative mb-4 aspect-square rounded-md overflow-hidden shadow-md bg-zinc-900">
+              <div className="relative mb-4 aspect-square rounded-md overflow-hidden bg-zinc-900">
                 {item.imageUrl ? (
                   <img
                     src={item.imageUrl}
                     alt={item.title}
-                    className="object-cover w-full h-full"
+                    className="object-cover w-full h-full transition-transform duration-200 group-hover:scale-102"
                     onError={e => {
                       (e.target as HTMLImageElement).src =
                         'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
@@ -127,7 +140,7 @@ export function RecentlyPlayed() {
                 )}
                 <button
                   className={cn(
-                    'absolute right-2 bottom-2 bg-green-500 rounded-full p-2 shadow-lg z-10 transition-all duration-300',
+                    'absolute right-2 bottom-2 bg-green-500 rounded-full p-2 shadow-md z-10 transition-all duration-200',
                     hoveredItemId === item.id
                       ? 'opacity-100 translate-y-0'
                       : 'opacity-0 translate-y-4'

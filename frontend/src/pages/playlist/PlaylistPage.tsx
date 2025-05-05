@@ -508,6 +508,11 @@ export function PlaylistPage() {
     try {
       setIsPlaying(true);
 
+      // Clear any existing timeout
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
+
       // Update play count only if user hasn't played this playlist before
       if (!hasPlayed) {
         updateMetrics('plays');
@@ -519,7 +524,7 @@ export function PlaylistPage() {
         playerStore.toggleShuffle();
       }
       
-      // Play the playlist immediately from the beginning
+      // Play the playlist from the beginning immediately
       playAlbum(currentPlaylist.songs, 0);
       
       // Force playback to start right away
@@ -547,6 +552,11 @@ export function PlaylistPage() {
 
     try {
       setIsPlaying(true);
+
+      // Clear any existing timeout
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
 
       // Update play count only if user hasn't played this playlist before
       if (!hasPlayed) {
@@ -954,8 +964,8 @@ export function PlaylistPage() {
                     key={song._id}
                     className={cn(
                       'grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_3fr_minmax(120px,1fr)] items-center py-3 px-4 mx-[-16px] rounded-md group',
-                      'hover:bg-[#2A2A2A] transition-colors duration-200',
-                      isCurrentSong && 'bg-[#2A2A2A]',
+                      'hover:bg-zinc-800/70 active:bg-zinc-700/70 transition-colors duration-150',
+                      isCurrentSong && 'bg-zinc-800/80',
                       !song.audioUrl && 'opacity-60'
                     )}
                     onClick={e => handlePlaySong(song, index, e)}
@@ -990,7 +1000,7 @@ export function PlaylistPage() {
                     
                     {/* Song info with image */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-10 w-10 flex-shrink-0 bg-[#282828] rounded overflow-hidden">
+                      <div className="h-10 w-10 flex-shrink-0 bg-zinc-800 rounded overflow-hidden">
                         <img
                           src={song.imageUrl || '/default-song.jpg'}
                           alt={song.title}
