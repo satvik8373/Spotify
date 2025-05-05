@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, LogOut } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, Laptop, Speaker, Smartphone, Tv, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,15 +22,26 @@ import { signOut } from '@/services/hybridAuthService';
  * - Android: Enable background play in browser settings (Menu > Settings > Media > Background play)
  */
 
+// Format time helper function
+const formatTime = (seconds: number) => {
+  if (isNaN(seconds)) return "0:00";
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+};
+
 const MobileNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentSong, isPlaying } = usePlayerStore();
+  const { currentSong, isPlaying, currentTime, duration } = usePlayerStore();
   const { isAuthenticated, user } = useAuth();
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-
+  const [progress, setProgress] = useState(0);
+  const [showTimeIndicators, setShowTimeIndicators] = useState(false);
+  const [showDevices, setShowDevices] = useState(false);
+  
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
   
@@ -114,6 +125,15 @@ const MobileNav = () => {
       document.removeEventListener('click', handleClickOutside);
     };
   }, [showProfileMenu]);
+
+  // Update progress for the progress bar
+  useEffect(() => {
+    if (currentTime && duration) {
+      setProgress((currentTime / duration) * 100);
+    } else {
+      setProgress(0);
+    }
+  }, [currentTime, duration]);
 
   const navItems = [
     {
@@ -214,6 +234,81 @@ const MobileNav = () => {
     setShowProfileMenu(prev => !prev);
   };
 
+  // Handle seeking when user taps on progress bar
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    
+    if (!currentSong || !duration) return;
+    
+    // Show time indicators when interacting with progress bar
+    setShowTimeIndicators(true);
+    
+    // Hide time indicators after 2 seconds
+    setTimeout(() => {
+      setShowTimeIndicators(false);
+    }, 2000);
+    
+    // Get the progress bar element
+    const progressBar = e.currentTarget;
+    const rect = progressBar.getBoundingClientRect();
+    
+    // Calculate the click/touch position
+    let clientX: number;
+    if ('touches' in e) {
+      // Touch event
+      clientX = e.touches[0].clientX;
+    } else {
+      // Mouse event
+      clientX = e.clientX;
+    }
+    
+    // Calculate the percentage and new time
+    const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const newTime = percentage * duration;
+    
+    // Set the time in the player store
+    if (usePlayerStore.getState().setCurrentTime) {
+      usePlayerStore.getState().setCurrentTime(newTime);
+    }
+    
+    // Also update any audio element directly
+    const audio = document.querySelector('audio');
+    if (audio) {
+      audio.currentTime = newTime;
+    }
+  };
+
+  // Mock connected devices (in a real app, this would come from an API)
+  const connectedDevices = [
+    { id: '1', name: 'This device', type: 'smartphone', active: true },
+    { id: '2', name: 'Living Room TV', type: 'tv', active: false },
+    { id: '3', name: 'MacBook Pro', type: 'laptop', active: false }
+  ];
+  
+  // Get device icon based on type
+  const getDeviceIcon = (type: string) => {
+    switch (type) {
+      case 'smartphone':
+        return <Smartphone className="h-4 w-4" />;
+      case 'tv':
+        return <Tv className="h-4 w-4" />;
+      case 'laptop':
+        return <Laptop className="h-4 w-4" />;
+      case 'speaker':
+        return <Speaker className="h-4 w-4" />;
+      default:
+        return <Smartphone className="h-4 w-4" />;
+    }
+  };
+  
+  // Handle device selection
+  const handleSelectDevice = (deviceId: string) => {
+    // In a real app, you'd update the active device through an API
+    console.log(`Switching to device: ${deviceId}`);
+    // Close the devices panel
+    setShowDevices(false);
+  };
+
   return (
     <>
       {/* Song Details View */}
@@ -221,7 +316,54 @@ const MobileNav = () => {
         isOpen={showSongDetails} 
         onClose={() => setShowSongDetails(false)} 
       />
-    
+      
+      {/* Connected Devices Panel */}
+      {showDevices && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
+          <div className="p-4 flex items-center justify-between border-b border-white/10">
+            <h2 className="text-white text-lg font-bold">Connect to a device</h2>
+            <button 
+              onClick={() => setShowDevices(false)}
+              className="text-white/70 p-1 rounded-full hover:bg-white/10"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+          
+          <div className="p-4 flex-1 overflow-auto">
+            <p className="text-white/60 text-sm mb-4">Select where you want your music to play</p>
+            
+            <div className="space-y-2">
+              {connectedDevices.map(device => (
+                <button
+                  key={device.id}
+                  className={cn(
+                    "w-full flex items-center gap-3 p-3 rounded-md",
+                    device.active 
+                      ? "bg-white/10 text-[#1ed760]" 
+                      : "text-white hover:bg-white/5"
+                  )}
+                  onClick={() => handleSelectDevice(device.id)}
+                >
+                  <div className={cn(
+                    "h-8 w-8 flex items-center justify-center rounded-full",
+                    device.active ? "bg-[#1ed760] text-black" : "bg-white/10"
+                  )}>
+                    {getDeviceIcon(device.type)}
+                  </div>
+                  <div className="text-left">
+                    <div className="font-medium">{device.name}</div>
+                    <div className="text-xs text-white/60">
+                      {device.active ? "Currently playing" : "Spotify Connect"}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Mobile Header - Spotify style */}
       <div className="fixed top-0 left-0 right-0 z-30 bg-zinc-900 md:hidden">
         <div className="flex items-center justify-between px-3 py-2">
@@ -303,41 +445,89 @@ const MobileNav = () => {
       >
         {/* Add mini player when song is active */}
         {hasActiveSong && (
-          <div className="flex items-center justify-between px-3 py-2 bg-black/50 backdrop-blur-md border-b border-zinc-800/30">
-            <div 
-              className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-zinc-800/30 rounded-md py-1"
-              onClick={handleSongTap}
-            >
-              <img 
-                src={currentSong.imageUrl} 
-                alt={currentSong.title} 
-                className="h-10 w-10 rounded-md object-cover flex-shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white truncate">{currentSong.title}</p>
-                <p className="text-xs text-zinc-400 truncate">{currentSong.artist}</p>
+          <div className="flex flex-col justify-between bg-black/50 backdrop-blur-md border-b border-zinc-800/30">
+            <div className="flex items-center justify-between px-3 py-2">
+              <div 
+                className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-zinc-800/30 rounded-md py-1"
+                onClick={handleSongTap}
+              >
+                <img 
+                  src={currentSong.imageUrl} 
+                  alt={currentSong.title} 
+                  className="h-10 w-10 rounded-md object-cover flex-shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-white truncate">{currentSong.title}</p>
+                  <p className="text-xs text-zinc-400 truncate">{currentSong.artist}</p>
+                </div>
+              </div>
+              <div className="flex items-center">
+                {/* Connected Devices Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDevices(true);
+                  }}
+                  className="mr-2 h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 text-zinc-400 active:bg-zinc-800"
+                >
+                  <Speaker className="h-4 w-4" />
+                </button>
+                
+                <button
+                  onClick={handleLikeToggle}
+                  className={`mr-2 h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 ${songLiked ? 'text-green-500' : 'text-zinc-400'} active:bg-zinc-800`}
+                >
+                  <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    usePlayerStore.getState().togglePlay();
+                  }}
+                  className="h-8 w-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 active:bg-gray-200"
+                >
+                  {isPlaying ? (
+                    <Pause className="h-4 w-4 text-black" />
+                  ) : (
+                    <Play className="h-4 w-4 text-black translate-x-0.5" />
+                  )}
+                </button>
               </div>
             </div>
-            <div className="flex items-center">
-              <button
-                onClick={handleLikeToggle}
-                className={`mr-2 h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 ${songLiked ? 'text-green-500' : 'text-zinc-400'} active:bg-zinc-800`}
-              >
-                <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  usePlayerStore.getState().togglePlay();
-                }}
-                className="h-8 w-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 active:bg-gray-200"
-              >
-                {isPlaying ? (
-                  <span className="h-3 w-3 border-l-2 border-r-2 border-black"></span>
-                ) : (
-                  <span className="h-0 w-0 border-t-4 border-b-4 border-r-0 border-l-6 border-transparent border-l-black ml-0.5"></span>
+            
+            {/* Song progress bar */}
+            <div 
+              className="relative w-full cursor-pointer"
+              onClick={handleSeek}
+              onTouchStart={handleSeek}
+              onMouseEnter={() => setShowTimeIndicators(true)}
+              onMouseLeave={() => setShowTimeIndicators(false)}
+            >
+              <div className="h-6 w-full absolute bottom-0 opacity-0">
+                {/* Invisible touch target to make seeking easier */}
+              </div>
+              <div className="h-[3px] w-full bg-[#0b3d59]/40 relative">
+                <div 
+                  className="h-full bg-white" 
+                  style={{ width: `${progress || 0}%` }}
+                />
+                
+                {/* Position dot indicator */}
+                {showTimeIndicators && (
+                  <div 
+                    className="absolute top-1/2 -translate-y-1/2 h-3 w-3 bg-white rounded-full shadow-md pointer-events-none" 
+                    style={{ left: `calc(${progress || 0}% - 4px)` }}
+                  />
                 )}
-              </button>
+              </div>
+              
+              {/* Time indicators - conditionally shown */}
+              {showTimeIndicators && (
+                <div className="flex justify-between px-3 py-1 text-[10px] text-white/60">
+                  <span>{formatTime(currentTime || 0)}</span>
+                  <span>{formatTime(duration || 0)}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
