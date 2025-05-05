@@ -45,6 +45,7 @@ import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { SongFileUploader } from '../../components/playlist/SongFileUploader';
+import TouchRipple from '../../components/ui/touch-ripple';
 
 function AddSongsDialog({
   isOpen,
@@ -307,6 +308,7 @@ export function PlaylistPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   // New state for scroll behavior
   const [scrollPosition, setScrollPosition] = useState(0);
@@ -318,6 +320,17 @@ export function PlaylistPage() {
 
   // Track shuffle state
   const [isShuffleOn, setIsShuffleOn] = useState(false);
+  
+  // Check for mobile viewport
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    handleResize(); // Set initial state
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Keep shuffle state in sync with player store
   useEffect(() => {
@@ -331,7 +344,7 @@ export function PlaylistPage() {
     
     return () => unsubscribe();
   }, []);
-
+  
   useEffect(() => {
     if (id) {
       fetchPlaylistById(id);
@@ -916,11 +929,11 @@ export function PlaylistPage() {
                     key={song._id}
                     className={cn(
                       'grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_3fr_minmax(120px,1fr)] items-center py-3 px-4 mx-[-16px] rounded-md group',
-                      'hover:bg-[#2A2A2A] transition-colors duration-200',
+                      'hover:bg-[#2A2A2A] transition-colors duration-200 cursor-pointer',
                       isCurrentSong && 'bg-[#2A2A2A]',
                       !song.audioUrl && 'opacity-60'
                     )}
-                    onClick={e => handlePlaySong(song, index, e)}
+                    onClick={() => handlePlaySong(song, index)}
                   >
                     {/* Track number/playing indicator */}
                     <div className="flex items-center justify-center w-6">
@@ -977,7 +990,7 @@ export function PlaylistPage() {
                     {/* Duration and actions */}
                     <div className="flex items-center justify-end gap-2 sm:gap-4 text-gray-400">
                       {isOwner && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className={cn("transition-opacity", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -996,7 +1009,8 @@ export function PlaylistPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white"
+                          className={cn("h-8 w-8 transition-opacity text-gray-400 hover:text-white", 
+                          isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100")}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFindAudio(song, index, e);
