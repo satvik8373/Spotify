@@ -505,6 +505,9 @@ export function PlaylistPage() {
       return;
     }
 
+    // Prevent multiple rapid clicks
+    if (isPlaying) return;
+
     try {
       setIsPlaying(true);
 
@@ -518,20 +521,25 @@ export function PlaylistPage() {
         updateMetrics('plays');
       }
 
-      // Make sure shuffle is off before playing in order
-      const playerStore = usePlayerStore.getState();
-      if (playerStore.isShuffled) {
-        playerStore.toggleShuffle();
-      }
-      
-      // Play the playlist from the beginning immediately
-      playAlbum(currentPlaylist.songs, 0);
-      
-      // Force playback to start right away
-      usePlayerStore.getState().setUserInteracted();
-      usePlayerStore.getState().setIsPlaying(true);
-      
-      setIsPlaying(false);
+      // Start playback with a small delay to ensure clean state
+      playTimeoutRef.current = setTimeout(() => {
+        // Make sure shuffle is off before playing in order
+        const playerStore = usePlayerStore.getState();
+        if (playerStore.isShuffled) {
+          playerStore.toggleShuffle();
+        }
+        
+        // Play the playlist from the beginning
+        playAlbum(currentPlaylist.songs, 0);
+        
+        // Force playback to start
+        setTimeout(() => {
+          usePlayerStore.getState().setUserInteracted();
+          usePlayerStore.getState().setIsPlaying(true);
+        }, 100);
+        
+        setIsPlaying(false);
+      }, 300);
     } catch (error) {
       // Silent error handling
       setIsPlaying(false);
@@ -550,6 +558,9 @@ export function PlaylistPage() {
       return;
     }
 
+    // Prevent multiple rapid clicks
+    if (isPlaying) return;
+
     try {
       setIsPlaying(true);
 
@@ -563,20 +574,25 @@ export function PlaylistPage() {
         updateMetrics('plays');
       }
 
-      // Enable shuffle mode before playing
-      const playerStore = usePlayerStore.getState();
-      if (!playerStore.isShuffled) {
-        playerStore.toggleShuffle();
-      }
-      
-      // Play the playlist immediately
-      playAlbum(currentPlaylist.songs, 0);
-      
-      // Force playback to start right away
-      usePlayerStore.getState().setUserInteracted();
-      usePlayerStore.getState().setIsPlaying(true);
-      
-      setIsPlaying(false);
+      // Start playback with a small delay to ensure clean state
+      playTimeoutRef.current = setTimeout(() => {
+        // Enable shuffle mode before playing
+        const playerStore = usePlayerStore.getState();
+        if (!playerStore.isShuffled) {
+          playerStore.toggleShuffle();
+        }
+        
+        // Play the playlist
+        playAlbum(currentPlaylist.songs, 0);
+        
+        // Force playback to start
+        setTimeout(() => {
+          usePlayerStore.getState().setUserInteracted();
+          usePlayerStore.getState().setIsPlaying(true);
+        }, 100);
+        
+        setIsPlaying(false);
+      }, 300);
     } catch (error) {
       // Silent error handling
       setIsPlaying(false);
@@ -593,6 +609,9 @@ export function PlaylistPage() {
     if (!currentPlaylist) {
       return;
     }
+
+    // Prevent multiple rapid clicks
+    if (isPlaying) return;
 
     // Track which song is playing
     setPlayingSongId(song._id);
@@ -631,8 +650,10 @@ export function PlaylistPage() {
             playAlbum(updatedSongs, index);
             
             // Force playback to start
-            usePlayerStore.getState().setUserInteracted();
-            usePlayerStore.getState().setIsPlaying(true);
+            setTimeout(() => {
+              usePlayerStore.getState().setUserInteracted();
+              usePlayerStore.getState().setIsPlaying(true);
+            }, 100);
             
             setIsPlaying(false);
             // Reset playingSongId after a delay
@@ -651,22 +672,27 @@ export function PlaylistPage() {
         }
       }
 
-      // Make sure shuffle is off to play the chosen song
-      const playerStore = usePlayerStore.getState();
-      if (playerStore.isShuffled) {
-        playerStore.toggleShuffle();
-      }
-      
-      // Play the selected song from the playlist immediately
-      playAlbum(currentPlaylist.songs, index);
-      
-      // Force playback to start
-      usePlayerStore.getState().setUserInteracted();
-      usePlayerStore.getState().setIsPlaying(true);
-      
-      setIsPlaying(false);
-      // Reset playingSongId after a delay
-      setTimeout(() => setPlayingSongId(null), 300);
+      // Start playback with a small delay to ensure clean state
+      playTimeoutRef.current = setTimeout(() => {
+        // Make sure shuffle is off to play the chosen song
+        const playerStore = usePlayerStore.getState();
+        if (playerStore.isShuffled) {
+          playerStore.toggleShuffle();
+        }
+        
+        // Play the selected song from the playlist
+        playAlbum(currentPlaylist.songs, index);
+        
+        // Force playback to start
+        setTimeout(() => {
+          usePlayerStore.getState().setUserInteracted();
+          usePlayerStore.getState().setIsPlaying(true);
+        }, 100);
+        
+        setIsPlaying(false);
+        // Reset playingSongId after a delay
+        setTimeout(() => setPlayingSongId(null), 300);
+      }, 300);
     } catch (error) {
       // Silent error handling
       setIsPlaying(false);
@@ -964,8 +990,8 @@ export function PlaylistPage() {
                     key={song._id}
                     className={cn(
                       'grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_3fr_minmax(120px,1fr)] items-center py-3 px-4 mx-[-16px] rounded-md group',
-                      'hover:bg-zinc-800/70 active:bg-zinc-700/70 transition-colors duration-150',
-                      isCurrentSong && 'bg-zinc-800/80',
+                      'hover:bg-[#2A2A2A] transition-colors duration-200',
+                      isCurrentSong && 'bg-[#2A2A2A]',
                       !song.audioUrl && 'opacity-60'
                     )}
                     onClick={e => handlePlaySong(song, index, e)}
@@ -1000,7 +1026,7 @@ export function PlaylistPage() {
                     
                     {/* Song info with image */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-10 w-10 flex-shrink-0 bg-zinc-800 rounded overflow-hidden">
+                      <div className="h-10 w-10 flex-shrink-0 bg-[#282828] rounded overflow-hidden">
                         <img
                           src={song.imageUrl || '/default-song.jpg'}
                           alt={song.title}

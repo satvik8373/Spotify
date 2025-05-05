@@ -280,17 +280,8 @@ const IndianMusicPlayer = () => {
         });
         toast.success(`Removed "${song.title}" from Liked Songs`);
       } else {
-        // Add to liked songs - convert to required format
-        const likedSong = {
-          id: song.id,
-          title: song.title,
-          artist: song.artist || '',
-          albumName: song.album,
-          imageUrl: song.image,
-          audioUrl: song.url || '',
-          duration: song.duration ? parseInt(song.duration) : 0
-        };
-        addLikedSong(likedSong);
+        // Add to liked songs
+        addLikedSong(song);
         setLikedSongIds(prev => new Set([...prev, songId]));
         toast.success(`Added "${song.title}" to Liked Songs`);
       }
@@ -330,8 +321,7 @@ const IndianMusicPlayer = () => {
   };
 
   const isSongPlaying = (song: Song) => {
-    return isPlaying && currentSong && 
-           currentSong.id === song.id;
+    return isPlaying && currentSong && currentSong.id === song.id;
   };
 
   // UI Components
@@ -344,39 +334,24 @@ const IndianMusicPlayer = () => {
   const renderSongCard = (song: Song) => (
     <div 
       key={song.id}
-      className="p-4 bg-zinc-800/50 rounded-md hover:bg-zinc-700/70 active:bg-zinc-600/70 
-                transition-colors duration-150 cursor-pointer group relative flex flex-col"
-      onClick={(e) => {
-        e.preventDefault();
-        // Play song immediately on single click/tap
+      className="p-4 bg-zinc-800 rounded-md hover:bg-zinc-700 transition cursor-pointer group relative flex flex-col"
+      onClick={() => {
         playSong(song);
-        // Force immediate playing state
-        setTimeout(() => {
-          const playerStore = usePlayerStore.getState();
-          playerStore.setUserInteracted();
-          playerStore.setIsPlaying(true);
-        }, 50);
       }}
     >
       <div className="relative mb-3 aspect-square overflow-hidden rounded-md">
         <img 
           src={song.image || '/default-album.png'} 
           alt={song.title} 
-          className="object-cover w-full h-full transition-transform duration-200 group-hover:scale-102" 
+          className="object-cover w-full h-full" 
         />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50">
           <Button 
             size="icon" 
-            className="size-12 rounded-full bg-green-500 hover:bg-green-600 transition shadow-md"
+            className="size-12 rounded-full bg-green-500 hover:bg-green-600 transition shadow-lg"
             onClick={(e) => {
               e.stopPropagation();
               playSong(song);
-              // Force immediate playing state
-              setTimeout(() => {
-                const playerStore = usePlayerStore.getState();
-                playerStore.setUserInteracted();
-                playerStore.setIsPlaying(true);
-              }, 50);
             }}
           >
             {isSongPlaying(song) ? (
@@ -410,27 +385,18 @@ const IndianMusicPlayer = () => {
   const renderSongRow = (song: Song) => (
     <div 
       key={song.id}
-      className="flex items-center p-2 rounded-md hover:bg-zinc-800/80 active:bg-zinc-700/70 
-                 transition-colors duration-150 cursor-pointer group relative"
-      onClick={(e) => {
-        e.preventDefault();
-        // Play song immediately on single click/tap
+      className="flex items-center p-2 rounded-md hover:bg-zinc-800 transition cursor-pointer group relative"
+      onClick={() => {
         playSong(song);
-        // Force immediate playing state
-        setTimeout(() => {
-          const playerStore = usePlayerStore.getState();
-          playerStore.setUserInteracted();
-          playerStore.setIsPlaying(true);
-        }, 50);
       }}
     >
       <div className="relative size-12 flex-shrink-0 mr-3">
         <img 
           src={song.image || '/default-album.png'} 
           alt={song.title} 
-          className="size-full object-cover rounded transition-transform duration-200 group-hover:scale-102" 
+          className="size-full object-cover rounded" 
         />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 rounded">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded">
           {isSongPlaying(song) ? (
             <div className="flex items-center justify-center space-x-0.5">
               {animationBars.map((height, i) => (

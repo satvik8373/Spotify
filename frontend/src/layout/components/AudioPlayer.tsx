@@ -90,7 +90,7 @@ const AudioPlayer = () => {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title || 'Unknown Title',
       artist: currentSong.artist || 'Unknown Artist',
-      album: currentSong.albumId ? String(currentSong.albumId) : '',
+      album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
       artwork: [
         {
           src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
@@ -100,24 +100,54 @@ const AudioPlayer = () => {
       ]
     });
 
-    // Set up media session action handlers
+    // Set up media session action handlers with better responsiveness
     navigator.mediaSession.setActionHandler('play', () => {
       setIsPlaying(true);
+      // Explicitly attempt to play for more reliable playback
+      if (audioRef.current && audioRef.current.paused) {
+        audioRef.current.play().catch(() => {
+          // Silent error handling
+        });
+      }
     });
 
     navigator.mediaSession.setActionHandler('pause', () => {
       setIsPlaying(false);
+      // Explicitly pause to ensure state consistency
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+      }
     });
 
     navigator.mediaSession.setActionHandler('previoustrack', () => {
-      playPrevious();
+      // Mark user interaction to allow autoplay
+      usePlayerStore.getState().setUserInteracted();
+      // Call previous from store directly for better state handling
+      if (playPrevious) {
+        playPrevious();
+        // Force playing state
+        setTimeout(() => {
+          if (audioRef.current && audioRef.current.paused) {
+            audioRef.current.play().catch(() => {});
+          }
+        }, 100);
+      }
     });
 
     navigator.mediaSession.setActionHandler('nexttrack', () => {
+      // Mark user interaction to allow autoplay
+      usePlayerStore.getState().setUserInteracted();
+      // Call next from store directly
       playNext();
+      // Force playing state
+      setTimeout(() => {
+        if (audioRef.current && audioRef.current.paused) {
+          audioRef.current.play().catch(() => {});
+        }
+      }, 100);
     });
 
-    // Seeking handlers (optional but useful)
+    // Seeking handlers with better reliability
     try {
       navigator.mediaSession.setActionHandler('seekto', (details) => {
         if (audioRef.current && details.seekTime !== undefined) {
@@ -126,10 +156,19 @@ const AudioPlayer = () => {
           if (setCurrentTime) {
             setCurrentTime(details.seekTime);
           }
+          
+          // Update position state after seeking
+          if ('setPositionState' in navigator.mediaSession) {
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration,
+              playbackRate: audioRef.current.playbackRate,
+              position: details.seekTime
+            });
+          }
         }
       });
     } catch (error) {
-      console.warn('Seek actions not supported', error);
+      // Silent error handling
     }
 
     // Position state (shows progress on lock screen for supported browsers)
@@ -147,14 +186,31 @@ const AudioPlayer = () => {
         
         // Update position state initially and on time update
         updatePositionState();
-        audioRef.current?.addEventListener('timeupdate', updatePositionState);
+        
+        // Use a throttled timeupdate listener for better performance
+        let lastPositionUpdate = 0;
+        const handleTimeUpdate = () => {
+          const now = Date.now();
+          if (now - lastPositionUpdate > 1000) { // Update once per second is enough for lock screen
+            lastPositionUpdate = now;
+            updatePositionState();
+          }
+        };
+        
+        audioRef.current?.addEventListener('timeupdate', handleTimeUpdate);
+        
+        // Also update position on play/pause to ensure lock screen is in sync
+        audioRef.current?.addEventListener('play', updatePositionState);
+        audioRef.current?.addEventListener('pause', updatePositionState);
         
         return () => {
-          audioRef.current?.removeEventListener('timeupdate', updatePositionState);
+          audioRef.current?.removeEventListener('timeupdate', handleTimeUpdate);
+          audioRef.current?.removeEventListener('play', updatePositionState);
+          audioRef.current?.removeEventListener('pause', updatePositionState);
         };
       }
     } catch (error) {
-      console.warn('Position state not supported', error);
+      // Silent error handling
     }
 
     // Make sure we have proper initialization for lock screen controls
@@ -167,9 +223,43 @@ const AudioPlayer = () => {
             position: audioRef.current.currentTime
           });
         }
-      }, 500);
+      }, 300);
     }
-  }, [currentSong, setIsPlaying, playNext, playPrevious, setCurrentTime, isPlaying]);
+    
+    // Set playback state
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    
+    // Preload next track for smoother transitions
+    const preloadNextTrack = () => {
+      if (!currentSong || !queue.length) return;
+      
+      const currentIndex = queue.findIndex(song => song._id === currentSong._id);
+      if (currentIndex === -1) return;
+      
+      const nextIndex = (currentIndex + 1) % queue.length;
+      const nextSong = queue[nextIndex];
+      
+      if (nextSong && nextSong.audioUrl && isValidUrl(nextSong.audioUrl)) {
+        // Create a temporary audio element to preload the next song
+        const preloadAudio = new Audio();
+        preloadAudio.src = nextSong.audioUrl;
+        preloadAudio.load();
+        
+        // Set up metadata for lock screen to show next track info
+        setTimeout(() => {
+          // Clean up preload element to avoid memory leaks
+          preloadAudio.src = '';
+        }, 3000);
+      }
+    };
+    
+    // Call preload function with a delay to not interfere with current playback
+    const preloadTimeout = setTimeout(preloadNextTrack, 2000);
+    
+    return () => {
+      clearTimeout(preloadTimeout);
+    };
+  }, [currentSong, setIsPlaying, playNext, playPrevious, setCurrentTime, isPlaying, queue]);
 
   // Enhanced phone call and audio focus handling
   useEffect(() => {
@@ -294,7 +384,7 @@ const AudioPlayer = () => {
             }, 300);
           });
         }
-      }, 100);
+      }, 50); // Reduced delay for faster transitions
     };
 
     // Set up advanced detection for song end using multiple methods
@@ -313,7 +403,7 @@ const AudioPlayer = () => {
         if (audio.currentTime > 0 && 
             audio.duration > 0 && 
             !isNaN(audio.duration) &&
-            audio.currentTime >= audio.duration - 0.5) {
+            audio.currentTime >= audio.duration - 0.3) { // Detect end earlier
           
           // Check if this is the last timeupdate before end (to avoid duplicates)
           if (audio.currentTime < audio.duration) {
@@ -329,8 +419,8 @@ const AudioPlayer = () => {
       let lastCheck = 0;
       audio.addEventListener('timeupdate', () => {
         const now = Date.now();
-        // Only check every second to reduce CPU usage
-        if (now - lastCheck > 1000) {
+        // Only check every 500ms to reduce CPU usage but be more responsive
+        if (now - lastCheck > 500) {
           lastCheck = now;
           handleTimeUpdate();
         }
@@ -351,7 +441,7 @@ const AudioPlayer = () => {
             });
           }
         }
-      }, 5000); // Check every 5 seconds
+      }, 2000); // Check more frequently (every 2 seconds)
       
       return () => {
         audio.removeEventListener('ended', handleEnded);
@@ -387,7 +477,7 @@ const AudioPlayer = () => {
         }
         
         // Check if we need to advance to next song
-        if (audio.ended || (audio.currentTime >= audio.duration - 0.5 && audio.currentTime > 0)) {
+        if (audio.ended || (audio.currentTime >= audio.duration - 0.3 && audio.currentTime > 0)) {
           // Increment to next song
           state.playNext();
           // Ensure playing state is maintained
@@ -400,7 +490,25 @@ const AudioPlayer = () => {
                 // Error handling without logging
               });
             }
-          }, 300);
+          }, 100); // Faster transition
+        }
+        
+        // Preload next song to ensure smooth transition
+        if (audio.currentTime > 0 && audio.duration > 0 && audio.currentTime >= audio.duration - 5) {
+          // If we're near the end, preload the next song
+          const nextIndex = (state.currentIndex + 1) % state.queue.length;
+          if (nextIndex !== state.currentIndex && state.queue[nextIndex]) {
+            const nextSong = state.queue[nextIndex];
+            if (nextSong.audioUrl) {
+              const preloadAudio = new Audio();
+              preloadAudio.src = nextSong.audioUrl;
+              preloadAudio.load();
+              // Discard after preloading starts
+              setTimeout(() => {
+                preloadAudio.src = '';
+              }, 2000);
+            }
+          }
         }
         
         // Send wake-up ping to keep service worker alive
@@ -421,7 +529,7 @@ const AudioPlayer = () => {
           });
         }
       }
-    }, 10000); // Check every 10 seconds
+    }, 3000); // Check more frequently
     
     return () => {
       clearInterval(keepAliveInterval);
@@ -469,6 +577,35 @@ const AudioPlayer = () => {
       if (document.hidden) {
         // App going to background
         
+        // Force update media session before going to background
+        if (isMediaSessionSupported() && currentSong && audioRef.current) {
+          try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: currentSong.title || 'Unknown Title',
+              artist: currentSong.artist || 'Unknown Artist',
+              album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
+              artwork: [
+                {
+                  src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+                  sizes: '512x512',
+                  type: 'image/jpeg'
+                }
+              ]
+            });
+            
+            // Update position state
+            if ('setPositionState' in navigator.mediaSession) {
+              navigator.mediaSession.setPositionState({
+                duration: audioRef.current.duration || 0,
+                playbackRate: audioRef.current.playbackRate,
+                position: audioRef.current.currentTime
+              });
+            }
+          } catch (e) {
+            // Ignore errors
+          }
+        }
+        
         // Save the current time and song for restoration
         if (audioRef.current && currentSong) {
           const restorationData = {
@@ -482,6 +619,11 @@ const AudioPlayer = () => {
             localStorage.setItem('ios_audio_restoration', JSON.stringify(restorationData));
           } catch (e) {
             // Error handling without logging
+          }
+          
+          // Keep playback alive by using audio focus techniques
+          if (isPlaying && audioRef.current.paused) {
+            audioRef.current.play().catch(() => {});
           }
         }
       } else {
@@ -501,17 +643,32 @@ const AudioPlayer = () => {
               const expectedPosition = position + timePassed;
               
               // If expected position exceeds song duration, we should have advanced
-              if (expectedPosition >= audioRef.current.duration - 2) {
-                usePlayerStore.getState().playNext();
-                usePlayerStore.getState().setIsPlaying(wasPlaying);
+              if (expectedPosition >= audioRef.current.duration - 1) {
+                // Need to advance to next song
+                const state = usePlayerStore.getState();
+                state.playNext();
+                if (wasPlaying) {
+                  state.setIsPlaying(true);
+                  
+                  // Force play attempt after a short delay
+                  setTimeout(() => {
+                    if (audioRef.current && audioRef.current.paused) {
+                      audioRef.current.play().catch(() => {});
+                    }
+                  }, 100);
+                }
               } else {
                 // Otherwise just ensure we're at the right position
                 audioRef.current.currentTime = expectedPosition;
                 if (wasPlaying && audioRef.current.paused) {
-                  audioRef.current.play().catch(err => {
-                    // Error handling without logging
-                  });
+                  audioRef.current.play().catch(() => {});
                 }
+              }
+            } else if (wasPlaying) {
+              // Different song - ensure it's playing if it should be
+              usePlayerStore.getState().setIsPlaying(true);
+              if (audioRef.current.paused) {
+                audioRef.current.play().catch(() => {});
               }
             }
             
@@ -526,8 +683,43 @@ const AudioPlayer = () => {
     
     document.addEventListener('visibilitychange', handleIOSVisibilityChange);
     
+    // Set up a backup wakeup timer for iOS
+    let wakeupInterval: NodeJS.Timeout | null = null;
+    
+    if (isPlaying) {
+      wakeupInterval = setInterval(() => {
+        if (document.hidden && audioRef.current) {
+          // If in background and we should be playing
+          if (isPlaying && audioRef.current.paused) {
+            audioRef.current.play().catch(() => {});
+          }
+          
+          // If near the end of the song, prepare to advance
+          if (audioRef.current.currentTime > 0 && 
+              audioRef.current.duration > 0 && 
+              !isNaN(audioRef.current.duration) &&
+              audioRef.current.currentTime >= audioRef.current.duration - 0.5) {
+            
+            const state = usePlayerStore.getState();
+            state.playNext();
+            state.setIsPlaying(true);
+            
+            // Try to play the next song
+            setTimeout(() => {
+              if (audioRef.current) {
+                audioRef.current.play().catch(() => {});
+              }
+            }, 100);
+          }
+        }
+      }, 1000);
+    }
+    
     return () => {
       document.removeEventListener('visibilitychange', handleIOSVisibilityChange);
+      if (wakeupInterval) {
+        clearInterval(wakeupInterval);
+      }
     };
   }, [currentSong, isPlaying]);
 
@@ -541,6 +733,31 @@ const AudioPlayer = () => {
       
       // Critical for audio focus handling in iOS Safari
       audioRef.current.setAttribute('x-webkit-airplay', 'allow');
+      
+      // Set up remote commands early
+      if (isMediaSessionSupported()) {
+        navigator.mediaSession.setActionHandler('play', () => {
+          setIsPlaying(true);
+          if (audioRef.current && audioRef.current.paused) {
+            audioRef.current.play().catch(() => {});
+          }
+        });
+  
+        navigator.mediaSession.setActionHandler('pause', () => {
+          setIsPlaying(false);
+          if (audioRef.current && !audioRef.current.paused) {
+            audioRef.current.pause();
+          }
+        });
+  
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+          if (playPrevious) playPrevious();
+        });
+  
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+          playNext();
+        });
+      }
       
       // Ensure audio continues to play when locked and mixed with other sounds
       if ('mozAudioChannelType' in audioRef.current) {
@@ -807,21 +1024,21 @@ const AudioPlayer = () => {
                   // Error handling without toast
                 });
               }
-            }, 300);
+            }, 100); // Faster loading
           } else {
             // No results found
             // Skip to the next song after a short delay
             setTimeout(() => {
               playNext();
-            }, 1500);
+            }, 500); // Faster skipping
           }
         } catch (error) {
           // Skip to the next song after a short delay
           setTimeout(() => {
             playNext();
-          }, 1500);
+          }, 500); // Faster skipping
         }
-      }, 100);
+      }, 50); // Faster processing
       
       return;
     }
@@ -862,7 +1079,7 @@ const AudioPlayer = () => {
 
           if (isPlaying) {
             // Wait a bit before playing to avoid interruption errors
-            const playDelayMs = 300;
+            const playDelayMs = 150; // Reduced delay for faster transitions
             
             playTimeoutRef.current = setTimeout(() => {
               if (!audioRef.current) return;
@@ -875,11 +1092,24 @@ const AudioPlayer = () => {
               const playPromise = audioRef.current.play();
               
               if (playPromise !== undefined) {
-              playPromise
-                .then(() => {
-                  isHandlingPlayback.current = false;
-                })
-                .catch(error => {
+                playPromise
+                  .then(() => {
+                    isHandlingPlayback.current = false;
+                    
+                    // Set up position state for lock screen again
+                    if ('setPositionState' in navigator.mediaSession) {
+                      try {
+                        navigator.mediaSession.setPositionState({
+                          duration: audioRef.current?.duration || 0,
+                          playbackRate: audioRef.current?.playbackRate || 1,
+                          position: audioRef.current?.currentTime || 0
+                        });
+                      } catch (e) {
+                        // Ignore any errors with position state
+                      }
+                    }
+                  })
+                  .catch(error => {
                     // Handle AbortError specifically
                     if (error.name === 'AbortError') {
                       // Wait for any pending operations to complete
@@ -887,16 +1117,16 @@ const AudioPlayer = () => {
                         // Only attempt retry if we're still supposed to be playing
                         if (isPlaying && audioRef.current) {
                           audioRef.current.play().catch(retryError => {
-                  setIsPlaying(false);
+                            setIsPlaying(false);
                           });
                         }
-                      }, 500);
+                      }, 250); // Faster retry
                     } else {
                       setIsPlaying(false);
                     }
                     
-                  isHandlingPlayback.current = false;
-                });
+                    isHandlingPlayback.current = false;
+                  });
               } else {
                 isHandlingPlayback.current = false;
               }
@@ -915,6 +1145,19 @@ const AudioPlayer = () => {
         // Set the new source
         audio.src = songUrl;
         audio.load(); // Explicitly call load to begin fetching the new audio
+        
+        // Preload the next song if available
+        const nextIndex = (usePlayerStore.getState().currentIndex + 1) % usePlayerStore.getState().queue.length;
+        const nextSong = usePlayerStore.getState().queue[nextIndex];
+        if (nextSong && nextSong.audioUrl) {
+          const preloadAudio = new Audio();
+          preloadAudio.src = nextSong.audioUrl;
+          preloadAudio.load();
+          // Discard after preloading starts
+          setTimeout(() => {
+            preloadAudio.src = '';
+          }, 2000);
+        }
       } catch (error) {
         setIsLoading(false);
         isHandlingPlayback.current = false;
