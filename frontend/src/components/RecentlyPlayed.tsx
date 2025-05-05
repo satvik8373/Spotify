@@ -17,8 +17,9 @@ interface RecentItem {
 export function RecentlyPlayed() {
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
-  const { setCurrentSong, playPlaylist } = usePlayerStore();
+  const { setCurrentSong } = usePlayerStore();
   const navigate = useNavigate();
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   useEffect(() => {
     // Load recently played items from localStorage
@@ -84,7 +85,7 @@ export function RecentlyPlayed() {
         const playerStore = usePlayerStore.getState();
         playerStore.setUserInteracted();
         playerStore.setIsPlaying(true);
-      }, 50);
+      }, 20);
     } else if (item.type === 'playlist' && item.id) {
       // Navigate to playlist immediately
       navigate(`/playlist/${item.id}`);
@@ -104,7 +105,13 @@ export function RecentlyPlayed() {
           <div
             key={item.id}
             className="group relative overflow-hidden rounded-md bg-zinc-800/50 cursor-pointer transition-all duration-300 hover:bg-zinc-700/60"
-            onClick={() => handleItemClick(item)}
+            onClick={(e) => handleItemClick(item)}
+            onTouchStart={(e) => {
+              if (isMobile) {
+                // For mobile, ensure touch actions trigger play immediately
+                handleItemClick(item);
+              }
+            }}
             onMouseEnter={() => setHoveredItemId(item.id)}
             onMouseLeave={() => setHoveredItemId(null)}
           >
@@ -132,7 +139,7 @@ export function RecentlyPlayed() {
                       ? 'opacity-100 translate-y-0'
                       : 'opacity-0 translate-y-4'
                   )}
-                  onClick={e => {
+                  onClick={(e) => {
                     e.stopPropagation();
                     handleItemClick(item);
                   }}

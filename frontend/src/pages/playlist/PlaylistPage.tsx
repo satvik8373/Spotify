@@ -307,6 +307,7 @@ export function PlaylistPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   // New state for scroll behavior
   const [scrollPosition, setScrollPosition] = useState(0);
@@ -505,9 +506,6 @@ export function PlaylistPage() {
       return;
     }
 
-    // Prevent multiple rapid clicks
-    if (isPlaying) return;
-
     try {
       setIsPlaying(true);
 
@@ -521,25 +519,20 @@ export function PlaylistPage() {
         updateMetrics('plays');
       }
 
-      // Start playback with a small delay to ensure clean state
-      playTimeoutRef.current = setTimeout(() => {
-        // Make sure shuffle is off before playing in order
-        const playerStore = usePlayerStore.getState();
-        if (playerStore.isShuffled) {
-          playerStore.toggleShuffle();
-        }
-        
-        // Play the playlist from the beginning
-        playAlbum(currentPlaylist.songs, 0);
-        
-        // Force playback to start
-        setTimeout(() => {
-          usePlayerStore.getState().setUserInteracted();
-          usePlayerStore.getState().setIsPlaying(true);
-        }, 100);
-        
-        setIsPlaying(false);
-      }, 300);
+      // Make sure shuffle is off before playing in order
+      const playerStore = usePlayerStore.getState();
+      if (playerStore.isShuffled) {
+        playerStore.toggleShuffle();
+      }
+      
+      // Play the playlist from the beginning immediately
+      playAlbum(currentPlaylist.songs, 0);
+      
+      // Force playback to start immediately
+      usePlayerStore.getState().setUserInteracted();
+      usePlayerStore.getState().setIsPlaying(true);
+      
+      setIsPlaying(false);
     } catch (error) {
       // Silent error handling
       setIsPlaying(false);
@@ -558,9 +551,6 @@ export function PlaylistPage() {
       return;
     }
 
-    // Prevent multiple rapid clicks
-    if (isPlaying) return;
-
     try {
       setIsPlaying(true);
 
@@ -574,25 +564,20 @@ export function PlaylistPage() {
         updateMetrics('plays');
       }
 
-      // Start playback with a small delay to ensure clean state
-      playTimeoutRef.current = setTimeout(() => {
-        // Enable shuffle mode before playing
-        const playerStore = usePlayerStore.getState();
-        if (!playerStore.isShuffled) {
-          playerStore.toggleShuffle();
-        }
-        
-        // Play the playlist
-        playAlbum(currentPlaylist.songs, 0);
-        
-        // Force playback to start
-        setTimeout(() => {
-          usePlayerStore.getState().setUserInteracted();
-          usePlayerStore.getState().setIsPlaying(true);
-        }, 100);
-        
-        setIsPlaying(false);
-      }, 300);
+      // Enable shuffle mode before playing
+      const playerStore = usePlayerStore.getState();
+      if (!playerStore.isShuffled) {
+        playerStore.toggleShuffle();
+      }
+      
+      // Play the playlist immediately
+      playAlbum(currentPlaylist.songs, 0);
+      
+      // Force playback to start immediately
+      usePlayerStore.getState().setUserInteracted();
+      usePlayerStore.getState().setIsPlaying(true);
+      
+      setIsPlaying(false);
     } catch (error) {
       // Silent error handling
       setIsPlaying(false);
@@ -945,6 +930,12 @@ export function PlaylistPage() {
                 disabled={totalSongs === 0 || isPlaying}
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-green-500 hover:bg-green-400 hover:scale-105 transition-all shadow-lg text-black flex items-center justify-center"
                 variant="default"
+                onTouchStart={e => {
+                  if (isMobile) {
+                    e.preventDefault();
+                    isCurrentPlaylistPlaying ? handlePausePlaylist() : handlePlayPlaylist();
+                  }
+                }}
               >
                 {isCurrentPlaylistPlaying ? (
                   <Pause className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -985,6 +976,12 @@ export function PlaylistPage() {
                       !song.audioUrl && 'opacity-60'
                     )}
                     onClick={e => handlePlaySong(song, index, e)}
+                    onTouchStart={e => {
+                      if (isMobile) {
+                        // For mobile devices, ensure a single tap plays the song
+                        handlePlaySong(song, index, e as any);
+                      }
+                    }}
                   >
                     {/* Track number/playing indicator */}
                     <div className="flex items-center justify-center w-6">
