@@ -15,6 +15,7 @@ import {
   Share2,
   ThumbsUp,
   Hash,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useNavigate, Link } from 'react-router-dom';
@@ -65,6 +66,7 @@ interface TopPlaylist extends RecentPlaylist {
   metrics: PlaylistMetrics;
   rank: number;
   isLiked: boolean;
+  isPublic?: boolean;
 }
 
 // Add this CSS to handle the horizontal scroll and Netflix-like effects
@@ -84,11 +86,12 @@ const netflixRowStyles = `
 		overflow-x: scroll;
 		overflow-y: hidden;
 		scroll-snap-type: x mandatory;
-		gap: 6px;
+		gap: 12px;
 		-ms-overflow-style: none;
 		scrollbar-width: none;
 		padding: 10px 0;
-		padding-left: 8px;
+		padding-left: 16px;
+		padding-right: 16px;
 	}
 	
 	.netflix-slider::-webkit-scrollbar {
@@ -96,27 +99,28 @@ const netflixRowStyles = `
 	}
 	
 	.netflix-card {
-		flex: 0 0 calc(50% - 8px); /* Show 2 cards on mobile */
+		flex: 0 0 calc(50% - 16px); /* Show 2 cards on mobile */
 		scroll-snap-align: start;
 		position: relative;
 		transition: all 0.3s ease;
 		transform-origin: center left;
+		z-index: 1;
 	}
 	
 	@media (min-width: 640px) {
 		.netflix-card {
-			flex: 0 0 calc(33.333% - 8px); /* Show 3 cards on tablet */
+			flex: 0 0 calc(33.333% - 16px); /* Show 3 cards on tablet */
 		}
 	}
 	
 	@media (min-width: 1024px) {
 		.netflix-card {
-			flex: 0 0 290px; /* Fixed width on desktop */
+			flex: 0 0 220px; /* Fixed width on desktop */
 		}
 		
 		.netflix-card:hover {
-			transform: scale(1.1);
-			z-index: 2;
+			transform: scale(1.07);
+			z-index: 10;
 		}
 		
 		.netflix-card:hover ~ .netflix-card {
@@ -126,29 +130,30 @@ const netflixRowStyles = `
 	
 	.netflix-rank {
 		position: absolute;
-		left: -8px;
+		left: -16px;
 		top: 50%;
 		transform: translateY(-50%);
-		font-size: 85px;
+		font-size: 100px;
 		font-weight: 800;
-		opacity: 0.8;
-		text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+		opacity: 0.9;
+		text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
 		-webkit-text-stroke: 2px #fff;
 		color: transparent;
-		z-index: 1;
+		z-index: 2;
+		line-height: 1;
 	}
 	
 	@media (min-width: 640px) {
 		.netflix-rank {
-			left: -12px;
-			font-size: 110px;
+			left: -20px;
+			font-size: 120px;
 		}
 	}
 	
 	@media (min-width: 1024px) {
 		.netflix-rank {
-			left: -15px;
-			font-size: 130px;
+			left: -25px;
+			font-size: 140px;
 		}
 	}
 `;
@@ -506,16 +511,16 @@ const HomePage = () => {
           {/* Recently played section */}
           <div className="px-2 sm:px-4">
             {/* Top Picks Section - Enhanced Design */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-bold tracking-tight">Recently played</h2>
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2.5">
+                <h2 className="text-base font-bold tracking-tight">Recently played</h2>
                 {isAuthenticated && userPlaylists.length > 0 && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 hover:bg-white/10 rounded-full"
+                        className="h-7 w-7 hover:bg-white/10 rounded-full"
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
@@ -527,24 +532,25 @@ const HomePage = () => {
                       {userPlaylists.map(playlist => (
                         <DropdownMenuItem
                           key={playlist._id}
-                          className="hover:bg-white/10 cursor-pointer py-2"
+                          className="hover:bg-white/10 cursor-pointer py-1.5"
                           onClick={() => handlePlaylistClick(playlist)}
                         >
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded overflow-hidden">
+                            <div className="w-7 h-7 rounded overflow-hidden">
                               {playlist.imageUrl ? (
                                 <img
                                   src={playlist.imageUrl}
                                   alt={playlist.name}
                                   className="w-full h-full object-cover"
+                                  loading="lazy"
                                 />
                               ) : (
                                 <div className="w-full h-full bg-gradient-to-br from-purple-500 to-purple-900 flex items-center justify-center">
-                                  <Music2 className="h-4 w-4 text-white" />
+                                  <Music2 className="h-3.5 w-3.5 text-white" />
                                 </div>
                               )}
                             </div>
-                            <span className="text-sm truncate">{playlist.name}</span>
+                            <span className="text-xs truncate">{playlist.name}</span>
                           </div>
                         </DropdownMenuItem>
                       ))}
@@ -552,39 +558,40 @@ const HomePage = () => {
                   </DropdownMenu>
                 )}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
                 {getDisplayedItems().map((item: any) => (
                   <div
                     key={item._id || item.id}
                     onClick={() => handlePlaylistClick(item)}
-                    className="group relative h-[56px] rounded-md overflow-hidden transition-all duration-300 hover:bg-zinc-800/80 cursor-pointer"
+                    className="group relative h-[50px] rounded-md overflow-hidden transition-all duration-300 hover:bg-zinc-800/80 cursor-pointer"
                   >
                     <div className="absolute inset-0 bg-zinc-800/60" />
                     <div className="relative flex items-center h-full">
-                      <div className="w-[56px] h-full flex-shrink-0">
+                      <div className="w-[50px] h-full flex-shrink-0">
                         {item.image || item.imageUrl ? (
                           <img
                             src={item.image || item.imageUrl}
                             alt={item.title || item.name}
                             className="w-full h-full object-cover"
+                            loading="lazy"
                           />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-purple-500 to-purple-900 flex items-center justify-center">
-                            <Music2 className="h-5 w-5 text-white" />
+                            <Music2 className="h-4 w-4 text-white" />
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0 px-3">
-                        <h3 className="font-bold text-sm leading-tight truncate">
+                      <div className="flex-1 min-w-0 px-2.5">
+                        <h3 className="font-medium text-xs leading-tight truncate">
                           {item.title || item.name}
                         </h3>
                       </div>
                       <div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-1 group-hover:translate-y-0">
                         <Button
                           size="icon"
-                          className="rounded-full bg-green-500 hover:bg-green-400 hover:scale-105 text-black h-8 w-8 shadow-lg"
+                          className="rounded-full bg-green-500 hover:bg-green-400 hover:scale-105 text-black h-7 w-7 shadow-md"
                         >
-                          <PlayCircle className="h-4 w-4" />
+                          <PlayCircle className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
@@ -598,41 +605,158 @@ const HomePage = () => {
 
             {/* Public Playlists Section */}
             {publicPlaylists.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-bold tracking-tight">Public Playlists</h2>
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-2.5">
+                  <h2 className="text-base font-bold tracking-tight">Public Playlists</h2>
                   <Button
                     variant="ghost"
-                    className="text-zinc-400 hover:text-white text-xs sm:text-sm h-8"
+                    className="text-zinc-400 hover:text-white text-[10px] sm:text-xs h-7"
                     onClick={() => navigate('/library')}
                   >
                     See all
                   </Button>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
-                  {publicPlaylists.map(playlist => (
-                    <div
-                      key={playlist._id}
-                      className="group relative transform transition-all duration-300 hover:scale-[1.02]"
-                    >
-                      <PlaylistCard
-                        playlist={playlist}
-                        isOwner={isAuthenticated && userId === playlist.createdBy.clerkId}
-                      />
+                  {publicPlaylists
+                    .filter(playlist => playlist.isPublic !== false)
+                    .map(playlist => (
+                      <div
+                        key={playlist._id}
+                        className="group relative transform transition-all duration-300 hover:scale-[1.02]"
+                      >
+                        <PlaylistCard
+                          playlist={playlist}
+                          isOwner={isAuthenticated && userId === playlist.createdBy.clerkId}
+                        />
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Top 10 Playlists Section - Netflix Style */}
+            {topPlaylists.length > 0 && (
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-2.5">
+                  <h2 className="text-base font-bold tracking-tight">Top 10 Playlists</h2>
+                </div>
+                <div className="netflix-row relative" id="top10-row">
+                  <button 
+                    className="handle handle-left absolute left-0 top-1/2 -translate-y-1/2 z-10 h-full px-1 opacity-0 hover:opacity-100 transition-opacity"
+                    onClick={() => {
+                      const slider = document.querySelector('#top10-row .netflix-slider');
+                      if (slider) {
+                        slider.scrollBy({ left: -180, behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-center h-10 w-10 bg-black/50 backdrop-blur-sm rounded-full">
+                      <ChevronRight className="h-5 w-5 rotate-180" />
                     </div>
-                  ))}
+                  </button>
+                  
+                  <div className="netflix-slider">
+                    {topPlaylists
+                      .filter(playlist => playlist.isPublic !== false)
+                      .slice(0, 10)
+                      .map((playlist, index) => (
+                        <div
+                          key={playlist._id}
+                          className="netflix-card group relative cursor-pointer"
+                          onClick={() => handlePlaylistClick(playlist)}
+                        >
+                          <div className="netflix-rank">{index + 1}</div>
+                          <div className="relative rounded-md overflow-hidden aspect-square shadow-lg">
+                            {playlist.imageUrl ? (
+                              <img
+                                src={playlist.imageUrl}
+                                alt={playlist.name}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
+                                <Music2 className="h-8 w-8 text-zinc-500" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="absolute bottom-0 left-0 w-full p-2">
+                              <h3 className="text-xs font-medium line-clamp-1">{playlist.name}</h3>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <div className="flex items-center gap-0.5 text-[8px] text-zinc-300">
+                                  <ThumbsUp className="h-2.5 w-2.5" />
+                                  <span>{playlist.metrics.likes}</span>
+                                </div>
+                                <div className="flex items-center gap-0.5 text-[8px] text-zinc-300 ml-2">
+                                  <Share2 className="h-2.5 w-2.5" />
+                                  <span>{playlist.metrics.shares}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="icon"
+                                className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePlaylistClick(playlist);
+                                }}
+                              >
+                                <PlayCircle className="h-5 w-5" />
+                              </Button>
+                            </div>
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="icon"
+                                variant="secondary"
+                                className="h-7 w-7 rounded-full bg-black/40 hover:bg-black/60"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Handle like
+                                  updateMetrics(playlist._id, 'likes');
+                                  setTopPlaylists(current =>
+                                    current.map(p => 
+                                      p._id === playlist._id
+                                        ? { ...p, isLiked: !p.isLiked }
+                                        : p
+                                    )
+                                  );
+                                  toast.success(`${playlist.isLiked ? 'Removed from' : 'Added to'} your Liked Playlists`);
+                                }}
+                              >
+                                <Heart className={`h-3.5 w-3.5 ${playlist.isLiked ? 'fill-white text-white' : ''}`} />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                  
+                  <button 
+                    className="handle handle-right absolute right-0 top-1/2 -translate-y-1/2 z-10 h-full px-1 opacity-0 hover:opacity-100 transition-opacity"
+                    onClick={() => {
+                      const slider = document.querySelector('#top10-row .netflix-slider');
+                      if (slider) {
+                        slider.scrollBy({ left: 180, behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-center h-10 w-10 bg-black/50 backdrop-blur-sm rounded-full">
+                      <ChevronRight className="h-5 w-5" />
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
 
             {/* Featured Playlists Section */}
             {featuredPlaylists.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-bold tracking-tight">Featured Playlists</h2>
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-2.5">
+                  <h2 className="text-base font-bold tracking-tight">Featured Playlists</h2>
                   <Button
                     variant="ghost"
-                    className="text-zinc-400 hover:text-white text-xs sm:text-sm h-8"
+                    className="text-zinc-400 hover:text-white text-[10px] sm:text-xs h-7"
                     onClick={() => navigate('/library')}
                   >
                     See all
@@ -655,15 +779,15 @@ const HomePage = () => {
             )}
 
             {/* Today's Hits Section */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-bold tracking-tight">Today's Hits</h2>
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2.5">
+                <h2 className="text-base font-bold tracking-tight">Today's Hits</h2>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
                 {indianTrendingSongs.slice(0, 6).map((song, index) => (
                   <div
                     key={song.id || index}
-                    className="group flex items-center gap-3 p-2 rounded hover:bg-zinc-800/50 cursor-pointer transition-colors"
+                    className="group flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800/50 cursor-pointer transition-colors"
                     onClick={() => {
                       const songToPlay = useMusicStore.getState().convertIndianSongToAppSong(song);
                       setCurrentSong(songToPlay);
@@ -691,23 +815,24 @@ const HomePage = () => {
                       }
                     }}
                   >
-                    <div className="relative w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                    <div className="relative w-9 h-9 rounded overflow-hidden flex-shrink-0">
                       <img
                         src={song.image}
                         alt={song.title}
                         className="object-cover w-full h-full"
+                        loading="lazy"
                         onError={e =>
                           ((e.target as HTMLImageElement).src =
                             'https://placehold.co/400x400/1f1f1f/959595?text=No+Image')
                         }
                       />
                       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <PlayCircle className="h-5 w-5 text-white" />
+                        <PlayCircle className="h-4 w-4 text-white" />
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium leading-tight truncate">{song.title}</p>
-                      <p className="text-xs text-zinc-400 truncate mt-0.5">
+                      <p className="text-xs font-medium leading-tight truncate">{song.title}</p>
+                      <p className="text-[10px] text-zinc-400 truncate">
                         {song.artist || 'Unknown Artist'}
                       </p>
                     </div>
@@ -717,11 +842,11 @@ const HomePage = () => {
             </div>
           </div>
 
-          <div className="mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 px-2 sm:px-4 gap-2">
-              <h2 className="text-lg font-bold tracking-tight">Indian Music</h2>
+          <div className="mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2.5 px-2 sm:px-4 gap-1">
+              <h2 className="text-base font-bold tracking-tight">Indian Music</h2>
             </div>
-            <div className="gap-2 px-2 sm:px-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            <div className="px-2 sm:px-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
               {indianTrendingSongs.slice(0, 6).map(song => (
                 <div
                   key={song.id}
@@ -747,16 +872,17 @@ const HomePage = () => {
                       src={song.image || '/placeholder-song.png'}
                       alt={song.title}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
-                    <div className="absolute bottom-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="bg-green-500 rounded-full p-1.5 text-black">
-                        <PlayCircle size={20} />
+                    <div className="absolute bottom-1 right-1 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="bg-green-500 rounded-full p-1 text-black shadow-md">
+                        <PlayCircle size={16} />
                       </button>
                     </div>
                   </div>
-                  <div className="p-2">
-                    <h3 className="text-sm font-medium truncate">{song.title}</h3>
-                    <p className="text-xs text-zinc-400 truncate mt-0.5">
+                  <div className="p-1.5">
+                    <h3 className="text-xs font-medium truncate leading-tight">{song.title}</h3>
+                    <p className="text-[10px] text-zinc-400 truncate">
                       {song.artist || 'Unknown Artist'}
                     </p>
                   </div>

@@ -24,6 +24,7 @@ interface BaseSong {
 
 interface Song extends BaseSong {
   duration?: string;
+  _id?: string;
 }
 
 interface AppSong extends BaseSong {
@@ -33,7 +34,6 @@ interface AppSong extends BaseSong {
 
 interface VisibleCounts {
   trending: number;
-  newReleases: number;
   bollywood: number;
   hollywood: number;
   official: number;
@@ -57,8 +57,7 @@ const IndianMusicPlayer = () => {
 
   // Visible song counts
   const [visibleCounts, setVisibleCounts] = useState<VisibleCounts>({
-    trending: 10,
-    newReleases: 10,
+    trending: 12, // Showing more trending songs initially
     bollywood: 10,
     hollywood: 10,
     official: 10,
@@ -69,7 +68,6 @@ const IndianMusicPlayer = () => {
   const { setCurrentSong: setAppCurrentSong, isPlaying, currentSong, setUserInteracted } = usePlayerStore();
   const { 
     indianTrendingSongs,
-    indianNewReleases,
     indianSearchResults,
     bollywoodSongs,
     hollywoodSongs, 
@@ -77,7 +75,6 @@ const IndianMusicPlayer = () => {
     hindiSongs,
     isIndianMusicLoading,
     fetchIndianTrendingSongs,
-    fetchIndianNewReleases,
     fetchBollywoodSongs,
     fetchHollywoodSongs,
     fetchOfficialTrendingSongs,
@@ -109,7 +106,6 @@ const IndianMusicPlayer = () => {
       try {
         await Promise.all([
           fetchIndianTrendingSongs(),
-          fetchIndianNewReleases(),
           fetchBollywoodSongs(),
           fetchHollywoodSongs(),
           fetchOfficialTrendingSongs(),
@@ -133,7 +129,7 @@ const IndianMusicPlayer = () => {
     } else if (q) {
       searchIndianSongs(q);
     }
-  }, [location.pathname, location.search, indianSearchResults.length, fetchIndianTrendingSongs, fetchIndianNewReleases, fetchBollywoodSongs, fetchHollywoodSongs, fetchOfficialTrendingSongs, fetchHindiSongs, searchIndianSongs]);
+  }, [location.pathname, location.search, indianSearchResults.length, fetchIndianTrendingSongs, fetchBollywoodSongs, fetchHollywoodSongs, fetchOfficialTrendingSongs, fetchHindiSongs, searchIndianSongs]);
 
   useEffect(() => {
     // Only update auth status when authentication state changes
@@ -190,7 +186,6 @@ const IndianMusicPlayer = () => {
     try {
       await Promise.all([
         fetchIndianTrendingSongs(),
-        fetchIndianNewReleases(),
         fetchBollywoodSongs(),
         fetchHollywoodSongs(),
         fetchOfficialTrendingSongs(),
@@ -198,13 +193,14 @@ const IndianMusicPlayer = () => {
       ]);
       
       setVisibleCounts({
-        trending: 10,
-        newReleases: 10,
+        trending: 12,
         bollywood: 10,
         hollywood: 10,
         official: 10,
         hindi: 10
       });
+      
+      toast.success("Updated with latest trending songs from the internet");
     } catch (error) {
       console.error("Error refreshing songs:", error);
       toast.error("Failed to refresh songs");
@@ -280,8 +276,16 @@ const IndianMusicPlayer = () => {
         });
         toast.success(`Removed "${song.title}" from Liked Songs`);
       } else {
-        // Add to liked songs
-        addLikedSong(song);
+        // Add to liked songs - Convert to required format for addLikedSong
+        const likedSong = {
+          id: song.id,
+          title: song.title,
+          artist: song.artist || 'Unknown Artist',
+          imageUrl: song.image,
+          audioUrl: song.url || '',
+          duration: song.duration ? parseInt(song.duration) : undefined
+        };
+        addLikedSong(likedSong);
         setLikedSongIds(prev => new Set([...prev, songId]));
         toast.success(`Added "${song.title}" to Liked Songs`);
       }
@@ -321,63 +325,51 @@ const IndianMusicPlayer = () => {
   };
 
   const isSongPlaying = (song: Song) => {
-    return isPlaying && currentSong && currentSong.id === song.id;
+    return isPlaying && currentSong && currentSong._id === song.id;
   };
 
   // UI Components
   const SectionHeader = ({ title }: { title: string }) => (
-    <div className="flex justify-between items-center mb-4">
-      <h2 className="text-xl font-bold">{title}</h2>
+    <div className="flex justify-between items-center mb-3">
+      <h2 className="text-lg font-bold">{title}</h2>
     </div>
   );
 
   const renderSongCard = (song: Song) => (
     <div 
       key={song.id}
-      className="p-4 bg-zinc-800 rounded-md hover:bg-zinc-700 transition cursor-pointer group relative flex flex-col"
+      className="bg-zinc-800/50 rounded-md hover:bg-zinc-700/80 transition cursor-pointer group relative flex flex-col"
       onClick={() => {
         playSong(song);
       }}
     >
-      <div className="relative mb-3 aspect-square overflow-hidden rounded-md">
+      <div className="relative mb-2 aspect-square overflow-hidden rounded-md">
         <img 
           src={song.image || '/default-album.png'} 
           alt={song.title} 
           className="object-cover w-full h-full" 
+          loading="lazy"
         />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
           <Button 
             size="icon" 
-            className="size-12 rounded-full bg-green-500 hover:bg-green-600 transition shadow-lg"
+            className="size-9 rounded-full bg-green-500 hover:bg-green-600 transition shadow-lg"
             onClick={(e) => {
               e.stopPropagation();
               playSong(song);
             }}
           >
             {isSongPlaying(song) ? (
-              <Pause className="size-6" />
+              <Pause className="size-4" />
             ) : (
-              <Play className="size-6" />
+              <Play className="size-4 ml-0.5" />
             )}
           </Button>
         </div>
       </div>
-      <div className="flex-1">
-        <h3 className="font-semibold truncate">{song.title}</h3>
-        <p className="text-sm text-zinc-400 truncate">{song.artist || 'Unknown Artist'}</p>
-      </div>
-      <div className="mt-3 flex justify-between items-center">
-        <Button 
-          variant={likedSongIds.has(song.id) ? "default" : "ghost"} 
-          size="icon" 
-          className={`size-9 rounded-full ${likedSongIds.has(song.id) ? 'bg-green-500 hover:bg-green-600' : ''}`}
-          onClick={(e) => toggleLikeSong(song, e)}
-        >
-          <Heart className={`size-5 ${likedSongIds.has(song.id) ? 'fill-white' : ''}`} />
-        </Button>
-        {song.duration && (
-          <span className="text-xs text-zinc-400">{song.duration}</span>
-        )}
+      <div className="flex-1 px-1.5 pb-2">
+        <h3 className="font-medium text-sm leading-tight line-clamp-1">{song.title}</h3>
+        <p className="text-xs text-zinc-400 truncate mt-0.5">{song.artist || 'Unknown Artist'}</p>
       </div>
     </div>
   );
@@ -385,47 +377,48 @@ const IndianMusicPlayer = () => {
   const renderSongRow = (song: Song) => (
     <div 
       key={song.id}
-      className="flex items-center p-2 rounded-md hover:bg-zinc-800 transition cursor-pointer group relative"
+      className="flex items-center p-1.5 rounded-md hover:bg-zinc-800/80 transition cursor-pointer group relative"
       onClick={() => {
         playSong(song);
       }}
     >
-      <div className="relative size-12 flex-shrink-0 mr-3">
+      <div className="relative size-10 flex-shrink-0 mr-2">
         <img 
           src={song.image || '/default-album.png'} 
           alt={song.title} 
           className="size-full object-cover rounded" 
+          loading="lazy"
         />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded">
           {isSongPlaying(song) ? (
             <div className="flex items-center justify-center space-x-0.5">
               {animationBars.map((height, i) => (
                 <div 
                   key={i} 
                   className="w-0.5 bg-white" 
-                  style={{ height: `${Math.max(40, height)}%` }}
+                  style={{ height: `${Math.max(30, height)}%` }}
                 ></div>
               ))}
             </div>
           ) : (
-            <Play className="size-5" />
+            <Play className="size-4 ml-0.5" />
           )}
         </div>
       </div>
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium truncate">{song.title}</h3>
-        <p className="text-sm text-zinc-400 truncate">{song.artist || 'Unknown Artist'}</p>
+        <h3 className="font-medium text-sm truncate leading-tight">{song.title}</h3>
+        <p className="text-xs text-zinc-400 truncate">{song.artist || 'Unknown Artist'}</p>
       </div>
-      <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <Button 
           variant="ghost" 
           size="icon" 
-          className="size-8 rounded-full"
+          className="size-7 rounded-full"
           onClick={(e) => toggleLikeSong(song, e)}
         >
-          <Heart className={`size-4 ${likedSongIds.has(song.id) ? 'fill-green-500 text-green-500' : ''}`} />
+          <Heart className={`size-3.5 ${likedSongIds.has(song.id) ? 'fill-green-500 text-green-500' : ''}`} />
         </Button>
-        <span className="text-xs text-zinc-400 w-12 text-right">
+        <span className="text-[10px] text-zinc-400 w-10 text-right">
           {song.duration || '--:--'}
         </span>
       </div>
@@ -488,7 +481,7 @@ const IndianMusicPlayer = () => {
               </Button>
             </div>
             
-            {isPlaying && currentSong && currentSong.id === selectedSong.id && (
+            {isPlaying && currentSong && currentSong._id === selectedSong.id && (
               <div className="w-full mb-6">
                 <div className="w-full bg-zinc-700 h-1 rounded-full mb-2">
                   <div 
@@ -543,7 +536,7 @@ const IndianMusicPlayer = () => {
 
   // Render
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Login Dialog */}
       <LoginDialog />
       
@@ -551,7 +544,7 @@ const IndianMusicPlayer = () => {
       <SongDetailView />
       
       {/* Refresh Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end px-1">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -560,13 +553,13 @@ const IndianMusicPlayer = () => {
                 size="icon"
                 onClick={refreshSongs}
                 disabled={isRefreshing}
-                className="rounded-full"
+                className="rounded-full h-7 w-7"
               >
-                <RefreshCcw className={`size-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCcw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Refresh songs</p>
+              <p>Get latest trending songs</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -574,9 +567,9 @@ const IndianMusicPlayer = () => {
       
       {/* Search Results */}
       {location.pathname.includes('/search') && indianSearchResults.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-6">
           <SectionHeader title="Search Results" />
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {indianSearchResults.map(song => renderSongRow(song))}
           </div>
         </div>
@@ -584,38 +577,21 @@ const IndianMusicPlayer = () => {
       
       {/* Loading State */}
       {isIndianMusicLoading && (
-        <div className="py-8 flex justify-center">
-          <Loader className="size-8 animate-spin text-zinc-500" />
+        <div className="py-6 flex justify-center">
+          <Loader className="size-6 animate-spin text-zinc-500" />
         </div>
       )}
       
       {/* Trending Songs Section */}
       {indianTrendingSongs.length > 0 && (
-        <div className="mb-8">
-          <SectionHeader title="Trending Songs" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="mb-6 px-1">
+          <SectionHeader title="Most Popular Songs" />
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
             {indianTrendingSongs.slice(0, visibleCounts.trending).map(song => renderSongCard(song))}
           </div>
           {indianTrendingSongs.length > visibleCounts.trending && (
-            <div className="mt-4 flex justify-center">
-              <Button variant="ghost" onClick={() => loadMore('trending')}>
-                Load More
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* New Releases Section */}
-      {indianNewReleases.length > 0 && (
-        <div className="mb-8">
-          <SectionHeader title="New Releases" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {indianNewReleases.slice(0, visibleCounts.newReleases).map(song => renderSongCard(song))}
-          </div>
-          {indianNewReleases.length > visibleCounts.newReleases && (
-            <div className="mt-4 flex justify-center">
-              <Button variant="ghost" onClick={() => loadMore('newReleases')}>
+            <div className="mt-3 flex justify-center">
+              <Button variant="ghost" className="text-xs h-8" onClick={() => loadMore('trending')}>
                 Load More
               </Button>
             </div>
@@ -625,14 +601,14 @@ const IndianMusicPlayer = () => {
       
       {/* Bollywood Songs */}
       {bollywoodSongs.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-6 px-1">
           <SectionHeader title="Bollywood Hits" />
-          <div className="space-y-1">
+          <div className="space-y-0.5 rounded-lg overflow-hidden bg-zinc-800/30">
             {bollywoodSongs.slice(0, visibleCounts.bollywood).map(song => renderSongRow(song))}
           </div>
           {bollywoodSongs.length > visibleCounts.bollywood && (
-            <div className="mt-4 flex justify-center">
-              <Button variant="ghost" onClick={() => loadMore('bollywood')}>
+            <div className="mt-3 flex justify-center">
+              <Button variant="ghost" className="text-xs h-8" onClick={() => loadMore('bollywood')}>
                 Load More
               </Button>
             </div>
@@ -642,14 +618,14 @@ const IndianMusicPlayer = () => {
       
       {/* Hollywood Songs */}
       {hollywoodSongs.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-6 px-1">
           <SectionHeader title="International Hits" />
-          <div className="space-y-1">
+          <div className="space-y-0.5 rounded-lg overflow-hidden bg-zinc-800/30">
             {hollywoodSongs.slice(0, visibleCounts.hollywood).map(song => renderSongRow(song))}
           </div>
           {hollywoodSongs.length > visibleCounts.hollywood && (
-            <div className="mt-4 flex justify-center">
-              <Button variant="ghost" onClick={() => loadMore('hollywood')}>
+            <div className="mt-3 flex justify-center">
+              <Button variant="ghost" className="text-xs h-8" onClick={() => loadMore('hollywood')}>
                 Load More
               </Button>
             </div>
