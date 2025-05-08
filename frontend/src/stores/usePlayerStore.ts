@@ -128,9 +128,20 @@ export const usePlayerStore = create<PlayerState>()(
       },
       
       playNext: () => {
-        const { queue, currentIndex, isShuffled } = get();
+        const { queue, currentIndex, isShuffled, isRepeating } = get();
         
         if (queue.length === 0) return;
+        
+        // First check if we should repeat the current song
+        if (isRepeating) {
+          // Just restart the current song
+          const audio = document.querySelector('audio');
+          if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+          }
+          return;
+        }
         
         const newIndex = isShuffled 
           ? getRandomIndex(currentIndex, queue.length)
@@ -143,12 +154,11 @@ export const usePlayerStore = create<PlayerState>()(
           timestamp: new Date().toISOString()
         };
         
-        // Update to new song
         set({
           currentIndex: newIndex,
           currentSong: queue[newIndex],
           hasUserInteracted: true,
-          isPlaying: true // Ensure playback continues
+          isPlaying: true // Always ensure playback continues
         });
         
         // Save to localStorage as a backup
@@ -166,22 +176,38 @@ export const usePlayerStore = create<PlayerState>()(
       },
       
       playPrevious: () => {
-        const { queue, currentIndex } = get();
+        const { queue, currentIndex, isRepeating } = get();
         
         if (queue.length === 0) return;
+        
+        // Check if current song has played less than 3 seconds
+        // If so, go to previous song, otherwise restart current song
+        const audio = document.querySelector('audio');
+        const currentTime = audio?.currentTime || 0;
+        
+        if (currentTime > 3 && !isRepeating) {
+          // If we're more than 3 seconds in, just restart the current song
+          if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+          }
+          return;
+        }
         
         const newIndex = (currentIndex - 1 + queue.length) % queue.length;
         
         set({
           currentIndex: newIndex,
           currentSong: queue[newIndex],
-          hasUserInteracted: true
+          hasUserInteracted: true,
+          isPlaying: true // Always ensure playback continues
         });
         
         // Save to localStorage as a backup
         try {
           const playerState = { 
             currentSong: queue[newIndex],
+            currentIndex: newIndex,
             timestamp: new Date().toISOString()
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
