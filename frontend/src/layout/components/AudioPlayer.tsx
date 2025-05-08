@@ -271,7 +271,7 @@ const AudioPlayer = () => {
   // Enhanced phone call and audio focus handling
   useEffect(() => {
     // Define handler for audio interruptions
-    const handleAudioInterruption = (): (() => void) => {
+    const handleAudioInterruption = () => {
       // Track if we were playing before interruption
       const wasPlaying = isPlaying;
       
@@ -385,7 +385,18 @@ const AudioPlayer = () => {
         });
       }
       
-      // Return cleanup function
+      // Better iOS focus handling
+      window.addEventListener("beforeunload", () => {
+        if (audioRef.current && isPlaying) {
+          localStorage.setItem('player_state', JSON.stringify({
+            songId: currentSong?._id,
+            position: audioRef.current.currentTime,
+            isPlaying: true,
+            timestamp: Date.now()
+          }));
+        }
+      });
+      
       return () => {
         if (audioRef.current) {
           audioRef.current.removeEventListener('pause', handleAudioPause);
@@ -804,87 +815,6 @@ const AudioPlayer = () => {
         // Firefox OS
         (audioRef.current as any).mozAudioChannelType = 'content';
       }
-
-      // Set up error handling
-      const handleError = (e: Event) => {
-        const audio = e.target as HTMLAudioElement;
-        
-        // Log error details for debugging
-        console.error('Audio error:', {
-          error: audio.error,
-          networkState: audio.networkState,
-          readyState: audio.readyState,
-          src: audio.src
-        });
-
-        // Handle different error types
-        if (audio.error) {
-          switch (audio.error.code) {
-            case MediaError.MEDIA_ERR_ABORTED:
-              // User aborted the audio
-              break;
-            case MediaError.MEDIA_ERR_NETWORK:
-              // Network error - try to recover
-              setTimeout(() => {
-                if (audioRef.current && isPlaying) {
-                  audioRef.current.load();
-                  audioRef.current.play().catch(() => {
-                    // If still fails, skip to next song
-                    playNext();
-                  });
-                }
-              }, 1000);
-              break;
-            case MediaError.MEDIA_ERR_DECODE:
-            case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-              // Unrecoverable error - skip to next song
-              playNext();
-              break;
-          }
-        }
-      };
-
-      // Set up stalled handling
-      const handleStalled = () => {
-        if (isPlaying && audioRef.current) {
-          // Try to recover from stalled state
-          setTimeout(() => {
-            if (audioRef.current && isPlaying) {
-              const currentTime = audioRef.current.currentTime;
-              audioRef.current.currentTime = currentTime;
-              audioRef.current.play().catch(() => {
-                // If still fails, skip to next song
-                playNext();
-              });
-            }
-          }, 2000);
-        }
-      };
-
-      // Set up waiting handling
-      const handleWaiting = () => {
-        setIsLoading(true);
-      };
-
-      const handlePlaying = () => {
-        setIsLoading(false);
-      };
-
-      // Add event listeners
-      audioRef.current.addEventListener('error', handleError);
-      audioRef.current.addEventListener('stalled', handleStalled);
-      audioRef.current.addEventListener('waiting', handleWaiting);
-      audioRef.current.addEventListener('playing', handlePlaying);
-
-      // Cleanup
-      return () => {
-        if (audioRef.current) {
-          audioRef.current.removeEventListener('error', handleError);
-          audioRef.current.removeEventListener('stalled', handleStalled);
-          audioRef.current.removeEventListener('waiting', handleWaiting);
-          audioRef.current.removeEventListener('playing', handlePlaying);
-        }
-      };
     }
   }, []);
 
@@ -1036,70 +966,56 @@ const AudioPlayer = () => {
   useEffect(() => {
     if (!audioRef.current || isLoading || isHandlingPlayback.current) return;
 
-    const handlePlayback = async () => {
-      try {
-        if (isPlaying) {
-          // Clear any existing timeout
-          if (playTimeoutRef.current) {
-            clearTimeout(playTimeoutRef.current);
-          }
+    if (isPlaying) {
+      // Use a flag to prevent concurrent play/pause operations
+      isHandlingPlayback.current = true;
 
-          // Use a flag to prevent concurrent play/pause operations
-          isHandlingPlayback.current = true;
-
-          // Small delay to ensure any previous pause operation is complete
-          playTimeoutRef.current = setTimeout(async () => {
-            if (!audioRef.current) return;
-
-            try {
-              // Ensure audio is loaded before playing
-              if (audioRef.current.readyState < 2) {
-                await new Promise((resolve) => {
-                  audioRef.current!.addEventListener('canplay', resolve, { once: true });
-                  audioRef.current!.load();
-                });
-              }
-
-              // Attempt to play
-              await audioRef.current.play();
-              
-              // Update MediaSession state
-              if (isMediaSessionSupported()) {
-                navigator.mediaSession.playbackState = 'playing';
-              }
-            } catch (error) {
-              // If play fails, try one more time after a short delay
-              setTimeout(async () => {
-                if (audioRef.current && isPlaying) {
-                  try {
-                    await audioRef.current.play();
-                  } catch (retryError) {
-                    setIsPlaying(false);
-                  }
-                }
-              }, 300);
-            } finally {
-              isHandlingPlayback.current = false;
-            }
-          }, 100);
-        } else {
-          // Handle pause
-          if (audioRef.current && !audioRef.current.paused) {
-            audioRef.current.pause();
-            
-            // Update MediaSession state
-            if (isMediaSessionSupported()) {
-              navigator.mediaSession.playbackState = 'paused';
-            }
-          }
-        }
-      } catch (error) {
-        // Silent error handling
-        isHandlingPlayback.current = false;
+      // Clear any existing timeout
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
       }
-    };
 
-    handlePlayback();
+      // Small delay to ensure any previous pause operation is complete
+      playTimeoutRef.current = setTimeout(() => {
+        const playPromise = audioRef.current?.play();
+        if (playPromise) {
+          playPromise
+            .then(() => {
+              isHandlingPlayback.current = false;
+            })
+            .catch(error => {
+              if (error.message.includes('interrupted')) {
+                // If the error was due to interruption, try again after a short delay
+                setTimeout(() => {
+                  audioRef.current?.play().catch(e => {
+                    setIsPlaying(false);
+                  });
+                }, 300);
+              } else {
+                setIsPlaying(false);
+              }
+              isHandlingPlayback.current = false;
+            });
+        } else {
+          isHandlingPlayback.current = false;
+        }
+      }, 250);
+    } else {
+      // Also handle pause with a flag to prevent conflicts
+      isHandlingPlayback.current = true;
+
+      // Clear any existing timeout
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
+
+      audioRef.current?.pause();
+
+      // Release the flag after a short delay
+      setTimeout(() => {
+        isHandlingPlayback.current = false;
+      }, 200);
+    }
   }, [isPlaying, isLoading, setIsPlaying]);
 
   // handle song changes
@@ -1112,7 +1028,9 @@ const AudioPlayer = () => {
     // Validate the URL
     if (!isValidUrl(songUrl)) {
       // Try to find audio for this song
-      const searchAndLoadSong = async () => {
+      
+      // Use setTimeout to avoid blocking the UI
+      setTimeout(async () => {
         try {
           // Search for the song using the music API
           const searchQuery = `${currentSong.title} ${currentSong.artist}`.trim();
@@ -1148,113 +1066,153 @@ const AudioPlayer = () => {
             // Update the player UI state
             setCurrentSong(updatedSong);
             
-            // Load and play the new audio
-            if (audioRef.current) {
-              audioRef.current.src = updatedSong.audioUrl;
-              audioRef.current.load();
-              
-              // Wait for the audio to be ready
-              await new Promise((resolve) => {
-                audioRef.current!.addEventListener('canplay', resolve, { once: true });
-              });
-              
-              // Play if we should be playing
+            // Give a small delay for the state to update
+            setTimeout(() => {
+              // Force a play attempt with the new URL
               if (isPlaying) {
-                await audioRef.current.play();
+                audioRef.current?.load();
+                audioRef.current?.play().catch(err => {
+                  // Error handling without toast
+                });
               }
-            }
+            }, 100); // Faster loading
           } else {
-            // No results found, skip to next song
-            playNext();
+            // No results found
+            // Skip to the next song after a short delay
+            setTimeout(() => {
+              playNext();
+            }, 500); // Faster skipping
           }
         } catch (error) {
-          // Error handling - skip to next song
-          playNext();
+          // Skip to the next song after a short delay
+          setTimeout(() => {
+            playNext();
+          }, 500); // Faster skipping
         }
-      };
-
-      searchAndLoadSong();
+      }, 50); // Faster processing
+      
       return;
     }
 
     // Check if this is actually a new song
     const isSongChange = prevSongRef.current !== songUrl;
     if (isSongChange) {
-      const loadNewSong = async () => {
-        try {
-          // Use a loading lock to prevent race conditions
-          const loadingLock = Date.now();
-          const currentLoadingOperation = loadingLock;
-          
-          // Store the current loading operation to check for conflicts
-          (audioRef.current as any)._currentLoadingOperation = loadingLock;
-          
-          // Indicate loading state
-          setIsLoading(true);
-          isHandlingPlayback.current = true;
+      try {
+        // Use a loading lock to prevent race conditions
+        const loadingLock = Date.now();
+        const currentLoadingOperation = loadingLock;
+        
+        // Store the current loading operation to check for conflicts
+        (audioRef.current as any)._currentLoadingOperation = loadingLock;
+        
+        // Indicate loading state to prevent play attempts during load
+        setIsLoading(true);
+        isHandlingPlayback.current = true;
 
-          // Clear any existing timeout
-          if (playTimeoutRef.current) {
-            clearTimeout(playTimeoutRef.current);
-          }
-
-          // Pause current playback before changing source
-          audio.pause();
-
-          // Set up event listeners for this specific load sequence
-          const handleCanPlay = () => {
-            // Check if this is still the current loading operation
-            if ((audioRef.current as any)._currentLoadingOperation !== currentLoadingOperation) {
-              return;
-            }
-            
-            // Update state
-            setIsLoading(false);
-            prevSongRef.current = songUrl;
-
-            if (isPlaying) {
-              // Play the audio
-              audioRef.current?.play().catch(error => {
-                // If play fails, try one more time
-                setTimeout(() => {
-                  if (audioRef.current && isPlaying) {
-                    audioRef.current.play().catch(() => {
-                      setIsPlaying(false);
-                    });
-                  }
-                }, 300);
-              });
-            }
-            
-            isHandlingPlayback.current = false;
-          };
-
-          // Listen for the canplay event
-          audio.addEventListener('canplay', handleCanPlay, { once: true });
-
-          // Set the new source and load
-          audio.src = songUrl;
-          audio.load();
-          
-          // Preload the next song
-          const nextIndex = (usePlayerStore.getState().currentIndex + 1) % usePlayerStore.getState().queue.length;
-          const nextSong = usePlayerStore.getState().queue[nextIndex];
-          if (nextSong && nextSong.audioUrl) {
-            const preloadAudio = new Audio();
-            preloadAudio.src = nextSong.audioUrl;
-            preloadAudio.load();
-            setTimeout(() => {
-              preloadAudio.src = '';
-            }, 2000);
-          }
-        } catch (error) {
-          setIsLoading(false);
-          isHandlingPlayback.current = false;
-          playNext(); // Skip to next song on error
+        // Clear any existing timeout
+        if (playTimeoutRef.current) {
+          clearTimeout(playTimeoutRef.current);
         }
-      };
 
-      loadNewSong();
+        // Pause current playback before changing source to prevent conflicts
+        audio.pause();
+
+        // Set up event listeners for this specific load sequence
+        const handleCanPlay = () => {
+          // Check if this is still the current loading operation
+          if ((audioRef.current as any)._currentLoadingOperation !== currentLoadingOperation) {
+            return;
+          }
+          
+          // Update state
+          setIsLoading(false);
+          prevSongRef.current = songUrl;
+
+          if (isPlaying) {
+            // Wait a bit before playing to avoid interruption errors
+            const playDelayMs = 150; // Reduced delay for faster transitions
+            
+            playTimeoutRef.current = setTimeout(() => {
+              if (!audioRef.current) return;
+              
+              // Check again if loading operation is still current
+              if ((audioRef.current as any)._currentLoadingOperation !== currentLoadingOperation) {
+                return;
+              }
+              
+              const playPromise = audioRef.current.play();
+              
+              if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  isHandlingPlayback.current = false;
+                    
+                    // Set up position state for lock screen again
+                    if ('setPositionState' in navigator.mediaSession) {
+                      try {
+                        navigator.mediaSession.setPositionState({
+                          duration: audioRef.current?.duration || 0,
+                          playbackRate: audioRef.current?.playbackRate || 1,
+                          position: audioRef.current?.currentTime || 0
+                        });
+                      } catch (e) {
+                        // Ignore any errors with position state
+                      }
+                    }
+                })
+                .catch(error => {
+                    // Handle AbortError specifically
+                    if (error.name === 'AbortError') {
+                      // Wait for any pending operations to complete
+                      setTimeout(() => {
+                        // Only attempt retry if we're still supposed to be playing
+                        if (isPlaying && audioRef.current) {
+                          audioRef.current.play().catch(retryError => {
+                  setIsPlaying(false);
+                          });
+                        }
+                      }, 250); // Faster retry
+                    } else {
+                      setIsPlaying(false);
+                    }
+                    
+                  isHandlingPlayback.current = false;
+                });
+              } else {
+                isHandlingPlayback.current = false;
+              }
+            }, playDelayMs);
+          } else {
+            isHandlingPlayback.current = false;
+          }
+
+          // Remove the one-time listener
+          audio.removeEventListener('canplay', handleCanPlay);
+        };
+
+        // Listen for the canplay event which indicates the audio is ready
+        audio.addEventListener('canplay', handleCanPlay);
+
+        // Set the new source
+        audio.src = songUrl;
+        audio.load(); // Explicitly call load to begin fetching the new audio
+        
+        // Preload the next song if available
+        const nextIndex = (usePlayerStore.getState().currentIndex + 1) % usePlayerStore.getState().queue.length;
+        const nextSong = usePlayerStore.getState().queue[nextIndex];
+        if (nextSong && nextSong.audioUrl) {
+          const preloadAudio = new Audio();
+          preloadAudio.src = nextSong.audioUrl;
+          preloadAudio.load();
+          // Discard after preloading starts
+          setTimeout(() => {
+            preloadAudio.src = '';
+          }, 2000);
+        }
+      } catch (error) {
+        setIsLoading(false);
+        isHandlingPlayback.current = false;
+      }
     }
   }, [currentSong, isPlaying, setIsPlaying, playNext, setCurrentSong]);
 
