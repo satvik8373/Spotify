@@ -86,18 +86,18 @@ const AudioPlayer = () => {
     // Update metadata for lock screen
     const updateMetadata = () => {
       try {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: currentSong.title || 'Unknown Title',
-          artist: currentSong.artist || 'Unknown Artist',
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentSong.title || 'Unknown Title',
+      artist: currentSong.artist || 'Unknown Artist',
           album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
-          artwork: [
-            {
-              src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-              sizes: '512x512',
-              type: 'image/jpeg'
-            }
-          ]
-        });
+      artwork: [
+        {
+          src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+          sizes: '512x512',
+          type: 'image/jpeg'
+        }
+      ]
+    });
       } catch (e) {
         // Ignore metadata errors
       }
@@ -106,23 +106,23 @@ const AudioPlayer = () => {
     // Set up media session action handlers
     const setupMediaSession = () => {
       // Play/pause handler
-      navigator.mediaSession.setActionHandler('play', () => {
+    navigator.mediaSession.setActionHandler('play', () => {
         usePlayerStore.getState().setUserInteracted();
         usePlayerStore.getState().setIsPlaying(true);
         if (audioRef.current) {
           audioRef.current.play().catch(() => {});
         }
-      });
+    });
 
-      navigator.mediaSession.setActionHandler('pause', () => {
+    navigator.mediaSession.setActionHandler('pause', () => {
         usePlayerStore.getState().setIsPlaying(false);
         if (audioRef.current) {
           audioRef.current.pause();
         }
-      });
+    });
 
       // Previous/next handlers
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
         usePlayerStore.getState().setUserInteracted();
         const state = usePlayerStore.getState();
         if (state.playPrevious) {
@@ -133,9 +133,9 @@ const AudioPlayer = () => {
             }
           }, 100);
         }
-      });
+    });
 
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
         usePlayerStore.getState().setUserInteracted();
         const state = usePlayerStore.getState();
         if (state.playNext) {
@@ -149,10 +149,10 @@ const AudioPlayer = () => {
       });
 
       // Seeking handler
-      try {
-        navigator.mediaSession.setActionHandler('seekto', (details) => {
-          if (audioRef.current && details.seekTime !== undefined) {
-            audioRef.current.currentTime = details.seekTime;
+    try {
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (audioRef.current && details.seekTime !== undefined) {
+          audioRef.current.currentTime = details.seekTime;
             usePlayerStore.getState().setCurrentTime(details.seekTime);
             
             // Update position state
@@ -166,9 +166,9 @@ const AudioPlayer = () => {
               } catch (e) {
                 // Ignore position state errors
               }
-            }
           }
-        });
+        }
+      });
       } catch (e) {
         // Ignore seeking errors
       }
@@ -180,13 +180,13 @@ const AudioPlayer = () => {
 
     // Update position state periodically
     const positionUpdateInterval = setInterval(() => {
-      if (audioRef.current && !isNaN(audioRef.current.duration)) {
+          if (audioRef.current && !isNaN(audioRef.current.duration)) {
         try {
-          navigator.mediaSession.setPositionState({
-            duration: audioRef.current.duration,
-            playbackRate: audioRef.current.playbackRate,
-            position: audioRef.current.currentTime
-          });
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration,
+              playbackRate: audioRef.current.playbackRate,
+              position: audioRef.current.currentTime
+            });
         } catch (e) {
           // Ignore position state errors
         }
@@ -284,8 +284,8 @@ const AudioPlayer = () => {
           }
         }
       }, 2000);
-      
-      return () => {
+        
+        return () => {
         audio.removeEventListener('ended', handleEnded);
         audio.removeEventListener('timeupdate', handleTimeUpdate);
         clearInterval(backgroundCheckInterval);
@@ -434,7 +434,7 @@ const AudioPlayer = () => {
                   type: 'KEEP_ALIVE',
                   timestamp: Date.now()
                 });
-              } catch (error) {
+    } catch (error) {
                 // Ignore errors, this is just a best-effort ping
               }
             }
@@ -838,18 +838,19 @@ const AudioPlayer = () => {
         clearTimeout(playTimeoutRef.current);
       }
 
-      // Store current time before playing
-      const currentTime = audioRef.current.currentTime;
-
       // Small delay to ensure any previous pause operation is complete
       playTimeoutRef.current = setTimeout(() => {
-        // Restore the position before playing
-        audioRef.current!.currentTime = currentTime;
+        // Store current position before playing
+        const currentPosition = audioRef.current?.currentTime || 0;
         
         const playPromise = audioRef.current?.play();
         if (playPromise) {
           playPromise
             .then(() => {
+              // Restore position after play starts
+              if (audioRef.current && currentPosition > 0) {
+                audioRef.current.currentTime = currentPosition;
+              }
               isHandlingPlayback.current = false;
             })
             .catch(error => {
@@ -857,7 +858,7 @@ const AudioPlayer = () => {
                 // If the error was due to interruption, try again after a short delay
                 setTimeout(() => {
                   if (audioRef.current) {
-                    audioRef.current.currentTime = currentTime;
+                    audioRef.current.currentTime = currentPosition;
                     audioRef.current.play().catch(e => {
                       setIsPlaying(false);
                     });
@@ -881,55 +882,20 @@ const AudioPlayer = () => {
         clearTimeout(playTimeoutRef.current);
       }
 
-      // Store current time before pausing
-      const currentTime = audioRef.current.currentTime;
+      // Store current position before pausing
+      const currentPosition = audioRef.current?.currentTime || 0;
       audioRef.current?.pause();
 
-      // Ensure the time is preserved after pause
+      // Release the flag after a short delay
       setTimeout(() => {
-        if (audioRef.current) {
-          audioRef.current.currentTime = currentTime;
+        // Restore position after pause
+        if (audioRef.current && currentPosition > 0) {
+          audioRef.current.currentTime = currentPosition;
         }
         isHandlingPlayback.current = false;
       }, 200);
     }
   }, [isPlaying, isLoading, setIsPlaying]);
-
-  // Add position persistence
-  useEffect(() => {
-    if (!audioRef.current || !currentSong) return;
-
-    // Save position when pausing
-    const handlePause = () => {
-      if (audioRef.current) {
-        const currentTime = audioRef.current.currentTime;
-        localStorage.setItem(`song_position_${currentSong._id}`, currentTime.toString());
-      }
-    };
-
-    // Restore position when playing
-    const handlePlay = () => {
-      if (audioRef.current) {
-        const savedPosition = localStorage.getItem(`song_position_${currentSong._id}`);
-        if (savedPosition) {
-          const position = parseFloat(savedPosition);
-          if (!isNaN(position) && position < audioRef.current.duration) {
-            audioRef.current.currentTime = position;
-          }
-        }
-      }
-    };
-
-    audioRef.current.addEventListener('pause', handlePause);
-    audioRef.current.addEventListener('play', handlePlay);
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.removeEventListener('pause', handlePause);
-        audioRef.current.removeEventListener('play', handlePlay);
-      }
-    };
-  }, [currentSong]);
 
   // Handle song changes and playlist transitions
   useEffect(() => {
@@ -955,15 +921,15 @@ const AudioPlayer = () => {
         return;
       }
 
-      setIsLoading(false);
+          setIsLoading(false);
       isHandlingPlayback.current = false;
 
       // If we should be playing, start playback
-      if (isPlaying) {
-        const playPromise = audio.play();
+          if (isPlaying) {
+              const playPromise = audio.play();
         if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
+              playPromise
+                .then(() => {
               // Update MediaSession position state
               if ('setPositionState' in navigator.mediaSession) {
                 try {
@@ -976,18 +942,18 @@ const AudioPlayer = () => {
                   // Ignore position state errors
                 }
               }
-            })
-            .catch(error => {
+                })
+                .catch(error => {
               if (error.name === 'AbortError') {
                 // Retry play after a short delay
                 setTimeout(() => {
                   if (isPlaying && audio) {
                     audio.play().catch(() => {
-                      setIsPlaying(false);
-                    });
+                  setIsPlaying(false);
+                });
                   }
                 }, 250);
-              } else {
+          } else {
                 setIsPlaying(false);
               }
             });
@@ -1011,11 +977,11 @@ const AudioPlayer = () => {
     };
 
     // Add event listeners
-    audio.addEventListener('canplay', handleCanPlay);
+        audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('error', handleError);
 
     // Set the new source and start loading
-    audio.src = songUrl;
+        audio.src = songUrl;
     audio.load();
 
     // Preload next song if available
