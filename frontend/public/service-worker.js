@@ -1,5 +1,5 @@
 // Service Worker for Spotify x Mavrix
-const CACHE_VERSION = '1.2.3'; // Increment this version whenever you make changes
+const CACHE_VERSION = '1.2.4'; // Increment this version whenever you make changes
 const CACHE_NAME = `spotify-mavrix-v${CACHE_VERSION}`;
 const APP_SHELL_CACHE = 'app-shell-v' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'dynamic-v' + CACHE_VERSION;
@@ -91,11 +91,54 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Handle app installed event
+self.addEventListener('appinstalled', (event) => {
+  logDebug('[Service Worker] App was installed');
+  // Notify clients that the app was installed
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'APP_INSTALLED'
+      });
+    });
+  });
+  
+  // Store installation info in cache for persistence
+  caches.open('pwa-state-cache').then(cache => {
+    cache.put('installation-status', new Response(JSON.stringify({
+      installed: true,
+      installTime: Date.now()
+    })));
+  });
+});
+
 // Periodic update check
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'CHECK_UPDATE') {
     // Removed console log to prevent spam
     checkForUpdates();
+  }
+  
+  // Check for PWA installation status request
+  if (event.data && event.data.type === 'GET_INSTALLATION_STATUS') {
+    caches.open('pwa-state-cache').then(cache => {
+      cache.match('installation-status').then(response => {
+        if (response) {
+          response.json().then(data => {
+            event.ports[0].postMessage({
+              type: 'INSTALLATION_STATUS',
+              installed: data.installed,
+              installTime: data.installTime
+            });
+          });
+        } else {
+          event.ports[0].postMessage({
+            type: 'INSTALLATION_STATUS',
+            installed: false
+          });
+        }
+      });
+    });
   }
 });
 

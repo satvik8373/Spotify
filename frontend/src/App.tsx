@@ -17,6 +17,7 @@ import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import Welcome from './pages/Welcome';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
 
 // Simple fallback pages for routes with import issues
@@ -217,6 +218,7 @@ function AppContent() {
 			/>
 			<Toaster />
 			<PWAInstallPrompt />
+			<AndroidPWAHelper />
 		</>
 	);
 }

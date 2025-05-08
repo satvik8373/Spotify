@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, Download, Share2, Plus } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -23,18 +23,27 @@ const PWAInstallPrompt = () => {
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
+  const [isAndroidDevice, setIsAndroidDevice] = useState(false);
+  const [isInstalledPWA, setIsInstalledPWA] = useState(false);
   const [appVersion, setAppVersion] = useState<string | null>(null);
+  const [showHomeScreenTip, setShowHomeScreenTip] = useState(false);
 
   useEffect(() => {
-    // Check if iOS device - using proper TypeScript approach
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
-                  !window.MSStream; // Use global window definition
+    // Improved device detection
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIOS = /ipad|iphone|ipod/.test(userAgent) && !window.MSStream;
+    const isAndroid = /android/.test(userAgent);
     
     const nav = window.navigator as CustomNavigator;
     const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
                               (nav.standalone === true);
     
+    // Check if using installed PWA
+    setIsInstalledPWA(isInStandaloneMode);
     setIsIOSDevice(isIOS && !isInStandaloneMode);
+    
+    // We handle Android in AndroidPWAHelper, so only set to true for non-Android devices
+    setIsAndroidDevice(false);
     
     // Logic for handling install prompt for non-iOS devices
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -42,8 +51,12 @@ const PWAInstallPrompt = () => {
       e.preventDefault();
       // Store the event so it can be triggered later
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      // Check if we should show the install prompt
-      checkAndShowPrompt(e as BeforeInstallPromptEvent);
+      
+      // Only check and show prompt for non-Android devices
+      // Android devices will use AndroidPWAHelper
+      if (!isAndroid) {
+        checkAndShowPrompt(e as BeforeInstallPromptEvent);
+      }
     };
     
     const checkAndShowPrompt = (promptEvent: BeforeInstallPromptEvent) => {
@@ -60,8 +73,17 @@ const PWAInstallPrompt = () => {
       }
     };
     
-    // Add event listener
+    // Add event listener for install prompt
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    // Listen for app installed event
+    window.addEventListener('appinstalled', (event) => {
+      // Clear the deferredPrompt as it can't be used again
+      setDeferredPrompt(null);
+      setShowPrompt(false);
+      
+      // Home screen tip is now handled by AndroidPWAHelper
+    });
     
     // Listen for update messages from service worker
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -88,10 +110,13 @@ const PWAInstallPrompt = () => {
       }
     }
     
+    // Android install logic is now in AndroidPWAHelper
+    
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', () => {});
     };
-  }, []);
+  }, [deferredPrompt]);
   
   const installPWA = async () => {
     if (!deferredPrompt && !isIOSDevice) return;
@@ -104,13 +129,10 @@ const PWAInstallPrompt = () => {
       const choiceResult = await deferredPrompt.userChoice;
       
       if (choiceResult.outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
+        // User accepted the install prompt
+        // Clear the saved prompt since it can't be used again
+        setDeferredPrompt(null);
       }
-      
-      // Clear the saved prompt since it can't be used again
-      setDeferredPrompt(null);
     }
     
     // Hide the prompt regardless of outcome
@@ -121,6 +143,12 @@ const PWAInstallPrompt = () => {
     setShowPrompt(false);
     // Save dismissal time to not show again for 7 days
     localStorage.setItem('pwa-prompt-dismissed', new Date().getTime().toString());
+  };
+
+  const dismissHomeScreenTip = () => {
+    setShowHomeScreenTip(false);
+    // Save dismissal time to not show again for 7 days
+    localStorage.setItem('android-homescreen-tip-dismissed', new Date().getTime().toString());
   };
 
   const updateApp = () => {
@@ -147,7 +175,9 @@ const PWAInstallPrompt = () => {
     setShowUpdatePrompt(false);
   };
   
-  if (!showPrompt && !showUpdatePrompt) return null;
+  if (!showPrompt && !showUpdatePrompt && !showHomeScreenTip) return null;
+  
+  // Home screen tip is now handled by AndroidPWAHelper
   
   // Show update notification if available
   if (showUpdatePrompt) {
@@ -192,12 +222,22 @@ const PWAInstallPrompt = () => {
         </p>
       </div>
       <div className="flex items-center gap-2">
-        {!isIOSDevice && (
+        {!isIOSDevice && deferredPrompt && (
           <button 
             onClick={installPWA} 
-            className="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded-full"
+            className="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded-full flex items-center gap-1"
           >
-            Install
+            <Download size={14} className="mr-1" />
+            <span>Install</span>
+          </button>
+        )}
+        {isIOSDevice && (
+          <button 
+            className="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded-full flex items-center gap-1"
+            onClick={() => dismissPrompt()} // Just dismiss since iOS needs manual steps
+          >
+            <Share2 size={14} className="mr-1" />
+            <span>Got it</span>
           </button>
         )}
         <button 
