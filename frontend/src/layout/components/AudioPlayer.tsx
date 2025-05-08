@@ -838,8 +838,14 @@ const AudioPlayer = () => {
         clearTimeout(playTimeoutRef.current);
       }
 
+      // Store current time before playing
+      const currentTime = audioRef.current.currentTime;
+
       // Small delay to ensure any previous pause operation is complete
       playTimeoutRef.current = setTimeout(() => {
+        // Restore the position before playing
+        audioRef.current!.currentTime = currentTime;
+        
         const playPromise = audioRef.current?.play();
         if (playPromise) {
           playPromise
@@ -850,9 +856,12 @@ const AudioPlayer = () => {
               if (error.message.includes('interrupted')) {
                 // If the error was due to interruption, try again after a short delay
                 setTimeout(() => {
-                  audioRef.current?.play().catch(e => {
-                    setIsPlaying(false);
-                  });
+                  if (audioRef.current) {
+                    audioRef.current.currentTime = currentTime;
+                    audioRef.current.play().catch(e => {
+                      setIsPlaying(false);
+                    });
+                  }
                 }, 300);
               } else {
                 setIsPlaying(false);
@@ -872,14 +881,55 @@ const AudioPlayer = () => {
         clearTimeout(playTimeoutRef.current);
       }
 
+      // Store current time before pausing
+      const currentTime = audioRef.current.currentTime;
       audioRef.current?.pause();
 
-      // Release the flag after a short delay
+      // Ensure the time is preserved after pause
       setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.currentTime = currentTime;
+        }
         isHandlingPlayback.current = false;
       }, 200);
     }
   }, [isPlaying, isLoading, setIsPlaying]);
+
+  // Add position persistence
+  useEffect(() => {
+    if (!audioRef.current || !currentSong) return;
+
+    // Save position when pausing
+    const handlePause = () => {
+      if (audioRef.current) {
+        const currentTime = audioRef.current.currentTime;
+        localStorage.setItem(`song_position_${currentSong._id}`, currentTime.toString());
+      }
+    };
+
+    // Restore position when playing
+    const handlePlay = () => {
+      if (audioRef.current) {
+        const savedPosition = localStorage.getItem(`song_position_${currentSong._id}`);
+        if (savedPosition) {
+          const position = parseFloat(savedPosition);
+          if (!isNaN(position) && position < audioRef.current.duration) {
+            audioRef.current.currentTime = position;
+          }
+        }
+      }
+    };
+
+    audioRef.current.addEventListener('pause', handlePause);
+    audioRef.current.addEventListener('play', handlePlay);
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('pause', handlePause);
+        audioRef.current.removeEventListener('play', handlePlay);
+      }
+    };
+  }, [currentSong]);
 
   // Handle song changes and playlist transitions
   useEffect(() => {
