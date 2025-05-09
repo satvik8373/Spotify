@@ -75,6 +75,8 @@ const netflixRowStyles = `
 		position: relative;
 		padding: 12px 0;
 		scroll-behavior: smooth;
+		width: 100%;
+		overflow-x: hidden;
 	}
 	
 	.netflix-row:hover .handle {
@@ -91,7 +93,9 @@ const netflixRowStyles = `
 		scrollbar-width: none;
 		padding: 10px 0;
 		padding-left: 16px;
-		padding-right: 16px;
+		padding-right: 20px;
+		margin-right: 4px;
+		width: calc(100% + 4px);
 	}
 	
 	.netflix-slider::-webkit-scrollbar {
@@ -507,7 +511,7 @@ const HomePage = () => {
   return (
     <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-zinc-900 to-black">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
-        <div className="pt-1 pb-6">
+        <div className="pt-1 pb-6 max-w-full overflow-x-hidden">
           {/* Recently played section */}
           <div className="px-2 sm:px-4">
             {/* Top Picks Section - Enhanced Design */}

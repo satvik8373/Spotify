@@ -70,9 +70,11 @@
 	}
 	html, body, #root {
 		@apply h-full overflow-hidden m-0 p-0;
+		max-width: 100%;
 	}
 	body {
 		@apply bg-background text-foreground;
+		overflow-x: hidden;
 	}
 
 	/* Spotify-like main content area padding for mobile */
@@ -173,6 +175,11 @@
 		height: 36px;
 		width: 36px;
 	}
+
+	/* Fix content overflow on mobile */
+	main, div {
+		max-width: 100vw;
+	}
 }
 
 /* Utility classes */
@@ -199,36 +206,13 @@ img.object-cover.bg-zinc-800 {
 	transform: scale(0.9);
 }
 
-/* Keyboard shortcut tooltips */
-.keyboard-shortcut {
-	position: relative;
-}
-.keyboard-shortcut::after {
-	content: attr(data-shortcut);
-	position: absolute;
-	bottom: 100%;
-	left: 50%;
-	transform: translateX(-50%);
-	padding: 4px 8px;
-	background-color: rgba(0, 0, 0, 0.8);
-	color: white;
-	border-radius: 4px;
-	font-size: 12px;
-	white-space: nowrap;
-	opacity: 0;
-	visibility: hidden;
-	transition: opacity 0.2s ease, visibility 0.2s ease;
-	pointer-events: none;
-	z-index: 100;
-}
-.keyboard-shortcut:hover::after {
-	opacity: 1;
-	visibility: visible;
-}
-
-/* Netflix slider tweaks */
+/* Netflix slider padding fix */
 .netflix-slider {
 	padding-left: 8px !important;
+	padding-right: 16px !important;
+	margin-right: 4px;
+	width: calc(100% - 4px);
+	overflow-x: scroll;
 }
 
 /* Mobile nav and player layout fixes */
