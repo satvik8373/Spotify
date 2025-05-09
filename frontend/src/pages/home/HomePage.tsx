@@ -95,7 +95,8 @@ const netflixRowStyles = `
 		padding-left: 16px;
 		padding-right: 20px;
 		margin-right: 4px;
-		width: calc(100% + 4px);
+		width: calc(100% - 4px);
+		max-width: 100vw;
 	}
 	
 	.netflix-slider::-webkit-scrollbar {
@@ -103,23 +104,26 @@ const netflixRowStyles = `
 	}
 	
 	.netflix-card {
-		flex: 0 0 calc(50% - 16px); /* Show 2 cards on mobile */
+		flex: 0 0 calc(45% - 16px); /* Show 2 cards on mobile */
 		scroll-snap-align: start;
 		position: relative;
 		transition: all 0.3s ease;
 		transform-origin: center left;
 		z-index: 1;
+		max-width: 180px;
 	}
 	
 	@media (min-width: 640px) {
 		.netflix-card {
 			flex: 0 0 calc(33.333% - 16px); /* Show 3 cards on tablet */
+			max-width: 200px;
 		}
 	}
 	
 	@media (min-width: 1024px) {
 		.netflix-card {
 			flex: 0 0 220px; /* Fixed width on desktop */
+			max-width: 220px;
 		}
 		
 		.netflix-card:hover {
@@ -646,7 +650,7 @@ const HomePage = () => {
                 </div>
                 <div className="netflix-row relative" id="top10-row">
                   <button 
-                    className="handle handle-left absolute left-0 top-1/2 -translate-y-1/2 z-10 h-full px-1 opacity-0 hover:opacity-100 transition-opacity"
+                    className="handle handle-left absolute left-0 top-1/2 -translate-y-1/2 z-10 h-full px-1 opacity-0 hover:opacity-100 transition-opacity hidden sm:flex"
                     onClick={() => {
                       const slider = document.querySelector('#top10-row .netflix-slider');
                       if (slider) {
@@ -659,7 +663,7 @@ const HomePage = () => {
                     </div>
                   </button>
                   
-                  <div className="netflix-slider">
+                  <div className="netflix-slider" id="netflix-slider">
                     {topPlaylists
                       .filter(playlist => playlist.isPublic !== false)
                       .slice(0, 10)
@@ -670,13 +674,16 @@ const HomePage = () => {
                           onClick={() => handlePlaylistClick(playlist)}
                         >
                           <div className="netflix-rank">{index + 1}</div>
-                          <div className="relative rounded-md overflow-hidden aspect-square shadow-lg">
+                          <div className="relative rounded-md overflow-hidden aspect-square shadow-lg w-full h-auto">
                             {playlist.imageUrl ? (
                               <img
                                 src={playlist.imageUrl}
                                 alt={playlist.name}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
+                                }}
                               />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
@@ -737,7 +744,7 @@ const HomePage = () => {
                   </div>
                   
                   <button 
-                    className="handle handle-right absolute right-0 top-1/2 -translate-y-1/2 z-10 h-full px-1 opacity-0 hover:opacity-100 transition-opacity"
+                    className="handle handle-right absolute right-0 top-1/2 -translate-y-1/2 z-10 h-full px-1 opacity-0 hover:opacity-100 transition-opacity hidden sm:flex"
                     onClick={() => {
                       const slider = document.querySelector('#top10-row .netflix-slider');
                       if (slider) {

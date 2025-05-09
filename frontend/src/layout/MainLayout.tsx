@@ -23,6 +23,23 @@ const MainLayout = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Set viewport width variable for proper mobile rendering
+  useEffect(() => {
+    const setVw = () => {
+      // Store viewport width as CSS variable
+      document.documentElement.style.setProperty('--vw', `${window.innerWidth * 0.01}px`);
+    };
+    
+    setVw();
+    window.addEventListener('resize', setVw);
+    window.addEventListener('orientationchange', setVw);
+    
+    return () => {
+      window.removeEventListener('resize', setVw);
+      window.removeEventListener('orientationchange', setVw);
+    };
+  }, []);
+
   return (
     <div className="h-screen bg-black text-white flex flex-col overflow-hidden max-w-full">
       {/* Header with login - hidden on mobile */}
@@ -61,7 +78,7 @@ const MainLayout = () => {
 
         {/* Main content - full width on mobile */}
         <ResizablePanel defaultSize={isMobile ? 100 : 80} className="overflow-hidden flex flex-col max-w-full">
-          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-black">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-black mobile-scroll-fix">
             <Outlet />
           </div>
         </ResizablePanel>
