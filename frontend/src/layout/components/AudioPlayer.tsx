@@ -68,26 +68,38 @@ const AudioPlayer = () => {
 
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
 
+  // Function to handle like/unlike of current song
+  const handleToggleLike = () => {
+    if (currentSong) {
+      // Create a Song object for toggleLikeSong
+      const songForLike = {
+        _id: currentSong._id,
+        title: currentSong.title,
+        artist: currentSong.artist,
+        albumId: currentSong.albumId,
+        imageUrl: currentSong.imageUrl,
+        audioUrl: currentSong.audioUrl,
+        duration: currentSong.duration || 0,
+        createdAt: currentSong.createdAt,
+        updatedAt: currentSong.updatedAt
+      };
+      toggleLikeSong(songForLike);
+      setIsLiked(!isLiked);
+    }
+  };
+  
+  // Check if current song is liked
+  useEffect(() => {
+    if (currentSong && likedSongIds) {
+      setIsLiked(likedSongIds.has(currentSong._id));
+    }
+  }, [currentSong, likedSongIds]);
+
   // These may not exist in the store based on linter errors
   const playerStore = usePlayerStore();
   const setCurrentTime = playerStore.setCurrentTime;
   const setDuration = playerStore.setDuration;
   const playPrevious = playerStore.playPrevious;
-
-  // Check if current song is liked when song changes
-  useEffect(() => {
-    if (currentSong) {
-      setIsLiked(likedSongIds.has(currentSong._id));
-    }
-  }, [currentSong, likedSongIds]);
-  
-  // Function to toggle like status
-  const handleToggleLike = () => {
-    if (currentSong) {
-      toggleLikeSong(currentSong);
-      setIsLiked(!isLiked);
-    }
-  };
 
   // Clean up on unmount
   useEffect(() => {

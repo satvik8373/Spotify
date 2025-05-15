@@ -1058,11 +1058,19 @@ export function PlaylistPage() {
                           <div className="w-3 h-3 bg-green-500 rounded-sm animate-pulse"></div>
                         </div>
                       ) : (
-                        <div className="w-8 h-8 flex items-center justify-center text-zinc-400">
-                          {index + 1}
-                        </div>
-                      )}
-                    </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white hover:bg-white/10 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlaySong(song, index);
+                          }}
+                        >
+                          <Play className={cn("h-4 w-4 ml-0.5", isCurrentSong && "text-green-500")} />
+                        </Button>
+                    )}
+                  </div>
                     
                     {/* Song info with image */}
                     <div className="flex items-center gap-3 min-w-0">
