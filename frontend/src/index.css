@@ -29,15 +29,6 @@
 		--chart-3: 197 37% 24%;
 		--chart-4: 43 74% 66%;
 		--chart-5: 27 87% 67%;
-		
-		/* Spotify-specific variables */
-		--spotify-accent: rgb(16, 185, 129);
-		--spotify-gradient-height: 240px;
-		--spotify-gradient-opacity: 1;
-		--spotify-bg: #121212;
-		--spotify-card-bg: #181818;
-		--spotify-card-hover: #282828;
-		
 		/* Prevent font size adjustments on orientation changes in iOS */
 		-webkit-text-size-adjust: 100%;
 		/* Improve font rendering */
@@ -84,38 +75,12 @@
 	body {
 		@apply bg-background text-foreground;
 		overflow-x: hidden;
-		background-color: var(--spotify-bg);
 	}
 
 	/* Spotify-like main content area padding for mobile */
 	.overflow-auto.p-6 {
 		padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
 	}
-}
-
-/* Spotify-like gradient styles */
-.spotify-gradient {
-	background: linear-gradient(to bottom, var(--spotify-accent), var(--spotify-bg));
-	height: var(--spotify-gradient-height);
-	opacity: var(--spotify-gradient-opacity);
-	transition: opacity 0.3s ease;
-}
-
-@media (max-width: 768px) {
-	.spotify-gradient {
-		--spotify-gradient-height: 180px;
-	}
-}
-
-/* Spotify-like card styles */
-.spotify-card {
-	background-color: var(--spotify-card-bg);
-	transition: background-color 0.3s ease;
-	border-radius: 6px;
-}
-
-.spotify-card:hover {
-	background-color: var(--spotify-card-hover);
 }
 
 /* Error page styling */
@@ -568,5 +533,45 @@ button, .button, a.button {
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+}
+
+/* Spotify-like gradients for different playlists */
+.spotify-liked-gradient {
+  background: linear-gradient(180deg, rgb(32, 65, 207) 0%, rgb(13, 23, 125) 40%, rgb(6, 16, 42) 70%, rgb(0, 0, 0) 100%);
+}
+
+.spotify-playlist-header {
+  position: relative;
+  padding-top: 65px;
+  padding-bottom: 24px;
+}
+
+.spotify-playlist-header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%);
+  pointer-events: none;
+}
+
+/* Enhance mobile experience for Spotify-like pages */
+@media (max-width: 640px) {
+  .spotify-playlist-header {
+    padding-top: 85px;
+  }
+  
+  .spotify-liked-song-row {
+    padding: 10px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+  }
+  
+  .spotify-liked-song-row:active {
+    background-color: rgba(255, 255, 255, 0.1);
   }
 }
