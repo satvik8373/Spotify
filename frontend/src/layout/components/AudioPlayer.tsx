@@ -66,8 +66,6 @@ const AudioPlayer = () => {
     toggleShuffle
   } = usePlayerStore();
 
-  const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
-
   // These may not exist in the store based on linter errors
   const playerStore = usePlayerStore();
   const setCurrentTime = playerStore.setCurrentTime;
