@@ -8,50 +8,73 @@ import MobileNav from './components/MobileNav';
 import Header from '@/components/Header';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 
+// Define Spotify-like color palette for different content sections
+const GRADIENT_COLORS = {
+  home: 'from-emerald-800 via-emerald-900',
+  search: 'from-purple-800 via-purple-900',
+  library: 'from-blue-800 via-blue-900',
+  playlist: 'from-indigo-800 via-indigo-900',
+  album: 'from-pink-800 via-pink-900',
+  artist: 'from-orange-800 via-orange-900',
+  liked: 'from-rose-800 via-rose-900',
+};
+
 const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(false);
   const { currentSong } = usePlayerStore();
   const hasActiveSong = !!currentSong;
-  const location = useLocation();
+  const [gradientClass, setGradientClass] = useState(GRADIENT_COLORS.home);
+  const [scrollPosition, setScrollPosition] = useState(0);
   const mainContentRef = useRef<HTMLDivElement>(null);
-  const [gradientColors, setGradientColors] = useState({
-    primary: 'rgb(18, 18, 18)',
-    secondary: 'rgb(40, 40, 40)',
-    accent: 'rgb(29, 185, 84)'
-  });
+  const location = useLocation();
 
-  // Update gradient colors based on route or song
+  // Determine gradient color based on current path
   useEffect(() => {
-    // A set of nice Spotify-like gradient pairs
-    const gradientPairs = [
-      { primary: 'rgb(83, 83, 198)', secondary: 'rgb(13, 13, 31)', accent: 'rgb(29, 185, 84)' },
-      { primary: 'rgb(132, 87, 255)', secondary: 'rgb(9, 9, 22)', accent: 'rgb(30, 215, 96)' },
-      { primary: 'rgb(80, 56, 160)', secondary: 'rgb(12, 9, 56)', accent: 'rgb(29, 185, 84)' },
-      { primary: 'rgb(193, 69, 69)', secondary: 'rgb(31, 9, 12)', accent: 'rgb(255, 131, 112)' },
-      { primary: 'rgb(43, 107, 164)', secondary: 'rgb(6, 32, 56)', accent: 'rgb(44, 196, 243)' },
-      { primary: 'rgb(105, 59, 177)', secondary: 'rgb(20, 13, 43)', accent: 'rgb(231, 119, 255)' },
-      { primary: 'rgb(54, 135, 124)', secondary: 'rgb(7, 54, 49)', accent: 'rgb(115, 244, 211)' },
-    ];
-
-    // Pick a gradient based on the current path
-    const pathHash = Math.abs(location.pathname.split('').reduce((acc, char) => {
-      return char.charCodeAt(0) + acc;
-    }, 0));
+    const path = location.pathname;
     
-    // Use currentSong as another source of variety if available
-    const songInfluence = currentSong ? 
-      (currentSong.title?.length || 0) + (currentSong.artist?.length || 0) : 0;
-    
-    const combinedHash = (pathHash + songInfluence) % gradientPairs.length;
-    setGradientColors(gradientPairs[combinedHash]);
-    
-    // Apply the gradient to a CSS variable that we'll use for the background
-    if (mainContentRef.current) {
-      document.documentElement.style.setProperty('--spotify-primary-bg', gradientColors.primary);
-      document.documentElement.style.setProperty('--spotify-secondary-bg', gradientColors.secondary);
-      document.documentElement.style.setProperty('--spotify-accent-color', gradientColors.accent);
+    if (path === '/' || path.includes('/home')) {
+      setGradientClass(GRADIENT_COLORS.home);
+      document.documentElement.style.setProperty('--spotify-accent', 'rgb(16, 185, 129)');
+    } else if (path.includes('/search')) {
+      setGradientClass(GRADIENT_COLORS.search);
+      document.documentElement.style.setProperty('--spotify-accent', 'rgb(168, 85, 247)');
+    } else if (path.includes('/library')) {
+      setGradientClass(GRADIENT_COLORS.library);
+      document.documentElement.style.setProperty('--spotify-accent', 'rgb(59, 130, 246)');
+    } else if (path.includes('/playlist')) {
+      setGradientClass(GRADIENT_COLORS.playlist);
+      document.documentElement.style.setProperty('--spotify-accent', 'rgb(99, 102, 241)');
+    } else if (path.includes('/album')) {
+      setGradientClass(GRADIENT_COLORS.album);
+      document.documentElement.style.setProperty('--spotify-accent', 'rgb(236, 72, 153)');
+    } else if (path.includes('/artist')) {
+      setGradientClass(GRADIENT_COLORS.artist);
+      document.documentElement.style.setProperty('--spotify-accent', 'rgb(249, 115, 22)');
+    } else if (path.includes('/liked-songs')) {
+      setGradientClass(GRADIENT_COLORS.liked);
+      document.documentElement.style.setProperty('--spotify-accent', 'rgb(244, 63, 94)');
     }
-  }, [location.pathname, currentSong]);
+  }, [location]);
+
+  // Handle scroll for gradient fade effect
+  useEffect(() => {
+    const handleScroll = () => {
+      if (mainContentRef.current) {
+        setScrollPosition(mainContentRef.current.scrollTop);
+      }
+    };
+
+    const currentRef = mainContentRef.current;
+    if (currentRef) {
+      currentRef.addEventListener('scroll', handleScroll);
+    }
+
+    return () => {
+      if (currentRef) {
+        currentRef.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -80,56 +103,11 @@ const MainLayout = () => {
     };
   }, []);
 
-  // Add CSS for the Spotify-style gradient background
-  useEffect(() => {
-    const styleEl = document.createElement('style');
-    styleEl.textContent = `
-      .spotify-gradient-bg {
-        background: linear-gradient(180deg, 
-          var(--spotify-primary-bg, rgb(83, 83, 198)) 0%, 
-          var(--spotify-secondary-bg, rgb(18, 18, 18)) 50%);
-        transition: background 0.8s ease-in-out;
-      }
-      
-      .spotify-gradient-bg::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        background: linear-gradient(180deg, 
-          rgba(0,0,0,0) 0%, 
-          rgba(0,0,0,0.8) 100%);
-        pointer-events: none;
-      }
-
-      .spotify-accent {
-        color: var(--spotify-accent-color, rgb(29, 185, 84));
-      }
-
-      .spotify-content-area {
-        position: relative;
-        transition: background-color 0.5s ease;
-      }
-      
-      @media (max-width: 768px) {
-        .spotify-gradient-bg {
-          background: linear-gradient(180deg, 
-            var(--spotify-primary-bg, rgb(83, 83, 198)) 0%, 
-            var(--spotify-secondary-bg, rgb(18, 18, 18)) 40%);
-        }
-      }
-    `;
-    document.head.appendChild(styleEl);
-    
-    return () => {
-      document.head.removeChild(styleEl);
-    };
-  }, []);
+  // Calculate gradient opacity based on scroll position
+  const gradientOpacity = Math.max(0, Math.min(1, 1 - (scrollPosition / 300)));
 
   return (
-    <div className="h-screen text-white flex flex-col overflow-hidden max-w-full spotify-gradient-bg">
+    <div className="h-screen bg-black text-white flex flex-col overflow-hidden max-w-full">
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block">
         <Header />
@@ -165,10 +143,16 @@ const MainLayout = () => {
         {!isMobile && <ResizableHandle className="w-1 bg-zinc-800/50 rounded-lg transition-colors hover:bg-green-900/50" />}
 
         {/* Main content - full width on mobile */}
-        <ResizablePanel defaultSize={isMobile ? 100 : 80} className="overflow-hidden flex flex-col max-w-full">
+        <ResizablePanel defaultSize={isMobile ? 100 : 80} className="overflow-hidden flex flex-col max-w-full relative">
+          {/* Spotify-like dynamic gradient background overlay */}
+          <div 
+            className={`absolute top-0 left-0 right-0 h-60 bg-gradient-to-b ${gradientClass} to-black z-0 transition-opacity duration-300 ease-in-out pointer-events-none`}
+            style={{ opacity: gradientOpacity }}
+          />
+          
           <div 
             ref={mainContentRef}
-            className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent mobile-scroll-fix spotify-content-area"
+            className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-black mobile-scroll-fix relative z-10"
           >
             <Outlet />
           </div>

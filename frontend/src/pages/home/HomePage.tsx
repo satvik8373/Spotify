@@ -513,9 +513,18 @@ const HomePage = () => {
   }, []);
 
   return (
-    <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-zinc-900 to-black">
+    <main className="flex flex-col h-full overflow-hidden">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
         <div className="pt-1 pb-6 max-w-full overflow-x-hidden">
+          {/* Welcome section - Spotify-style header */}
+          <div className="px-6 pt-6 pb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-6">Good {
+              new Date().getHours() < 12 ? 'morning' : 
+              new Date().getHours() < 18 ? 'afternoon' : 
+              'evening'
+            }</h1>
+          </div>
+          
           {/* Recently played section */}
           <div className="px-2 sm:px-4">
             {/* Top Picks Section - Enhanced Design */}
@@ -571,7 +580,7 @@ const HomePage = () => {
                   <div
                     key={item._id || item.id}
                     onClick={() => handlePlaylistClick(item)}
-                    className="group relative h-[50px] rounded-md overflow-hidden transition-all duration-300 hover:bg-zinc-800/80 cursor-pointer"
+                    className="group relative h-[50px] rounded-md overflow-hidden transition-all duration-300 hover:bg-zinc-800/80 cursor-pointer spotify-card"
                   >
                     <div className="absolute inset-0 bg-zinc-800/60" />
                     <div className="relative flex items-center h-full">
