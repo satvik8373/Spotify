@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Music, Clock, ChevronRight } from 'lucide-react';
+import { Play, Music, Clock } from 'lucide-react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { cn } from '@/lib/utils';
 
@@ -19,7 +19,6 @@ export function RecentlyPlayed() {
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
   const { setCurrentSong } = usePlayerStore();
   const navigate = useNavigate();
-  const [showAllItems, setShowAllItems] = useState(false);
 
   useEffect(() => {
     // Load recently played items from localStorage
@@ -30,7 +29,7 @@ export function RecentlyPlayed() {
           const items: RecentItem[] = JSON.parse(savedItems);
           // Sort by most recently played
           items.sort((a, b) => b.date - a.date);
-          setRecentItems(items.slice(0, 12)); // Load more items but display 8 initially
+          setRecentItems(items.slice(0, 8)); // Show 8 most recent items
         }
       } catch (error) {
         console.error('Error loading recently played items:', error);
@@ -103,34 +102,22 @@ export function RecentlyPlayed() {
 
   if (recentItems.length === 0) return null;
 
-  // Display 8 items by default or all items if showAllItems is true
-  const displayItems = showAllItems ? recentItems : recentItems.slice(0, 8);
-
   return (
-    <div className="mb-6 px-2 sm:px-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-base font-bold tracking-tight">Recently Played</h2>
-        <div className="flex items-center gap-2">
-          {!showAllItems && recentItems.length > 8 && (
-            <button 
-              onClick={() => setShowAllItems(true)}
-              className="text-xs sm:text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-1"
-            >
-              <span>Show all</span>
-              <ChevronRight className="h-3 w-3" />
-            </button>
-          )}
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-xl font-bold">Recently played</h2>
+        {recentItems.length > 0 && (
           <button 
             onClick={() => navigate('/history')}
-            className="text-xs sm:text-sm text-zinc-400 hover:text-white transition-colors"
+            className="text-sm text-zinc-400 hover:text-white transition-colors"
           >
             See all
           </button>
-        </div>
+        )}
       </div>
       
-      <div className="grid grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-        {displayItems.map(item => (
+      <div className="grid grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-3 sm:gap-x-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+        {recentItems.map(item => (
           <div
             key={item.id}
             className="group relative overflow-hidden rounded-md bg-zinc-800/50 cursor-pointer transition-all duration-200 hover:bg-zinc-700/60"
