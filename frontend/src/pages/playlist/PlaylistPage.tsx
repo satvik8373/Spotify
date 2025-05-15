@@ -196,44 +196,44 @@ function AddSongsDialog({
           </TabsList>
           
           <TabsContent value="search" className="mt-4">
-            <div className="relative">
-              <Input
-                placeholder="Search for songs..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="pr-10"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full"
-                onClick={handleSearch}
-              >
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
+        <div className="relative">
+          <Input
+            placeholder="Search for songs..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="pr-10"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-full"
+            onClick={handleSearch}
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+        </div>
 
-            <ScrollArea className="h-[400px] pr-4 mt-4">
-              {isIndianMusicLoading ? (
-                <div className="flex justify-center p-4">
-                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
-                </div>
-              ) : (
-                <>
-                  {isSearching && (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium">Search Results</h3>
-                      {indianSearchResults.length > 0 ? (
-                        indianSearchResults.map(song => renderSongItem(song, true))
-                      ) : (
-                        <p className="text-sm text-muted-foreground py-2">No results found</p>
-                      )}
-                    </div>
+        <ScrollArea className="h-[400px] pr-4 mt-4">
+          {isIndianMusicLoading ? (
+            <div className="flex justify-center p-4">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+            </div>
+          ) : (
+            <>
+              {isSearching && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Search Results</h3>
+                  {indianSearchResults.length > 0 ? (
+                    indianSearchResults.map(song => renderSongItem(song, true))
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-2">No results found</p>
                   )}
-                </>
+                </div>
               )}
-            </ScrollArea>
+            </>
+          )}
+        </ScrollArea>
           </TabsContent>
           
           <TabsContent value="upload" className="mt-4">
@@ -516,19 +516,19 @@ export function PlaylistPage() {
         updateMetrics('plays');
       }
 
-      // Make sure shuffle is off before playing in order
-      const playerStore = usePlayerStore.getState();
-      if (playerStore.isShuffled) {
-        playerStore.toggleShuffle();
-      }
-      
-      // Play the playlist from the beginning
-      playAlbum(currentPlaylist.songs, 0);
-      
-      // Force playback to start
-      usePlayerStore.getState().setUserInteracted();
-      usePlayerStore.getState().setIsPlaying(true);
-      
+        // Make sure shuffle is off before playing in order
+        const playerStore = usePlayerStore.getState();
+        if (playerStore.isShuffled) {
+          playerStore.toggleShuffle();
+        }
+        
+        // Play the playlist from the beginning
+        playAlbum(currentPlaylist.songs, 0);
+        
+        // Force playback to start
+          usePlayerStore.getState().setUserInteracted();
+          usePlayerStore.getState().setIsPlaying(true);
+        
       // Reset isPlaying state after a delay
       setTimeout(() => {
         setIsPlaying(false);
@@ -562,19 +562,19 @@ export function PlaylistPage() {
         updateMetrics('plays');
       }
 
-      // Enable shuffle mode before playing
-      const playerStore = usePlayerStore.getState();
-      if (!playerStore.isShuffled) {
-        playerStore.toggleShuffle();
-      }
-      
-      // Play the playlist
-      playAlbum(currentPlaylist.songs, 0);
-      
-      // Force playback to start
-      usePlayerStore.getState().setUserInteracted();
-      usePlayerStore.getState().setIsPlaying(true);
-      
+        // Enable shuffle mode before playing
+        const playerStore = usePlayerStore.getState();
+        if (!playerStore.isShuffled) {
+          playerStore.toggleShuffle();
+        }
+        
+        // Play the playlist
+        playAlbum(currentPlaylist.songs, 0);
+        
+        // Force playback to start
+          usePlayerStore.getState().setUserInteracted();
+          usePlayerStore.getState().setIsPlaying(true);
+        
       // Reset isPlaying state after a delay
       setTimeout(() => {
         setIsPlaying(false);
@@ -662,16 +662,16 @@ export function PlaylistPage() {
       }
 
       // Disable shuffle to ensure we play the selected song
-      if (playerStore.isShuffled) {
-        playerStore.toggleShuffle();
-      }
-      
+        if (playerStore.isShuffled) {
+          playerStore.toggleShuffle();
+        }
+        
       // Play the selected song
-      playAlbum(currentPlaylist.songs, index);
-      
+        playAlbum(currentPlaylist.songs, index);
+        
       // Start playback
-      usePlayerStore.getState().setUserInteracted();
-      usePlayerStore.getState().setIsPlaying(true);
+          usePlayerStore.getState().setUserInteracted();
+          usePlayerStore.getState().setIsPlaying(true);
       
       // Vibrate on mobile devices for tactile feedback (if supported)
       if (navigator.vibrate) {
@@ -698,9 +698,9 @@ export function PlaylistPage() {
     if (e) {
       e.stopPropagation();
       e.preventDefault();
-    }
+  }
 
-    if (!currentPlaylist) {
+  if (!currentPlaylist) {
       return;
     }
 
@@ -746,7 +746,7 @@ export function PlaylistPage() {
     if (confirm('Are you sure you want to delete this playlist?')) {
       try {
         await deletePlaylist(currentPlaylist!._id);
-        navigate('/library');
+      navigate('/library');
       } catch (error) {
         // Silent error handling
       }
@@ -809,10 +809,10 @@ export function PlaylistPage() {
   };
 
   if (isLoading) {
-    return (
+  return (
       <div className="flex h-full items-center justify-center">
         <div className="h-16 w-16 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
-      </div>
+        </div>
     );
   }
 
@@ -821,7 +821,7 @@ export function PlaylistPage() {
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <h1 className="text-2xl font-bold">Playlist not found</h1>
         <Button onClick={() => navigate('/library')}>Go to Library</Button>
-      </div>
+        </div>
     );
   }
 
@@ -838,7 +838,7 @@ export function PlaylistPage() {
       {/* Main scrollable container */}
       <div ref={containerRef} className="h-full overflow-y-auto">
         {/* Spotify-style gradient header */}
-        <div 
+        <div
           className="relative pt-14 pb-6 px-4 sm:px-6" 
           style={{
             background: `linear-gradient(180deg, ${dominantColor} 0%, rgba(18, 18, 18, 0.8) 90%)`,
@@ -864,10 +864,10 @@ export function PlaylistPage() {
                     <ImageIcon className="mr-2 h-4 w-4" />
                     Update Cover
                   </Button>
-                </div>
-              )}
             </div>
-            
+              )}
+              </div>
+
             {/* Playlist info */}
             <div className="flex flex-col justify-end text-white text-center md:text-left w-full">
               <p className="text-xs sm:text-sm uppercase font-medium mt-2">Playlist</p>
@@ -890,8 +890,8 @@ export function PlaylistPage() {
               </div>
             </div>
           </div>
-        </div>
-        
+              </div>
+
         {/* Action buttons - sticky header */}
         <div className="sticky top-0 z-20 bg-gradient-to-b from-[#121212] to-[#121212]/95 px-4 sm:px-6 py-4 backdrop-blur-sm">
           <div className="flex items-center justify-between">
@@ -899,44 +899,44 @@ export function PlaylistPage() {
             <div className="flex items-center gap-2 sm:gap-4">
               {isOwner && (
                 <>
-                  <Button
+                <Button
                     variant="ghost"
                     size="icon"
                     className="w-10 h-10 rounded-full text-gray-400 hover:text-white"
                     onClick={() => setShowEditDialog(true)}
                   >
                     <Pencil className="h-5 w-5" />
-                  </Button>
-                  
-                  <Button
+                </Button>
+
+                <Button
                     variant="ghost"
                     size="icon"
                     className="w-10 h-10 rounded-full text-gray-400 hover:text-white sm:hidden"
                     onClick={() => openAddSongsDialog('upload')}
                   >
                     <FileText className="h-5 w-5" />
-                  </Button>
-                  
-                  <Button
+                </Button>
+
+                <Button
                     variant="ghost"
                     className="rounded-full text-gray-400 hover:text-white hidden sm:flex items-center gap-1.5"
                     onClick={() => openAddSongsDialog('upload')}
                   >
                     <FileText className="h-4 w-4" />
                     <span>Import from File</span>
-                  </Button>
+                </Button>
                 </>
               )}
-              
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
+                <Button
                     variant="ghost"
-                    size="icon"
+                  size="icon"
                     className="w-10 h-10 rounded-full text-gray-400 hover:text-white"
-                  >
+                >
                     <MoreHorizontal className="h-5 w-5" />
-                  </Button>
+                </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#282828] text-white border-[#3E3E3E]">
                   <DropdownMenuItem onClick={() => openAddSongsDialog('search')} className="hover:bg-[#3E3E3E]">
@@ -956,8 +956,8 @@ export function PlaylistPage() {
                     <Share2 className="h-4 w-4 mr-2" />
                     Share
                   </DropdownMenuItem>
-                  {isOwner && (
-                    <>
+                {isOwner && (
+                  <>
                       <DropdownMenuSeparator className="bg-[#3E3E3E]" />
                       <DropdownMenuItem onClick={handleDeletePlaylist} className="text-red-400 hover:text-red-300 hover:bg-[#3E3E3E]">
                         <Trash className="h-4 w-4 mr-2" />
@@ -971,7 +971,7 @@ export function PlaylistPage() {
 
             {/* Right side play button */}
             <div className="flex items-center gap-3 sm:gap-5">
-              <Button
+                    <Button
                 variant="ghost"
                 className="w-10 h-10 sm:w-12 sm:h-12 rounded-full text-gray-400 hover:text-white flex items-center justify-center"
                 onClick={handleLike}
@@ -982,9 +982,9 @@ export function PlaylistPage() {
                   stroke={isLiked ? 'none' : 'currentColor'}
                   color={isLiked ? '#1DB954' : 'currentColor'} 
                 />
-              </Button>
+                    </Button>
 
-              <Button
+                    <Button
                 variant="ghost"
                 className={cn(
                   'w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center',
@@ -997,7 +997,7 @@ export function PlaylistPage() {
                 }}
               >
                 <Shuffle className="h-5 w-5 sm:h-6 sm:w-6" />
-              </Button>
+                    </Button>
 
               <Button
                 onClick={isCurrentPlaylistPlaying ? handlePausePlaylist : handlePlayPlaylist}
@@ -1020,7 +1020,7 @@ export function PlaylistPage() {
             </div>
           </div>
         </div>
-        
+
         {/* Songs list with Spotify-style design */}
         <div className="px-4 sm:px-6 pb-24">
           {currentPlaylist.songs.length > 0 ? (
@@ -1041,9 +1041,9 @@ export function PlaylistPage() {
                 const isThisSongPlaying = isCurrentSong && playerIsPlaying;
                 
                 return (
-                  <div
-                    key={song._id}
-                    className={cn(
+                <div
+                  key={song._id}
+                  className={cn(
                       'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_3fr_minmax(120px,1fr)] items-center py-4 px-4 mx-[-16px] rounded-md group',
                       'hover:bg-[#2A2A2A] active:bg-[#333] transition-colors duration-200',
                       isCurrentSong && 'bg-[#2A2A2A]',
@@ -1069,8 +1069,8 @@ export function PlaylistPage() {
                         >
                           <Play className={cn("h-4 w-4 ml-0.5", isCurrentSong && "text-green-500")} />
                         </Button>
-                      )}
-                    </div>
+                    )}
+                  </div>
                     
                     {/* Song info with image */}
                     <div className="flex items-center gap-3 min-w-0">
@@ -1080,41 +1080,41 @@ export function PlaylistPage() {
                       )}>
                         <img
                           src={song.imageUrl || '/default-song.jpg'}
-                          alt={song.title}
+                        alt={song.title}
                           className="h-full w-full object-cover"
-                        />
-                      </div>
+                      />
+                        </div>
                       <div className="flex flex-col min-w-0">
                         <span className={cn("font-medium truncate text-base", isCurrentSong && "text-green-500")}>
                           {song.title}
                         </span>
                         <span className="text-sm text-gray-400 truncate">
-                          {song.artist}
-                        </span>
-                      </div>
+                        {song.artist}
+                      </span>
                     </div>
+                  </div>
                     
                     {/* Album info (placeholder) */}
                     <div className="text-gray-400 text-sm truncate hidden md:block">
                       {/* Empty for now, would show album name */}
-                    </div>
+                  </div>
                     
                     {/* Duration and actions */}
                     <div className="flex items-center justify-end gap-2 sm:gap-4 text-gray-400">
-                      {isOwner && (
+                    {isOwner && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-gray-400 hover:text-white p-0"
                             onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveSong(song._id, e);
-                            }}
-                          >
+                          e.stopPropagation();
+                          handleRemoveSong(song._id, e);
+                        }}
+                      >
                             <Trash className="h-4 w-4" />
                           </Button>
-                        </div>
+                    </div>
                       )}
                       
                       {!song.audioUrl && (
@@ -1123,7 +1123,7 @@ export function PlaylistPage() {
                           size="icon"
                           className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white p-0"
                           onClick={(e) => {
-                            e.stopPropagation();
+                          e.stopPropagation();
                             handleFindAudio(song, index, e);
                           }}
                         >

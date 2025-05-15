@@ -589,11 +589,33 @@ const AudioPlayer = () => {
             // Explicitly mark the current song as ended to prevent duplicate triggers
             audio.pause();
             
+            // Store current song info before transitioning
+            const currentSongInfo = {
+              id: state.currentSong?._id,
+              position: audio.currentTime,
+              duration: audio.duration
+            };
+            
             // Increment to next song with proper state handling
             state.playNext();
             
             // Ensure playback continues
             state.setIsPlaying(true);
+            
+            // Log the transition for debugging
+            try {
+              localStorage.setItem('last_song_transition', JSON.stringify({
+                from: currentSongInfo.id,
+                position: currentSongInfo.position,
+                duration: currentSongInfo.duration, 
+                timestamp: new Date().toISOString(),
+                isLocked: document.hidden,
+                batteryLevel: (navigator as any).getBattery ? 
+                  (navigator as any).getBattery().then((b: any) => b.level) : 'unknown'
+              }));
+            } catch (e) {
+              // Ignore storage errors
+            }
             
             // Actually play the audio with multiple fallback attempts
             setTimeout(() => {
@@ -619,12 +641,58 @@ const AudioPlayer = () => {
           }
         }
       }
-    }, 500); // More frequent checks to ensure we don't miss the end of a song
+    }, 250); // More frequent checks to ensure we don't miss the end of a song
     
     return () => {
       clearInterval(backgroundPlaybackMonitor);
     };
   }, [currentSong, isPlaying]);
+  
+  // Wake lock API to prevent device from sleeping and stopping audio
+  useEffect(() => {
+    let wakeLock: any = null;
+    
+    // Check if Wake Lock API is available
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator && isPlaying && currentSong) {
+        try {
+          // Request a screen wake lock
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          
+          // Listen for wake lock release
+          wakeLock.addEventListener('release', () => {
+            // If we're still playing, request it again
+            if (isPlaying && currentSong) {
+              requestWakeLock();
+            }
+          });
+        } catch (err) {
+          // Silent error handling - not all browsers support this
+        }
+      }
+    };
+    
+    const releaseWakeLock = () => {
+      if (wakeLock) {
+        wakeLock.release()
+          .then(() => {
+            wakeLock = null;
+          })
+          .catch(() => {});
+      }
+    };
+    
+    // Request wake lock when playing, release when paused
+    if (isPlaying && currentSong) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+    
+    return () => {
+      releaseWakeLock();
+    };
+  }, [isPlaying, currentSong]);
 
   // Handle iOS-specific background playback issues 
   useEffect(() => {
@@ -647,7 +715,7 @@ const AudioPlayer = () => {
         // Check if we need to advance to the next track
         if (!isNaN(audioDuration) && audioDuration > 0) {
           // If we're at or very near the end
-          if (audio.currentTime >= audioDuration - 0.5) {
+          if (audio.currentTime >= audioDuration - 0.3) {
             // Get fresh state to ensure latest data
             const state = usePlayerStore.getState();
             
@@ -665,149 +733,12 @@ const AudioPlayer = () => {
           }
         }
       }
-    }, 1000);
-    
-    // The audio session configuration for iOS
-    const configureAudioSession = () => {
-      // Set up audio to continue in background
-      if (audioRef.current) {
-        // iOS-specific attributes
-        audioRef.current.setAttribute('x-webkit-airplay', 'allow');
-        audioRef.current.setAttribute('webkit-playsinline', 'true');
-        audioRef.current.setAttribute('playsinline', '');
-        
-        // Force iOS to keep audio session active
-        document.addEventListener('touchstart', function iosTouchHandler() {
-          // Play and immediately pause to activate audio session
-          const silentPlay = audioRef.current?.play();
-          if (silentPlay) {
-            silentPlay.then(() => {
-              if (!isPlaying) {
-                audioRef.current?.pause();
-              }
-              // Remove the handler after first touch
-              document.removeEventListener('touchstart', iosTouchHandler);
-            }).catch(() => {
-              // Just ignore errors here
-            });
-          }
-        }, { once: true });
-      }
-    };
-    
-    configureAudioSession();
-    
-    // Special handling for iOS background audio session
-    const handleIOSVisibilityChange = () => {
-      if (document.hidden) {
-        // App going to background
-        
-        // Force update media session before going to background
-        if (isMediaSessionSupported() && currentSong && audioRef.current) {
-          try {
-            navigator.mediaSession.metadata = new MediaMetadata({
-              title: currentSong.title || 'Unknown Title',
-              artist: currentSong.artist || 'Unknown Artist',
-              album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
-              artwork: [
-                {
-                  src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-                  sizes: '512x512',
-                  type: 'image/jpeg'
-                }
-              ]
-            });
-            
-            // Update position state
-            if ('setPositionState' in navigator.mediaSession) {
-              navigator.mediaSession.setPositionState({
-                duration: audioRef.current.duration || 0,
-                playbackRate: audioRef.current.playbackRate,
-                position: audioRef.current.currentTime
-              });
-            }
-          } catch (e) {
-            // Ignore errors
-          }
-        }
-        
-        // Save the current time and song for restoration
-        if (audioRef.current && currentSong) {
-          const restorationData = {
-            song: currentSong,
-            position: audioRef.current.currentTime,
-            isPlaying: isPlaying,
-            timestamp: Date.now()
-          };
-          
-          try {
-            localStorage.setItem('ios_audio_restoration', JSON.stringify(restorationData));
-          } catch (e) {
-            // Error handling without logging
-          }
-        }
-      } else {
-        // App coming to foreground
-        
-        // Check if we need to restore or advance
-        try {
-          const savedData = localStorage.getItem('ios_audio_restoration');
-          if (savedData && audioRef.current) {
-            const { song, position, isPlaying: wasPlaying, timestamp } = JSON.parse(savedData);
-            const currentTime = Date.now();
-            const timePassed = (currentTime - timestamp) / 1000; // in seconds
-            
-            // If we have the same song still
-            if (song._id === currentSong?._id) {
-              // Calculate where we should be now
-              const expectedPosition = position + timePassed;
-              
-              // If expected position exceeds song duration, we should have advanced
-              if (expectedPosition >= audioRef.current.duration - 1) {
-                // Need to advance to next song
-                const state = usePlayerStore.getState();
-                state.playNext();
-                if (wasPlaying) {
-                  state.setIsPlaying(true);
-                  
-                  // Force play attempt after a short delay
-                  setTimeout(() => {
-                    if (audioRef.current && audioRef.current.paused) {
-                      audioRef.current.play().catch(() => {});
-                    }
-                  }, 100);
-                }
-              } else {
-                // Otherwise just ensure we're at the right position
-                audioRef.current.currentTime = expectedPosition;
-                if (wasPlaying && audioRef.current.paused) {
-                  audioRef.current.play().catch(() => {});
-                }
-              }
-            } else if (wasPlaying) {
-              // Different song - ensure it's playing if it should be
-              usePlayerStore.getState().setIsPlaying(true);
-              if (audioRef.current.paused) {
-                audioRef.current.play().catch(() => {});
-              }
-            }
-            
-            // Clean up
-            localStorage.removeItem('ios_audio_restoration');
-          }
-        } catch (e) {
-          // Error handling without logging
-        }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleIOSVisibilityChange);
+    }, 500);
     
     return () => {
       clearInterval(iosBackgroundTimer);
-      document.removeEventListener('visibilitychange', handleIOSVisibilityChange);
     };
-  }, [currentSong, isPlaying]);
+  }, [isPlaying, currentSong]);
 
   // Update audio element configuration for better mobile support
   useEffect(() => {
@@ -928,8 +859,74 @@ const AudioPlayer = () => {
   useEffect(() => {
     if (isMediaSessionSupported()) {
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+      
+      // Enhanced MediaSession control for better lock screen support
+      // Re-register nexttrack handler to ensure it's always available
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        // Mark user interaction to allow autoplay
+        usePlayerStore.getState().setUserInteracted();
+        // Call next from store directly
+        usePlayerStore.getState().playNext();
+        // Force playing state
+        usePlayerStore.getState().setIsPlaying(true);
+        
+        // Attempt to play with multiple retries for reliability
+        setTimeout(() => {
+          if (audioRef.current && audioRef.current.paused) {
+            const playPromise = audioRef.current.play();
+            if (playPromise) {
+              playPromise.catch(() => {
+                // Try again if first attempt fails
+                setTimeout(() => {
+                  if (audioRef.current) {
+                    audioRef.current.play().catch(() => {});
+                  }
+                }, 300);
+              });
+            }
+          }
+        }, 100);
+      });
+      
+      // Maintain position state for lock screen display
+      if ('setPositionState' in navigator.mediaSession && audioRef.current) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: audioRef.current.duration || 0,
+            playbackRate: audioRef.current.playbackRate || 1,
+            position: audioRef.current.currentTime || 0
+          });
+        } catch (e) {
+          // Ignore position state errors
+        }
+      }
     }
   }, [isPlaying]);
+
+  // Lock screen specific MediaSession update interval
+  useEffect(() => {
+    // Only run if MediaSession API is supported and we're playing
+    if (!isMediaSessionSupported() || !isPlaying || !currentSong) return;
+    
+    // Update MediaSession position state periodically even when app is in background
+    const positionUpdateInterval = setInterval(() => {
+      if (audioRef.current && 'setPositionState' in navigator.mediaSession) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: audioRef.current.duration || 0,
+            playbackRate: audioRef.current.playbackRate || 1,
+            position: audioRef.current.currentTime || 0
+          });
+        } catch (e) {
+          // Ignore position state errors
+        }
+      }
+    }, 1000);
+    
+    return () => {
+      clearInterval(positionUpdateInterval);
+    };
+  }, [isPlaying, currentSong]);
 
   // Update like status whenever the current song or likedSongIds changes
   useEffect(() => {
@@ -1751,6 +1748,20 @@ const AudioPlayer = () => {
         playsInline
         webkit-playsinline="true"
         x-webkit-airplay="allow"
+        onEnded={() => usePlayerStore.getState().playNext()}
+        onPause={() => {
+          // Check if this is an unintended pause (like system-initiated)
+          // but only if we're supposed to be playing
+          if (isPlaying && !document.hidden) {
+            // Try to resume playback after a short delay
+            setTimeout(() => {
+              const audio = audioRef.current;
+              if (audio && audio.paused && isPlaying && !audio.ended) {
+                audio.play().catch(() => {});
+              }
+            }, 500);
+          }
+        }}
         controls={false}
       />
     </>
