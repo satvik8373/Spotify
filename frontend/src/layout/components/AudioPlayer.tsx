@@ -66,11 +66,28 @@ const AudioPlayer = () => {
     toggleShuffle
   } = usePlayerStore();
 
+  const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
+
   // These may not exist in the store based on linter errors
   const playerStore = usePlayerStore();
   const setCurrentTime = playerStore.setCurrentTime;
   const setDuration = playerStore.setDuration;
   const playPrevious = playerStore.playPrevious;
+
+  // Check if current song is liked when song changes
+  useEffect(() => {
+    if (currentSong) {
+      setIsLiked(likedSongIds.has(currentSong._id));
+    }
+  }, [currentSong, likedSongIds]);
+  
+  // Function to toggle like status
+  const handleToggleLike = () => {
+    if (currentSong) {
+      toggleLikeSong(currentSong);
+      setIsLiked(!isLiked);
+    }
+  };
 
   // Clean up on unmount
   useEffect(() => {
@@ -329,7 +346,7 @@ const AudioPlayer = () => {
       }
       
       // Force a slight delay to ensure proper state updates
-      setTimeout(() => {
+                setTimeout(() => {
         // Call playNext directly from store for more reliable progression
         state.playNext();
         
@@ -461,18 +478,18 @@ const AudioPlayer = () => {
       // Handle resuming audio after interruption ends
       const handleAudioResume = () => {
         // Get the latest state
-        const state = usePlayerStore.getState();
-        
+      const state = usePlayerStore.getState();
+      
         // Check if we were playing before the interruption
         if (state.wasPlayingBeforeInterruption) {
           console.log("Resuming audio after interruption");
           // Resume playback with a delay to let the system stabilize
           setTimeout(() => {
-            // Make sure user is marked as having interacted to enable autoplay
-            state.setUserInteracted();
-            
-            // Force playing state to be true
-            state.setIsPlaying(true);
+      // Make sure user is marked as having interacted to enable autoplay
+      state.setUserInteracted();
+      
+        // Force playing state to be true
+        state.setIsPlaying(true);
             
             // Reset the flag
             usePlayerStore.setState({ wasPlayingBeforeInterruption: false });
@@ -604,10 +621,10 @@ const AudioPlayer = () => {
       // Always run this check, regardless of visibility state
       // This ensures reliable playback in all conditions including lock screen
       const state = usePlayerStore.getState();
-      const audio = audioRef.current;
+    const audio = audioRef.current;
       
-      if (!audio) return;
-      
+    if (!audio) return;
+
       const audioDuration = audio.duration;
       
       // 1. Check if audio is paused but should be playing
@@ -955,7 +972,7 @@ const AudioPlayer = () => {
   return (
     <div className="flex flex-col h-full">
       {/* Rest of the component content */}
-    </div>
+        </div>
   );
 };
 

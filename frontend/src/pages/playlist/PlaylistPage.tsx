@@ -22,10 +22,7 @@ import {
   Pause,
   Music2,
   Image as ImageIcon,
-  Volume2,
-  ChevronLeft,
-  Music,
-  Download
+  Volume2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
@@ -837,235 +834,206 @@ export function PlaylistPage() {
   const dominantColor = `hsl(${currentPlaylist.name.length * 10 % 360}, 70%, 50%)`;
 
   return (
-    <div className="flex flex-col h-full bg-black">
+    <div className="flex flex-col h-full bg-[#121212] text-white">
       {/* Main scrollable container */}
-      <div ref={containerRef} className="h-[calc(100vh-5rem)] overflow-y-auto">
-        {/* Fixed header - visible when scrolling */}
-        <div 
-          className="fixed top-0 left-0 right-0 z-10 h-16 transition-colors duration-300"
+      <div ref={containerRef} className="h-full overflow-y-auto">
+        {/* Spotify-style gradient header */}
+        <div
+          className="relative pt-14 pb-6 px-4 sm:px-6" 
           style={{
-            backgroundColor: `rgba(${dominantColor.replace('hsl', 'hsla').replace(')', ', ')})${scrollPosition / 100})`,
-            borderBottom: scrollPosition > 80 ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'
+            background: `linear-gradient(180deg, ${dominantColor} 0%, rgba(18, 18, 18, 0.8) 90%)`,
           }}
         >
-          <div className="flex items-center h-full px-4 sm:px-6 justify-between">
-            {/* Back button for mobile */}
-            {window.innerWidth < 768 && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="text-white mr-2"
-                onClick={() => navigate(-1)}
-              >
-                <ChevronLeft className="h-6 w-6" />
-              </Button>
-            )}
-            
-            <h1 
-              className={cn(
-                "font-bold transition-all",
-                scrollPosition > 70 
-                  ? "text-xl opacity-100" 
-                  : "text-sm opacity-0"
-              )}
-            >
-              {currentPlaylist.name}
-            </h1>
-            
-            {currentPlaylist.songs.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Button 
-                  onClick={handlePlayPlaylist}
-                  className={cn(
-                    "bg-green-500 hover:bg-green-600 rounded-full w-12 h-12 p-0 flex-shrink-0 shadow-lg transition-opacity",
-                    scrollPosition > 70 ? "opacity-100" : "opacity-0"
-                  )}
-                  disabled={currentPlaylist.songs.length === 0}
-                  title="Play"
-                >
-                  <Play className="h-6 w-6 ml-0.5" />
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Spotify-style gradient header */}
-        <div className={cn(
-          "relative pt-4 mb-6",
-          window.innerWidth < 768 ? "px-4 spotify-playlist-header" : "rounded-t-lg px-4 sm:px-6"
-        )}>
-          <div className={cn(
-            "flex flex-col mb-4 gap-6",
-            window.innerWidth < 768 ? "items-start" : "sm:flex-row sm:items-end"
-          )}>
-            {window.innerWidth < 768 ? (
-              <>
-                <Download className="h-5 w-5 text-white/70 mb-4" />
-                <div className="w-full mb-2">
-                  <h1 className="text-4xl font-bold mb-2 text-white">{currentPlaylist.name}</h1>
-                  <p className="text-sm text-white/80">{totalSongs} songs</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex-shrink-0 rounded-lg shadow-xl flex items-center justify-center w-48 h-48">
-                  <img
-                    src={currentPlaylist.imageUrl || '/default-playlist.jpg'}
-                    alt={currentPlaylist.name}
-                    className="h-full w-full object-cover rounded-lg"
-                  />
-                </div>
-                <div className="flex-1 min-w-0 text-center sm:text-left">
-                  <p className="text-xs uppercase font-medium mb-2 text-white/70">Playlist</p>
-                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 text-white">{currentPlaylist.name}</h1>
-                  {currentPlaylist.description && (
-                    <p className="text-white/70 mb-2">{currentPlaylist.description}</p>
-                  )}
-                  <div className="flex-col sm:flex-row sm:items-center">
-                    <span className="text-white/70">
-                      {currentPlaylist.createdBy.fullName} • {metrics.likes} likes • {totalSongs} songs, {formattedTotalDuration}
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-          
-          {currentPlaylist.songs.length > 0 && window.innerWidth < 768 && (
-            <div className="flex items-center justify-between mt-6 mb-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white/70 hover:text-white bg-white/10 rounded-full text-xs px-4 py-1 h-auto"
-                onClick={handleShufflePlaylist}
-              >
-                <Shuffle className="h-3.5 w-3.5 mr-1.5" />
-                <span className="font-normal">Shuffle</span>
-              </Button>
-              <Button 
-                onClick={handlePlayPlaylist}
-                className="bg-green-500 hover:bg-green-600 text-black rounded-full h-12 w-12 flex items-center justify-center shadow-lg transition-all"
-              >
-                <Play className="h-7 w-7 ml-0.5" />
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Action buttons - for desktop only */}
-        {window.innerWidth >= 768 && (
-        <div className="px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Button 
-              onClick={isCurrentPlaylistPlaying ? handlePausePlaylist : handlePlayPlaylist}
-              disabled={totalSongs === 0}
-              className={cn(
-                "h-14 w-14 rounded-full flex items-center justify-center shadow-lg",
-                isCurrentPlaylistPlaying 
-                  ? "bg-white text-black hover:bg-gray-200" 
-                  : "bg-green-500 text-black hover:bg-green-400"
-              )}
-            >
-              {isCurrentPlaylistPlaying ? (
-                <Pause className="h-7 w-7" />
-              ) : (
-                <Play className="h-7 w-7 ml-0.5" />
-              )}
-            </Button>
-
-            <Button
-              variant="ghost"
-              className={cn(
-                'h-10 w-10 rounded-full flex items-center justify-center',
-                isShuffleOn ? 'text-green-500' : 'text-white/70 hover:text-white'
-              )}
-              onClick={handleShufflePlaylist}
-            >
-              <Shuffle className="h-5 w-5" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="h-10 w-10 rounded-full text-white/70 hover:text-white flex items-center justify-center"
-              onClick={handleLike}
-            >
-              <Heart 
-                className="h-5 w-5" 
-                fill={isLiked ? 'currentColor' : 'none'} 
-                stroke={isLiked ? 'none' : 'currentColor'}
-                color={isLiked ? '#1DB954' : 'currentColor'} 
+          <div className="flex flex-col md:flex-row items-center md:items-end gap-6 relative z-10 pb-4">
+            {/* Playlist cover image - larger on desktop */}
+            <div className="w-40 h-40 sm:w-56 sm:h-56 md:w-60 md:h-60 flex-shrink-0 shadow-2xl mx-auto md:mx-0 relative group">
+              <img
+                src={currentPlaylist.imageUrl || '/default-playlist.jpg'}
+                alt={currentPlaylist.name}
+                className="w-full h-full object-cover"
               />
-            </Button>
-
-            {isOwner && (
-              <Button
-                variant="ghost"
-                className="h-10 w-10 rounded-full text-white/70 hover:text-white flex items-center justify-center"
-                onClick={() => setShowEditDialog(true)}
-              >
-                <Pencil className="h-5 w-5" />
-              </Button>
-            )}
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-10 w-10 rounded-full text-white/70 hover:text-white flex items-center justify-center"
-                >
-                  <MoreHorizontal className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-[#282828] text-white border-[#3E3E3E]">
-                <DropdownMenuItem onClick={() => openAddSongsDialog('search')} className="hover:bg-[#3E3E3E]">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add songs
-                </DropdownMenuItem>
-                {isOwner && (
-                  <DropdownMenuItem 
-                    onClick={() => setShowRegenerateCoverDialog(true)} 
-                    className="hover:bg-[#3E3E3E]"
+              
+              {/* Regenerate cover overlay - only for playlist owners */}
+              {isOwner && (
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button 
+                    variant="ghost" 
+                    className="text-white hover:bg-white/20"
+                    onClick={() => setShowRegenerateCoverDialog(true)}
                   >
-                    <ImageIcon className="h-4 w-4 mr-2" />
-                    Generate cover
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    Update Cover
+                  </Button>
+            </div>
+              )}
+              </div>
+
+            {/* Playlist info */}
+            <div className="flex flex-col justify-end text-white text-center md:text-left w-full">
+              <p className="text-xs sm:text-sm uppercase font-medium mt-2">Playlist</p>
+              <h1 className="text-2xl sm:text-4xl md:text-7xl font-bold mt-2 mb-2 sm:mb-4 drop-shadow-md">
+                {currentPlaylist.name}
+              </h1>
+              
+              {/* Description and metadata */}
+              {currentPlaylist.description && (
+                <p className="text-sm text-gray-200 mb-4 max-w-xl mx-auto md:mx-0">{currentPlaylist.description}</p>
+              )}
+              
+              <div className="flex items-center gap-1 text-sm text-gray-300 justify-center md:justify-start flex-wrap">
+                <span className="font-medium text-white">{currentPlaylist.createdBy.fullName}</span>
+                <span>•</span>
+                <span>{metrics.likes} likes</span>
+                <span>•</span>
+                <span>{totalSongs} songs,</span>
+                <span className="text-gray-400">{formattedTotalDuration}</span>
+              </div>
+            </div>
+          </div>
+              </div>
+
+        {/* Action buttons - sticky header */}
+        <div className="sticky top-0 z-20 bg-gradient-to-b from-[#121212] to-[#121212]/95 px-4 sm:px-6 py-4 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            {/* Left side tools */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              {isOwner && (
+                <>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-10 h-10 rounded-full text-gray-400 hover:text-white"
+                    onClick={() => setShowEditDialog(true)}
+                  >
+                    <Pencil className="h-5 w-5" />
+                </Button>
+
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-10 h-10 rounded-full text-gray-400 hover:text-white sm:hidden"
+                    onClick={() => openAddSongsDialog('upload')}
+                  >
+                    <FileText className="h-5 w-5" />
+                </Button>
+
+                <Button
+                    variant="ghost"
+                    className="rounded-full text-gray-400 hover:text-white hidden sm:flex items-center gap-1.5"
+                    onClick={() => openAddSongsDialog('upload')}
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>Import from File</span>
+                </Button>
+                </>
+              )}
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                  size="icon"
+                    className="w-10 h-10 rounded-full text-gray-400 hover:text-white"
+                >
+                    <MoreHorizontal className="h-5 w-5" />
+                </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-[#282828] text-white border-[#3E3E3E]">
+                  <DropdownMenuItem onClick={() => openAddSongsDialog('search')} className="hover:bg-[#3E3E3E]">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add songs
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={handleSharePlaylist} className="hover:bg-[#3E3E3E]">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </DropdownMenuItem>
+                  {isOwner && (
+                    <DropdownMenuItem 
+                      onClick={() => setShowRegenerateCoverDialog(true)} 
+                      className="hover:bg-[#3E3E3E]"
+                    >
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      Generate cover
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handleSharePlaylist} className="hover:bg-[#3E3E3E]">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </DropdownMenuItem>
                 {isOwner && (
                   <>
-                    <DropdownMenuSeparator className="bg-[#3E3E3E]" />
-                    <DropdownMenuItem onClick={handleDeletePlaylist} className="text-red-400 hover:text-red-300 hover:bg-[#3E3E3E]">
-                      <Trash className="h-4 w-4 mr-2" />
-                      Delete playlist
-                    </DropdownMenuItem>
-                  </>
+                      <DropdownMenuSeparator className="bg-[#3E3E3E]" />
+                      <DropdownMenuItem onClick={handleDeletePlaylist} className="text-red-400 hover:text-red-300 hover:bg-[#3E3E3E]">
+                        <Trash className="h-4 w-4 mr-2" />
+                        Delete playlist
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Right side play button */}
+            <div className="flex items-center gap-3 sm:gap-5">
+                    <Button
+                variant="ghost"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full text-gray-400 hover:text-white flex items-center justify-center"
+                onClick={handleLike}
+              >
+                <Heart 
+                  className="h-5 w-5 sm:h-6 sm:w-6" 
+                  fill={isLiked ? 'currentColor' : 'none'} 
+                  stroke={isLiked ? 'none' : 'currentColor'}
+                  color={isLiked ? '#1DB954' : 'currentColor'} 
+                />
+                    </Button>
+
+                    <Button
+                variant="ghost"
+                className={cn(
+                  'w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center',
+                  isShuffleOn ? 'text-green-500' : 'text-gray-400 hover:text-white'
                 )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Toggle shuffle first
+                  usePlayerStore.getState().toggleShuffle();
+                }}
+              >
+                <Shuffle className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </Button>
+
+              <Button
+                onClick={isCurrentPlaylistPlaying ? handlePausePlaylist : handlePlayPlaylist}
+                disabled={totalSongs === 0 || isPlaying}
+                className={cn(
+                  "w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all shadow-lg",
+                  isCurrentPlaylistPlaying 
+                    ? "bg-white text-black hover:bg-gray-200 hover:scale-105" 
+                    : "bg-green-500 text-black hover:bg-green-400 hover:scale-105"
+                )}
+                variant="default"
+              >
+                {isCurrentPlaylistPlaying ? (
+                  <Pause className="h-7 w-7 sm:h-8 sm:w-8" />
+                ) : (
+                  <Play className="h-7 w-7 sm:h-8 sm:w-8 ml-1" />
+                )}
+                <span className="sr-only">{isCurrentPlaylistPlaying ? 'Pause' : 'Play'}</span>
+              </Button>
+            </div>
           </div>
         </div>
-        )}
 
         {/* Songs list with Spotify-style design */}
         <div className="px-4 sm:px-6 pb-24">
           {currentPlaylist.songs.length > 0 ? (
             <div className="mt-2">
-              {/* Spotify-style header row - desktop only */}
-              {window.innerWidth >= 768 && (
-                <div className="grid grid-cols-[16px_1fr_auto] md:grid-cols-[16px_4fr_2fr_1fr_auto] gap-4 py-2 px-4 text-sm font-medium text-zinc-400 border-b border-zinc-800">
-                  <div className="text-center">#</div>
-                  <div>TITLE</div>
-                  <div className="hidden md:block">ALBUM</div>
-                  <div className="flex justify-end">
-                    <Clock className="h-4 w-4" />
-                  </div>
-                  <div></div>
+              {/* Spotify-style header row */}
+              <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_3fr_minmax(120px,1fr)] border-b border-[#2A2A2A] text-sm text-gray-400 py-2 px-4 mb-2">
+                <div className="flex items-center justify-center">#</div>
+                <div>Title</div>
+                <div className="hidden md:block">Album</div>
+                <div className="flex justify-end pr-8">
+                  <Clock className="h-4 w-4" />
                 </div>
-              )}
+              </div>
 
               {/* Songs list */}
               {currentPlaylist.songs.map((song, index) => {
@@ -1073,127 +1041,89 @@ export function PlaylistPage() {
                 const isThisSongPlaying = isCurrentSong && playerIsPlaying;
                 
                 return (
-                  <div 
-                    key={song._id}
+                <div
+                  key={song._id}
+                  className={cn(
+                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_3fr_minmax(120px,1fr)] items-center py-4 px-4 mx-[-16px] rounded-md group',
+                      'hover:bg-[#2A2A2A] active:bg-[#333] transition-colors duration-200',
+                      isCurrentSong && 'bg-[#2A2A2A]',
+                      !song.audioUrl && 'opacity-60'
+                    )}
                     onClick={() => handlePlaySong(song, index)}
-                    className="cursor-pointer"
                   >
-                    <div className={cn(
-                      "group relative hover:bg-white/5 rounded-md",
-                      window.innerWidth < 768 
-                        ? "grid grid-cols-[1fr_auto] gap-3 p-3 px-4 spotify-liked-song-row" 
-                        : "grid grid-cols-[16px_1fr_auto] md:grid-cols-[16px_4fr_2fr_1fr_auto] gap-4 p-2 px-4"
-                    )}>
-                      {/* Title and artist column */}
-                      <div className="flex items-center min-w-0">
-                        <div className={cn(
-                          "flex-shrink-0 bg-zinc-800 rounded overflow-hidden mr-3",
-                          window.innerWidth < 768 ? "w-12 h-12" : "w-10 h-10"
-                        )}>
-                          <img 
-                            src={song.imageUrl || '/default-song.jpg'} 
-                            alt={song.title} 
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.src = '';
-                              e.currentTarget.style.background = 'linear-gradient(135deg, #8a2387, #e94057, #f27121)';
-                              e.currentTarget.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center">
-                                <Music className="h-5 w-5 text-zinc-400" />
-                              </div>`;
-                            }}
-                          />
+                    {/* Play button / track number column - wider for mobile */}
+                    <div className="flex items-center justify-center">
+                      {isThisSongPlaying ? (
+                        <div className="w-8 h-8 flex items-center justify-center">
+                          <div className="w-3 h-3 bg-green-500 rounded-sm animate-pulse"></div>
                         </div>
-                        
-                        <div className="min-w-0 pr-2">
-                          <p className={`font-medium truncate ${isThisSongPlaying ? 'text-green-500' : 'text-white'}`}>
-                            {song.title}
-                          </p>
-                          <p className="text-sm text-zinc-400 truncate">{song.artist}</p>
-                        </div>
-                      </div>
-                      
-                      {/* Album info (desktop only) */}
-                      {window.innerWidth >= 768 && (
-                        <div className="text-zinc-400 text-sm truncate hidden md:block">
-                          {/* Album name would go here */}
+                      ) : (
+                        <div className="w-8 h-8 flex items-center justify-center text-zinc-400">
+                          {index + 1}
                         </div>
                       )}
-                      
-                      {/* Duration (desktop only) */}
-                      {window.innerWidth >= 768 && (
-                        <div className="flex justify-end text-zinc-400 text-sm">
-                          {formatTime(song.duration)}
+                    </div>
+                    
+                    {/* Song info with image */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={cn(
+                        "h-10 w-10 flex-shrink-0 bg-[#282828] rounded overflow-hidden",
+                        isCurrentSong && "ring-2 ring-green-500"
+                      )}>
+                        <img
+                          src={song.imageUrl || '/default-song.jpg'}
+                        alt={song.title}
+                          className="h-full w-full object-cover"
+                      />
                         </div>
-                      )}
-                      
-                      {/* Actions column */}
-                      <div className="flex items-center justify-end">
-                        {isOwner && window.innerWidth >= 768 && (
+                      <div className="flex flex-col min-w-0">
+                        <span className={cn("font-medium truncate text-base", isCurrentSong && "text-green-500")}>
+                          {song.title}
+                        </span>
+                        <span className="text-sm text-gray-400 truncate">
+                        {song.artist}
+                      </span>
+                    </div>
+                  </div>
+                    
+                    {/* Album info (placeholder) */}
+                    <div className="text-gray-400 text-sm truncate hidden md:block">
+                      {/* Empty for now, would show album name */}
+                  </div>
+                    
+                    {/* Duration and actions */}
+                    <div className="flex items-center justify-end gap-2 sm:gap-4 text-gray-400">
+                    {isOwner && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-zinc-400 hover:text-white h-8 w-8 opacity-0 group-hover:opacity-100"
+                            className="h-8 w-8 text-gray-400 hover:text-white p-0"
                             onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveSong(song._id, e);
-                            }}
-                          >
+                          e.stopPropagation();
+                          handleRemoveSong(song._id, e);
+                        }}
+                      >
                             <Trash className="h-4 w-4" />
                           </Button>
-                        )}
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={cn(
-                                "text-zinc-400 hover:text-white",
-                                window.innerWidth < 768 ? "h-10 w-10" : "h-8 w-8"
-                              )}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreHorizontal className={window.innerWidth < 768 ? "h-5 w-5" : "h-4 w-4"} />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 bg-[#282828] border-[#3E3E3E]">
-                            {isOwner && window.innerWidth < 768 && (
-                              <DropdownMenuItem onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveSong(song._id, e);
-                              }}>
-                                <Trash className="h-4 w-4 mr-2" />
-                                Remove from playlist
-                              </DropdownMenuItem>
-                            )}
-                            {!song.audioUrl && (
-                              <DropdownMenuItem onClick={(e) => {
-                                e.stopPropagation();
-                                handleFindAudio(song, index, e);
-                              }}>
-                                <Search className="h-4 w-4 mr-2" />
-                                Find audio
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              handlePlaySong(song, index, e);
-                            }}>
-                              {isThisSongPlaying ? (
-                                <>
-                                  <Pause className="h-4 w-4 mr-2" />
-                                  Pause
-                                </>
-                              ) : (
-                                <>
-                                  <Play className="h-4 w-4 mr-2" />
-                                  Play
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                    </div>
+                      )}
+                      
+                      {!song.audioUrl && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white p-0"
+                          onClick={(e) => {
+                          e.stopPropagation();
+                            handleFindAudio(song, index, e);
+                          }}
+                        >
+                          <Search className="h-4 w-4" />
+                        </Button>
+                      )}
+                      
+                      <span className="text-sm">{formatTime(song.duration)}</span>
                     </div>
                   </div>
                 );
@@ -1202,10 +1132,25 @@ export function PlaylistPage() {
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="mb-6 rounded-full bg-[#2A2A2A] p-8">
-                <Music2 className="h-8 w-8 text-zinc-400" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-gray-400"
+                >
+                  <path d="M9 18V5l12-2v13" />
+                  <circle cx="6" cy="18" r="3" />
+                  <circle cx="18" cy="16" r="3" />
+                </svg>
               </div>
               <h2 className="text-2xl font-bold text-white">It's pretty quiet here</h2>
-              <p className="mt-3 text-zinc-400 max-w-md">
+              <p className="mt-3 text-gray-400 max-w-md">
                 Add some songs to your playlist by clicking the "Add songs" button.
               </p>
               <Button 
