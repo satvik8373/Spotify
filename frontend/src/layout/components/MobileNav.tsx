@@ -112,14 +112,29 @@ const MobileNav = () => {
     };
   }, [currentSong, likedSongIds]);
 
-  // Disable pinch zoom using touch-action CSS property
+  // Setup viewport meta tag for proper mobile display
   useEffect(() => {
-    // Add touch-action CSS to prevent pinch-zoom
+    // Ensure viewport meta is correctly set up
+    let viewportMeta = document.querySelector('meta[name="viewport"]');
+    
+    if (!viewportMeta) {
+      viewportMeta = document.createElement('meta');
+      viewportMeta.setAttribute('name', 'viewport');
+      document.head.appendChild(viewportMeta);
+    }
+    
+    viewportMeta.setAttribute('content', 
+      'width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no'
+    );
+    
+    // Add minimal CSS to prevent overflow issues
     const style = document.createElement('style');
     style.innerHTML = `
-      html, body {
-        touch-action: pan-x pan-y;
-        overscroll-behavior: none;
+      body {
+        overflow-x: hidden;
+        position: relative;
+        width: 100%;
+        overscroll-behavior-y: none;
       }
     `;
     document.head.appendChild(style);
@@ -340,7 +355,7 @@ const MobileNav = () => {
       
       {/* Connected Devices Panel */}
       {showDevices && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col w-screen max-w-full">
           <div className="p-4 flex items-center justify-between border-b border-white/10">
             <h2 className="text-white text-lg font-bold">Connect to a device</h2>
             <button 
@@ -388,17 +403,20 @@ const MobileNav = () => {
       {/* Mobile Header with scroll behavior */}
       <div 
         className={cn(
-          "fixed top-0 left-0 right-0 z-30 transition-all duration-300 md:hidden border-b border-white/10", 
+          "fixed top-0 left-0 right-0 z-30 transition-all duration-300 md:hidden border-b border-white/10 w-full", 
           isHeaderTransparent 
             ? "bg-black/10 backdrop-blur-sm" 
             : "bg-gradient-to-b from-black via-black/80 to-black/40 backdrop-blur-md"
         )}
+        style={{
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+        }}
       >
         <div className="flex items-center justify-between px-4 py-2">
-          {/* VIP Badge */}
+          {/* Logo */}
           <div className="flex items-center">
             <span className="text-white font-bold text-sm mr-1">
-              Mavrixy
+              Mavrixfy
             </span>
             <span className="premium-shine bg-gradient-to-r from-white/90 via-white to-white/90 text-black text-xs font-bold px-1.5 py-0.5 rounded-sm">
               VIP
@@ -455,17 +473,17 @@ const MobileNav = () => {
       {/* Bottom Navigation */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black via-black/80 to-black/40 backdrop-blur-md border-t border-white/10 md:hidden",
+          "fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black via-black/80 to-black/40 backdrop-blur-md border-t border-white/10 md:hidden w-full",
           hasActiveSong ? "player-active" : ""
         )}
         style={{
-          paddingBottom: `env(safe-area-inset-bottom, 0px)`,
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
         {/* Add mini player when song is active */}
         {hasActiveSong && (
-          <div className="flex flex-col justify-between bg-black/60 backdrop-blur-md border-b border-white/5">
-            <div className="flex items-center justify-between px-3 py-2">
+          <div className="flex flex-col justify-between bg-black/60 backdrop-blur-md border-b border-white/5 max-w-full">
+            <div className="flex items-center justify-between px-3 py-2 w-full">
               <div 
                 className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-white/5 rounded-md py-1"
                 onClick={handleSongTap}
@@ -474,13 +492,17 @@ const MobileNav = () => {
                   src={currentSong.imageUrl} 
                   alt={currentSong.title} 
                   className="h-10 w-10 rounded-md object-cover flex-shrink-0"
+                  onError={(e) => {
+                    // Fallback for broken images
+                    (e.target as HTMLImageElement).src = '/placeholder-song.jpg';
+                  }}
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-white truncate">{currentSong.title}</p>
                   <p className="text-xs text-white/60 truncate">{currentSong.artist}</p>
                 </div>
               </div>
-              <div className="flex items-center">
+              <div className="flex items-center flex-shrink-0">
                 {/* Connected Devices Button */}
                 <button
                   onClick={(e) => {
@@ -551,7 +573,7 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-14 bg-black/80">
+        <div className="grid grid-cols-4 h-14 bg-black/80 max-w-full">
           {navItems.map(item => (
             <Link
               key={item.path}
