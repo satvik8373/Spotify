@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     
     // Call the JioSaavn API directly
     const response = await fetch(
-      'https://saavn.dev/api/search/songs?query=latest%20hits&page=1&limit=15'
+      'https://saavn.dev/api/search/songs?query=english%20top%20hits&page=1&limit=15'
     );
     
     if (!response.ok) {
@@ -40,15 +40,15 @@ export default async function handler(req, res) {
     
     return res.status(200).json({ 
       status: 'success',
-      message: 'Trending songs fetched successfully',
+      message: 'Hollywood songs fetched successfully',
       timestamp: new Date().toISOString(),
       data: { results: processedResults }
     });
   } catch (error) {
-    console.error('Error in trending API:', error);
+    console.error('Error in hollywood API:', error);
     return res.status(500).json({ 
       status: 'error',
-      message: 'Failed to fetch trending songs',
+      message: 'Failed to fetch hollywood songs',
       error: error.message || 'Unknown error',
       timestamp: new Date().toISOString()
     });

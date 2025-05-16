@@ -10,12 +10,23 @@ export default async function handler(req, res) {
       return res.status(200).end();
     }
     
-    // Add cache control headers
-    res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    // Extract query parameter
+    const { query } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required query parameter',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Add cache control headers (shorter for search queries)
+    res.setHeader('Cache-Control', 'public, max-age=1800'); // Cache for 30 minutes
     
     // Call the JioSaavn API directly
     const response = await fetch(
-      'https://saavn.dev/api/search/songs?query=latest%20hits&page=1&limit=15'
+      `https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&page=1&limit=20`
     );
     
     if (!response.ok) {
@@ -40,15 +51,16 @@ export default async function handler(req, res) {
     
     return res.status(200).json({ 
       status: 'success',
-      message: 'Trending songs fetched successfully',
+      message: 'Songs search completed successfully',
+      query: query,
       timestamp: new Date().toISOString(),
       data: { results: processedResults }
     });
   } catch (error) {
-    console.error('Error in trending API:', error);
+    console.error('Error in search API:', error);
     return res.status(500).json({ 
       status: 'error',
-      message: 'Failed to fetch trending songs',
+      message: 'Failed to search songs',
       error: error.message || 'Unknown error',
       timestamp: new Date().toISOString()
     });

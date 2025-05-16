@@ -335,92 +335,158 @@ const IndianMusicPlayer = () => {
     </div>
   );
 
+  // Generate fallback image for broken image URLs
+  const generateFallbackImage = (title: string): string => {
+    const colors = ['#1DB954', '#3D91F4', '#E13300', '#FFA42B', '#8B2AC2'];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    
+    const safeText = (title || 'Music').replace(/['&<>]/g, '').substring(0, 15);
+    return `data:image/svg+xml;base64,${btoa(`
+      <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+        <rect width="300" height="300" fill="${color}"/>
+        <text x="150" y="150" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">${safeText}</text>
+        <path d="M200,150 C200,177.614 177.614,200 150,200 C122.386,200 100,177.614 100,150 C100,122.386 122.386,100 150,100 C177.614,100 200,122.386 200,150 Z" fill="rgba(255,255,255,0.2)"/>
+        <path d="M165,140 L140,125 L140,175 L165,160 Z" fill="white"/>
+      </svg>
+    `)}`;
+  };
+
   const renderSongCard = (song: Song) => (
     <div 
       key={song.id}
-      className="bg-zinc-800/50 rounded-md hover:bg-zinc-700/80 transition cursor-pointer group relative flex flex-col"
-      onClick={() => {
-        playSong(song);
-      }}
+      className="relative rounded-md overflow-hidden hover:bg-white/5 transition-colors p-4 group flex flex-col"
     >
-      <div className="relative mb-2 aspect-square overflow-hidden rounded-md">
-        <img 
-          src={song.image || '/default-album.png'} 
-          alt={song.title} 
-          className="object-cover w-full h-full" 
-          loading="lazy"
-        />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-          <Button 
-            size="icon" 
-            className="size-9 rounded-full bg-green-500 hover:bg-green-600 transition shadow-lg"
-            onClick={(e) => {
-              e.stopPropagation();
-              playSong(song);
+      <div 
+        className="relative aspect-square w-full overflow-hidden rounded-md mb-4 bg-zinc-900"
+        onClick={() => playSong(song)}
+      >
+        {song.image ? (
+          <img 
+            src={song.image} 
+            alt={song.title}
+            className="object-cover w-full h-full transition-all"
+            onError={(e) => {
+              // Set a default placeholder image if the original URL fails to load
+              e.currentTarget.src = generateFallbackImage(song.title);
+              // Remove the error handler to prevent infinite loops if the fallback also fails
+              e.currentTarget.onerror = null;
             }}
-          >
-            {isSongPlaying(song) ? (
-              <Pause className="size-4" />
-            ) : (
-              <Play className="size-4 ml-0.5" />
-            )}
-          </Button>
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <img 
+              src={generateFallbackImage(song.title)}
+              alt={song.title}
+              className="object-cover w-full h-full"
+            />
+          </div>
+        )}
+        <div 
+          className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        >
+          {isSongPlaying(song) ? (
+            <button 
+              className="h-10 w-10 rounded-full bg-white flex items-center justify-center"
+              aria-label="Pause"
+              onClick={(e) => {
+                e.stopPropagation();
+                usePlayerStore.getState().togglePlay();
+              }}
+            >
+              <Pause className="h-5 w-5 text-black" />
+              <span className="sr-only">Pause</span>
+            </button>
+          ) : (
+            <button 
+              className="h-10 w-10 rounded-full bg-white flex items-center justify-center"
+              aria-label="Play"
+              onClick={(e) => {
+                e.stopPropagation();
+                playSong(song);
+              }}
+            >
+              <Play className="h-5 w-5 text-black ml-0.5" />
+              <span className="sr-only">Play</span>
+            </button>
+          )}
         </div>
       </div>
-      <div className="flex-1 px-1.5 pb-2">
-        <h3 className="font-medium text-sm leading-tight line-clamp-1">{song.title}</h3>
-        <p className="text-xs text-zinc-400 truncate mt-0.5">{song.artist || 'Unknown Artist'}</p>
-      </div>
+      <h3 
+        className="text-sm font-medium truncate cursor-pointer"
+        onClick={() => playSong(song)}
+      >
+        {song.title}
+      </h3>
+      <p className="text-xs text-zinc-400 truncate">{song.artist || 'Unknown Artist'}</p>
     </div>
   );
 
   const renderSongRow = (song: Song) => (
     <div 
       key={song.id}
-      className="flex items-center p-1.5 rounded-md hover:bg-zinc-800/80 transition cursor-pointer group relative"
-      onClick={() => {
-        playSong(song);
-      }}
+      className="grid grid-cols-[auto_1fr_auto] gap-4 p-2 hover:bg-white/5 rounded-md group cursor-pointer"
+      onClick={() => playSong(song)}
     >
-      <div className="relative size-10 flex-shrink-0 mr-2">
-        <img 
-          src={song.image || '/default-album.png'} 
-          alt={song.title} 
-          className="size-full object-cover rounded" 
-          loading="lazy"
-        />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded">
-          {isSongPlaying(song) ? (
-            <div className="flex items-center justify-center space-x-0.5">
-              {animationBars.map((height, i) => (
-                <div 
-                  key={i} 
-                  className="w-0.5 bg-white" 
-                  style={{ height: `${Math.max(30, height)}%` }}
-                ></div>
-              ))}
-            </div>
-          ) : (
-            <Play className="size-4 ml-0.5" />
-          )}
-        </div>
+      <div className="w-10 h-10 rounded-md bg-zinc-800 overflow-hidden flex-shrink-0">
+        {song.image ? (
+          <img 
+            src={song.image} 
+            alt={song.title} 
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.src = generateFallbackImage(song.title);
+              e.currentTarget.onerror = null;
+            }}
+          />
+        ) : (
+          <img 
+            src={generateFallbackImage(song.title)}
+            alt={song.title}
+            className="w-full h-full object-cover"
+          />
+        )}
       </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-sm truncate leading-tight">{song.title}</h3>
-        <p className="text-xs text-zinc-400 truncate">{song.artist || 'Unknown Artist'}</p>
+      
+      <div className="min-w-0 flex flex-col justify-center">
+        <h3 className="text-sm font-medium truncate text-white">
+          {song.title}
+        </h3>
+        <p className="text-xs text-zinc-400 truncate">
+          {song.artist || 'Unknown Artist'}
+        </p>
       </div>
-      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="size-7 rounded-full"
+      
+      <div className="flex items-center gap-1">
+        {currentSong && currentSong._id === song.id && isPlaying && (
+          <div className="flex h-8 items-center gap-0.5 mr-3">
+            {animationBars.map((height, idx) => (
+              <span 
+                key={idx} 
+                className="w-0.5 bg-green-500 rounded-sm"
+                style={{ 
+                  height: '12px',
+                  transform: `scaleY(${height / 100})`, 
+                  transition: 'transform 0.2s ease',
+                  animationDelay: `${idx * 0.2}s`
+                }}
+              ></span>
+            ))}
+          </div>
+        )}
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`size-8 text-zinc-400 opacity-0 group-hover:opacity-100 ${likedSongIds.has(song.id) ? '!opacity-100 text-green-500' : ''}`}
           onClick={(e) => toggleLikeSong(song, e)}
+          title={likedSongIds.has(song.id) ? 'Remove from liked songs' : 'Add to liked songs'}
         >
-          <Heart className={`size-3.5 ${likedSongIds.has(song.id) ? 'fill-green-500 text-green-500' : ''}`} />
+          <Heart className={likedSongIds.has(song.id) ? 'fill-current' : ''} size={18} />
         </Button>
-        <span className="text-[10px] text-zinc-400 w-10 text-right">
-          {song.duration || '--:--'}
-        </span>
+        
+        <div className="w-16 text-right text-xs text-zinc-500">
+          {song.duration ? formatTime(parseInt(song.duration)) : ''}
+        </div>
       </div>
     </div>
   );
@@ -429,83 +495,133 @@ const IndianMusicPlayer = () => {
     if (!selectedSong) return null;
     
     return (
-      <Dialog open={showSongDetails} onOpenChange={setShowSongDetails}>
-        <DialogContent className="bg-gradient-to-b from-zinc-800 to-zinc-900 border-zinc-700 max-w-md">
-          <div className="flex flex-col items-center py-4">
-            <div className="flex w-full justify-between mb-4">
-              <Button variant="ghost" size="icon" onClick={() => setShowSongDetails(false)}>
-                <ArrowLeft className="size-5" />
-              </Button>
-              <h3 className="text-lg font-semibold">Song Details</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowSongDetails(false)}>
-                <X className="size-5" />
-              </Button>
-            </div>
-            
-            <div className="relative w-64 h-64 mb-6">
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between mb-6">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full"
+            onClick={() => setShowSongDetails(false)}
+          >
+            <ArrowLeft />
+          </Button>
+          <h2 className="text-xl font-bold">Song Details</h2>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full"
+            onClick={() => setShowSongDetails(false)}
+          >
+            <X />
+          </Button>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center mb-6">
+          <div className="w-56 h-56 rounded-lg overflow-hidden bg-zinc-800 mb-4 shadow-xl">
+            {selectedSong.image ? (
               <img 
-                src={selectedSong.image || '/default-album.png'} 
-                alt={selectedSong.title} 
-                className="w-full h-full object-cover rounded-md shadow-lg" 
+                src={selectedSong.image} 
+                alt={selectedSong.title}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = generateFallbackImage(selectedSong.title);
+                  e.currentTarget.onerror = null;
+                }}
               />
-            </div>
-            
-            <div className="text-center w-full mb-6">
-              <h2 className="text-xl font-bold mb-1">{selectedSong.title}</h2>
-              <p className="text-zinc-400">{selectedSong.artist || 'Unknown Artist'}</p>
-              {selectedSong.album && (
-                <p className="text-zinc-500 text-sm mt-1">{selectedSong.album}</p>
-              )}
-            </div>
-            
-            <div className="flex justify-between w-full mb-8">
-              <Button 
-                variant={likedSongIds.has(selectedSong.id) ? "default" : "ghost"} 
-                size="icon"
-                className={`size-10 rounded-full ${likedSongIds.has(selectedSong.id) ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                onClick={(e) => toggleLikeSong(selectedSong, e)}
-              >
-                <Heart className={`size-5 ${likedSongIds.has(selectedSong.id) ? 'fill-white' : ''}`} />
-              </Button>
-              
-              <Button variant="ghost" size="icon" className="size-10 rounded-full" onClick={handleShare}>
-                <Share2 className="size-5" />
-              </Button>
-              
-              <Button variant="ghost" size="icon" className="size-10 rounded-full">
-                <Download className="size-5" />
-              </Button>
-              
-              <Button variant="ghost" size="icon" className="size-10 rounded-full">
-                <MoreHorizontal className="size-5" />
-              </Button>
-            </div>
-            
-            {isPlaying && currentSong && currentSong._id === selectedSong.id && (
-              <div className="w-full mb-6">
-                <div className="w-full bg-zinc-700 h-1 rounded-full mb-2">
-                  <div 
-                    className="bg-green-500 h-full rounded-full" 
-                    style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between text-xs text-zinc-400">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
-                </div>
-              </div>
+            ) : (
+              <img 
+                src={generateFallbackImage(selectedSong.title)}
+                alt={selectedSong.title}
+                className="w-full h-full object-cover"
+              />
             )}
-            
-            <Button 
-              size="lg" 
-              className="w-full bg-green-500 hover:bg-green-600 text-lg font-semibold rounded-full"
-              onClick={() => playSong(selectedSong)}
-            >
-              {isSongPlaying(selectedSong) ? 'Pause' : 'Play'}
-            </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+          <h3 className="text-xl font-bold text-center">{selectedSong.title}</h3>
+          <p className="text-zinc-400 text-center">{selectedSong.artist || 'Unknown Artist'}</p>
+          {selectedSong.album && (
+            <p className="text-zinc-500 text-sm text-center">{selectedSong.album}</p>
+          )}
+          {selectedSong.year && (
+            <p className="text-zinc-600 text-xs text-center">{selectedSong.year}</p>
+          )}
+        </div>
+        
+        <div className="flex justify-center gap-4 mb-8">
+          <Button 
+            className="rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg"
+            onClick={() => playSong(selectedSong)}
+          >
+            {isSongPlaying(selectedSong) ? (
+              <>
+                <Pause className="mr-2 h-4 w-4" />
+                Pause
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4 ml-0.5" />
+                Play
+              </>
+            )}
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={(e) => toggleLikeSong(selectedSong, e as any)}
+          >
+            <Heart className={`mr-2 h-4 w-4 ${likedSongIds.has(selectedSong.id) ? 'fill-current text-red-500' : ''}`} />
+            {likedSongIds.has(selectedSong.id) ? 'Remove' : 'Like'}
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={handleShare}
+          >
+            <Share2 className="mr-2 h-4 w-4" />
+            Share
+          </Button>
+        </div>
+        
+        <div className="bg-zinc-800/50 rounded-xl p-4 mb-4">
+          <h4 className="text-sm font-medium mb-2 flex items-center">
+            <Music className="h-4 w-4 mr-2" />
+            Audio Information
+          </h4>
+          <div className="grid grid-cols-2 gap-y-2 text-sm">
+            <div className="text-zinc-400">Duration</div>
+            <div>{selectedSong.duration ? formatTime(parseInt(selectedSong.duration)) : 'Unknown'}</div>
+            {selectedSong.url && (
+              <>
+                <div className="text-zinc-400">Format</div>
+                <div>MP4 Audio</div>
+                <div className="text-zinc-400">Quality</div>
+                <div>High (320kbps)</div>
+              </>
+            )}
+          </div>
+        </div>
+        
+        {selectedSong.url && (
+          <Button
+            variant="outline"
+            className="mt-auto rounded-full flex items-center justify-center"
+            onClick={() => {
+              if (selectedSong.url) {
+                const a = document.createElement('a');
+                a.href = selectedSong.url;
+                a.download = `${selectedSong.title}.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              }
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download Audio
+          </Button>
+        )}
+      </div>
     );
   };
 
