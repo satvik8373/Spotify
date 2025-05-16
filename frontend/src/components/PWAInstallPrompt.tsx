@@ -217,8 +217,8 @@ const PWAInstallPrompt = () => {
       <div>
         <p className="text-sm md:text-base">
           {isIOSDevice 
-            ? 'Install Mavrixfy on your iOS device: tap Share then "Add to Home Screen"' 
-            : 'Add Mavrixfy to your home screen for the best experience'}
+            ? 'Install Spotify x Mavrix on your iOS device: tap Share then "Add to Home Screen"' 
+            : 'Add Spotify x Mavrix to your home screen for the best experience'}
         </p>
       </div>
       <div className="flex items-center gap-2">
