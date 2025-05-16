@@ -380,7 +380,7 @@ const AudioPlayer = () => {
       // Don't continue if duration is invalid
       if (isNaN(audio.duration) || audio.duration <= 0) return;
       
-      // Only update lastTime if we're not at the end
+      // Track last time for end detection
       if (audio.currentTime < audio.duration - 0.5) {
         lastTime = audio.currentTime;
       }
@@ -390,10 +390,12 @@ const AudioPlayer = () => {
       if (audio.currentTime > 0 && 
           audio.duration > 0 && 
           audio.currentTime >= audio.duration - 0.3 && 
-          audio.currentTime > lastTime) { // Ensure we're actually progressing
+          audio.currentTime > lastTime && // Ensure we're actually progressing
+          !audio.paused) { // Only trigger for playing audio to avoid duplicate triggers
         
         // Only trigger if we haven't reached the actual end yet (to avoid duplicates)
         if (audio.currentTime < audio.duration) {
+          console.log("Detected near-end of song via timeupdate, triggering handleEnded");
           // Since we're not actually at the end, we need to handle specially
           handleEnded();
           
@@ -407,35 +409,65 @@ const AudioPlayer = () => {
     let lastCheck = 0;
     audio.addEventListener('timeupdate', () => {
       const now = Date.now();
-      // Check every 500ms to reduce CPU usage but be responsive enough
-      if (now - lastCheck > 500) {
+      // Check every 250ms to improve responsiveness for end detection
+      if (now - lastCheck > 250) {
         lastCheck = now;
         handleTimeUpdate();
       }
     });
     
-    // Additional interval check for certain browsers/devices that might have unreliable events
+    // Add an extra background checker for lock screen / background mode
     endingDetectionInterval = setInterval(() => {
       // Only check if we're supposed to be playing
       if (isPlaying && audio) {
-        // Special check for song completion when in background
-        if (document.hidden && audio.currentTime > 0 && audio.duration > 0 &&
-            !isNaN(audio.duration) && audio.currentTime >= audio.duration - 0.3) {
+        // Special check for song completion when in background or locked screen
+        if ((document.hidden || navigator.userActivation?.hasBeenActive === false) && 
+            audio.currentTime > 0 && audio.duration > 0 &&
+            !isNaN(audio.duration) && audio.currentTime >= audio.duration - 0.5) {
+          console.log("Background/lockscreen song end detected, advancing to next track");
           handleEnded();
         }
         
-        // Check if audio is paused but should be playing
+        // Check if audio is paused but should be playing (autopaused by browser)
         if (audio.paused && isPlaying && !isNaN(audio.duration) && 
             audio.currentTime < audio.duration - 0.5) {
           // Try to resume playback
           audio.play().catch(() => {});
         }
+        
+        // Check for stalled playback (no movement for over 3 seconds)
+        if (!audio.paused && !isNaN(audio.duration) && 
+            Math.abs(audio.currentTime - lastTime) < 0.01 && 
+            audio.currentTime < audio.duration - 1) {
+          // Count consecutive stall detections
+          const stallCount = (audio as any)._stallCount || 0;
+          (audio as any)._stallCount = stallCount + 1;
+          
+          // If stalled for too long (3 checks = ~3s), try to recover
+          if (stallCount >= 3) {
+            console.log("Detected stalled playback, attempting recovery");
+            // Try to unstick by seeking slightly forward
+            audio.currentTime += 0.1;
+            (audio as any)._stallCount = 0;
+            
+            // If still stalled after seeking, try to play next
+            if (audio.paused || stallCount > 5) {
+              console.log("Stalled too long, advancing to next track");
+              handleEnded();
+            }
+          }
+        } else {
+          // Reset stall counter when playback is moving normally
+          (audio as any)._stallCount = 0;
+        }
+        
+        // Update last time for stall detection
+        lastTime = audio.currentTime;
       }
     }, 1000);
     
     return () => {
       audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
       if (endingDetectionInterval) clearInterval(endingDetectionInterval);
     };
   }, [isPlaying]);
@@ -1547,6 +1579,83 @@ const AudioPlayer = () => {
     };
   }, [showDeviceSelector]);
 
+  // Add enhanced background playback support
+  useEffect(() => {
+    // Only run when we have a song playing
+    if (!currentSong || !isPlaying) return;
+    
+    // Handle visibility change specifically for playback
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Page is now hidden (background)
+        console.log("Page hidden, ensuring background playback");
+        
+        // Double check media session availability
+        if (isMediaSessionSupported()) {
+          // Force update position state for lock screen
+          if ('setPositionState' in navigator.mediaSession && audioRef.current) {
+            try {
+              navigator.mediaSession.setPositionState({
+                duration: audioRef.current.duration || 0,
+                playbackRate: audioRef.current.playbackRate || 1,
+                position: audioRef.current.currentTime || 0
+              });
+            } catch (e) {}
+          }
+        }
+      } else {
+        // Page is visible again
+        console.log("Page visible, checking playback state");
+        
+        // If we're supposed to be playing but audio is paused, restart it
+        if (isPlaying && audioRef.current?.paused && !audioRef.current?.ended) {
+          console.log("Restarting paused audio after visibility change");
+          audioRef.current.play().catch(() => {});
+        }
+      }
+    };
+    
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Setup wake lock for improved background playback (where supported)
+    let wakeLock: any = null;
+    
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator) {
+        try {
+          // Request a screen wake lock to improve background playback
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          console.log('Wake lock acquired for improved playback');
+          
+          wakeLock.addEventListener('release', () => {
+            console.log('Wake lock released');
+            // Try to reacquire if we're still playing
+            if (isPlaying) {
+              requestWakeLock();
+            }
+          });
+        } catch (err) {
+          // Silent fail for unsupported browsers
+        }
+      }
+    };
+    
+    // Request wake lock when playing
+    if (isPlaying) {
+      requestWakeLock();
+    }
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Release wake lock if we have one
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+      }
+    };
+  }, [currentSong, isPlaying]);
+
   if (!currentSong) {
     return (
       <audio
@@ -1748,11 +1857,20 @@ const AudioPlayer = () => {
         playsInline
         webkit-playsinline="true"
         x-webkit-airplay="allow"
-        onEnded={() => usePlayerStore.getState().playNext()}
+        loop={usePlayerStore.getState().isRepeating}
+        data-testid="audio-element"
+        onEnded={() => {
+          console.log("Audio onEnded event triggered");
+          const state = usePlayerStore.getState();
+          state.setUserInteracted();
+          state.playNext();
+          state.setIsPlaying(true);
+        }}
         onPause={() => {
           // Check if this is an unintended pause (like system-initiated)
           // but only if we're supposed to be playing
           if (isPlaying && !document.hidden) {
+            console.log("Detected unintended pause, attempting to resume");
             // Try to resume playback after a short delay
             setTimeout(() => {
               const audio = audioRef.current;
@@ -1760,6 +1878,24 @@ const AudioPlayer = () => {
                 audio.play().catch(() => {});
               }
             }, 500);
+          }
+        }}
+        onPlay={() => {
+          // Ensure store state is in sync with actual audio element state
+          if (!isPlaying) {
+            usePlayerStore.getState().setIsPlaying(true);
+          }
+        }}
+        onWaiting={() => {
+          // Handle waiting/buffering state
+          setIsLoading(true);
+        }}
+        onCanPlay={() => {
+          // Handle ready state
+          setIsLoading(false);
+          // Try to play if we're supposed to be playing
+          if (isPlaying && audioRef.current?.paused) {
+            audioRef.current.play().catch(() => {});
           }
         }}
         controls={false}

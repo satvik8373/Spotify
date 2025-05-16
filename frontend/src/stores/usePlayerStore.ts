@@ -154,6 +154,7 @@ export const usePlayerStore = create<PlayerState>()(
           timestamp: new Date().toISOString()
         };
         
+        // Update state with new song
         set({
           currentIndex: newIndex,
           currentSong: queue[newIndex],
@@ -161,13 +162,47 @@ export const usePlayerStore = create<PlayerState>()(
           isPlaying: true // Always ensure playback continues
         });
         
+        // More reliable method to ensure the audio element updates
+        // especially important for background/lock screen playback
+        setTimeout(() => {
+          const audio = document.querySelector('audio');
+          if (audio) {
+            // Ensure the audio element has the latest src and is playing
+            if (audio.src !== queue[newIndex].audioUrl) {
+              audio.src = queue[newIndex].audioUrl;
+              audio.load(); // Important for mobile browsers
+            }
+            audio.play().catch(() => {});
+            
+            // Update MediaSession for lock screen controls if available
+            if ('mediaSession' in navigator) {
+              navigator.mediaSession.metadata = new MediaMetadata({
+                title: queue[newIndex].title || 'Unknown Title',
+                artist: queue[newIndex].artist || 'Unknown Artist',
+                album: queue[newIndex].albumId ? String(queue[newIndex].albumId) : 'Unknown Album',
+                artwork: [
+                  {
+                    src: queue[newIndex].imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+                    sizes: '512x512',
+                    type: 'image/jpeg'
+                  }
+                ]
+              });
+              
+              // Update playback state
+              navigator.mediaSession.playbackState = 'playing';
+            }
+          }
+        }, 50);
+        
         // Save to localStorage as a backup
         try {
           const playerState = { 
             currentSong: queue[newIndex],
             currentIndex: newIndex,
             timestamp: new Date().toISOString(),
-            previousState: currentState // Store previous state for recovery
+            previousState: currentState, // Store previous state for recovery
+            isPlaying: true // Include playback state explicitly
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
         } catch (error) {
