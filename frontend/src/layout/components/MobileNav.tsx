@@ -42,6 +42,7 @@ const MobileNav = () => {
   const [showTimeIndicators, setShowTimeIndicators] = useState(false);
   const [showDevices, setShowDevices] = useState(false);
   const [isHeaderTransparent, setIsHeaderTransparent] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
   const lastScrollTop = useRef(0);
   
   // Check if we have an active song to add padding to the bottom nav
@@ -57,6 +58,28 @@ const MobileNav = () => {
   useEffect(() => {
     setSongLiked(isLiked);
   }, [isLiked]);
+
+  // Check if app is in standalone mode (PWA)
+  useEffect(() => {
+    const checkStandalone = () => {
+      // Check for standalone mode in different browsers
+      const isInStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                            (window.navigator as any).standalone === true ||
+                            document.referrer.includes('android-app://');
+      
+      setIsStandalone(isInStandalone);
+    };
+    
+    // Check on component mount
+    checkStandalone();
+    
+    // Also check when visibility changes (app might be added to home screen while in use)
+    document.addEventListener('visibilitychange', checkStandalone);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', checkStandalone);
+    };
+  }, []);
 
   // Handle scroll to change header transparency
   useEffect(() => {
@@ -456,7 +479,8 @@ const MobileNav = () => {
       <div
         className={cn(
           "fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black via-black/80 to-black/40 backdrop-blur-md border-t border-white/10 md:hidden",
-          hasActiveSong ? "player-active" : ""
+          hasActiveSong ? "player-active" : "",
+          isStandalone ? "pwa-standalone" : ""
         )}
         style={{
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
@@ -551,7 +575,10 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-14 bg-black/80">
+        <div className={cn(
+          "grid grid-cols-4 h-14 bg-black/80",
+          isStandalone ? "pwa-nav-height" : ""
+        )}>
           {navItems.map(item => (
             <Link
               key={item.path}
