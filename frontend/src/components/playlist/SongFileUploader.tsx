@@ -356,7 +356,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
           <div className="mb-8 p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full">
             <ArrowLeftRight className="h-12 w-12 text-white" />
           </div>
-          <h2 className="text-xl md:text-2xl font-bold mb-4 text-center">Spotify X Mavrix</h2>
+          <h2 className="text-xl md:text-2xl font-bold mb-4 text-center">Mavrixfy</h2>
           <p className="text-lg text-center mb-8">Import Guide</p>
           <p className="text-sm text-zinc-300 text-center max-w-xs">
             Follow this step-by-step guide to import your playlists from other music platforms
@@ -488,12 +488,12 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
     },
     // Page 3
     {
-      title: "Step 3: Import to Spotify X Mavrix",
+      title: "Step 3: Import to Mavrixfy",
       content: (
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-6">
             <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">3</div>
-            <h3 className="text-lg font-medium">Import your file to Spotify X Mavrix</h3>
+            <h3 className="text-lg font-medium">Import your file to Mavrixfy</h3>
           </div>
 
           <div className="space-y-3 text-sm">

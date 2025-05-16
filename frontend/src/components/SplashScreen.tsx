@@ -121,7 +121,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
               transition={{ delay: 0.4 }}
               className="text-center"
             >
-              <h1 className="text-white text-xl font-medium">Spotify x Mavrix</h1>
+              <h1 className="text-white text-xl font-medium">Mavrixfy</h1>
             </motion.div>
             
             {/* Loading indicator with optimized animation */}
