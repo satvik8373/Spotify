@@ -304,7 +304,7 @@ const IndianMusicPlayer = () => {
       if (navigator.share) {
         await navigator.share({
           title: selectedSong.title,
-          text: `Listen to ${selectedSong.title} by ${selectedSong.artist || 'Unknown Artist'} on Spotify`,
+          text: `Listen to ${selectedSong.title} by ${selectedSong.artist || 'Unknown Artist'} on Mavrixfy`,
           url: window.location.href
         });
       } else {

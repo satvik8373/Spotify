@@ -91,7 +91,7 @@ const Register = () => {
           >
             <ArrowLeft />
           </Button>
-          <h1 className="text-2xl font-bold text-white">Sign up for Spotify</h1>
+          <h1 className="text-2xl font-bold text-white">Sign up for Mavrixfy</h1>
         </div>
         
         <div className="mb-6">
@@ -181,7 +181,7 @@ const Register = () => {
           </Button>
           
           <p className="text-xs text-zinc-400 text-center mt-4">
-            By creating an account, you agree to Spotify's Terms of Service and Privacy Policy.
+            By creating an account, you agree to Mavrixfy's Terms of Service and Privacy Policy.
           </p>
         </form>
         
@@ -193,7 +193,7 @@ const Register = () => {
             to="/login" 
             className="inline-block border border-zinc-700 text-white rounded-full px-8 py-3 font-bold hover:border-white transition-colors"
           >
-            Log in to Spotify
+            Log in to Mavrixfy
           </Link>
         </div>
       </div>
