@@ -9,8 +9,7 @@
     "build": "tsc && vite build",
     "vercel-build": "vite build",
     "preview": "vite preview",
-    "start": "vite preview --port $PORT",
-    "deploy": "vercel deploy --prod"
+    "start": "vite preview --port $PORT"
   },
   "keywords": [
     "spotify",
