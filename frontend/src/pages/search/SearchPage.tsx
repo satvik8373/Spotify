@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { usePlayerStore } from '@/stores/usePlayerStore';
@@ -17,9 +17,7 @@ import {
   ChevronRight,
   Music,
   ExternalLink,
-  Instagram,
-  Mic,
-  MicOff
+  Instagram
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +28,6 @@ import { PlaylistCard } from '@/components/playlist/PlaylistCard';
 import { Playlist } from '@/types';
 import { debounce } from 'lodash';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 // Maximum number of recent searches to store
 const MAX_RECENT_SEARCHES = 8;
@@ -40,39 +37,6 @@ const INSTAGRAM_HANDLE = "@mavrix_official";
 const INSTAGRAM_URL = "https://www.instagram.com/mavrix_official?igsh=MTZyYnVxMmdiYzBmeQ%3D%3D&utm_source=qr";
 const INSTAGRAM_HANDLE_TRADING = "@mavrix.trading";
 const INSTAGRAM_URL_TRADING = "https://www.instagram.com/mavrix.trading?igsh=bDIzdGJjazgyYzE3";
-
-// Speech Recognition setup
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-  message: string;
-}
-
-interface SpeechRecognitionEvent extends Event {
-  results: {
-    [index: number]: {
-      [index: number]: {
-        transcript: string;
-        confidence: number;
-      };
-    };
-  };
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: ((event: Event) => void) | null;
-}
-
-interface Window {
-  SpeechRecognition?: new () => SpeechRecognition;
-  webkitSpeechRecognition?: new () => SpeechRecognition;
-}
 
 const SearchPage = () => {
   const location = useLocation();
@@ -88,86 +52,6 @@ const SearchPage = () => {
   
   // Recent searches state
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-
-  // Speech recognition states
-  const [isListening, setIsListening] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
-  
-  // Check if speech recognition is supported
-  useEffect(() => {
-    const SpeechRecognition = (window as unknown as Window).SpeechRecognition || 
-                              (window as unknown as Window).webkitSpeechRecognition;
-    
-    if (SpeechRecognition) {
-      setSpeechSupported(true);
-      const recognitionInstance = new SpeechRecognition();
-      recognitionInstance.continuous = false;
-      recognitionInstance.interimResults = false;
-      recognitionInstance.lang = 'en-US';
-      
-      setRecognition(recognitionInstance);
-    } else {
-      setSpeechSupported(false);
-    }
-    
-    return () => {
-      if (recognition) {
-        recognition.onresult = null;
-        recognition.onend = null;
-        recognition.onerror = null;
-        if (isListening) {
-          try {
-            recognition.stop();
-          } catch (e) {
-            console.error('Error stopping speech recognition:', e);
-          }
-        }
-      }
-    };
-  }, []);
-  
-  // Toggle speech recognition
-  const toggleListening = useCallback(() => {
-    if (!recognition) return;
-    
-    if (isListening) {
-      recognition.stop();
-      return;
-    }
-    
-    // Set up recognition event handlers
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript;
-      if (transcript) {
-        setSearchQuery(transcript);
-        setTimeout(() => {
-          navigate(`/search?q=${encodeURIComponent(transcript.trim())}`);
-        }, 500);
-      }
-    };
-    
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-    
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error', event.error);
-      setIsListening(false);
-      toast.error('Speech recognition error', { description: event.error });
-    };
-    
-    // Start listening
-    try {
-      recognition.start();
-      setIsListening(true);
-      toast.info('Listening... Speak now');
-    } catch (error) {
-      console.error('Speech recognition error', error);
-      toast.error('Could not start speech recognition');
-      setIsListening(false);
-    }
-  }, [recognition, isListening, navigate]);
   
   // Load recent searches from localStorage on component mount
   useEffect(() => {
@@ -322,40 +206,6 @@ const SearchPage = () => {
         </div>
       )}
       
-      {/* Voice Search Section */}
-      {speechSupported && (
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">Search with your voice</h2>
-          <div className="bg-[#181818] p-6 rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex-1">
-              <p className="text-white/80 mb-3">Try searching by speaking instead of typing</p>
-              <Button
-                onClick={toggleListening}
-                className={cn(
-                  "bg-[#1db954] hover:bg-[#1ed760] text-white font-medium px-5 py-2 rounded-full flex items-center gap-2",
-                  isListening && "bg-[#1ed760]"
-                )}
-              >
-                {isListening ? (
-                  <>
-                    <Mic className="h-4 w-4 animate-pulse" />
-                    Listening...
-                  </>
-                ) : (
-                  <>
-                    <Mic className="h-4 w-4" />
-                    Search with voice
-                  </>
-                )}
-              </Button>
-            </div>
-            <div className="w-16 h-16 bg-[#1db954] rounded-full flex items-center justify-center flex-shrink-0">
-              <Mic className="h-8 w-8 text-white" />
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Follow on Instagram Section */}
       <div>
         <h2 className="text-xl font-bold text-white mb-4">Follow Us</h2>
@@ -452,7 +302,7 @@ const SearchPage = () => {
           <div className="mb-6 flex flex-col lg:flex-row lg:items-center gap-4">
             <h1 className="text-3xl font-bold">Search</h1>
             
-            {/* Search Box - Spotify-style white design with speech recognition */}
+            {/* Search Box - Spotify-style white design */}
             <form onSubmit={handleSearch} className="flex-1 max-w-xl flex items-center">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-700" />
@@ -475,29 +325,10 @@ const SearchPage = () => {
               </div>
               <Button 
                 type="submit"
-                className="h-12 rounded-none bg-white hover:bg-white/90 text-zinc-800 font-medium px-5 border-none"
+                className="h-12 rounded-r-full rounded-l-none bg-white hover:bg-white/90 text-zinc-800 font-medium px-5 border-none"
               >
                 Search
               </Button>
-              
-              {/* Speech recognition button */}
-              {speechSupported && (
-                <Button
-                  type="button"
-                  onClick={toggleListening}
-                  className={cn(
-                    "h-12 rounded-r-full bg-white hover:bg-white/90 text-zinc-800 font-medium px-3 border-none transition-all",
-                    isListening && "text-green-600 bg-white/90"
-                  )}
-                  title={isListening ? "Stop listening" : "Search with voice"}
-                >
-                  {isListening ? (
-                    <Mic className="h-5 w-5 animate-pulse" />
-                  ) : (
-                    <Mic className="h-5 w-5" />
-                  )}
-                </Button>
-              )}
             </form>
           </div>
 
@@ -574,15 +405,6 @@ const SearchPage = () => {
                   </div>
                   <p className="text-zinc-200 font-semibold text-lg">No results found for "{query}"</p>
                   <p className="text-zinc-400 text-sm mt-2">Try different keywords or check the spelling</p>
-                  {speechSupported && (
-                    <Button
-                      onClick={toggleListening}
-                      className="mt-4 bg-[#1db954] hover:bg-[#1ed760] text-white font-medium px-5 py-2 rounded-full flex items-center gap-2"
-                    >
-                      <Mic className="h-4 w-4" />
-                      Try voice search
-                    </Button>
-                  )}
                 </div>
               )}
             </div>

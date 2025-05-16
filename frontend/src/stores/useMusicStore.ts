@@ -270,35 +270,47 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
       // Use mock data first to ensure immediate content display
       set({ indianTrendingSongs: mockTrendingSongs });
       
+      // First try backend proxy
+      let response;
+      let data;
+
       try {
-        // Call JioSaavn API directly
-        const response = await fetch(
-          'https://saavn.dev/api/search/songs?query=latest%20hits&page=1&limit=10'
-        );
-        if (!response.ok) throw new Error('Failed to fetch trending songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results && data.data.results.length > 0) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists,
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
-            
-          if (formattedResults.length > 0) {
-            set({ indianTrendingSongs: formattedResults });
-          }
+        response = await fetch('/api/music/trending');
+        if (!response.ok) throw new Error('Backend proxy failed');
+        data = await response.json();
+      } catch (backendError) {
+        // Fallback to direct API
+        console.log('Trying direct JioSaavn API...');
+        try {
+          response = await fetch(
+            'https://saavn.dev/api/search/songs?query=latest%20hits&page=1&limit=10'
+          );
+          if (!response.ok) throw new Error('Failed to fetch trending songs');
+          data = await response.json();
+        } catch (apiError) {
+          console.log('API failed, using mock data');
+          // Already set mock data, no need to set again
+          return;
         }
-      } catch (error) {
-        // Already set mock data, no need to set again
+      }
+
+      if (data.data && data.data.results && data.data.results.length > 0) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists,
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+          
+        if (formattedResults.length > 0) {
+          set({ indianTrendingSongs: formattedResults });
+        }
       }
     } catch (error: any) {
       // Ensure we have fallback data
@@ -311,33 +323,39 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
   fetchBollywoodSongs: async () => {
     set({ isIndianMusicLoading: true });
     try {
+      // First try backend proxy
+      let response;
+      let data;
+
       try {
-        // Call JioSaavn API directly
-        const response = await fetch(
+        response = await fetch('/api/music/bollywood');
+        if (!response.ok) throw new Error('Backend proxy failed');
+        data = await response.json();
+      } catch (backendError) {
+        // Fallback to direct API
+        console.log('Trying direct JioSaavn API...');
+        response = await fetch(
           'https://saavn.dev/api/search/songs?query=bollywood%20hits&page=1&limit=15'
         );
         if (!response.ok) throw new Error('Failed to fetch bollywood songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists,
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
+        data = await response.json();
+      }
 
-          set({ bollywoodSongs: formattedResults });
-        }
-      } catch (error) {
-        // Silent error handling
+      if (data.data && data.data.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists,
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+
+        set({ bollywoodSongs: formattedResults });
       }
     } catch (error: any) {
       // Silent error handling
@@ -349,33 +367,39 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
   fetchHollywoodSongs: async () => {
     set({ isIndianMusicLoading: true });
     try {
+      // First try backend proxy
+      let response;
+      let data;
+
       try {
-        // Call JioSaavn API directly
-        const response = await fetch(
+        response = await fetch('/api/music/hollywood');
+        if (!response.ok) throw new Error('Backend proxy failed');
+        data = await response.json();
+      } catch (backendError) {
+        // Fallback to direct API
+        console.log('Trying direct JioSaavn API...');
+        response = await fetch(
           'https://saavn.dev/api/search/songs?query=english%20top%20hits&page=1&limit=15'
         );
         if (!response.ok) throw new Error('Failed to fetch hollywood songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists,
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
+        data = await response.json();
+      }
 
-          set({ hollywoodSongs: formattedResults });
-        }
-      } catch (error) {
-        // Silent error handling
+      if (data.data && data.data.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists,
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+
+        set({ hollywoodSongs: formattedResults });
       }
     } catch (error: any) {
       // Silent error handling
@@ -387,33 +411,39 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
   fetchOfficialTrendingSongs: async () => {
     set({ isIndianMusicLoading: true });
     try {
+      // First try backend proxy
+      let response;
+      let data;
+
       try {
-        // Call JioSaavn API directly
-        const response = await fetch(
+        response = await fetch('/api/music/trending');
+        if (!response.ok) throw new Error('Backend proxy failed');
+        data = await response.json();
+      } catch (backendError) {
+        // Fallback to direct API
+        console.log('Trying direct JioSaavn API...');
+        response = await fetch(
           'https://saavn.dev/api/search/songs?query=trending%20songs&page=1&limit=15'
         );
         if (!response.ok) throw new Error('Failed to fetch trending songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists,
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
+        data = await response.json();
+      }
 
-          set({ officialTrendingSongs: formattedResults });
-        }
-      } catch (error) {
-        // Silent error handling
+      if (data.data && data.data.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists,
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+
+        set({ officialTrendingSongs: formattedResults });
       }
     } catch (error: any) {
       // Silent error handling
@@ -425,33 +455,39 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
   fetchHindiSongs: async () => {
     set({ isIndianMusicLoading: true });
     try {
+      // First try backend proxy
+      let response;
+      let data;
+
       try {
-        // Call JioSaavn API directly
-        const response = await fetch(
+        response = await fetch('/api/music/hindi');
+        if (!response.ok) throw new Error('Backend proxy failed');
+        data = await response.json();
+      } catch (backendError) {
+        // Fallback to direct API
+        console.log('Trying direct JioSaavn API...');
+        response = await fetch(
           'https://saavn.dev/api/search/songs?query=hindi%20top%20songs&page=1&limit=15'
         );
         if (!response.ok) throw new Error('Failed to fetch hindi songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists,
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
+        data = await response.json();
+      }
 
-          set({ hindiSongs: formattedResults });
-        }
-      } catch (error) {
-        // Silent error handling
+      if (data.data && data.data.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists,
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+
+        set({ hindiSongs: formattedResults });
       }
     } catch (error: any) {
       // Silent error handling
@@ -463,33 +499,39 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
   fetchIndianNewReleases: async () => {
     set({ isIndianMusicLoading: true });
     try {
+      // First try backend proxy
+      let response;
+      let data;
+
       try {
-        // Call JioSaavn API directly
-        const response = await fetch(
+        response = await fetch('/api/music/search?query=new%20releases');
+        if (!response.ok) throw new Error('Backend proxy failed');
+        data = await response.json();
+      } catch (backendError) {
+        // Fallback to direct API
+        console.log('Trying direct JioSaavn API...');
+        response = await fetch(
           'https://saavn.dev/api/search/songs?query=new%20releases&page=1&limit=10'
         );
         if (!response.ok) throw new Error('Failed to fetch new releases');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists,
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
+        data = await response.json();
+      }
 
-          set({ indianNewReleases: formattedResults });
-        }
-      } catch (error) {
-        // Silent error handling
+      if (data.data && data.data.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists,
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+
+        set({ indianNewReleases: formattedResults });
       }
     } catch (error: any) {
       // Silent error handling
@@ -503,33 +545,39 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
 
     set({ isIndianMusicLoading: true });
     try {
+      // First try backend proxy
+      let response;
+      let data;
+
       try {
-        // Call JioSaavn API directly
-        const response = await fetch(
+        response = await fetch(`/api/music/search?query=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error('Backend proxy failed');
+        data = await response.json();
+      } catch (backendError) {
+        // Fallback to direct API
+        console.log('Trying direct JioSaavn API...');
+        response = await fetch(
           `https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&page=1&limit=20`
         );
         if (!response.ok) throw new Error('Failed to search songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists,
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
+        data = await response.json();
+      }
 
-          set({ indianSearchResults: formattedResults });
-        }
-      } catch (error) {
-        // Silent error handling
+      if (data.data && data.data.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists,
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+
+        set({ indianSearchResults: formattedResults });
       }
     } catch (error: any) {
       // Silent error handling
