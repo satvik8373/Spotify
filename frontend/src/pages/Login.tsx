@@ -90,7 +90,7 @@ const Login = () => {
           >
             <ArrowLeft />
           </Button>
-          <h1 className="text-2xl font-bold text-white">Log in to Mavrixfy</h1>
+          <h1 className="text-2xl font-bold text-white">Log in to Spotify</h1>
         </div>
         
         <div className="mb-6">
@@ -180,7 +180,7 @@ const Login = () => {
             to="/register" 
             className="inline-block border border-zinc-700 text-white rounded-full px-8 py-3 font-bold hover:border-white transition-colors"
           >
-            Sign up for Mavrixfy
+            Sign up for Spotify
           </Link>
         </div>
       </div>

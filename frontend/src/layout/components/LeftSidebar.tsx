@@ -145,7 +145,7 @@ export const LeftSidebar = () => {
                 <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-md flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white truncate">Trending Now India</p>
-                  <p className="text-sm text-zinc-400 truncate">Playlist • Mavrixfy</p>
+                  <p className="text-sm text-zinc-400 truncate">Playlist • Spotify</p>
                 </div>
               </div>
             </>

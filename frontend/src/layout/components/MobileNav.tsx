@@ -354,7 +354,7 @@ const MobileNav = () => {
                   <div className="text-left">
                     <div className="font-medium">{device.name}</div>
                     <div className="text-xs text-white/60">
-                      {device.active ? "Currently playing" : "Mavrixfy Connect"}
+                      {device.active ? "Currently playing" : "Spotify Connect"}
                     </div>
                   </div>
                 </button>
@@ -364,53 +364,72 @@ const MobileNav = () => {
         </div>
       )}
       
-      {/* Mobile Header - Mavrixfy style */}
+      {/* Mobile Header - Spotify style */}
       <div className="fixed top-0 left-0 right-0 z-30 bg-zinc-900 md:hidden">
-        <div className="flex items-center justify-end px-4 py-3">
-          {/* Logo and Search removed - Only showing profile */}
-          {isAuthenticated ? (
-            <div className="relative">
-              <button 
-                onClick={handleProfileClick}
-                className="h-7 w-7 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden"
-              >
-                {user?.picture ? (
-                  <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
-                ) : (
-                  <User className="h-3.5 w-3.5 text-zinc-300" />
-                )}
-              </button>
-              
-              {/* Profile Menu */}
-              {showProfileMenu && (
-                <div className="absolute right-0 top-full mt-1 w-36 bg-zinc-800 rounded-md shadow-lg overflow-hidden z-50">
-                  <div className="py-1">
-                    <Link 
-                      to="/account" 
-                      className="block px-4 py-2 text-sm text-white hover:bg-zinc-700"
-                      onClick={() => setShowProfileMenu(false)}
-                    >
-                      Profile
-                    </Link>
-                    <button 
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center"
-                    >
-                      <LogOut className="h-3.5 w-3.5 mr-2" />
-                      Sign out
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
+        <div className="flex items-center justify-between px-3 py-2">
+          {/* Spotify Logo */}
+          <Link to={isAuthenticated ? "/home" : "/"} className="flex items-center">
+            <svg viewBox="0 0 16 16" className="h-6 w-6 text-[#1DB954]" aria-label="Spotify">
+              <path
+                fill="currentColor"
+                d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.669 11.538a.498.498 0 0 1-.686.165c-1.879-1.147-4.243-1.407-7.028-.77a.499.499 0 0 1-.222-.973c3.048-.696 5.662-.397 7.77.892a.5.5 0 0 1 .166.686zm.979-2.178a.624.624 0 0 1-.858.205c-2.15-1.321-5.428-1.704-7.972-.932a.625.625 0 0 1-.362-1.194c2.905-.881 6.517-.454 8.986 1.063a.624.624 0 0 1 .206.858zm.084-2.268C10.154 5.56 5.9 5.419 3.438 6.166a.748.748 0 1 1-.434-1.432c2.825-.857 7.523-.692 10.492 1.07a.747.747 0 1 1-.764 1.288z"
+              />
+            </svg>
+          </Link>
+          
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3">
             <button 
-              onClick={handleLogin}
-              className="h-7 w-7 rounded-full bg-zinc-800 flex items-center justify-center"
+              onClick={handleSearchClick}
+              className="flex items-center justify-center h-7 w-7 rounded-full bg-zinc-800 text-white"
             >
-              <LogIn className="h-3.5 w-3.5 text-white" />
+              <Search className="h-3.5 w-3.5" />
             </button>
-          )}
+            
+            {isAuthenticated ? (
+              <div className="relative">
+                <button 
+                  onClick={handleProfileClick}
+                  className="h-7 w-7 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden"
+                >
+                  {user?.picture ? (
+                    <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="h-3.5 w-3.5 text-zinc-300" />
+                  )}
+                </button>
+                
+                {/* Profile Menu */}
+                {showProfileMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-36 bg-zinc-800 rounded-md shadow-lg overflow-hidden z-50">
+                    <div className="py-1">
+                      <Link 
+                        to="/account" 
+                        className="block px-4 py-2 text-sm text-white hover:bg-zinc-700"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        Profile
+                      </Link>
+                      <button 
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center"
+                      >
+                        <LogOut className="h-3.5 w-3.5 mr-2" />
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button 
+                onClick={handleLogin}
+                className="h-7 w-7 rounded-full bg-zinc-800 flex items-center justify-center"
+              >
+                <LogIn className="h-3.5 w-3.5 text-white" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
