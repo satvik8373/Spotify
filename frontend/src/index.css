@@ -575,3 +575,42 @@ button, .button, a.button {
     background-color: rgba(255, 255, 255, 0.1);
   }
 }
+
+/* Time indicators - conditionally shown */
+
+/* VIP Premium effects */
+@keyframes shine {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.premium-shine {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(255, 255, 255, 0.2);
+}
+
+.premium-shine::after {
+  content: "";
+  position: absolute;
+  top: -100%;
+  left: -150%;
+  width: 300%;
+  height: 300%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transform: rotate(25deg);
+  animation: shine 4s infinite linear;
+}
+
+/* Audio player styling */

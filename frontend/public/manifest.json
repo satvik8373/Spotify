@@ -1,6 +1,6 @@
 {
-  "name": "Spotify x Mavrix",
-  "short_name": "Spotify x Mavrix",
+  "name": "Mavrixfy",
+  "short_name": "Mavrixfy",
   "description": "A premium Spotify experience with real-time features and enhanced music discovery",
   "start_url": "/",
   "display": "standalone",

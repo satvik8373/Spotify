@@ -1,4 +1,4 @@
-// Service Worker for Spotify x Mavrix
+// Service Worker for Mavrixfy
 const CACHE_VERSION = '1.2.4'; // Increment this version whenever you make changes
 const CACHE_NAME = `spotify-mavrix-v${CACHE_VERSION}`;
 const APP_SHELL_CACHE = 'app-shell-v' + CACHE_VERSION;
@@ -274,7 +274,7 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification('Spotify x Mavrix', options)
+    self.registration.showNotification('Mavrixfy', options)
   );
 });
 
