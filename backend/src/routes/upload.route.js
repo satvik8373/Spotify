@@ -1,9 +1,11 @@
 import { Router } from "express";
-import { protectRoute } from "../middleware/auth.middleware.js";
+import { protectRoute, requireAdmin } from "../middleware/auth.middleware.js";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import cloudinary from "cloudinary";
+import { uploadImage } from "../controllers/upload.controller.js";
+import fileUpload from "express-fileupload";
 
 const router = Router();
 
@@ -15,6 +17,17 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
 }
+
+// Apply middleware
+router.use(protectRoute);
+router.use(fileUpload({
+  useTempFiles: true,
+  tempFileDir: '/tmp/',
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+}));
+
+// Image upload endpoint for admin use
+router.post("/image", requireAdmin, uploadImage);
 
 // Upload endpoint
 router.post("/", protectRoute, async (req, res) => {

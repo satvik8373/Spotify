@@ -1,5 +1,6 @@
 import { Song } from "../models/song.model.js";
 import { Album } from "../models/album.model.js";
+import { Playlist } from "../models/playlist.model.js";
 import cloudinary from "../lib/cloudinary.js";
 
 // helper function for cloudinary uploads
@@ -111,4 +112,136 @@ export const deleteAlbum = async (req, res, next) => {
 
 export const checkAdmin = async (req, res, next) => {
 	res.status(200).json({ admin: true });
+};
+
+/**
+ * Get all public playlists for admin management
+ */
+export const getAllPublicPlaylists = async (req, res, next) => {
+	try {
+		// Find all public playlists and populate creator info
+		const playlists = await Playlist.find({ isPublic: true })
+			.populate('createdBy', 'fullName email')
+			.populate('songs', 'title artist imageUrl duration')
+			.sort({ updatedAt: -1 });
+
+		res.status(200).json({
+			success: true,
+			count: playlists.length,
+			data: playlists
+		});
+	} catch (error) {
+		console.log("Error in getAllPublicPlaylists", error);
+		next(error);
+	}
+};
+
+/**
+ * Update a playlist's details (admin only)
+ */
+export const updatePlaylist = async (req, res, next) => {
+	try {
+		const { id } = req.params;
+		const { name, description, isPublic, imageUrl } = req.body;
+
+		// Find the playlist
+		const playlist = await Playlist.findById(id);
+		if (!playlist) {
+			return res.status(404).json({
+				success: false,
+				message: "Playlist not found"
+			});
+		}
+
+		// Update the playlist
+		const updatedPlaylist = await Playlist.findByIdAndUpdate(
+			id,
+			{
+				name: name || playlist.name,
+				description: description !== undefined ? description : playlist.description,
+				isPublic: isPublic !== undefined ? isPublic : playlist.isPublic,
+				imageUrl: imageUrl || playlist.imageUrl
+			},
+			{ new: true }
+		).populate('createdBy', 'fullName email')
+		 .populate('songs', 'title artist imageUrl duration');
+
+		res.status(200).json({
+			success: true,
+			data: updatedPlaylist
+		});
+	} catch (error) {
+		console.log("Error in updatePlaylist", error);
+		next(error);
+	}
+};
+
+/**
+ * Delete a playlist (admin only)
+ */
+export const deletePlaylist = async (req, res, next) => {
+	try {
+		const { id } = req.params;
+
+		// Find and delete the playlist
+		const deletedPlaylist = await Playlist.findByIdAndDelete(id);
+		
+		if (!deletedPlaylist) {
+			return res.status(404).json({
+				success: false,
+				message: "Playlist not found"
+			});
+		}
+
+		res.status(200).json({
+			success: true,
+			message: "Playlist deleted successfully",
+			data: deletedPlaylist
+		});
+	} catch (error) {
+		console.log("Error in deletePlaylist", error);
+		next(error);
+	}
+};
+
+/**
+ * Feature or unfeature a playlist (admin only)
+ */
+export const featurePlaylist = async (req, res, next) => {
+	try {
+		const { id } = req.params;
+		const { featured } = req.body;
+
+		if (featured === undefined) {
+			return res.status(400).json({
+				success: false,
+				message: "Featured status is required"
+			});
+		}
+
+		// Find the playlist
+		const playlist = await Playlist.findById(id);
+		if (!playlist) {
+			return res.status(404).json({
+				success: false,
+				message: "Playlist not found"
+			});
+		}
+
+		// Update the featured status
+		const updatedPlaylist = await Playlist.findByIdAndUpdate(
+			id,
+			{ featured },
+			{ new: true }
+		).populate('createdBy', 'fullName email')
+		 .populate('songs', 'title artist imageUrl duration');
+
+		res.status(200).json({
+			success: true,
+			data: updatedPlaylist
+		});
+	} catch (error) {
+		console.log("Error in featurePlaylist", error);
+		next(error);
+	}
 };
