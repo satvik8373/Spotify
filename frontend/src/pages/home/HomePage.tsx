@@ -88,7 +88,7 @@ const netflixRowStyles = `
 		overflow-x: scroll;
 		overflow-y: hidden;
 		scroll-snap-type: x mandatory;
-		gap: 12px;
+		gap: 16px;
 		-ms-overflow-style: none;
 		scrollbar-width: none;
 		padding: 10px 0;
@@ -104,26 +104,26 @@ const netflixRowStyles = `
 	}
 	
 	.netflix-card {
-		flex: 0 0 calc(50% - 16px); /* Show 2 cards on mobile, slightly bigger */
+		flex: 0 0 calc(60% - 16px); /* Show bigger cards on mobile */
 		scroll-snap-align: start;
 		position: relative;
 		transition: all 0.3s ease;
 		transform-origin: center left;
 		z-index: 1;
-		max-width: 200px; /* Bigger max-width on mobile */
+		max-width: 220px; /* Bigger max-width on mobile */
 	}
 	
 	@media (min-width: 640px) {
 		.netflix-card {
-			flex: 0 0 calc(33.333% - 16px); /* Show 3 cards on tablet */
-			max-width: 200px;
+			flex: 0 0 calc(40% - 16px); /* Show bigger cards on tablet */
+			max-width: 240px;
 		}
 	}
 	
 	@media (min-width: 1024px) {
 		.netflix-card {
-			flex: 0 0 220px; /* Fixed width on desktop */
-			max-width: 220px;
+			flex: 0 0 240px; /* Fixed width on desktop */
+			max-width: 240px;
 		}
 		
 		.netflix-card:hover {
@@ -142,22 +142,22 @@ const netflixRowStyles = `
 		bottom: 0;
 		left: 0;
 		width: 100%;
-		padding: 8px;
-		background: linear-gradient(transparent, rgba(0,0,0,0.8) 50%);
+		padding: 12px;
+		background: linear-gradient(transparent, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.9) 90%);
 	}
 	
 	.card-title {
-		font-size: 0.8rem;
-		font-weight: 600;
+		font-size: 0.9rem;
+		font-weight: 700;
 		color: white;
-		margin-bottom: 2px;
+		margin-bottom: 4px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	
 	.card-artist {
-		font-size: 0.7rem;
+		font-size: 0.75rem;
 		color: rgba(255,255,255,0.7);
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -658,7 +658,7 @@ const HomePage = () => {
                     onClick={() => {
                       const slider = document.querySelector('#public-playlists-row .netflix-slider');
                       if (slider) {
-                        slider.scrollBy({ left: -180, behavior: 'smooth' });
+                        slider.scrollBy({ left: -240, behavior: 'smooth' });
                       }
                     }}
                   >
@@ -696,16 +696,16 @@ const HomePage = () => {
                               <h3 className="card-title">{playlist.name}</h3>
                               <p className="card-artist">{playlist.createdBy?.fullName || 'Unknown'}</p>
                             </div>
-                            <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
                                 size="icon"
-                                className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
+                                className="h-12 w-12 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePlaylistClick(playlist);
                                 }}
                               >
-                                <PlayCircle className="h-5 w-5" />
+                                <PlayCircle className="h-6 w-6" />
                               </Button>
                             </div>
                           </div>
@@ -718,7 +718,7 @@ const HomePage = () => {
                     onClick={() => {
                       const slider = document.querySelector('#public-playlists-row .netflix-slider');
                       if (slider) {
-                        slider.scrollBy({ left: 180, behavior: 'smooth' });
+                        slider.scrollBy({ left: 240, behavior: 'smooth' });
                       }
                     }}
                   >
@@ -742,7 +742,7 @@ const HomePage = () => {
                     onClick={() => {
                       const slider = document.querySelector('#top10-row .netflix-slider');
                       if (slider) {
-                        slider.scrollBy({ left: -180, behavior: 'smooth' });
+                        slider.scrollBy({ left: -240, behavior: 'smooth' });
                       }
                     }}
                   >
@@ -781,33 +781,33 @@ const HomePage = () => {
                             <div className="card-info">
                               <h3 className="card-title">{playlist.name}</h3>
                               <div className="flex items-center gap-1 mt-0.5">
-                                <div className="flex items-center gap-0.5 text-[8px] text-zinc-300">
+                                <div className="flex items-center gap-0.5 text-[10px] text-zinc-300">
                                   <ThumbsUp className="h-2.5 w-2.5" />
                                   <span>{playlist.metrics.likes}</span>
                                 </div>
-                                <div className="flex items-center gap-0.5 text-[8px] text-zinc-300 ml-2">
+                                <div className="flex items-center gap-0.5 text-[10px] text-zinc-300 ml-2">
                                   <Share2 className="h-2.5 w-2.5" />
                                   <span>{playlist.metrics.shares}</span>
                                 </div>
                               </div>
                             </div>
-                            <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
                                 size="icon"
-                                className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
+                                className="h-12 w-12 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePlaylistClick(playlist);
                                 }}
                               >
-                                <PlayCircle className="h-5 w-5" />
+                                <PlayCircle className="h-6 w-6" />
                               </Button>
                             </div>
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
                                 size="icon"
                                 variant="secondary"
-                                className="h-7 w-7 rounded-full bg-black/40 hover:bg-black/60"
+                                className="h-8 w-8 rounded-full bg-black/40 hover:bg-black/60"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   // Handle like
@@ -822,7 +822,7 @@ const HomePage = () => {
                                   toast.success(`${playlist.isLiked ? 'Removed from' : 'Added to'} your Liked Playlists`);
                                 }}
                               >
-                                <Heart className={`h-3.5 w-3.5 ${playlist.isLiked ? 'fill-white text-white' : ''}`} />
+                                <Heart className={`h-4 w-4 ${playlist.isLiked ? 'fill-white text-white' : ''}`} />
                               </Button>
                             </div>
                           </div>
@@ -835,7 +835,7 @@ const HomePage = () => {
                     onClick={() => {
                       const slider = document.querySelector('#top10-row .netflix-slider');
                       if (slider) {
-                        slider.scrollBy({ left: 180, behavior: 'smooth' });
+                        slider.scrollBy({ left: 240, behavior: 'smooth' });
                       }
                     }}
                   >
