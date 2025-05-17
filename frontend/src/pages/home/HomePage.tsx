@@ -624,20 +624,83 @@ const HomePage = () => {
                     See all
                   </Button>
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
-                  {publicPlaylists
-                    .filter(playlist => playlist.isPublic !== false)
-                    .map(playlist => (
-                      <div
-                        key={playlist._id}
-                        className="group relative transform transition-all duration-300 hover:scale-[1.02]"
-                      >
-                        <PlaylistCard
-                          playlist={playlist}
-                          isOwner={isAuthenticated && userId === playlist.createdBy.clerkId}
-                        />
-                      </div>
-                    ))}
+                <div className="netflix-row relative" id="public-playlists-row">
+                  <button 
+                    className="handle handle-left absolute left-0 top-1/2 -translate-y-1/2 z-10 h-full px-1 opacity-0 hover:opacity-100 transition-opacity hidden sm:flex"
+                    onClick={() => {
+                      const slider = document.querySelector('#public-playlists-row .netflix-slider');
+                      if (slider) {
+                        slider.scrollBy({ left: -180, behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-center h-10 w-10 bg-black/50 backdrop-blur-sm rounded-full">
+                      <ChevronRight className="h-5 w-5 rotate-180" />
+                    </div>
+                  </button>
+                  
+                  <div className="netflix-slider">
+                    {publicPlaylists
+                      .filter(playlist => playlist.isPublic !== false)
+                      .map((playlist) => (
+                        <div
+                          key={playlist._id}
+                          className="netflix-card group relative cursor-pointer"
+                          onClick={() => handlePlaylistClick(playlist)}
+                        >
+                          <div className="relative rounded-md overflow-hidden aspect-square shadow-lg w-full h-auto">
+                            {playlist.imageUrl ? (
+                              <img
+                                src={playlist.imageUrl}
+                                alt={playlist.name}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
+                                <Music2 className="h-8 w-8 text-zinc-500" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="absolute bottom-0 left-0 w-full p-2">
+                              <h3 className="text-xs font-medium line-clamp-1">{playlist.name}</h3>
+                              <p className="text-[10px] text-zinc-400 line-clamp-1">
+                                {playlist.createdBy?.fullName || 'Unknown'}
+                              </p>
+                            </div>
+                            <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="icon"
+                                className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePlaylistClick(playlist);
+                                }}
+                              >
+                                <PlayCircle className="h-5 w-5" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                  
+                  <button 
+                    className="handle handle-right absolute right-0 top-1/2 -translate-y-1/2 z-10 h-full px-1 opacity-0 hover:opacity-100 transition-opacity hidden sm:flex"
+                    onClick={() => {
+                      const slider = document.querySelector('#public-playlists-row .netflix-slider');
+                      if (slider) {
+                        slider.scrollBy({ left: 180, behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-center h-10 w-10 bg-black/50 backdrop-blur-sm rounded-full">
+                      <ChevronRight className="h-5 w-5" />
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
@@ -773,18 +836,81 @@ const HomePage = () => {
                     See all
                   </Button>
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
-                  {featuredPlaylists.map(playlist => (
-                    <div
-                      key={playlist._id}
-                      className="group relative transform transition-all duration-300 hover:scale-[1.02]"
-                    >
-                      <PlaylistCard
-                        playlist={playlist}
-                        isOwner={isAuthenticated && userId === playlist.createdBy.clerkId}
-                      />
+                <div className="netflix-row relative" id="featured-playlists-row">
+                  <button 
+                    className="handle handle-left absolute left-0 top-1/2 -translate-y-1/2 z-10 h-full px-1 opacity-0 hover:opacity-100 transition-opacity hidden sm:flex"
+                    onClick={() => {
+                      const slider = document.querySelector('#featured-playlists-row .netflix-slider');
+                      if (slider) {
+                        slider.scrollBy({ left: -180, behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-center h-10 w-10 bg-black/50 backdrop-blur-sm rounded-full">
+                      <ChevronRight className="h-5 w-5 rotate-180" />
                     </div>
-                  ))}
+                  </button>
+                  
+                  <div className="netflix-slider">
+                    {featuredPlaylists.map((playlist) => (
+                      <div
+                        key={playlist._id}
+                        className="netflix-card group relative cursor-pointer"
+                        onClick={() => handlePlaylistClick(playlist)}
+                      >
+                        <div className="relative rounded-md overflow-hidden aspect-square shadow-lg w-full h-auto">
+                          {playlist.imageUrl ? (
+                            <img
+                              src={playlist.imageUrl}
+                              alt={playlist.name}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
+                              <Music2 className="h-8 w-8 text-zinc-500" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                          <div className="absolute bottom-0 left-0 w-full p-2">
+                            <h3 className="text-xs font-medium line-clamp-1">{playlist.name}</h3>
+                            <p className="text-[10px] text-zinc-400 line-clamp-1">
+                              {playlist.createdBy?.fullName || 'Unknown'}
+                            </p>
+                          </div>
+                          <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              size="icon"
+                              className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePlaylistClick(playlist);
+                              }}
+                            >
+                              <PlayCircle className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <button 
+                    className="handle handle-right absolute right-0 top-1/2 -translate-y-1/2 z-10 h-full px-1 opacity-0 hover:opacity-100 transition-opacity hidden sm:flex"
+                    onClick={() => {
+                      const slider = document.querySelector('#featured-playlists-row .netflix-slider');
+                      if (slider) {
+                        slider.scrollBy({ left: 180, behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-center h-10 w-10 bg-black/50 backdrop-blur-sm rounded-full">
+                      <ChevronRight className="h-5 w-5" />
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
