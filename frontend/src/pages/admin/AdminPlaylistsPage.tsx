@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Trash2, Edit, Star, Music, Search, AlertCircle, Upload, X } from 'lucide-react';
+import { Loader2, Trash2, Edit, Star, Music, Search, AlertCircle, ImagePlus, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Playlist } from '@/types';
 import { toast } from 'sonner';
@@ -30,20 +30,19 @@ import {
   updatePublicPlaylist, 
   deletePublicPlaylist, 
   featurePlaylist,
-  updatePublicPlaylistWithImage
+  uploadPlaylistImage
 } from '@/services/adminService';
-
-// Default placeholder image for when Cloudinary URL fails
-const DEFAULT_PLACEHOLDER = 'https://placehold.co/300x300/1DB954/FFFFFF?text=Music';
 
 const AdminPlaylistsPage = () => {
   const navigate = useNavigate();
   const { isAdmin, isAuthenticated } = useAuthStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [filteredPlaylists, setFilteredPlaylists] = useState<Playlist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   
   // Edit dialog state
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -55,11 +54,8 @@ const AdminPlaylistsPage = () => {
     featured: false,
     imageUrl: ''
   });
-  
-  // Add new state for image file upload
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   
   // Delete dialog state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -131,38 +127,44 @@ const AdminPlaylistsPage = () => {
     setIsEditDialogOpen(true);
   };
   
-  // Handle image file change
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle image selection
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
     // Validate file type
-    if (!file.type.match(/image\/(jpeg|jpg|png|webp)/i)) {
-      toast.error('Please upload a valid image file (JPEG, PNG, or WebP)');
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
       return;
     }
     
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image size should be less than 2MB');
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
       return;
     }
     
     setImageFile(file);
     
-    // Create preview URL
+    // Create preview
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
+    reader.onload = (event) => {
+      setImagePreview(event.target?.result as string);
     };
     reader.readAsDataURL(file);
   };
   
-  // Remove image
+  // Handle image removal
   const handleRemoveImage = () => {
-    setImageFile(null);
     setImagePreview(null);
-    setEditFormData({ ...editFormData, imageUrl: '' });
+    setImageFile(null);
+    setEditFormData({
+      ...editFormData,
+      imageUrl: ''
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
   
   // Handle save edit
@@ -171,28 +173,19 @@ const AdminPlaylistsPage = () => {
     
     try {
       setIsUploading(true);
-      let updatedPlaylist;
       
-      // Check if we need to upload a new image
+      // If there's a new image file, upload it first
+      let imageUrl = editFormData.imageUrl;
       if (imageFile) {
-        // Create form data for image upload
-        const formData = new FormData();
-        formData.append('image', imageFile);
-        formData.append('name', editFormData.name);
-        formData.append('description', editFormData.description);
-        formData.append('isPublic', String(editFormData.isPublic));
-        formData.append('featured', String(editFormData.featured));
-        
-        // Use updatePublicPlaylistWithImage instead
-        updatedPlaylist = await updatePublicPlaylistWithImage(selectedPlaylist._id, formData);
-      } else {
-        // Use regular update without image
-        updatedPlaylist = await updatePublicPlaylist(selectedPlaylist._id, {
-          ...editFormData,
-          // If imagePreview is null, explicitly set imageUrl to empty string to remove image
-          imageUrl: imagePreview || ''
-        });
+        const uploadResult = await uploadPlaylistImage(imageFile);
+        imageUrl = uploadResult.imageUrl;
       }
+      
+      // Then update the playlist with all data including the new image URL
+      const updatedPlaylist = await updatePublicPlaylist(selectedPlaylist._id, {
+        ...editFormData,
+        imageUrl
+      });
       
       // Update playlists state
       setPlaylists(prevPlaylists => 
@@ -254,12 +247,6 @@ const AdminPlaylistsPage = () => {
       console.error('Error featuring/unfeaturing playlist:', error);
       toast.error('Failed to update playlist');
     }
-  };
-  
-  // Handle image error
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    const target = e.target as HTMLImageElement;
-    target.src = DEFAULT_PLACEHOLDER;
   };
   
   // If loading, show spinner
@@ -333,7 +320,9 @@ const AdminPlaylistsPage = () => {
                             src={playlist.imageUrl} 
                             alt={playlist.name} 
                             className="w-full h-full object-cover"
-                            onError={handleImageError}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/100x100/333/white?text=Music';
+                            }}
                           />
                         ) : (
                           <div className="w-full h-full bg-muted flex items-center justify-center">
@@ -400,64 +389,61 @@ const AdminPlaylistsPage = () => {
               />
             </div>
             
+            {/* Image Upload Section */}
             <div className="grid grid-cols-4 items-start gap-4">
               <label htmlFor="image" className="text-right font-medium pt-2">
-                Image
+                Cover Image
               </label>
-              <div className="col-span-3 space-y-3">
+              <div className="col-span-3">
+                {/* Image Preview */}
                 {imagePreview ? (
-                  <div className="relative w-32 h-32 rounded-md overflow-hidden border border-border">
+                  <div className="relative w-32 h-32 mb-4 rounded-md overflow-hidden border border-border">
                     <img 
                       src={imagePreview} 
                       alt="Playlist cover" 
                       className="w-full h-full object-cover"
-                      onError={handleImageError}
                     />
-                    <button
+                    <button 
                       type="button"
                       onClick={handleRemoveImage}
-                      className="absolute top-1 right-1 bg-black/60 rounded-full p-1 text-white hover:bg-black/80"
+                      className="absolute top-1 right-1 bg-black/70 rounded-full p-1 text-white hover:bg-black/90"
                       title="Remove image"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
                 ) : (
-                  <div className="w-32 h-32 rounded-md bg-muted flex flex-col items-center justify-center border border-dashed border-border">
-                    <Music className="h-8 w-8 text-muted-foreground mb-2" />
-                    <span className="text-xs text-muted-foreground">No image</span>
+                  <div 
+                    className="w-32 h-32 mb-4 rounded-md border border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <ImagePlus className="h-8 w-8 text-muted-foreground mb-2" />
+                    <span className="text-xs text-muted-foreground">Click to upload</span>
                   </div>
                 )}
                 
-                <div className="flex items-center gap-2">
-                  <label 
-                    htmlFor="image-upload" 
-                    className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium hover:bg-secondary/80"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {imagePreview ? 'Change image' : 'Upload image'}
-                  </label>
-                  <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                  
-                  {imagePreview && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleRemoveImage}
-                      type="button"
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Recommended: Square JPEG or PNG, 300x300 pixels or larger
+                {/* Hidden file input */}
+                <input 
+                  ref={fileInputRef}
+                  type="file" 
+                  id="image"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageSelect}
+                />
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-2"
+                >
+                  {imagePreview ? "Change Image" : "Upload Image"}
+                </Button>
+                
+                <p className="text-xs text-muted-foreground mt-2">
+                  Recommended: Square image, at least 300x300px (max 5MB)
                 </p>
               </div>
             </div>
@@ -512,10 +498,7 @@ const AdminPlaylistsPage = () => {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleSaveEdit}
-              disabled={isUploading}
-            >
+            <Button onClick={handleSaveEdit} disabled={isUploading}>
               {isUploading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

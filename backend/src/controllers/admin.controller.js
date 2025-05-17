@@ -6,44 +6,13 @@ import cloudinary from "../lib/cloudinary.js";
 // helper function for cloudinary uploads
 const uploadToCloudinary = async (file) => {
 	try {
-		console.log("Uploading file to Cloudinary:", typeof file, file.path || file.tempFilePath || "direct path");
-		
-		let uploadOptions = {
+		const result = await cloudinary.uploader.upload(file.tempFilePath, {
 			resource_type: "auto",
-			folder: "spotify-clone",
-			overwrite: true,
-			quality: "auto:good",
-			fetch_format: "auto"
-		};
-		
-		// If a public_id is provided, add it to the options
-		if (file.public_id) {
-			uploadOptions.public_id = file.public_id;
-		}
-		
-		// Handle both file objects from express-fileupload and file paths from multer
-		let result;
-		if (file.tempFilePath) {
-			// express-fileupload style
-			console.log("Uploading via tempFilePath:", file.tempFilePath);
-			result = await cloudinary.uploader.upload(file.tempFilePath, uploadOptions);
-		} else if (typeof file === 'string') {
-			// Direct path string
-			console.log("Uploading via direct path string:", file);
-			result = await cloudinary.uploader.upload(file, uploadOptions);
-		} else if (file.path) {
-			// Multer style
-			console.log("Uploading via multer path:", file.path);
-			result = await cloudinary.uploader.upload(file.path, uploadOptions);
-		} else {
-			throw new Error("Invalid file format for upload: " + JSON.stringify(file));
-		}
-		
-		console.log("Cloudinary upload successful, URL:", result.secure_url);
+		});
 		return result.secure_url;
 	} catch (error) {
-		console.error("Error in uploadToCloudinary:", error);
-		throw new Error(`Error uploading to cloudinary: ${error.message}`);
+		console.log("Error in uploadToCloudinary", error);
+		throw new Error("Error uploading to cloudinary");
 	}
 };
 
@@ -174,6 +143,7 @@ export const updatePlaylist = async (req, res, next) => {
 	try {
 		const { id } = req.params;
 		const { name, description, isPublic, imageUrl } = req.body;
+		let uploadedImageUrl = imageUrl;
 
 		// Find the playlist
 		const playlist = await Playlist.findById(id);
@@ -184,6 +154,40 @@ export const updatePlaylist = async (req, res, next) => {
 			});
 		}
 
+		// Check if there's an image file in the request
+		if (req.files && req.files.image) {
+			const imageFile = req.files.image;
+			
+			// Validate file type
+			if (!imageFile.mimetype.startsWith('image/')) {
+				return res.status(400).json({
+					success: false,
+					message: "Please upload an image file"
+				});
+			}
+			
+			// Validate file size (max 5MB)
+			const maxSize = 5 * 1024 * 1024; // 5MB
+			if (imageFile.size > maxSize) {
+				return res.status(400).json({
+					success: false,
+					message: "Image size should be less than 5MB"
+				});
+			}
+
+			// Upload to Cloudinary
+			const result = await cloudinary.uploader.upload(imageFile.tempFilePath, {
+				resource_type: "image",
+				folder: "playlists",
+				transformation: [
+					{ width: 500, height: 500, crop: "limit" },
+					{ quality: "auto" }
+				]
+			});
+			
+			uploadedImageUrl = result.secure_url;
+		}
+
 		// Update the playlist
 		const updatedPlaylist = await Playlist.findByIdAndUpdate(
 			id,
@@ -191,7 +195,7 @@ export const updatePlaylist = async (req, res, next) => {
 				name: name || playlist.name,
 				description: description !== undefined ? description : playlist.description,
 				isPublic: isPublic !== undefined ? isPublic : playlist.isPublic,
-				imageUrl: imageUrl || playlist.imageUrl
+				imageUrl: uploadedImageUrl || playlist.imageUrl
 			},
 			{ new: true }
 		).populate('createdBy', 'fullName email')
@@ -278,92 +282,57 @@ export const featurePlaylist = async (req, res, next) => {
 };
 
 /**
- * Update a playlist with image upload (admin only)
+ * Upload an image to Cloudinary
+ * @route POST /api/admin/upload/image
+ * @access Private (Admin only)
  */
-export const updatePlaylistWithImage = async (req, res, next) => {
+export const uploadImage = async (req, res, next) => {
 	try {
-		console.log("updatePlaylistWithImage called with file:", req.file ? req.file.filename : "no file");
-		const { id } = req.params;
-		const { name, description, isPublic, featured } = req.body;
-		
-		// Find the playlist
-		const playlist = await Playlist.findById(id);
-		if (!playlist) {
-			return res.status(404).json({
+		// Check if file exists in the request
+		if (!req.files || !req.files.image) {
+			return res.status(400).json({
 				success: false,
-				message: "Playlist not found"
+				message: "No image file uploaded"
+			});
+		}
+
+		const imageFile = req.files.image;
+		
+		// Validate file type
+		if (!imageFile.mimetype.startsWith('image/')) {
+			return res.status(400).json({
+				success: false,
+				message: "Please upload an image file"
 			});
 		}
 		
-		// Upload image to Cloudinary if provided
-		let imageUrl = playlist.imageUrl;
-		if (req.file) {
-			try {
-				console.log("Processing file upload for playlist:", id);
-				// Use the uploadToCloudinary function with the file path
-				imageUrl = await uploadToCloudinary({
-					path: req.file.path,
-					public_id: `playlists/${id}_${Date.now()}`
-				});
-				
-				// Delete the temporary file after upload
-				try {
-					const fs = await import('fs/promises');
-					await fs.unlink(req.file.path);
-					console.log("Temporary file deleted successfully:", req.file.path);
-				} catch (unlinkError) {
-					console.log("Warning: Could not delete temporary file:", req.file.path, unlinkError.message);
-					// Non-fatal error, continue with the update
-				}
-			} catch (uploadError) {
-				console.error("Error uploading image to Cloudinary:", uploadError);
-				return res.status(500).json({
-					success: false,
-					message: `Failed to upload image: ${uploadError.message}`
-				});
-			}
-		} else if (req.body.imageUrl === '') {
-			// If imageUrl is explicitly set to empty string, remove the image
-			console.log("Removing image for playlist:", id);
-			imageUrl = '';
+		// Validate file size (max 5MB)
+		const maxSize = 5 * 1024 * 1024; // 5MB
+		if (imageFile.size > maxSize) {
+			return res.status(400).json({
+				success: false,
+				message: "Image size should be less than 5MB"
+			});
 		}
-		
-		// Convert string boolean values to actual booleans
-		const parsedIsPublic = isPublic === 'true' || isPublic === true;
-		const parsedFeatured = featured === 'true' || featured === true;
-		
-		console.log("Updating playlist with data:", {
-			id,
-			name: name || playlist.name,
-			description: description !== undefined ? description : playlist.description,
-			isPublic: parsedIsPublic,
-			featured: parsedFeatured,
-			hasImage: !!imageUrl
-		});
-		
-		// Update the playlist
-		const updatedPlaylist = await Playlist.findByIdAndUpdate(
-			id,
-			{
-				name: name || playlist.name,
-				description: description !== undefined ? description : playlist.description,
-				isPublic: parsedIsPublic,
-				featured: parsedFeatured,
-				imageUrl: imageUrl,
-				updatedAt: new Date()
-			},
-			{ new: true }
-		).populate('createdBy', 'fullName email')
-		 .populate('songs', 'title artist imageUrl duration');
 
-		console.log("Playlist updated successfully:", updatedPlaylist._id);
-		
+		// Upload to Cloudinary
+		const result = await cloudinary.uploader.upload(imageFile.tempFilePath, {
+			resource_type: "image",
+			folder: "playlists",
+			transformation: [
+				{ width: 500, height: 500, crop: "limit" },
+				{ quality: "auto" }
+			]
+		});
+
+		// Return success response with image URL
 		res.status(200).json({
 			success: true,
-			data: updatedPlaylist
+			imageUrl: result.secure_url,
+			public_id: result.public_id
 		});
 	} catch (error) {
-		console.log("Error in updatePlaylistWithImage", error);
+		console.log("Error in uploadImage:", error);
 		next(error);
 	}
 };
