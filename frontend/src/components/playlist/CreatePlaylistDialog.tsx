@@ -14,9 +14,9 @@ import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { useNavigate } from 'react-router-dom';
-import { ImagePlus, Loader2 } from 'lucide-react';
+import { ImagePlus, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { uploadImage, getPlaceholderImageUrl } from '@/services/cloudinaryService';
+import { uploadImage } from '@/services/cloudinaryService';
 
 interface CreatePlaylistDialogProps {
   isOpen: boolean;
@@ -28,28 +28,32 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>(
-    getPlaceholderImageUrl('Playlist')
-  );
+  const [imagePreview, setImagePreview] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const { createPlaylist, isCreating } = usePlaylistStore();
   const navigate = useNavigate();
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    setImageError(null);
+    
+    if (!file) {
+      setImageError('Please select an image file');
+      return;
+    }
 
     // Check file type
     if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
+      setImageError('Please upload an image file');
       return;
     }
 
     // Check file size (limit to 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
+      setImageError('Image must be less than 5MB');
       return;
     }
 
@@ -70,9 +74,8 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
       return imageUrl;
     } catch (error) {
       console.error('Error uploading image to Cloudinary:', error);
-      toast.error('Failed to upload image. Using default image instead.');
-      // Return a placeholder image URL on error
-      return getPlaceholderImageUrl(name);
+      toast.error('Failed to upload image');
+      throw error;
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -83,23 +86,21 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
     e.preventDefault();
     if (!name.trim()) return;
     
+    // Validate image is uploaded
+    if (!imageFile) {
+      setImageError('Please upload a cover image for your playlist');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      // Default placeholder image URL if no custom image is provided
-      let imageUrl = getPlaceholderImageUrl(name);
+      // Upload the image to Cloudinary
+      const imageUrl = await uploadImageToCloudinary(imageFile);
       
-      // If there's a file selected, upload it to Cloudinary
-      if (imageFile) {
-        try {
-          imageUrl = await uploadImageToCloudinary(imageFile);
-        } catch (uploadError) {
-          console.error('Upload failed, using placeholder:', uploadError);
-          // Continue with playlist creation even if image upload fails
-        }
-      }
-      
+      // Create the playlist with the uploaded image URL
       const playlist = await createPlaylist(name, description, isPublic, imageUrl);
+      
       if (playlist) {
         toast.success("Playlist created successfully!");
         onClose();
@@ -120,8 +121,9 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
     setDescription('');
     setIsPublic(true);
     setImageFile(null);
-    setImagePreview(getPlaceholderImageUrl('Playlist'));
+    setImagePreview('');
     setUploadProgress(0);
+    setImageError(null);
   };
 
   return (
@@ -158,12 +160,18 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
                       </div>
                     )}
                   </div>
-                ) : (
+                ) : imagePreview ? (
                   <img
                     src={imagePreview}
                     alt="Playlist cover"
                     className="w-40 h-40 object-cover rounded-md shadow-md"
                   />
+                ) : (
+                  <div className="w-40 h-40 flex flex-col items-center justify-center bg-zinc-800 rounded-md border-2 border-dashed border-zinc-600">
+                    <ImagePlus className="h-10 w-10 text-zinc-400 mb-2" />
+                    <span className="text-sm text-zinc-400">Upload cover image</span>
+                    <span className="text-xs text-zinc-500 mt-1">(required)</span>
+                  </div>
                 )}
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-md">
                   <Label
@@ -180,12 +188,21 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
                     className="hidden"
                     onChange={handleImageChange}
                     disabled={isLoading || isUploading}
+                    required
                   />
                 </div>
               </div>
+              {imageError && (
+                <div className="flex items-center gap-2 mt-2 text-red-500 text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{imageError}</span>
+                </div>
+              )}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name" className="flex items-center">
+                Name <span className="text-red-500 ml-1">*</span>
+              </Label>
               <Input
                 id="name"
                 value={name}
@@ -215,7 +232,10 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim() || isCreating || isLoading || isUploading}>
+            <Button 
+              type="submit" 
+              disabled={!name.trim() || !imageFile || isCreating || isLoading || isUploading}
+            >
               {isCreating || isLoading ? 'Creating...' : 'Create Playlist'}
             </Button>
           </DialogFooter>

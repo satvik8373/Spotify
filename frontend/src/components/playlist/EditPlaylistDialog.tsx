@@ -43,6 +43,7 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [imageError, setImageError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const { updatePlaylist } = usePlaylistStore();
@@ -66,6 +67,8 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
         isPublic: playlist.isPublic !== undefined ? playlist.isPublic : true,
       });
       setImagePreview(playlist.imageUrl || getPlaceholderImageUrl(playlist.name));
+      // Clear any image errors when the playlist changes
+      setImageError('');
     }
   }, [playlist, reset]);
 
@@ -77,14 +80,19 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Clear any previous errors
+    setImageError('');
+
     // Check file type
     if (!file.type.startsWith('image/')) {
+      setImageError('Please upload an image file');
       toast.error('Please upload an image file');
       return;
     }
 
     // Check file size (limit to 5MB)
     if (file.size > 5 * 1024 * 1024) {
+      setImageError('Image must be less than 5MB');
       toast.error('Image must be less than 5MB');
       return;
     }
@@ -98,6 +106,7 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
   // Test direct upload to Cloudinary
   const testDirectUpload = async () => {
     if (!imageFile) {
+      setImageError('Please select an image first');
       toast.error('Please select an image first');
       return;
     }
@@ -165,6 +174,13 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
   };
 
   const onSubmit = async (data: EditPlaylistFormData) => {
+    // Check if we have an image (either from the original playlist or a new upload)
+    if (!imagePreview && !imageFile && !playlist.imageUrl) {
+      setImageError('A cover image is required');
+      toast.error('Please upload a cover image');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       
@@ -210,9 +226,13 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
   const dialogCloseHandler = () => {
     reset();
     setImageFile(null);
+    setImageError('');
     setImagePreview(playlist.imageUrl || getPlaceholderImageUrl(playlist.name));
     onClose();
   };
+
+  // Check if we have a valid image (either from original playlist or new upload)
+  const hasValidImage = !!imagePreview || !!imageFile || !!playlist.imageUrl;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && dialogCloseHandler()}>
@@ -225,7 +245,7 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="flex items-center justify-center mb-4">
+            <div className="flex flex-col items-center justify-center mb-4">
               <div 
                 className="relative w-40 h-40 rounded-md overflow-hidden bg-gray-100 cursor-pointer group"
                 onClick={handleImageClick}
@@ -265,6 +285,14 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
                 onChange={handleImageChange}
                 disabled={isSubmitting || isUploading}
               />
+              <div className="mt-2 text-center">
+                <p className="text-xs text-muted-foreground">
+                  Cover image is required
+                </p>
+                {imageError && (
+                  <p className="text-xs text-red-500 mt-1">{imageError}</p>
+                )}
+              </div>
             </div>
             
             {/* Test direct upload button */}
@@ -348,7 +376,7 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
             </Button>
             <Button 
               type="submit"
-              disabled={isSubmitting || isUploading}
+              disabled={isSubmitting || isUploading || !hasValidImage || !watch('name')}
             >
               {isSubmitting || isUploading ? (
                 <>
