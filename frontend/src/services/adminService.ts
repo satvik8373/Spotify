@@ -29,16 +29,65 @@ export const isAdmin = async (): Promise<boolean> => {
 };
 
 /**
+ * Verify admin authentication with the backend
+ * @returns {Promise<boolean>} True if authentication is valid
+ */
+export const verifyAdminAuth = async (): Promise<boolean> => {
+  try {
+    // Get the current user
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      console.error('No user logged in');
+      return false;
+    }
+    
+    // Force refresh the user to ensure we have the latest data
+    await currentUser.reload();
+    
+    // Get a fresh token
+    const idToken = await getIdToken(currentUser, true);
+    
+    // Get the API base URL
+    const apiBaseUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:5000'
+      : '';
+    
+    // Call the auth check endpoint
+    console.log('Verifying admin authentication...');
+    const response = await fetch(`${apiBaseUrl}/api/auth/check`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${idToken}`
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('Auth check failed:', response.status);
+      return false;
+    }
+    
+    const result = await response.json();
+    console.log('Auth check result:', result);
+    
+    return result.isAdmin === true;
+  } catch (error) {
+    console.error('Error verifying admin auth:', error);
+    return false;
+  }
+};
+
+/**
  * Upload an image for admin use
  * @param {File} imageFile - The image file to upload
  * @returns {Promise<string>} The URL of the uploaded image
  */
 export const uploadImage = async (imageFile: File): Promise<string> => {
   try {
-    // First check if user is admin
-    const adminStatus = await isAdmin();
-    if (!adminStatus) {
-      throw new Error('Unauthorized: Admin access required');
+    // First verify admin authentication with the backend
+    const adminAuthValid = await verifyAdminAuth();
+    if (!adminAuthValid) {
+      throw new Error('Admin authentication failed or expired. Please refresh the page and try again.');
     }
     
     // Get the current user's ID token for authentication
@@ -47,22 +96,33 @@ export const uploadImage = async (imageFile: File): Promise<string> => {
       throw new Error('User not authenticated');
     }
     
-    const idToken = await getIdToken(currentUser);
+    // Get a fresh token
+    let idToken;
+    try {
+      // Force token refresh to ensure we have the latest token
+      await auth.currentUser?.reload();
+      idToken = await getIdToken(currentUser, true);
+      console.log('Got fresh auth token for upload');
+    } catch (tokenError) {
+      console.error('Failed to get auth token:', tokenError);
+      throw new Error('Authentication failed: Could not get valid token');
+    }
     
     // Create form data
     const formData = new FormData();
     formData.append('image', imageFile);
     
-    // Get the API base URL
-    const apiBaseUrl = process.env.NODE_ENV === 'production'
-      ? process.env.REACT_APP_API_URL || ''
-      : 'http://localhost:5000';
+    // Get the API base URL - for local development, we need to use the full URL
+    const apiBaseUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:5000'
+      : '';
     
     // Upload the image
     console.log('Uploading image to server...');
     const response = await fetch(`${apiBaseUrl}/api/upload/image`, {
       method: 'POST',
       body: formData,
+      credentials: 'include',
       headers: {
         'Authorization': `Bearer ${idToken}`
       }
