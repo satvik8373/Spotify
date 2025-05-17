@@ -1,0 +1,144 @@
+/* Container for the music animation */
+.music-animation-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none; /* Make sure it doesn't interfere with clicks */
+  z-index: 1;
+  opacity: 0.7; /* Make it slightly transparent to not interfere with content */
+  mix-blend-mode: screen; /* Blend mode for better visual integration */
+}
+
+/* Individual floating music notes */
+.floating-note {
+  position: absolute;
+  top: -10px;
+  opacity: 0;
+  transform-origin: center;
+  animation: floatUp 5s ease-in-out infinite, fadeInOut 5s ease-in-out infinite, wiggle 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
+
+/* Wave containers */
+.wave-container {
+  position: absolute;
+  width: 100%;
+  height: 30px;
+  overflow: hidden;
+}
+
+.wave-1 {
+  top: 35%;
+  opacity: 0.6;
+}
+
+.wave-2 {
+  top: 65%;
+  transform: scaleX(-1); /* Reverse the second wave */
+  opacity: 0.4;
+}
+
+/* Music wave animation */
+.music-wave {
+  animation: waveMove 10s linear infinite;
+}
+
+/* Floating circles */
+.floating-circle {
+  position: absolute;
+  top: 10px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: floatUpSlow 6s ease-in-out infinite, fadeInOut 6s ease-in-out infinite, pulse 3s ease-in-out infinite;
+  box-shadow: 0 0 10px currentColor; /* Glow effect */
+}
+
+/* Animations */
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-40px) rotate(10deg);
+  }
+  100% {
+    transform: translateY(-80px) rotate(0);
+  }
+}
+
+@keyframes floatUpSlow {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-60px) scale(1.2);
+  }
+  100% {
+    transform: translateY(-120px) scale(1);
+  }
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+  }
+  15%, 85% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes wiggle {
+  0%, 100% {
+    transform: translateX(0) rotate(0);
+  }
+  25% {
+    transform: translateX(5px) rotate(5deg);
+  }
+  75% {
+    transform: translateX(-5px) rotate(-5deg);
+  }
+}
+
+@keyframes waveMove {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+}
+
+/* Make sure the header background is semi-transparent to see animations */
+header {
+  background-color: rgba(0, 0, 0, 0.85) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .floating-note {
+    animation-duration: 4s;
+  }
+  
+  .wave-container {
+    height: 20px;
+  }
+  
+  .floating-circle {
+    animation-duration: 5s;
+  }
+} 

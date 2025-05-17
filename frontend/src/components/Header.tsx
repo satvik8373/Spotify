@@ -10,6 +10,7 @@ import SearchSuggestions from '@/components/SearchSuggestions';
 import { useAuth } from '../contexts/AuthContext';
 import { signOut } from '@/services/hybridAuthService';
 import { debounce } from 'lodash';
+import MusicAnimation from './MusicAnimation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -134,8 +135,11 @@ const Header = ({ className }: HeaderProps) => {
   };
 
   return (
-    <header className={`bg-black/95 py-4 px-6 z-50 sticky top-0 ${className}`}>
-      <div className="max-w-[1800px] mx-auto flex items-center justify-between">
+    <header className={`bg-black/85 py-4 px-6 z-50 sticky top-0 relative ${className}`}>
+      {/* Add Music Animation */}
+      <MusicAnimation />
+      
+      <div className="max-w-[1800px] mx-auto flex items-center justify-between relative z-10">
         {/* Logo and Brand */}
         <Link to={user ? "/home" : "/"} className="flex items-center gap-3 hover:opacity-90 transition-opacity min-w-[200px]">
           <div className="flex items-center">
