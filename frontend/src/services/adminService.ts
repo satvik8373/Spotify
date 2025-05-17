@@ -63,7 +63,7 @@ export const uploadPlaylistImage = async (imageFile: File): Promise<{imageUrl: s
     
     // Create form data for upload
     const formData = new FormData();
-    formData.append('image', imageFile);
+    formData.append('file', imageFile);
     
     // Get the current user's ID token for authentication
     const idToken = await auth.currentUser?.getIdToken();
@@ -72,18 +72,18 @@ export const uploadPlaylistImage = async (imageFile: File): Promise<{imageUrl: s
     }
     
     // Upload to backend endpoint
-    const response = await axios.post('/api/admin/upload/image', formData, {
+    const response = await axios.post('/api/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
         'Authorization': `Bearer ${idToken}`
       }
     });
     
-    if (!response.data.success || !response.data.imageUrl) {
+    if (!response.data.success || !response.data.url) {
       throw new Error('Failed to upload image');
     }
     
-    return { imageUrl: response.data.imageUrl };
+    return { imageUrl: response.data.url };
   } catch (error) {
     console.error('Error uploading playlist image:', error);
     throw error;
