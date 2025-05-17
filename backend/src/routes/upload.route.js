@@ -18,20 +18,37 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
   });
 }
 
-// Apply middleware
+// Apply middleware for all routes
 router.use(protectRoute);
+
+// Apply file upload middleware for all routes
 router.use(fileUpload({
   useTempFiles: true,
   tempFileDir: '/tmp/',
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  debug: process.env.NODE_ENV !== 'production'
 }));
+
+// Log all requests to this router for debugging
+router.use((req, res, next) => {
+  console.log(`[UPLOAD ROUTE] ${req.method} ${req.path}`, {
+    contentType: req.headers['content-type'],
+    hasFiles: !!req.files,
+    fileKeys: req.files ? Object.keys(req.files) : []
+  });
+  next();
+});
 
 // Image upload endpoint for admin use
 router.post("/image", requireAdmin, uploadImage);
 
-// Upload endpoint
-router.post("/", protectRoute, async (req, res) => {
+// Upload endpoint for general use
+router.post("/", async (req, res) => {
   try {
+    console.log("Upload request received", {
+      files: req.files ? Object.keys(req.files) : 'none'
+    });
+    
     if (!req.files || !req.files.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }

@@ -29,7 +29,8 @@ import {
   getAllPublicPlaylists, 
   updatePublicPlaylist, 
   deletePublicPlaylist, 
-  featurePlaylist 
+  featurePlaylist,
+  uploadImage 
 } from '@/services/adminService';
 
 const AdminPlaylistsPage = () => {
@@ -171,27 +172,21 @@ const AdminPlaylistsPage = () => {
       
       // If we have a new image file, upload it first
       if (imageFile) {
-        const formData = new FormData();
-        formData.append('image', imageFile);
-        
-        // Upload the image and get the URL
-        const uploadResponse = await fetch('/api/upload/image', {
-          method: 'POST',
-          body: formData,
-          credentials: 'include'
-        });
-        
-        if (!uploadResponse.ok) {
-          throw new Error('Failed to upload image');
+        try {
+          // Use the admin service to upload the image
+          const imageUrl = await uploadImage(imageFile);
+          console.log('Image uploaded successfully:', imageUrl);
+          
+          // Update the playlist with the new image URL
+          updatedPlaylist = await updatePublicPlaylist(selectedPlaylist._id, {
+            ...editFormData,
+            imageUrl: imageUrl
+          });
+        } catch (uploadError: any) {
+          console.error('Image upload error:', uploadError);
+          toast.error(`Image upload failed: ${uploadError.message}`);
+          throw uploadError;
         }
-        
-        const uploadResult = await uploadResponse.json();
-        
-        // Update the playlist with the new image URL
-        updatedPlaylist = await updatePublicPlaylist(selectedPlaylist._id, {
-          ...editFormData,
-          imageUrl: uploadResult.imageUrl
-        });
       } else {
         // Just update with the existing form data
         updatedPlaylist = await updatePublicPlaylist(selectedPlaylist._id, editFormData);
@@ -209,9 +204,9 @@ const AdminPlaylistsPage = () => {
       
       toast.success('Playlist updated successfully');
       setIsEditDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating playlist:', error);
-      toast.error('Failed to update playlist');
+      toast.error(`Failed to update playlist: ${error.message}`);
     }
   };
   
