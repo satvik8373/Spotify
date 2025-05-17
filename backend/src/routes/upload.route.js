@@ -20,28 +20,19 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
 router.post("/", protectRoute, async (req, res) => {
   try {
     if (!req.files || !req.files.file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "No file uploaded" 
-      });
+      return res.status(400).json({ message: "No file uploaded" });
     }
 
     const file = req.files.file;
     
     // Check if it's an image
     if (!file.mimetype.startsWith("image/")) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Only images are allowed" 
-      });
+      return res.status(400).json({ message: "Only images are allowed" });
     }
     
     // Check file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "File too large. Max 5MB allowed." 
-      });
+      return res.status(400).json({ message: "File too large. Max 5MB allowed." });
     }
 
     // Upload strategy depends on environment
@@ -62,16 +53,11 @@ router.post("/", protectRoute, async (req, res) => {
         fs.unlinkSync(tempPath);
         
         return res.json({ 
-          success: true,
-          url: result.secure_url,
-          public_id: result.public_id
+          imageUrl: result.secure_url 
         });
       } catch (error) {
         console.error("Cloudinary upload error:", error);
-        return res.status(500).json({ 
-          success: false, 
-          message: "Error uploading to cloud service" 
-        });
+        return res.status(500).json({ message: "Error uploading to cloud service" });
       }
     } else {
       // For development, save locally
@@ -92,20 +78,11 @@ router.post("/", protectRoute, async (req, res) => {
         ? process.env.BACKEND_URL || ""
         : "http://localhost:5000";
       const imageUrl = `${baseUrl}/uploads/${fileName}`;
-      
-      return res.json({ 
-        success: true,
-        url: imageUrl,
-        fileName: fileName
-      });
+      return res.json({ imageUrl });
     }
   } catch (error) {
     console.error("File upload error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Error uploading file", 
-      error: error.message 
-    });
+    res.status(500).json({ message: "Error uploading file", error: error.message });
   }
 });
 

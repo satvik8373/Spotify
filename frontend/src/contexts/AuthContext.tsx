@@ -17,7 +17,6 @@ interface AuthContextType {
   loading: boolean;
   error: Error | null;
   isAuthenticated: boolean;
-  isAdmin: boolean;
   refreshUserData: () => Promise<void>;
 }
 
@@ -26,7 +25,6 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   isAuthenticated: false,
-  isAdmin: false,
   refreshUserData: async () => {}
 });
 
@@ -228,7 +226,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading, 
       error, 
       isAuthenticated: !!user,
-      isAdmin: useAuthStore.getState().isAdmin,
       refreshUserData
     }}>
       {children}

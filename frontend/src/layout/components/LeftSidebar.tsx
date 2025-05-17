@@ -8,29 +8,25 @@ import {
   List,
   LayoutGrid,
   Plus,
-  ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../../components/playlist/CreatePlaylistDialog';
-import { useAdminStore } from '@/stores/useAdminStore';
 
 export const LeftSidebar = () => {
   const { user, isAuthenticated } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { userPlaylists, fetchUserPlaylists } = usePlaylistStore();
-  const { isAdmin, isAdminChecked, checkAdminStatus } = useAdminStore();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('Playlists');
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserPlaylists();
-      checkAdminStatus();
     }
-  }, [isAuthenticated, fetchUserPlaylists, checkAdminStatus]);
+  }, [isAuthenticated, fetchUserPlaylists]);
 
   const isActive = (path: string) => {
     return location.pathname.startsWith(path);
@@ -86,27 +82,6 @@ export const LeftSidebar = () => {
       {/* Playlists */}
       <div className="flex-1 overflow-y-auto px-2 min-h-0">
         <div className="space-y-2 py-2">
-          {/* Admin Link - Only visible for admin users */}
-          {isAuthenticated && isAdminChecked && isAdmin && (
-            <Link
-              to="/admin"
-              className={cn(
-                'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
-                isActive('/admin') ? 'bg-zinc-800/50' : ''
-              )}
-            >
-              <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-amber-500 rounded-md flex items-center justify-center">
-                <ShieldCheck size={20} className="text-white" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-white truncate">Admin Dashboard</p>
-                <p className="text-sm text-zinc-400 truncate">
-                  Manage public playlists
-                </p>
-              </div>
-            </Link>
-          )}
-
           {/* Liked Songs */}
           <Link
             to="/liked-songs"

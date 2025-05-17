@@ -19,7 +19,6 @@ import Welcome from './pages/Welcome';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
-import AdminPage from './pages/admin/AdminPage';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -155,10 +154,6 @@ const router = createBrowserRouter(
 				{
 					path: '/playlist/:id',
 					element: <AuthGate><PlaylistPage /></AuthGate>
-				},
-				{
-					path: '/admin',
-					element: <AuthGate><AdminPage /></AuthGate>
 				},
 				{
 					path: '/debug/api',

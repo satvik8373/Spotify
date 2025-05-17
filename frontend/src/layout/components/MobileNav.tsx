@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, Laptop, Speaker, Smartphone, Tv, X, ShieldCheck } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, Laptop, Speaker, Smartphone, Tv, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,7 +34,7 @@ const MobileNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentSong, isPlaying, currentTime, duration } = usePlayerStore();
-  const { isAuthenticated, user, isAdmin } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -135,8 +135,7 @@ const MobileNav = () => {
     }
   }, [currentTime, duration]);
 
-  // Base navigation items
-  const baseNavItems = [
+  const navItems = [
     {
       label: 'Home',
       icon: Home,
@@ -158,19 +157,6 @@ const MobileNav = () => {
       path: '/liked-songs',
     },
   ];
-  
-  // Add admin item if user is admin
-  const navItems = isAdmin 
-    ? [
-        ...baseNavItems.slice(0, 3), // Keep first 3 items
-        {
-          label: 'Admin',
-          icon: ShieldCheck,
-          path: '/admin/playlists',
-        },
-        baseNavItems[3], // Add Liked Songs at the end
-      ]
-    : baseNavItems;
 
   const isActive = (path: string) => {
     if (path === '/home' && location.pathname === '/home') return true;
