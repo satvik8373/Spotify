@@ -88,7 +88,7 @@ const netflixRowStyles = `
 		overflow-x: scroll;
 		overflow-y: hidden;
 		scroll-snap-type: x mandatory;
-		gap: 12px;
+		gap: 16px;
 		-ms-overflow-style: none;
 		scrollbar-width: none;
 		padding: 10px 0;
@@ -104,13 +104,13 @@ const netflixRowStyles = `
 	}
 	
 	.netflix-card {
-		flex: 0 0 calc(70% - 16px); /* Show larger cards on mobile */
+		flex: 0 0 calc(80% - 16px); /* Show larger cards on mobile */
 		scroll-snap-align: start;
 		position: relative;
 		transition: all 0.3s ease;
 		transform-origin: center left;
 		z-index: 1;
-		max-width: 240px; /* Even bigger max-width on mobile */
+		max-width: 260px; /* Even bigger max-width on mobile */
 	}
 	
 	@media (min-width: 640px) {
@@ -136,21 +136,37 @@ const netflixRowStyles = `
 		}
 	}
 	
-	/* Improved card text styles to match Spotify app more closely */
-	.card-info {
-		position: absolute;
-		bottom: 0;
-		left: 0;
+	/* Updated card styles to match the example image */
+	.card-wrapper {
+		display: flex;
+		flex-direction: column;
 		width: 100%;
-		padding: 12px 8px 8px;
-		background: linear-gradient(transparent, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.8) 80%);
+	}
+	
+	.card-image {
+		width: 100%;
+		aspect-ratio: 1/1;
+		border-radius: 8px;
+		overflow: hidden;
+		margin-bottom: 8px;
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+	}
+	
+	.card-image img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	
+	.card-content {
+		padding: 0 2px;
 	}
 	
 	.card-title {
-		font-size: 0.85rem;
-		font-weight: 700;
+		font-size: 0.9rem;
+		font-weight: 600;
 		color: white;
-		margin-bottom: 4px;
+		margin-bottom: 2px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -158,12 +174,25 @@ const netflixRowStyles = `
 	}
 	
 	.card-artist {
-		font-size: 0.7rem;
+		font-size: 0.75rem;
 		color: rgba(255,255,255,0.7);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		letter-spacing: -0.1px;
+	}
+	
+	.play-button-overlay {
+		position: absolute;
+		bottom: 50px;
+		right: 8px;
+		opacity: 0;
+		transition: opacity 0.2s ease;
+		z-index: 5;
+	}
+	
+	.netflix-card:hover .play-button-overlay {
+		opacity: 1;
 	}
 	
 	.netflix-rank {
@@ -678,37 +707,38 @@ const HomePage = () => {
                           className="netflix-card group relative cursor-pointer"
                           onClick={() => handlePlaylistClick(playlist)}
                         >
-                          <div className="relative rounded-md overflow-hidden aspect-square shadow-lg w-full h-auto">
-                            {playlist.imageUrl ? (
-                              <img
-                                src={playlist.imageUrl}
-                                alt={playlist.name}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
-                                <Music2 className="h-8 w-8 text-zinc-500" />
+                          <div className="card-wrapper">
+                            <div className="card-image">
+                              {playlist.imageUrl ? (
+                                <img
+                                  src={playlist.imageUrl}
+                                  alt={playlist.name}
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
+                                  <Music2 className="h-8 w-8 text-zinc-500" />
+                                </div>
+                              )}
+                              <div className="play-button-overlay">
+                                <Button
+                                  size="icon"
+                                  className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePlaylistClick(playlist);
+                                  }}
+                                >
+                                  <PlayCircle className="h-5 w-5" />
+                                </Button>
                               </div>
-                            )}
-                            <div className="card-info">
+                            </div>
+                            <div className="card-content">
                               <h3 className="card-title">{playlist.name}</h3>
                               <p className="card-artist">{playlist.createdBy?.fullName || 'Unknown'}</p>
-                            </div>
-                            <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button
-                                size="icon"
-                                className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePlaylistClick(playlist);
-                                }}
-                              >
-                                <PlayCircle className="h-5 w-5" />
-                              </Button>
                             </div>
                           </div>
                         </div>
@@ -764,69 +794,63 @@ const HomePage = () => {
                           onClick={() => handlePlaylistClick(playlist)}
                         >
                           <div className="netflix-rank">{index + 1}</div>
-                          <div className="relative rounded-md overflow-hidden aspect-square shadow-lg w-full h-auto">
-                            {playlist.imageUrl ? (
-                              <img
-                                src={playlist.imageUrl}
-                                alt={playlist.name}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
-                                <Music2 className="h-8 w-8 text-zinc-500" />
+                          <div className="card-wrapper">
+                            <div className="card-image">
+                              {playlist.imageUrl ? (
+                                <img
+                                  src={playlist.imageUrl}
+                                  alt={playlist.name}
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
+                                  <Music2 className="h-8 w-8 text-zinc-500" />
+                                </div>
+                              )}
+                              <div className="play-button-overlay">
+                                <Button
+                                  size="icon"
+                                  className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePlaylistClick(playlist);
+                                  }}
+                                >
+                                  <PlayCircle className="h-5 w-5" />
+                                </Button>
                               </div>
-                            )}
-                            <div className="card-info">
+                            </div>
+                            <div className="card-content">
                               <h3 className="card-title">{playlist.name}</h3>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <div className="flex items-center gap-0.5 text-[8px] text-zinc-300">
-                                  <ThumbsUp className="h-2.5 w-2.5" />
-                                  <span>{playlist.metrics.likes}</span>
-                                </div>
-                                <div className="flex items-center gap-0.5 text-[8px] text-zinc-300 ml-2">
-                                  <Share2 className="h-2.5 w-2.5" />
-                                  <span>{playlist.metrics.shares}</span>
-                                </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="card-artist">{playlist.metrics.likes} likes</span>
                               </div>
                             </div>
-                            <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button
-                                size="icon"
-                                className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePlaylistClick(playlist);
-                                }}
-                              >
-                                <PlayCircle className="h-5 w-5" />
-                              </Button>
-                            </div>
-                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button
-                                size="icon"
-                                variant="secondary"
-                                className="h-7 w-7 rounded-full bg-black/40 hover:bg-black/60"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Handle like
-                                  updateMetrics(playlist._id, 'likes');
-                                  setTopPlaylists(current =>
-                                    current.map(p => 
-                                      p._id === playlist._id
-                                        ? { ...p, isLiked: !p.isLiked }
-                                        : p
-                                    )
-                                  );
-                                  toast.success(`${playlist.isLiked ? 'Removed from' : 'Added to'} your Liked Playlists`);
-                                }}
-                              >
-                                <Heart className={`h-3.5 w-3.5 ${playlist.isLiked ? 'fill-white text-white' : ''}`} />
-                              </Button>
-                            </div>
+                          </div>
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              size="icon"
+                              variant="secondary"
+                              className="h-7 w-7 rounded-full bg-black/40 hover:bg-black/60"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Handle like
+                                updateMetrics(playlist._id, 'likes');
+                                setTopPlaylists(current =>
+                                  current.map(p => 
+                                    p._id === playlist._id
+                                      ? { ...p, isLiked: !p.isLiked }
+                                      : p
+                                  )
+                                );
+                                toast.success(`${playlist.isLiked ? 'Removed from' : 'Added to'} your Liked Playlists`);
+                              }}
+                            >
+                              <Heart className={`h-3.5 w-3.5 ${playlist.isLiked ? 'fill-white text-white' : ''}`} />
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -904,32 +928,33 @@ const HomePage = () => {
                         }
                       }}
                     >
-                      <div className="relative rounded-md overflow-hidden aspect-square shadow-lg w-full h-auto">
-                        <img
-                          src={song.image || '/placeholder-song.png'}
-                          alt={song.title}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
-                          }}
-                        />
-                        <div className="card-info">
+                      <div className="card-wrapper">
+                        <div className="card-image">
+                          <img
+                            src={song.image || '/placeholder-song.png'}
+                            alt={song.title}
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
+                            }}
+                          />
+                          <div className="play-button-overlay">
+                            <Button
+                              size="icon"
+                              className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const songToPlay = useMusicStore.getState().convertIndianSongToAppSong(song);
+                                setCurrentSong(songToPlay);
+                              }}
+                            >
+                              <PlayCircle className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="card-content">
                           <h3 className="card-title">{song.title}</h3>
                           <p className="card-artist">{song.artist || 'Unknown Artist'}</p>
-                        </div>
-                        <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            size="icon"
-                            className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const songToPlay = useMusicStore.getState().convertIndianSongToAppSong(song);
-                              setCurrentSong(songToPlay);
-                            }}
-                          >
-                            <PlayCircle className="h-5 w-5" />
-                          </Button>
                         </div>
                       </div>
                     </div>
@@ -993,42 +1018,43 @@ const HomePage = () => {
                       setCurrentSong(convertedSong as any);
                     }}
                   >
-                    <div className="relative rounded-md overflow-hidden aspect-square shadow-lg w-full h-auto">
-                      <img
-                        src={song.image || '/placeholder-song.png'}
-                        alt={song.title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
-                        }}
-                      />
-                      <div className="card-info">
+                    <div className="card-wrapper">
+                      <div className="card-image">
+                        <img
+                          src={song.image || '/placeholder-song.png'}
+                          alt={song.title}
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
+                          }}
+                        />
+                        <div className="play-button-overlay">
+                          <Button
+                            size="icon"
+                            className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const convertedSong = {
+                                _id: song.id,
+                                title: song.title,
+                                artist: song.artist || 'Unknown Artist',
+                                albumId: null,
+                                imageUrl: song.image,
+                                audioUrl: song.url || '',
+                                duration: song.duration || '0:00',
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString(),
+                              };
+                              setCurrentSong(convertedSong as any);
+                            }}
+                          >
+                            <PlayCircle className="h-5 w-5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="card-content">
                         <h3 className="card-title">{song.title}</h3>
                         <p className="card-artist">{song.artist || 'Unknown Artist'}</p>
-                      </div>
-                      <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          size="icon"
-                          className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const convertedSong = {
-                              _id: song.id,
-                              title: song.title,
-                              artist: song.artist || 'Unknown Artist',
-                              albumId: null,
-                              imageUrl: song.image,
-                              audioUrl: song.url || '',
-                              duration: song.duration || '0:00',
-                              createdAt: new Date().toISOString(),
-                              updatedAt: new Date().toISOString(),
-                            };
-                            setCurrentSong(convertedSong as any);
-                          }}
-                        >
-                          <PlayCircle className="h-5 w-5" />
-                        </Button>
                       </div>
                     </div>
                   </div>
