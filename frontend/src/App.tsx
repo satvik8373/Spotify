@@ -19,7 +19,7 @@ import Welcome from './pages/Welcome';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
-import AdminPlaylistsPage from './pages/admin/AdminPlaylistsPage';
+import AdminPage from './pages/admin/AdminPage';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -80,52 +80,6 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
   }
 
   // User is authenticated, render children
-  return <>{children}</>;
-};
-
-// Admin gate that checks if user is admin
-const AdminGate = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading, isAdmin } = useAuth();
-  const location = useLocation();
-  
-  // Check if we previously saved auth info in localStorage
-  const hasCachedAuth = Boolean(
-    localStorage.getItem('auth-store') && 
-    JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
-  );
-  
-  // Check if user is cached as admin
-  const hasCachedAdminStatus = Boolean(
-    localStorage.getItem('auth-store') && 
-    JSON.parse(localStorage.getItem('auth-store') || '{}').isAdmin
-  );
-
-  // Don't redirect while auth is still loading
-  if (loading) {
-    // If we have cached auth and admin status, render children optimistically
-    if (hasCachedAuth && hasCachedAdminStatus) {
-      return <>{children}</>;
-    }
-    
-    // Otherwise show loading indicator
-    return (
-      <div className="flex items-center justify-center h-screen bg-zinc-900">
-        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-green-500"></div>
-      </div>
-    );
-  }
-
-  // If not authenticated, redirect to login
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
-  }
-  
-  // If authenticated but not admin, redirect to home
-  if (!isAdmin) {
-    return <Navigate to="/home" replace />;
-  }
-
-  // User is authenticated and admin, render children
   return <>{children}</>;
 };
 
@@ -203,8 +157,8 @@ const router = createBrowserRouter(
 					element: <AuthGate><PlaylistPage /></AuthGate>
 				},
 				{
-					path: '/admin/playlists',
-					element: <AdminGate><AdminPlaylistsPage /></AdminGate>
+					path: '/admin',
+					element: <AuthGate><AdminPage /></AuthGate>
 				},
 				{
 					path: '/debug/api',
