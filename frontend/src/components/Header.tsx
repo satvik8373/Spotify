@@ -136,8 +136,8 @@ const Header = ({ className }: HeaderProps) => {
 
   return (
     <header className={`bg-black/85 py-4 px-6 z-50 sticky top-0 relative ${className}`}>
-      {/* Add Music Animation */}
-      <MusicAnimation />
+      {/* Add Music Animation with dense variant for more professional look */}
+      <MusicAnimation variant="dense" />
       
       <div className="max-w-[1800px] mx-auto flex items-center justify-between relative z-10">
         {/* Logo and Brand */}

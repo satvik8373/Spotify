@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import SongDetailsView from '@/components/SongDetailsView';
 import { signOut } from '@/services/hybridAuthService';
+import MusicAnimation from '@/components/MusicAnimation';
 
 /**
  * Mobile Navigation with Profile Menu and Lockscreen Controls
@@ -365,8 +366,13 @@ const MobileNav = () => {
       )}
       
       {/* Mobile Header - Spotify style */}
-      <div className="fixed top-0 left-0 right-0 z-30 bg-zinc-900 md:hidden">
-        <div className="flex items-center justify-end px-4 py-3">
+      <div className="fixed top-0 left-0 right-0 z-30 bg-zinc-900 md:hidden relative">
+        {/* Add Music Animation with minimal variant for mobile */}
+        <div className="absolute inset-0 overflow-hidden mobile-header-animation">
+          <MusicAnimation variant="minimal" />
+        </div>
+        
+        <div className="flex items-center justify-end px-4 py-3 relative z-10">
           {/* Logo and Search removed - Only showing profile */}
           {isAuthenticated ? (
             <div className="relative">

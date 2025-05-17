@@ -10,6 +10,25 @@
   z-index: 1;
   opacity: 0.7; /* Make it slightly transparent to not interfere with content */
   mix-blend-mode: screen; /* Blend mode for better visual integration */
+  transition: opacity 0.5s ease;
+}
+
+/* Animation visibility states */
+.music-animation-container.visible {
+  opacity: 0.7;
+}
+
+.music-animation-container.hidden {
+  opacity: 0;
+}
+
+/* Variant specific styles */
+.music-animation-container.minimal {
+  opacity: 0.5;
+}
+
+.music-animation-container.dense {
+  opacity: 0.8;
 }
 
 /* Individual floating music notes */
@@ -22,11 +41,21 @@
   filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
 }
 
+/* SVG note special styling */
+.note-svg {
+  filter: drop-shadow(0 0 3px currentColor);
+  transition: transform 0.3s ease;
+}
+
+.note-svg:hover {
+  transform: scale(1.2);
+}
+
 /* Wave containers */
 .wave-container {
   position: absolute;
   width: 100%;
-  height: 30px;
+  height: 40px;
   overflow: hidden;
 }
 
@@ -43,17 +72,39 @@
 
 /* Music wave animation */
 .music-wave {
-  animation: waveMove 10s linear infinite;
+  animation: waveMove 15s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(29, 185, 84, 0.6));
 }
 
-/* Floating circles */
-.floating-circle {
+/* Particle styling - enhanced for better visual */
+.particle {
   position: absolute;
-  top: 10px;
   border-radius: 50%;
   opacity: 0;
-  animation: floatUpSlow 6s ease-in-out infinite, fadeInOut 6s ease-in-out infinite, pulse 3s ease-in-out infinite;
-  box-shadow: 0 0 10px currentColor; /* Glow effect */
+  animation: floatParticle 4s ease-in-out infinite, fadeParticle 4s ease-in-out infinite, pulseLight 2s ease-in-out infinite;
+  box-shadow: 0 0 8px currentColor; /* Glow effect */
+  background-blend-mode: screen;
+}
+
+/* Equalizer container and bars */
+.equalizer-container {
+  position: absolute;
+  transform: translateY(-50%);
+}
+
+.equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 20px;
+}
+
+.equalizer-bar {
+  width: 3px;
+  border-radius: 1px;
+  animation: equalizerBounce 1.5s ease-in-out infinite;
+  opacity: 0.7;
+  box-shadow: 0 0 5px currentColor;
 }
 
 /* Animations */
@@ -69,15 +120,18 @@
   }
 }
 
-@keyframes floatUpSlow {
+@keyframes floatParticle {
   0% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) translateX(0) scale(1);
   }
-  50% {
-    transform: translateY(-60px) scale(1.2);
+  33% {
+    transform: translateY(-30px) translateX(10px) scale(1.2);
+  }
+  66% {
+    transform: translateY(-60px) translateX(-10px) scale(0.8);
   }
   100% {
-    transform: translateY(-120px) scale(1);
+    transform: translateY(-100px) translateX(0) scale(1);
   }
 }
 
@@ -87,6 +141,18 @@
   }
   15%, 85% {
     opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fadeParticle {
+  0% {
+    opacity: 0;
+  }
+  15%, 85% {
+    opacity: 0.9;
   }
   100% {
     opacity: 0;
@@ -114,22 +180,46 @@
   }
 }
 
-@keyframes pulse {
+@keyframes pulseLight {
   0%, 100% {
-    transform: scale(1);
+    filter: drop-shadow(0 0 3px currentColor);
   }
   50% {
-    transform: scale(1.5);
+    filter: drop-shadow(0 0 10px currentColor);
+  }
+}
+
+@keyframes equalizerBounce {
+  0%, 100% {
+    height: 30%;
+  }
+  50% {
+    height: 100%;
   }
 }
 
 /* Make sure the header background is semi-transparent to see animations */
 header {
   background-color: rgba(0, 0, 0, 0.85) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Mobile header specific styles */
+.mobile-header-animation {
+  height: 60px;
+  top: 0;
+  left: 0;
+  right: 0;
+  opacity: 0.5;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .music-animation-container:not(.minimal) {
+    opacity: 0.5;
+  }
+  
   .floating-note {
     animation-duration: 4s;
   }
@@ -138,7 +228,11 @@ header {
     height: 20px;
   }
   
-  .floating-circle {
+  .particle {
     animation-duration: 5s;
+  }
+  
+  .equalizer {
+    transform: scale(0.7);
   }
 } 
