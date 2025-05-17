@@ -4,12 +4,6 @@ import dotenv from "dotenv";
 // Load environment variables first
 dotenv.config();
 
-// Set admin email if not already set
-if (!process.env.ADMIN_EMAIL) {
-  console.log('Setting default admin email: satvikpatel8373@gmail.com');
-  process.env.ADMIN_EMAIL = 'satvikpatel8373@gmail.com';
-}
-
 import { clerkMiddleware } from "@clerk/express";
 import fileUpload from "express-fileupload";
 import path from "path";

@@ -132,30 +132,3 @@ export const verifyToken = async (req, res, next) => {
 		next(error);
 	}
 };
-
-// Check if user is authenticated and return user info
-export const checkAuth = async (req, res) => {
-	try {
-		// If we got here, the user is authenticated (protectRoute middleware passed)
-		const userId = req.auth?.userId || req.auth?.uid;
-		const email = req.auth?.email;
-		
-		// Check if this is an admin
-		const isAdmin = email && process.env.ADMIN_EMAIL === email;
-		
-		res.json({
-			success: true,
-			authenticated: true,
-			userId,
-			email,
-			isAdmin,
-			authType: req.auth?.userId ? 'clerk' : 'firebase'
-		});
-	} catch (error) {
-		console.error("Error in checkAuth:", error);
-		res.status(500).json({ 
-			success: false,
-			message: error.message 
-		});
-	}
-};

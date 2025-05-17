@@ -6,13 +6,44 @@ import cloudinary from "../lib/cloudinary.js";
 // helper function for cloudinary uploads
 const uploadToCloudinary = async (file) => {
 	try {
-		const result = await cloudinary.uploader.upload(file.tempFilePath, {
+		console.log("Uploading file to Cloudinary:", typeof file, file.path || file.tempFilePath || "direct path");
+		
+		let uploadOptions = {
 			resource_type: "auto",
-		});
+			folder: "spotify-clone",
+			overwrite: true,
+			quality: "auto:good",
+			fetch_format: "auto"
+		};
+		
+		// If a public_id is provided, add it to the options
+		if (file.public_id) {
+			uploadOptions.public_id = file.public_id;
+		}
+		
+		// Handle both file objects from express-fileupload and file paths from multer
+		let result;
+		if (file.tempFilePath) {
+			// express-fileupload style
+			console.log("Uploading via tempFilePath:", file.tempFilePath);
+			result = await cloudinary.uploader.upload(file.tempFilePath, uploadOptions);
+		} else if (typeof file === 'string') {
+			// Direct path string
+			console.log("Uploading via direct path string:", file);
+			result = await cloudinary.uploader.upload(file, uploadOptions);
+		} else if (file.path) {
+			// Multer style
+			console.log("Uploading via multer path:", file.path);
+			result = await cloudinary.uploader.upload(file.path, uploadOptions);
+		} else {
+			throw new Error("Invalid file format for upload: " + JSON.stringify(file));
+		}
+		
+		console.log("Cloudinary upload successful, URL:", result.secure_url);
 		return result.secure_url;
 	} catch (error) {
-		console.log("Error in uploadToCloudinary", error);
-		throw new Error("Error uploading to cloudinary");
+		console.error("Error in uploadToCloudinary:", error);
+		throw new Error(`Error uploading to cloudinary: ${error.message}`);
 	}
 };
 
@@ -242,6 +273,97 @@ export const featurePlaylist = async (req, res, next) => {
 		});
 	} catch (error) {
 		console.log("Error in featurePlaylist", error);
+		next(error);
+	}
+};
+
+/**
+ * Update a playlist with image upload (admin only)
+ */
+export const updatePlaylistWithImage = async (req, res, next) => {
+	try {
+		console.log("updatePlaylistWithImage called with file:", req.file ? req.file.filename : "no file");
+		const { id } = req.params;
+		const { name, description, isPublic, featured } = req.body;
+		
+		// Find the playlist
+		const playlist = await Playlist.findById(id);
+		if (!playlist) {
+			return res.status(404).json({
+				success: false,
+				message: "Playlist not found"
+			});
+		}
+		
+		// Upload image to Cloudinary if provided
+		let imageUrl = playlist.imageUrl;
+		if (req.file) {
+			try {
+				console.log("Processing file upload for playlist:", id);
+				// Use the uploadToCloudinary function with the file path
+				imageUrl = await uploadToCloudinary({
+					path: req.file.path,
+					public_id: `playlists/${id}_${Date.now()}`
+				});
+				
+				// Delete the temporary file after upload
+				try {
+					const fs = await import('fs/promises');
+					await fs.unlink(req.file.path);
+					console.log("Temporary file deleted successfully:", req.file.path);
+				} catch (unlinkError) {
+					console.log("Warning: Could not delete temporary file:", req.file.path, unlinkError.message);
+					// Non-fatal error, continue with the update
+				}
+			} catch (uploadError) {
+				console.error("Error uploading image to Cloudinary:", uploadError);
+				return res.status(500).json({
+					success: false,
+					message: `Failed to upload image: ${uploadError.message}`
+				});
+			}
+		} else if (req.body.imageUrl === '') {
+			// If imageUrl is explicitly set to empty string, remove the image
+			console.log("Removing image for playlist:", id);
+			imageUrl = '';
+		}
+		
+		// Convert string boolean values to actual booleans
+		const parsedIsPublic = isPublic === 'true' || isPublic === true;
+		const parsedFeatured = featured === 'true' || featured === true;
+		
+		console.log("Updating playlist with data:", {
+			id,
+			name: name || playlist.name,
+			description: description !== undefined ? description : playlist.description,
+			isPublic: parsedIsPublic,
+			featured: parsedFeatured,
+			hasImage: !!imageUrl
+		});
+		
+		// Update the playlist
+		const updatedPlaylist = await Playlist.findByIdAndUpdate(
+			id,
+			{
+				name: name || playlist.name,
+				description: description !== undefined ? description : playlist.description,
+				isPublic: parsedIsPublic,
+				featured: parsedFeatured,
+				imageUrl: imageUrl,
+				updatedAt: new Date()
+			},
+			{ new: true }
+		).populate('createdBy', 'fullName email')
+		 .populate('songs', 'title artist imageUrl duration');
+
+		console.log("Playlist updated successfully:", updatedPlaylist._id);
+		
+		res.status(200).json({
+			success: true,
+			data: updatedPlaylist
+		});
+	} catch (error) {
+		console.log("Error in updatePlaylistWithImage", error);
 		next(error);
 	}
 };
