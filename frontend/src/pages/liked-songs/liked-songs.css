@@ -1,0 +1,93 @@
+/* Liked Songs page specific styles */
+
+/* Desktop styles */
+@media (min-width: 768px) {
+  /* Fix grid layout for desktop */
+  .spotify-liked-song-row {
+    display: grid;
+    grid-template-columns: 16px 4fr 2fr 1fr auto;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+  }
+  
+  /* Desktop song row specific styles */
+  .spotify-desktop-song-row {
+    display: grid !important;
+    grid-template-columns: 16px 4fr 2fr 1fr auto !important;
+    gap: 1rem !important;
+    align-items: center;
+  }
+  
+  .spotify-desktop-song-row > div {
+    overflow: hidden;
+  }
+  
+  /* Fix artist and duration columns */
+  .desktop-artist-column,
+  .desktop-duration-column {
+    display: flex !important;
+  }
+  
+  .desktop-artist-column {
+    max-width: 100%;
+    padding-right: 1rem;
+  }
+  
+  .desktop-duration-column {
+    justify-content: flex-end;
+    white-space: nowrap;
+  }
+  
+  /* Ensure proper text truncation */
+  .spotify-desktop-song-row .truncate,
+  .spotify-liked-song-row .truncate {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* Ensure proper spacing for song title and artist */
+  .spotify-desktop-song-row .min-w-0,
+  .spotify-liked-song-row .min-w-0 {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* Gradient background for liked songs header */
+.spotify-mobile-liked-header {
+  background: linear-gradient(180deg, #2941ab 0%, #121212 100%);
+  position: relative;
+}
+
+/* Desktop specific header styling */
+@media (min-width: 768px) {
+  .spotify-mobile-liked-header {
+    padding-top: 2rem;
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+}
+
+/* Fix hover states for better visibility */
+.group:hover .text-zinc-400 {
+  color: white;
+}
+
+/* Fix song row spacing */
+.spotify-liked-song-row,
+.spotify-desktop-song-row {
+  margin-bottom: 0.25rem;
+}
+
+/* Ensure proper alignment of song details */
+@media (min-width: 768px) {
+  .spotify-desktop-song-row > div:nth-child(2) {
+    padding-right: 1rem;
+  }
+  
+  /* Make sure artist column is visible */
+  .spotify-desktop-song-row .hidden.md\:flex {
+    display: flex !important;
+  }
+} 

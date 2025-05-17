@@ -17,6 +17,9 @@ import {
 import { TouchRipple } from '@/components/ui/touch-ripple';
 import { useNavigate } from 'react-router-dom';
 
+// Add CSS for desktop view
+import './liked-songs.css';
+
 // Convert liked song format to player song format
 const adaptToPlayerSong = (likedSong: any): Song => {
   return {
@@ -592,8 +595,19 @@ const LikedSongsPage = () => {
                       "group relative hover:bg-white/5 rounded-md",
                       isMobile 
                         ? "grid grid-cols-[1fr_auto] gap-3 p-2 spotify-liked-song-row" 
-                        : "grid grid-cols-[16px_1fr_auto] md:grid-cols-[16px_4fr_2fr_1fr_auto] gap-4 p-2 px-4"
+                        : "grid grid-cols-[16px_4fr_2fr_1fr_auto] gap-4 p-2 px-4 spotify-desktop-song-row"
                     )}>
+                      {/* Index number - desktop only */}
+                      {!isMobile && (
+                        <div className="flex items-center justify-center text-sm text-zinc-400 group-hover:text-white">
+                          {isSongPlaying(song) ? (
+                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                          ) : (
+                            index + 1
+                          )}
+                        </div>
+                      )}
+                      
                       {/* Title and artist column */}
                       <div className="flex items-center min-w-0">
                         <div className={cn(
@@ -627,6 +641,20 @@ const LikedSongsPage = () => {
                           <p className="text-sm text-zinc-400 truncate">{song.artist}</p>
                         </div>
                       </div>
+                      
+                      {/* Artist column - desktop only */}
+                      {!isMobile && (
+                        <div className="hidden md:flex items-center text-zinc-400 text-sm desktop-artist-column">
+                          <span className="truncate">{song.artist}</span>
+                        </div>
+                      )}
+                      
+                      {/* Duration column - desktop only */}
+                      {!isMobile && (
+                        <div className="hidden md:flex items-center justify-end text-zinc-400 text-sm desktop-duration-column">
+                          {song.duration ? formatTime(song.duration) : "--:--"}
+                        </div>
+                      )}
                       
                       {/* Actions column */}
                       <div className="flex items-center justify-end">
