@@ -88,7 +88,7 @@ const netflixRowStyles = `
 		overflow-x: scroll;
 		overflow-y: hidden;
 		scroll-snap-type: x mandatory;
-		gap: 16px;
+		gap: 12px;
 		-ms-overflow-style: none;
 		scrollbar-width: none;
 		padding: 10px 0;
@@ -104,26 +104,26 @@ const netflixRowStyles = `
 	}
 	
 	.netflix-card {
-		flex: 0 0 calc(60% - 16px); /* Show bigger cards on mobile */
+		flex: 0 0 calc(45% - 16px); /* Show 2 cards on mobile */
 		scroll-snap-align: start;
 		position: relative;
 		transition: all 0.3s ease;
 		transform-origin: center left;
 		z-index: 1;
-		max-width: 220px; /* Bigger max-width on mobile */
+		max-width: 180px;
 	}
 	
 	@media (min-width: 640px) {
 		.netflix-card {
-			flex: 0 0 calc(40% - 16px); /* Show bigger cards on tablet */
-			max-width: 240px;
+			flex: 0 0 calc(33.333% - 16px); /* Show 3 cards on tablet */
+			max-width: 200px;
 		}
 	}
 	
 	@media (min-width: 1024px) {
 		.netflix-card {
-			flex: 0 0 240px; /* Fixed width on desktop */
-			max-width: 240px;
+			flex: 0 0 220px; /* Fixed width on desktop */
+			max-width: 220px;
 		}
 		
 		.netflix-card:hover {
@@ -136,32 +136,24 @@ const netflixRowStyles = `
 		}
 	}
 	
-	/* Improved card text styles to match Spotify */
-	.card-info {
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		width: 100%;
-		padding: 12px;
-		background: linear-gradient(transparent, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.9) 90%);
+	/* Public playlists slider - slightly bigger cards */
+	.public-playlists-slider .netflix-card {
+		flex: 0 0 calc(50% - 16px); /* Show 2 cards on mobile */
+		max-width: 200px;
 	}
 	
-	.card-title {
-		font-size: 0.9rem;
-		font-weight: 700;
-		color: white;
-		margin-bottom: 4px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+	@media (min-width: 640px) {
+		.public-playlists-slider .netflix-card {
+			flex: 0 0 calc(33.333% - 16px); /* Show 3 cards on tablet */
+			max-width: 220px;
+		}
 	}
 	
-	.card-artist {
-		font-size: 0.75rem;
-		color: rgba(255,255,255,0.7);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+	@media (min-width: 1024px) {
+		.public-playlists-slider .netflix-card {
+			flex: 0 0 240px; /* Fixed width on desktop - slightly bigger */
+			max-width: 240px;
+		}
 	}
 	
 	.netflix-rank {
@@ -658,7 +650,7 @@ const HomePage = () => {
                     onClick={() => {
                       const slider = document.querySelector('#public-playlists-row .netflix-slider');
                       if (slider) {
-                        slider.scrollBy({ left: -240, behavior: 'smooth' });
+                        slider.scrollBy({ left: -220, behavior: 'smooth' });
                       }
                     }}
                   >
@@ -667,13 +659,13 @@ const HomePage = () => {
                     </div>
                   </button>
                   
-                  <div className="netflix-slider">
+                  <div className="netflix-slider public-playlists-slider">
                     {publicPlaylists
                       .filter(playlist => playlist.isPublic !== false)
-                      .map((playlist) => (
+                      .map(playlist => (
                         <div
                           key={playlist._id}
-                          className="netflix-card group relative cursor-pointer"
+                          className="netflix-card public-playlist-card group relative cursor-pointer"
                           onClick={() => handlePlaylistClick(playlist)}
                         >
                           <div className="relative rounded-md overflow-hidden aspect-square shadow-lg w-full h-auto">
@@ -692,11 +684,14 @@ const HomePage = () => {
                                 <Music2 className="h-8 w-8 text-zinc-500" />
                               </div>
                             )}
-                            <div className="card-info">
-                              <h3 className="card-title">{playlist.name}</h3>
-                              <p className="card-artist">{playlist.createdBy?.fullName || 'Unknown'}</p>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="absolute bottom-0 left-0 w-full p-2">
+                              <h3 className="text-sm font-medium line-clamp-1">{playlist.name}</h3>
+                              <p className="text-xs text-zinc-400 line-clamp-1">
+                                {playlist.description || `By ${playlist.createdBy?.fullName || 'Unknown'}`}
+                              </p>
                             </div>
-                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
                                 size="icon"
                                 className="h-12 w-12 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
@@ -718,7 +713,7 @@ const HomePage = () => {
                     onClick={() => {
                       const slider = document.querySelector('#public-playlists-row .netflix-slider');
                       if (slider) {
-                        slider.scrollBy({ left: 240, behavior: 'smooth' });
+                        slider.scrollBy({ left: 220, behavior: 'smooth' });
                       }
                     }}
                   >
@@ -730,7 +725,7 @@ const HomePage = () => {
               </div>
             )}
 
-            {/* Top 10 Playlists Section - Netflix Style */}
+            {/* Top 10 Playlists Section */}
             {topPlaylists.length > 0 && (
               <div className="mb-5">
                 <div className="flex items-center justify-between mb-2.5">
@@ -742,7 +737,7 @@ const HomePage = () => {
                     onClick={() => {
                       const slider = document.querySelector('#top10-row .netflix-slider');
                       if (slider) {
-                        slider.scrollBy({ left: -240, behavior: 'smooth' });
+                        slider.scrollBy({ left: -180, behavior: 'smooth' });
                       }
                     }}
                   >
@@ -778,36 +773,37 @@ const HomePage = () => {
                                 <Music2 className="h-8 w-8 text-zinc-500" />
                               </div>
                             )}
-                            <div className="card-info">
-                              <h3 className="card-title">{playlist.name}</h3>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="absolute bottom-0 left-0 w-full p-2">
+                              <h3 className="text-xs font-medium line-clamp-1">{playlist.name}</h3>
                               <div className="flex items-center gap-1 mt-0.5">
-                                <div className="flex items-center gap-0.5 text-[10px] text-zinc-300">
+                                <div className="flex items-center gap-0.5 text-[8px] text-zinc-300">
                                   <ThumbsUp className="h-2.5 w-2.5" />
                                   <span>{playlist.metrics.likes}</span>
                                 </div>
-                                <div className="flex items-center gap-0.5 text-[10px] text-zinc-300 ml-2">
+                                <div className="flex items-center gap-0.5 text-[8px] text-zinc-300 ml-2">
                                   <Share2 className="h-2.5 w-2.5" />
                                   <span>{playlist.metrics.shares}</span>
                                 </div>
                               </div>
                             </div>
-                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute top-0 inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
                                 size="icon"
-                                className="h-12 w-12 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
+                                className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-black shadow-xl"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePlaylistClick(playlist);
                                 }}
                               >
-                                <PlayCircle className="h-6 w-6" />
+                                <PlayCircle className="h-5 w-5" />
                               </Button>
                             </div>
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
                                 size="icon"
                                 variant="secondary"
-                                className="h-8 w-8 rounded-full bg-black/40 hover:bg-black/60"
+                                className="h-7 w-7 rounded-full bg-black/40 hover:bg-black/60"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   // Handle like
@@ -822,7 +818,7 @@ const HomePage = () => {
                                   toast.success(`${playlist.isLiked ? 'Removed from' : 'Added to'} your Liked Playlists`);
                                 }}
                               >
-                                <Heart className={`h-4 w-4 ${playlist.isLiked ? 'fill-white text-white' : ''}`} />
+                                <Heart className={`h-3.5 w-3.5 ${playlist.isLiked ? 'fill-white text-white' : ''}`} />
                               </Button>
                             </div>
                           </div>
@@ -835,7 +831,7 @@ const HomePage = () => {
                     onClick={() => {
                       const slider = document.querySelector('#top10-row .netflix-slider');
                       if (slider) {
-                        slider.scrollBy({ left: 240, behavior: 'smooth' });
+                        slider.scrollBy({ left: 180, behavior: 'smooth' });
                       }
                     }}
                   >
@@ -848,7 +844,33 @@ const HomePage = () => {
             )}
 
             {/* Featured Playlists Section */}
-            {/* Featured Playlists Section - REMOVED */}
+            {featuredPlaylists.length > 0 && (
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-2.5">
+                  <h2 className="text-base font-bold tracking-tight">Featured Playlists</h2>
+                  <Button
+                    variant="ghost"
+                    className="text-zinc-400 hover:text-white text-[10px] sm:text-xs h-7"
+                    onClick={() => navigate('/library')}
+                  >
+                    See all
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
+                  {featuredPlaylists.map(playlist => (
+                    <div
+                      key={playlist._id}
+                      className="group relative transform transition-all duration-300 hover:scale-[1.02]"
+                    >
+                      <PlaylistCard
+                        playlist={playlist}
+                        isOwner={isAuthenticated && userId === playlist.createdBy.clerkId}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Today's Hits Section */}
             <div className="mb-5">
