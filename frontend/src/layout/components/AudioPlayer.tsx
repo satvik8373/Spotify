@@ -2,7 +2,7 @@ import React from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Heart, SkipBack, SkipForward, Play, Pause, Shuffle, Repeat, Bluetooth, Speaker, X } from 'lucide-react';
+import { Heart, SkipBack, SkipForward, Play, Pause, Shuffle, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { Slider } from '@/components/ui/slider';
@@ -48,10 +48,6 @@ const AudioPlayer = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [volume, setVolume] = useState(75);
   const [showSongDetails, setShowSongDetails] = useState(false);
-  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
-  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
-  const [currentDevice, setCurrentDevice] = useState<string>('');
-  const deviceSelectorRef = useRef<HTMLDivElement>(null);
 
   const { 
     currentSong, 
@@ -989,6 +985,83 @@ const AudioPlayer = () => {
     };
   }, [currentSong, likedSongIds]);
 
+  // Add enhanced background playback support
+  useEffect(() => {
+    // Only run when we have a song playing
+    if (!currentSong || !isPlaying) return;
+    
+    // Handle visibility change specifically for playback
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Page is now hidden (background)
+        console.log("Page hidden, ensuring background playback");
+        
+        // Double check media session availability
+        if (isMediaSessionSupported()) {
+          // Force update position state for lock screen
+          if ('setPositionState' in navigator.mediaSession && audioRef.current) {
+            try {
+              navigator.mediaSession.setPositionState({
+                duration: audioRef.current.duration || 0,
+                playbackRate: audioRef.current.playbackRate || 1,
+                position: audioRef.current.currentTime || 0
+              });
+            } catch (e) {}
+          }
+        }
+      } else {
+        // Page is visible again
+        console.log("Page visible, checking playback state");
+        
+        // If we're supposed to be playing but audio is paused, restart it
+        if (isPlaying && audioRef.current?.paused && !audioRef.current?.ended) {
+          console.log("Restarting paused audio after visibility change");
+          audioRef.current.play().catch(() => {});
+        }
+      }
+    };
+    
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Setup wake lock for improved background playback (where supported)
+    let wakeLock: any = null;
+    
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator) {
+        try {
+          // Request a screen wake lock to improve background playback
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          console.log('Wake lock acquired for improved playback');
+          
+          wakeLock.addEventListener('release', () => {
+            console.log('Wake lock released');
+            // Try to reacquire if we're still playing
+            if (isPlaying) {
+              requestWakeLock();
+            }
+          });
+        } catch (err) {
+          // Silent fail for unsupported browsers
+        }
+      }
+    };
+    
+    // Request wake lock when playing
+    if (isPlaying) {
+      requestWakeLock();
+    }
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Release wake lock if we have one
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+      }
+    };
+  }, [currentSong, isPlaying]);
+
   // Keyboard controls for mobile player
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1444,202 +1517,6 @@ const AudioPlayer = () => {
     playNext();
   };
 
-  // Function to handle device selection
-  const handleDeviceSelection = async (deviceId: string) => {
-    try {
-      if (!audioRef.current) return;
-      
-      // Store current playback state
-      const wasPlaying = !audioRef.current.paused;
-      const currentTime = audioRef.current.currentTime;
-      
-      // Pause current playback
-      if (wasPlaying) {
-        audioRef.current.pause();
-      }
-      
-      // Set the audio output device if browser supports it
-      if ('setSinkId' in HTMLMediaElement.prototype) {
-        await (audioRef.current as any).setSinkId(deviceId);
-        setCurrentDevice(deviceId);
-        
-        // Create custom event to notify the system about device change
-        document.dispatchEvent(new CustomEvent('audioDeviceChanged', {
-          detail: { deviceId }
-        }));
-        
-        // Resume playback if it was playing
-        if (wasPlaying) {
-          audioRef.current.currentTime = currentTime;
-          audioRef.current.play().catch(() => {});
-        }
-        
-        // Show success toast
-        toast.success('Connected to audio device');
-      } else {
-        toast.error('Your browser does not support audio output device selection');
-      }
-      
-      // Close the device selector
-      setShowDeviceSelector(false);
-    } catch (error) {
-      console.error('Error setting audio output device:', error);
-      toast.error('Failed to connect to device');
-    }
-  };
-  
-  // Handle fetching available devices
-  const fetchAvailableDevices = async () => {
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-        toast.error('Media devices not supported by your browser');
-        return;
-      }
-      
-      // Get user permission if needed
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Get all devices
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      
-      // Filter to only audio output devices
-      const audioOutputDevices = devices.filter(device => 
-        device.kind === 'audiooutput' && device.deviceId !== 'default'
-      );
-      
-      if (audioOutputDevices.length === 0) {
-        toast('No external audio devices found');
-      }
-      
-      setAvailableDevices(audioOutputDevices);
-      
-      // Get current device
-      if (audioRef.current && 'sinkId' in audioRef.current) {
-        setCurrentDevice((audioRef.current as any).sinkId);
-      }
-    } catch (error) {
-      console.error('Error enumerating audio devices:', error);
-      toast.error('Could not access audio devices');
-    }
-  };
-  
-  // Toggle device selector visibility
-  const toggleDeviceSelector = () => {
-    if (!showDeviceSelector) {
-      fetchAvailableDevices();
-    }
-    setShowDeviceSelector(prev => !prev);
-  };
-  
-  // Close device selector when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (deviceSelectorRef.current && !deviceSelectorRef.current.contains(e.target as Node)) {
-        setShowDeviceSelector(false);
-      }
-    };
-    
-    if (showDeviceSelector) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showDeviceSelector]);
-  
-  // Listen for device changes
-  useEffect(() => {
-    const handleDeviceChange = () => {
-      if (showDeviceSelector) {
-        fetchAvailableDevices();
-      }
-    };
-    
-    navigator.mediaDevices?.addEventListener('devicechange', handleDeviceChange);
-    
-    return () => {
-      navigator.mediaDevices?.removeEventListener('devicechange', handleDeviceChange);
-    };
-  }, [showDeviceSelector]);
-
-  // Add enhanced background playback support
-  useEffect(() => {
-    // Only run when we have a song playing
-    if (!currentSong || !isPlaying) return;
-    
-    // Handle visibility change specifically for playback
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // Page is now hidden (background)
-        console.log("Page hidden, ensuring background playback");
-        
-        // Double check media session availability
-        if (isMediaSessionSupported()) {
-          // Force update position state for lock screen
-          if ('setPositionState' in navigator.mediaSession && audioRef.current) {
-            try {
-              navigator.mediaSession.setPositionState({
-                duration: audioRef.current.duration || 0,
-                playbackRate: audioRef.current.playbackRate || 1,
-                position: audioRef.current.currentTime || 0
-              });
-            } catch (e) {}
-          }
-        }
-      } else {
-        // Page is visible again
-        console.log("Page visible, checking playback state");
-        
-        // If we're supposed to be playing but audio is paused, restart it
-        if (isPlaying && audioRef.current?.paused && !audioRef.current?.ended) {
-          console.log("Restarting paused audio after visibility change");
-          audioRef.current.play().catch(() => {});
-        }
-      }
-    };
-    
-    // Handle page visibility changes
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Setup wake lock for improved background playback (where supported)
-    let wakeLock: any = null;
-    
-    const requestWakeLock = async () => {
-      if ('wakeLock' in navigator) {
-        try {
-          // Request a screen wake lock to improve background playback
-          wakeLock = await (navigator as any).wakeLock.request('screen');
-          console.log('Wake lock acquired for improved playback');
-          
-          wakeLock.addEventListener('release', () => {
-            console.log('Wake lock released');
-            // Try to reacquire if we're still playing
-            if (isPlaying) {
-              requestWakeLock();
-            }
-          });
-        } catch (err) {
-          // Silent fail for unsupported browsers
-        }
-      }
-    };
-    
-    // Request wake lock when playing
-    if (isPlaying) {
-      requestWakeLock();
-    }
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
-      // Release wake lock if we have one
-      if (wakeLock) {
-        wakeLock.release().catch(() => {});
-      }
-    };
-  }, [currentSong, isPlaying]);
-
   if (!currentSong) {
     return (
       <audio
@@ -1656,72 +1533,6 @@ const AudioPlayer = () => {
         isOpen={showSongDetails} 
         onClose={() => setShowSongDetails(false)} 
       />
-      
-      {/* Device selector dropdown */}
-      {showDeviceSelector && (
-        <div
-          ref={deviceSelectorRef}
-          className="fixed bottom-16 right-4 sm:bottom-16 sm:right-4 z-50 bg-zinc-900 rounded-md shadow-lg border border-zinc-800 w-72 overflow-hidden"
-        >
-          <div className="flex items-center justify-between p-3 border-b border-zinc-800">
-            <h3 className="text-sm font-medium">Connect to a device</h3>
-            <button 
-              onClick={() => setShowDeviceSelector(false)}
-              className="text-zinc-400 hover:text-white"
-            >
-              <X size={18} />
-            </button>
-                </div>
-
-          <div className="max-h-64 overflow-y-auto">
-            {availableDevices.length === 0 ? (
-              <div className="p-4 text-sm text-zinc-400 text-center">
-                No devices found. Make sure your Bluetooth is on.
-                </div>
-            ) : (
-              <ul className="py-1">
-                {/* Default device (this device) */}
-                <li 
-                  className={`px-4 py-2 flex items-center hover:bg-zinc-800 cursor-pointer ${currentDevice === '' ? 'bg-zinc-800/50 text-green-500' : 'text-white'}`}
-                  onClick={() => handleDeviceSelection('')}
-                >
-                  <Speaker size={16} className="mr-2" />
-                  <span className="text-sm">This device</span>
-                  {currentDevice === '' && (
-                    <span className="ml-auto text-xs text-green-500">Connected</span>
-                  )}
-                </li>
-                
-                {/* List of other devices */}
-                {availableDevices.map((device) => (
-                  <li 
-                    key={device.deviceId}
-                    className={`px-4 py-2 flex items-center hover:bg-zinc-800 cursor-pointer ${currentDevice === device.deviceId ? 'bg-zinc-800/50 text-green-500' : 'text-white'}`}
-                    onClick={() => handleDeviceSelection(device.deviceId)}
-                  >
-                    <Bluetooth size={16} className="mr-2" />
-                    <span className="text-sm truncate max-w-[180px]">
-                      {device.label || `Device (${device.deviceId.slice(0, 8)}...)`}
-                    </span>
-                    {currentDevice === device.deviceId && (
-                      <span className="ml-auto text-xs text-green-500">Connected</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          
-          <div className="border-t border-zinc-800 p-3">
-            <button 
-              onClick={fetchAvailableDevices}
-              className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-1.5 px-3 rounded-full"
-            >
-              Refresh Devices
-            </button>
-          </div>
-        </div>
-      )}
       
       {/* Desktop mini player (only shows when not visible on mobile) */}
       <div 
@@ -1801,22 +1612,6 @@ const AudioPlayer = () => {
                 className="h-4 w-4"
                 fill={isLiked ? 'currentColor' : 'none'}
               />
-            </Button>
-            
-            {/* Bluetooth/Device Connection Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                'text-white hover:bg-white/10 h-9 w-9 ml-1',
-                showDeviceSelector && 'text-green-500 bg-white/10'
-              )}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleDeviceSelector();
-              }}
-            >
-              <Bluetooth className="h-4 w-4" />
             </Button>
           </div>
         </div>
