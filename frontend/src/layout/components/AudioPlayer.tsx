@@ -609,68 +609,52 @@ const AudioPlayer = () => {
       
       // 1. Check if audio is paused but should be playing
       if (audio.paused && state.isPlaying && !audio.ended) {
-        audio.play().catch(() => {});
+        // Rely on the main isPlaying effect to handle this
+        // audio.play().catch(() => {}); 
       }
       
       // 2. Check if we need to advance to next song (with better duration validation)
       if (!isNaN(audioDuration) && audioDuration > 0) {
         // If the song is actually ended OR if we're within 0.5 seconds of the end
-        if (audio.ended || (audio.currentTime >= audioDuration - 0.5 && audio.currentTime > 0)) {
-          // Ensure we don't trigger multiple times for the same ending
-          if (!audio.ended && Math.abs(audio.currentTime - audioDuration) <= 0.5) {
-            // Explicitly mark the current song as ended to prevent duplicate triggers
-            audio.pause();
+        // and ensure we haven't already processed this end_of_song event
+        if ((audio.ended || (audio.currentTime >= audioDuration - 0.5 && audio.currentTime > 0)) && !(audio as any)._songEndedProcessed) {
+          
+          (audio as any)._songEndedProcessed = true; // Mark as processed for this song instance/load
+
+          // Explicitly mark the current song as ended to prevent duplicate triggers
+          audio.pause();
             
-            // Store current song info before transitioning
-            const currentSongInfo = {
-              id: state.currentSong?._id,
-              position: audio.currentTime,
-              duration: audio.duration
-            };
+          // Store current song info before transitioning
+          const currentSongInfo = {
+            id: state.currentSong?._id,
+            position: audio.currentTime,
+            duration: audio.duration
+          };
             
-            // Increment to next song with proper state handling
-            state.playNext();
+          // Increment to next song with proper state handling
+          state.playNext(); // This updates currentSong in the store
             
-            // Ensure playback continues
-            state.setIsPlaying(true);
+          // Ensure playback continues by setting the state.
+          // The useEffect hook for [isPlaying] and [currentSong] will handle loading and playing.
+          state.setIsPlaying(true); 
             
-            // Log the transition for debugging
-            try {
-              localStorage.setItem('last_song_transition', JSON.stringify({
-                from: currentSongInfo.id,
-                position: currentSongInfo.position,
-                duration: currentSongInfo.duration, 
-                timestamp: new Date().toISOString(),
-                isLocked: document.hidden,
-                batteryLevel: (navigator as any).getBattery ? 
-                  (navigator as any).getBattery().then((b: any) => b.level) : 'unknown'
-              }));
-            } catch (e) {
-              // Ignore storage errors
-            }
-            
-            // Actually play the audio with multiple fallback attempts
-            setTimeout(() => {
-              if (audioRef.current) {
-                audioRef.current.play().catch(() => {
-                  // If initial attempt fails, try again after a delay
-                  setTimeout(() => {
-                    // Get fresh reference in case it changed
-                    const freshAudio = audioRef.current || document.querySelector('audio');
-                    if (freshAudio) {
-                      freshAudio.play().catch(() => {
-                        // One final attempt with longer delay
-                        setTimeout(() => {
-                          const finalAudio = audioRef.current || document.querySelector('audio');
-                          finalAudio?.play().catch(() => {});
-                        }, 1000);
-                      });
-                    }
-                  }, 500);
-                });
-              }
-            }, 100);
+          // Log the transition for debugging
+          try {
+            localStorage.setItem('last_song_transition', JSON.stringify({
+              from: currentSongInfo.id,
+              position: currentSongInfo.position,
+              duration: currentSongInfo.duration, 
+              timestamp: new Date().toISOString(),
+              isLocked: document.hidden,
+              batteryLevel: (navigator as any).getBattery ? 
+                (navigator as any).getBattery().then((b: any) => b.level) : 'unknown'
+            }));
+          } catch (e) {
+            // Ignore storage errors
           }
+        } else if (audio.currentTime < audioDuration - 0.5) {
+          // Reset the flag if we are clearly not at the end of the song
+          (audio as any)._songEndedProcessed = false;
         }
       }
     }, 250); // More frequent checks to ensure we don't miss the end of a song
@@ -678,8 +662,8 @@ const AudioPlayer = () => {
     return () => {
       clearInterval(backgroundPlaybackMonitor);
     };
-  }, [currentSong, isPlaying]);
-  
+  }, [currentSong, isPlaying]); // Keep dependencies minimal, rely on getState for fresh state inside interval
+
   // Wake lock API to prevent device from sleeping and stopping audio
   useEffect(() => {
     let wakeLock: any = null;
