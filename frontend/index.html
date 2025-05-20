@@ -20,6 +20,13 @@
 		<link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png" />
 		<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png" />
 		
+		<!-- Automotive specific meta tags -->
+		<meta name="automotive-app-capable" content="yes" />
+		<meta name="carplay-app-capable" content="yes" />
+		<meta name="android-auto-app-capable" content="yes" />
+		<meta name="automotive-media-metadata" content="title,artist,album,artwork,duration,position" />
+		<meta name="automotive-allowed-actions" content="play,pause,playpause,skip-next,skip-previous,seek" />
+		
 		<!-- iOS splash screens -->
 		<link rel="apple-touch-startup-image" href="/splash/apple-splash-2048-2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
 		<link rel="apple-touch-startup-image" href="/splash/apple-splash-1668-2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
@@ -43,6 +50,37 @@
 				console.log("Spotify Web Playback SDK is ready");
 				window.SpotifyPlayerReady = true;
 			};
+		</script>
+
+		<!-- Automotive detection script -->
+		<script>
+			(function detectAutomotiveEnvironment() {
+				// Detect if we're in Android Auto or Apple CarPlay
+				const userAgent = navigator.userAgent.toLowerCase();
+				const isAndroidAuto = userAgent.includes('android auto');
+				const isAppleCarPlay = userAgent.includes('carplay');
+				
+				// Set a class on html element for CSS targeting
+				if (isAndroidAuto || isAppleCarPlay) {
+					document.documentElement.classList.add('automotive');
+					// Set specific platform class
+					if (isAndroidAuto) document.documentElement.classList.add('android-auto');
+					if (isAppleCarPlay) document.documentElement.classList.add('carplay');
+
+					// Dispatch event for JavaScript detection
+					document.dispatchEvent(new CustomEvent('automotiveContextDetected', {
+						detail: { isAndroidAuto, isAppleCarPlay }
+					}));
+					
+					// Try to register for MediaSession API early
+					if ('mediaSession' in navigator) {
+						navigator.mediaSession.setActionHandler('play', function() {});
+						navigator.mediaSession.setActionHandler('pause', function() {});
+						navigator.mediaSession.setActionHandler('previoustrack', function() {});
+						navigator.mediaSession.setActionHandler('nexttrack', function() {});
+					}
+				}
+			})();
 		</script>
 
 		<!-- Google AdSense -->

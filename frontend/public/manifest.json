@@ -73,46 +73,30 @@
       "form_factor": "wide"
     }
   ],
-  "media_session": {
-    "supported_actions": [
-      "play",
-      "pause",
-      "seekbackward",
-      "seekforward",
-      "previoustrack",
-      "nexttrack"
-    ],
-    "artwork": [
-      {
-        "src": "/spotify-icon-96.png",
-        "sizes": "96x96",
-        "type": "image/png"
-      },
-      {
-        "src": "/spotify-icon-128.png",
-        "sizes": "128x128",
-        "type": "image/png"
-      },
-      {
-        "src": "/spotify-icon-192.png",
-        "sizes": "192x192",
-        "type": "image/png"
-      },
-      {
-        "src": "/spotify-icon-512.png",
-        "sizes": "512x512",
-        "type": "image/png"
-      }
-    ]
-  },
   "automotive": {
-    "enabled": true,
     "media_capabilities": {
-      "audio_streaming": true,
-      "background_playback": true,
-      "voice_controls": true,
-      "car_display": true
-    }
+      "action_types": ["play", "pause", "seekto", "seekforward", "seekbackward", "previoustrack", "nexttrack"],
+      "presentation_metadata": ["title", "artist", "artwork", "album", "duration", "position"]
+    },
+    "auto_resume": true,
+    "requires_car_mode": false,
+    "requires_automotive_permission": true
   },
-  "permissions": ["mediaSession", "backgroundAudio", "wake-lock"]
+  "automotive_media_bundle": {
+    "android_auto": true,
+    "carplay": true
+  },
+  "related_applications": [
+    {
+      "platform": "chromeos_play",
+      "url": "https://play.google.com/store/apps/details?id=com.android.chrome",
+      "id": "com.mavrix.spotify"
+    },
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.android.chrome",
+      "id": "com.mavrix.spotify"
+    }
+  ],
+  "display_override": ["window-controls-overlay", "standalone", "browser", "car"]
 } 

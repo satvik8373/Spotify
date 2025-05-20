@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
+import './automotive.css'
 import { ErrorBoundary } from 'react-error-boundary'
 import { Toaster } from 'sonner'
 
