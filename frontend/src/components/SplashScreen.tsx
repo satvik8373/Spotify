@@ -24,7 +24,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   // Start exit animation based on authentication status
   useEffect(() => {
     // Shorter display time for authenticated users
-    const animationDuration = hasCachedAuth ? 600 : 1400;
+    const animationDuration = hasCachedAuth ? 600 : 1500;
     
     const timer = setTimeout(handleAnimationComplete, animationDuration);
     return () => clearTimeout(timer);
@@ -37,143 +37,154 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 bg-gradient-to-b from-black to-zinc-900 flex flex-col items-center justify-center z-50"
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 bg-gradient-to-b from-zinc-900 to-black flex flex-col items-center justify-center z-50 overflow-hidden"
         >
-          <div className="flex flex-col items-center justify-center relative">
-            {/* Circular glow effect */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 0.6, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="absolute w-52 h-52 rounded-full bg-gradient-to-r from-green-500/30 to-blue-500/30 blur-2xl"
-            />
+          {/* Background animated elements */}
+          <div className="absolute inset-0 overflow-hidden">
+            {/* Music bars */}
+            <div className="absolute inset-0 flex justify-evenly items-end opacity-10">
+              {[...Array(12)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="w-1 bg-green-500 rounded-t-full"
+                  initial={{ height: 0 }}
+                  animate={{ 
+                    height: [
+                      Math.random() * 40 + 10, 
+                      Math.random() * 120 + 40, 
+                      Math.random() * 40 + 10
+                    ] 
+                  }}
+                  transition={{
+                    duration: 1.2,
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                    delay: i * 0.1,
+                    ease: "easeInOut"
+                  }}
+                />
+              ))}
+            </div>
             
-            {/* Logo and brand name container */}
+            {/* Circular gradient backdrop */}
+            <motion.div 
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-green-600/20 via-blue-600/10 to-purple-600/20"
+              initial={{ width: 0, height: 0, opacity: 0 }}
+              animate={{ width: '150vh', height: '150vh', opacity: 0.6 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+          </div>
+
+          <div className="flex flex-col items-center justify-center z-10">
+            {/* Logo container with glowing effect */}
             <motion.div
-              className="flex flex-col items-center relative z-10"
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.3 }}
+              className="relative mb-6"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ 
+                duration: 0.5,
+                ease: "easeOut"
+              }}
             >
-              {/* Modern music wave icon */}
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="mb-4"
-              >
-                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M32 0C14.36 0 0 14.36 0 32s14.36 32 32 32 32-14.36 32-32S49.64 0 32 0z" fill="#000"/>
-                  <path d="M32 4C16.56 4 4 16.56 4 32s12.56 28 28 28 28-12.56 28-28S47.44 4 32 4z" fill="#111"/>
+              {/* Glow effect */}
+              <motion.div 
+                className="absolute inset-0 bg-green-500 rounded-full blur-xl opacity-30"
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                  opacity: [0.2, 0.4, 0.2]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              />
+              
+              {/* Logo mark */}
+              <div className="relative bg-black p-4 rounded-full shadow-lg border border-zinc-800 flex items-center justify-center">
+                <svg 
+                  width="60" 
+                  height="60" 
+                  viewBox="0 0 24 24" 
+                  className="drop-shadow"
+                >
                   <motion.path 
-                    d="M45.39 46.24c-.64.96-1.76 1.28-2.72.64-7.52-4.64-16.96-5.6-28.16-3.04-1.11.33-2.08-.48-2.4-1.44-.32-1.12.48-2.08 1.44-2.4 12.16-2.72 22.72-1.6 31.04 3.52 1.12.48 1.28 1.76.8 2.72zM49.23 37.44c-.8 1.12-2.24 1.6-3.36.8-8.64-5.28-21.76-6.88-31.84-3.68-1.28.32-2.72-.32-3.04-1.6-.32-1.28.32-2.72 1.6-3.04 11.6-3.52 26-1.92 36.32 4.16.96.48 1.44 2.08.32 3.36zM49.55 28.48c-10.4-6.16-27.52-6.72-37.44-3.72-1.6.48-3.2-.48-3.68-1.92-.48-1.6.48-3.2 1.92-3.68 11.36-3.36 30.08-2.72 41.92 4.32 1.44.8 1.92 2.72 1.12 4.16-.8 1.12-2.72 1.6-3.84.84z" 
-                    fill="#1DB954"
-                    animate={{ 
-                      opacity: [0.7, 1, 0.7],
-                      scale: [0.98, 1.02, 0.98]
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
+                    d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"
+                    fill="url(#logoGradient)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ 
+                      duration: 0.8,
                       ease: "easeInOut"
                     }}
                   />
+                  <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#1DB954" />
+                      <stop offset="100%" stopColor="#20e7c1" />
+                    </linearGradient>
+                  </defs>
                 </svg>
-              </motion.div>
-              
-              {/* Brand name with gradient animation */}
-              <motion.h1
-                className="text-4xl font-bold tracking-tighter"
-                style={{ 
-                  textShadow: '0 0 15px rgba(29, 185, 84, 0.3)'
+              </div>
+            </motion.div>
+            
+            {/* Brand Name with animated background */}
+            <motion.div
+              className="relative"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+            >
+              <motion.h1 
+                className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-blue-400 to-green-400"
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}
+                style={{
+                  backgroundSize: '200% 100%'
                 }}
               >
-                <motion.span
-                  className="bg-gradient-to-r from-green-400 via-blue-500 to-green-400 bg-clip-text text-transparent"
-                  style={{ 
-                    backgroundSize: '200% 100%'
-                  }}
-                  animate={{
-                    backgroundPosition: ['0% center', '100% center', '0% center']
-                  }}
-                  transition={{
-                    duration: 2,
-                    ease: "easeInOut"
-                  }}
-                >
-                  Mavrixfy
-                </motion.span>
+                Mavrixfy
               </motion.h1>
               
-              {/* Tagline with staggered reveal */}
-              <motion.p
-                className="text-zinc-400 text-sm mt-2 tracking-wide"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                Your premium music experience
-              </motion.p>
+              {/* Animated underline */}
+              <motion.div
+                className="h-0.5 bg-gradient-to-r from-green-500 via-blue-500 to-green-500 rounded-full mx-auto mt-1"
+                initial={{ width: 0 }}
+                animate={{ width: '100%' }}
+                transition={{ delay: 0.4, duration: 0.6 }}
+              />
             </motion.div>
             
-            {/* Minimal loading indicator */}
-            <motion.div
-              className="mt-8 relative"
+            {/* Loading indicator with streamlined effect */}
+            <motion.div 
+              className="mt-8 flex space-x-1.5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.5 }}
             >
-              <motion.div 
-                className="w-40 h-10 bg-gradient-to-r from-green-600/90 to-blue-600/90 rounded-full overflow-hidden flex items-center justify-center shadow-lg relative"
-                initial={{ y: 5, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.3 }}
-                style={{
-                  boxShadow: '0 4px 12px rgba(29, 185, 84, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2)'
-                }}
-              >
-                {/* Inner gradient shine effect */}
-                <motion.div 
-                  className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"
-                  style={{ borderRadius: 'inherit' }}
-                />
-                
-                {/* Loading progress */}
-                <motion.div 
-                  className="absolute inset-0 bg-gradient-to-r from-green-500 via-teal-400 to-blue-500"
-                  initial={{ width: "0%" }}
-                  animate={{ width: "100%" }}
-                  transition={{ 
-                    duration: hasCachedAuth ? 0.5 : 1.2,
-                    ease: "easeInOut"
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-1.5 h-1.5 bg-green-500 rounded-full"
+                  animate={{
+                    scale: [1, 1.5, 1],
+                    opacity: [0.5, 1, 0.5]
                   }}
-                  style={{ 
-                    backgroundSize: '200% 100%',
-                    animation: 'shimmer 2s infinite linear',
-                    borderRadius: 'inherit'
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    delay: i * 0.15
                   }}
                 />
-                
-                {/* Button text */}
-                <motion.span 
-                  className="relative z-10 text-white text-sm font-medium tracking-wide"
-                  animate={{ opacity: [0.8, 1, 0.8] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  Loading...
-                </motion.span>
-              </motion.div>
+              ))}
             </motion.div>
-            
-            {/* Add CSS keyframes for shimmer effect */}
-            <style>{`
-              @keyframes shimmer {
-                0% { background-position: 0% 50%; }
-                50% { background-position: 100% 50%; }
-                100% { background-position: 0% 50%; }
-              }
-            `}</style>
           </div>
         </motion.div>
       )}
