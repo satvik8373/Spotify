@@ -125,19 +125,55 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
               transition={{ delay: 0.4 }}
             >
               <motion.div 
-                className="w-16 h-1 bg-zinc-800 rounded-full overflow-hidden"
+                className="w-40 h-10 bg-gradient-to-r from-green-600/90 to-blue-600/90 rounded-full overflow-hidden flex items-center justify-center shadow-lg relative"
+                initial={{ y: 5, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.3 }}
+                style={{
+                  boxShadow: '0 4px 12px rgba(29, 185, 84, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2)'
+                }}
               >
+                {/* Inner gradient shine effect */}
                 <motion.div 
-                  className="h-full bg-gradient-to-r from-green-500 to-blue-500"
+                  className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"
+                  style={{ borderRadius: 'inherit' }}
+                />
+                
+                {/* Loading progress */}
+                <motion.div 
+                  className="absolute inset-0 bg-gradient-to-r from-green-500 via-teal-400 to-blue-500"
                   initial={{ width: "0%" }}
                   animate={{ width: "100%" }}
                   transition={{ 
                     duration: hasCachedAuth ? 0.5 : 1.2,
                     ease: "easeInOut"
                   }}
+                  style={{ 
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmer 2s infinite linear',
+                    borderRadius: 'inherit'
+                  }}
                 />
+                
+                {/* Button text */}
+                <motion.span 
+                  className="relative z-10 text-white text-sm font-medium tracking-wide"
+                  animate={{ opacity: [0.8, 1, 0.8] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  Loading...
+                </motion.span>
               </motion.div>
             </motion.div>
+            
+            {/* Add CSS keyframes for shimmer effect */}
+            <style>{`
+              @keyframes shimmer {
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+              }
+            `}</style>
           </div>
         </motion.div>
       )}
