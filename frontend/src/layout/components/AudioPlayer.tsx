@@ -1,7 +1,6 @@
 import React from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'react-hot-toast';
 import { Heart, SkipBack, SkipForward, Play, Pause, Shuffle, Repeat, Bluetooth, Speaker, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
@@ -1608,9 +1607,6 @@ const AudioPlayer = () => {
     try {
       if (!audioRef.current) return;
       
-      // Toast notification at the beginning to indicate connection attempt
-      toast.loading('Connecting to device...');
-      
       // Store current playback state
       const wasPlaying = !audioRef.current.paused;
       const currentTime = audioRef.current.currentTime;
@@ -1625,6 +1621,16 @@ const AudioPlayer = () => {
       
       // Check if we're in a PWA environment
       const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+      
+      // Handle mock TV device from our SpotifyConnectView
+      if (deviceId === 'tv-device' || deviceId === 'speaker-1') {
+        // Add your mock device connection logic here
+        setCurrentDevice(deviceId); // Set as current device
+        
+        // Close device selector immediately - the component will handle the connection animation
+        setShowDeviceSelector(false);
+        return;
+      }
       
       // Set the audio output device if browser supports it
       if ('setSinkId' in HTMLMediaElement.prototype) {
@@ -1660,6 +1666,9 @@ const AudioPlayer = () => {
           // Save this device as preferred in localStorage for future sessions
           try {
             localStorage.setItem('preferredAudioDevice', deviceId);
+            // Also save the device name for better display
+            const deviceName = availableDevices.find(d => d.deviceId === deviceId)?.label || 'Bluetooth device';
+            localStorage.setItem('preferredAudioDeviceName', deviceName);
           } catch (e) {
             console.warn('Could not save device preference');
           }
@@ -1675,20 +1684,17 @@ const AudioPlayer = () => {
           const playTimeoutId = setTimeout(() => {
             // If we've waited too long and audio isn't ready, show an error
             audio.removeEventListener('canplay', playAfterDeviceChange);
-            toast.dismiss();
-            toast.error('Connection timeout. Please try again');
+            
+            // Try once more to restore playback on the original device
+            if (wasPlaying) {
+              audio.play().catch(() => {});
+            }
           }, maxWaitTime);
           
           // Setup the canplay handler
           const playAfterDeviceChange = () => {
             // Clear the timeout since we've connected successfully
             clearTimeout(playTimeoutId);
-            
-            // Update UI to show successful connection
-            toast.dismiss();
-            toast.success(`Connected to ${deviceId ? (
-              availableDevices.find(d => d.deviceId === deviceId)?.label || 'Bluetooth device'
-            ) : 'this device'}`);
             
             // Resume playback if it was playing
             if (wasPlaying) {
@@ -1702,7 +1708,6 @@ const AudioPlayer = () => {
                       audio.play().catch(() => {
                         // If it still fails, mark as not playing
                         setIsPlaying(false);
-                        toast.error('Playback failed. Try tapping play');
                       });
                     }
                   }, 500);
@@ -1721,28 +1726,28 @@ const AudioPlayer = () => {
           
           // Listen for the canplay event to know when audio is ready on the new device
           audio.addEventListener('canplay', playAfterDeviceChange);
+          
+          // Unlike normal selection, we don't close the device selector here
+          // It will be closed by the SpotifyConnectView component after showing connected state
         } catch (error) {
           console.error('Error setting sink ID:', error);
-          toast.dismiss();
-          toast.error('Failed to connect to device');
           
           // If there was an error, try to restore playback on the original device
           if (wasPlaying && audioRef.current) {
             audioRef.current.play().catch(() => {});
             setIsPlaying(true);
           }
+          
+          // Close the device selector on error
+          setShowDeviceSelector(false);
         }
       } else {
-        toast.dismiss();
-        toast.error('Your browser does not support Bluetooth connection');
+        console.warn('Your browser does not support Bluetooth connection');
+        setShowDeviceSelector(false);
       }
-      
-      // Close the device selector
-      setShowDeviceSelector(false);
     } catch (error) {
       console.error('Error setting audio output device:', error);
-      toast.dismiss();
-      toast.error('Failed to connect to device');
+      setShowDeviceSelector(false);
     }
   };
   
@@ -1750,7 +1755,7 @@ const AudioPlayer = () => {
   const fetchAvailableDevices = async () => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-        toast.error('Media devices not supported by your browser');
+        console.warn('Media devices not supported by your browser');
         return;
       }
       
@@ -1766,7 +1771,7 @@ const AudioPlayer = () => {
       );
       
       if (audioOutputDevices.length === 0) {
-        toast('No external audio devices found');
+        console.log('No external audio devices found');
       }
       
       setAvailableDevices(audioOutputDevices);
@@ -1777,7 +1782,6 @@ const AudioPlayer = () => {
       }
     } catch (error) {
       console.error('Error enumerating audio devices:', error);
-      toast.error('Could not access audio devices');
     }
   };
   
@@ -1970,6 +1974,46 @@ const AudioPlayer = () => {
     }
   }, []);
 
+  // Handle device selection event from MobileNav
+  useEffect(() => {
+    const handleDeviceSelectionEvent = (event: CustomEvent) => {
+      const { deviceId } = event.detail;
+      if (deviceId) {
+        handleDeviceSelection(deviceId);
+      }
+    };
+    
+    // Register event listener
+    document.addEventListener('selectAudioDevice', handleDeviceSelectionEvent as EventListener);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('selectAudioDevice', handleDeviceSelectionEvent as EventListener);
+    };
+  }, []);
+
+  // Add this to support device persistence on load
+  useEffect(() => {
+    // Try to restore preferred audio device on load
+    const tryRestoreAudioDevice = async () => {
+      const preferredDeviceId = localStorage.getItem('preferredAudioDevice');
+      if (preferredDeviceId && audioRef.current && 'setSinkId' in HTMLMediaElement.prototype) {
+        try {
+          await (audioRef.current as any).setSinkId(preferredDeviceId);
+          setCurrentDevice(preferredDeviceId);
+        } catch (error) {
+          console.warn('Could not restore preferred audio device:', error);
+        }
+      }
+    };
+    
+    // Only try to restore after user has interacted with the page
+    const hasInteracted = usePlayerStore.getState().hasUserInteracted;
+    if (hasInteracted) {
+      tryRestoreAudioDevice();
+    }
+  }, []);
+
   if (!currentSong) {
     return (
       <audio
@@ -1991,8 +2035,9 @@ const AudioPlayer = () => {
       <SpotifyConnectView 
         isOpen={showDeviceSelector}
         onClose={() => setShowDeviceSelector(false)}
+        onDeviceSelect={handleDeviceSelection}
         currentDevice={currentDevice}
-        onSelectDevice={handleDeviceSelection}
+        availableDevices={availableDevices}
       />
       
       {/* Desktop mini player (only shows when not visible on mobile) */}
