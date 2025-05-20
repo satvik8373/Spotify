@@ -1783,27 +1783,11 @@ const AudioPlayer = () => {
   
   // Toggle device selector visibility
   const toggleDeviceSelector = () => {
+    // No need to fetch devices here - the component does it automatically now
     setShowDeviceSelector(prev => !prev);
   };
   
-  // Close device selector when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (deviceSelectorRef.current && !deviceSelectorRef.current.contains(e.target as Node)) {
-        setShowDeviceSelector(false);
-      }
-    };
-    
-    if (showDeviceSelector) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showDeviceSelector]);
-  
-  // Listen for device changes
+  // No need for click outside handler anymore as our new component handles this
   useEffect(() => {
     const handleDeviceChange = () => {
       if (showDeviceSelector) {

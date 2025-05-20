@@ -287,6 +287,9 @@ const MobileNav = () => {
       const audio = document.querySelector('audio');
       if (!audio) return;
       
+      // Toast notification at the beginning to indicate connection attempt
+      toast.loading('Connecting to device...');
+      
       // Store current playback state
       const wasPlaying = !(audio as HTMLAudioElement).paused;
       
@@ -313,8 +316,10 @@ const MobileNav = () => {
           });
         }
         
+        toast.dismiss();
         toast.success('Connected to audio device');
       } else {
+        toast.dismiss();
         toast.error('Your browser does not support audio output device selection');
       }
       
@@ -322,6 +327,7 @@ const MobileNav = () => {
       setShowDevices(false);
     } catch (error) {
       console.error('Error setting audio output device:', error);
+      toast.dismiss();
       toast.error('Failed to connect to device');
     }
   };
