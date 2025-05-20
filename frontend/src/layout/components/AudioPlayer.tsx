@@ -642,15 +642,15 @@ const AudioPlayer = () => {
       
       // 2. Check if we need to advance to next song
       if (!isNaN(audioDuration) && audioDuration > 0) {
-        // If the song is actually ended OR if we're within 0.3 seconds of the end
-        // Make the threshold smaller (0.3 instead of 0.5) to improve accuracy
-        if (audio.ended || (audio.currentTime >= audioDuration - 0.3 && audio.currentTime > 0)) {
+        // Use a more aggressive threshold when screen is off (0.1 seconds)
+        // Regular threshold (0.3 seconds) when screen is on
+        const endThreshold = document.hidden ? 0.1 : 0.3;
+        
+        // If the song is actually ended OR if we're close to the end
+        if (audio.ended || (audio.currentTime >= audioDuration - endThreshold && audio.currentTime > 0)) {
           // Ensure we don't trigger multiple times for the same ending
           // This is crucial for car connectivity where events may fire unreliably
-          if (!audio.ended && Math.abs(audio.currentTime - audioDuration) <= 0.3) {
-            // Explicitly mark the current song as ended to prevent duplicate triggers
-            audio.pause();
-            
+          if (!audio.ended && Math.abs(audio.currentTime - audioDuration) <= endThreshold + 0.1) {
             // Store current song info before transitioning
             const currentSongInfo = {
               id: state.currentSong?._id,
@@ -661,14 +661,7 @@ const AudioPlayer = () => {
             // Set a flag to indicate transition is in progress
             (window as any).__songTransitionInProgress = true;
             
-            // Increment to next song with proper state handling
-            state.playNext();
-            
-            // Ensure playback continues
-            state.setIsPlaying(true);
-            state.setUserInteracted();
-            
-            // Add log for debugging
+            // Log for debugging
             try {
               localStorage.setItem('last_song_transition', JSON.stringify({
                 from: currentSongInfo.id,
@@ -676,11 +669,22 @@ const AudioPlayer = () => {
                 duration: currentSongInfo.duration, 
                 timestamp: new Date().toISOString(),
                 isLocked: document.hidden,
-                type: 'background_monitor'
+                type: 'background_monitor',
+                remainingTime: audioDuration - audio.currentTime
               }));
             } catch (e) {
               // Ignore storage errors
             }
+            
+            // Explicitly mark the current song as ended to prevent duplicate triggers
+            audio.pause();
+            
+            // Increment to next song with proper state handling
+            state.playNext();
+            
+            // Ensure playback continues
+            state.setIsPlaying(true);
+            state.setUserInteracted();
             
             // Actually play the audio with multiple fallback attempts
             setTimeout(() => {
@@ -710,7 +714,7 @@ const AudioPlayer = () => {
           }
         }
       }
-    }, 200); // More frequent checks (200ms) to ensure we don't miss the end of songs in car/lock screen
+    }, document.hidden ? 100 : 200); // Run more frequently when screen is off
     
     return () => {
       clearInterval(backgroundPlaybackMonitor);
@@ -821,8 +825,9 @@ const AudioPlayer = () => {
       
       // Handle end-of-song detection when in background
       if (document.hidden && !isNaN(audio.duration) && audio.duration > 0) {
+        // Use a more aggressive threshold when in background mode
         // If very close to the end or should have ended already
-        if (audio.currentTime >= audio.duration - 0.5) {
+        if (audio.currentTime >= audio.duration - 0.2) {
           // Get state directly to avoid closure issues
           const store = usePlayerStore.getState();
           
@@ -835,6 +840,16 @@ const AudioPlayer = () => {
             store.playNext();
             store.setIsPlaying(true);
             store.setUserInteracted();
+            
+            // Track this transition
+            try {
+              localStorage.setItem('screen_off_transition', JSON.stringify({
+                timestamp: new Date().toISOString(),
+                songId: store.currentSong?._id,
+                currentTime: audio.currentTime,
+                duration: audio.duration
+              }));
+            } catch (e) {}
             
             // Attempt to start playing with retry mechanism
             setTimeout(() => {
@@ -865,7 +880,7 @@ const AudioPlayer = () => {
     const setupBackgroundCheck = () => {
       if (document.hidden) {
         // More frequent checks when hidden/locked to ensure songs advance properly
-        backgroundCheckInterval = setInterval(backgroundPlaybackCheck, 250);
+        backgroundCheckInterval = setInterval(backgroundPlaybackCheck, 150); // Increase frequency for screen off
       }
     };
     
@@ -895,6 +910,76 @@ const AudioPlayer = () => {
         clearInterval(backgroundCheckInterval);
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentSong, isPlaying]);
+
+  // Add screen-off specific track advancement monitor
+  useEffect(() => {
+    // Only run when playing and we have a song
+    if (!isPlaying || !currentSong || !audioRef.current) return;
+    
+    // Additional dedicated monitor specifically for screen-off state
+    let screenOffMonitor: NodeJS.Timeout | null = null;
+    
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Screen turned off - create an aggressive check interval
+        screenOffMonitor = setInterval(() => {
+          const audio = audioRef.current;
+          if (!audio) return;
+          
+          // Check if playback has stalled or needs to advance
+          if (!isNaN(audio.duration) && audio.duration > 0) {
+            // Use a very tight threshold for detecting end of track
+            if (audio.currentTime > 0 && audio.currentTime >= audio.duration - 0.15) {
+              // Clear any existing flag and force advance to next track
+              (window as any).__songTransitionInProgress = false;
+              
+              // Explicitly pause current audio
+              audio.pause();
+              
+              // Get fresh state reference
+              const store = usePlayerStore.getState();
+              store.playNext();
+              store.setIsPlaying(true);
+              
+              // Force playback to start with multiple retries
+              setTimeout(() => {
+                // Get the updated audio reference
+                const currentAudio = audioRef.current || document.querySelector('audio');
+                if (currentAudio) {
+                  currentAudio.play().catch(() => {
+                    // Very aggressive retry logic for screen-off state
+                    setTimeout(() => {
+                      const audio = audioRef.current || document.querySelector('audio');
+                      if (audio) audio.play().catch(() => {});
+                    }, 300);
+                  });
+                }
+              }, 50);
+            }
+          }
+        }, 100);
+      } else if (screenOffMonitor) {
+        // Screen turned on - clear the monitor
+        clearInterval(screenOffMonitor);
+        screenOffMonitor = null;
+      }
+    };
+    
+    // Run the check on visibility change
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Run immediately in case screen is already off
+    if (document.hidden) {
+      handleVisibilityChange();
+    }
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (screenOffMonitor) {
+        clearInterval(screenOffMonitor);
+      }
     };
   }, [currentSong, isPlaying]);
 
@@ -1907,6 +1992,157 @@ const AudioPlayer = () => {
     };
   }, [currentSong]);
 
+  // Add Android-specific background playback handling
+  useEffect(() => {
+    // Only run if we're playing and have a current song
+    if (!isPlaying || !currentSong || !audioRef.current) return;
+    
+    // Detect if we're on Android
+    const isAndroid = /Android/.test(navigator.userAgent);
+    if (!isAndroid) return; // Skip if not Android
+    
+    // This aggressive checker is specific to Android devices
+    // Android aggressively suspends JavaScript timers when the screen is off
+    // We need to use all available methods to detect song end
+    
+    let androidScreenOffMonitor: NodeJS.Timeout | null = null;
+    let lastKnownPosition = 0;
+    let stationaryCount = 0;
+    
+    const checkAndroidPlayback = () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      
+      const store = usePlayerStore.getState();
+      
+      // Early return if audio isn't playing
+      if (audio.paused || audio.ended) return;
+
+      // Save current position for stall detection
+      const currentPosition = audio.currentTime;
+      
+      // Detect if audio has stalled (same position after multiple checks)
+      if (Math.abs(currentPosition - lastKnownPosition) < 0.05) {
+        stationaryCount++;
+        
+        // If playback has stalled for multiple checks but we're not at the end
+        if (stationaryCount >= 3 && currentPosition < audio.duration - 1) {
+          // Try to unstick it first
+          audio.currentTime += 0.1;
+        }
+        
+        // If stalled near the end, likely the ended event didn't fire
+        // This is common on Android when screen is off
+        if (stationaryCount >= 2 && currentPosition >= audio.duration - 0.5) {
+          // Track this transition
+          try {
+            localStorage.setItem('android_forced_next', JSON.stringify({
+              timestamp: new Date().toISOString(),
+              lastPosition: currentPosition,
+              duration: audio.duration,
+              stationaryCount
+            }));
+          } catch (e) {}
+          
+          // Force next track
+          audio.pause();
+          store.playNext();
+          store.setIsPlaying(true);
+          
+          // Reset stall counter
+          stationaryCount = 0;
+          
+          // Try to play with retries
+          setTimeout(() => {
+            if (audioRef.current) {
+              audioRef.current.play().catch(() => {
+                setTimeout(() => {
+                  if (audioRef.current) audioRef.current.play().catch(() => {});
+                }, 500);
+              });
+            }
+          }, 100);
+        }
+      } else {
+        // Reset stall counter if position changed
+        stationaryCount = 0;
+      }
+      
+      // Use a time-based approximation when close to the end
+      // On Android, we might miss the normal ended event, so check manually
+      const remainingTime = audio.duration - currentPosition;
+      if (remainingTime <= 0.2 && remainingTime > 0 && currentPosition > 0) {
+        // Track this transition
+        try {
+          localStorage.setItem('android_approximated_end', JSON.stringify({
+            timestamp: new Date().toISOString(),
+            position: currentPosition,
+            duration: audio.duration,
+            remaining: remainingTime
+          }));
+        } catch (e) {}
+        
+        // Force next track
+        audio.pause();
+        store.playNext();
+        store.setIsPlaying(true);
+        
+        // Try to play with retries
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.play().catch(() => {
+              setTimeout(() => {
+                if (audioRef.current) audioRef.current.play().catch(() => {});
+              }, 500);
+            });
+          }
+        }, 100);
+      }
+      
+      // Update lastKnownPosition for next check
+      lastKnownPosition = currentPosition;
+    };
+    
+    // Set up the monitor with very frequent checks on Android
+    androidScreenOffMonitor = setInterval(checkAndroidPlayback, 150);
+    
+    // Enhanced visibility change handler for Android
+    const handleAndroidVisibilityChange = () => {
+      // When screen turns off on Android, pre-load the next track
+      // This helps ensure it's ready to play when the current one ends
+      if (document.hidden) {
+        // Pre-fetch the next track when screen turns off
+        const queue = usePlayerStore.getState().queue;
+        const currentIndex = usePlayerStore.getState().currentIndex;
+        
+        if (queue && queue.length > 0 && typeof currentIndex === 'number') {
+          const nextIndex = (currentIndex + 1) % queue.length;
+          const nextSong = queue[nextIndex];
+          
+          if (nextSong && nextSong.audioUrl) {
+            // Create a temporary audio element to preload the next track
+            const preloadAudio = new Audio();
+            preloadAudio.src = nextSong.audioUrl;
+            preloadAudio.load();
+            
+            // Clean up after preloading
+            setTimeout(() => {
+              preloadAudio.src = '';
+            }, 3000);
+          }
+        }
+      }
+    };
+    
+    // Add event listener for Android visibility changes
+    document.addEventListener('visibilitychange', handleAndroidVisibilityChange);
+    
+    return () => {
+      if (androidScreenOffMonitor) clearInterval(androidScreenOffMonitor);
+      document.removeEventListener('visibilitychange', handleAndroidVisibilityChange);
+    };
+  }, [currentSong, isPlaying]);
+
   if (!currentSong) {
     return (
       <audio
@@ -2097,11 +2333,53 @@ const AudioPlayer = () => {
         </div>
       </div>
       
+      {/* Audio element with enhanced Android support */}
       <audio
         ref={audioRef}
         src={currentSong?.audioUrl}
         autoPlay={isPlaying}
-        onTimeUpdate={updateAudioMetadata}
+        onTimeUpdate={(e) => {
+          // Call the original metadata update function
+          updateAudioMetadata();
+          
+          // Additional check for "almost ended" when screen is off 
+          // (especially important on Android)
+          const audio = e.currentTarget;
+          if (document.hidden && 
+              !isNaN(audio.duration) && 
+              audio.currentTime > 0 && 
+              audio.duration > 0 && 
+              audio.currentTime >= audio.duration - 0.3) {
+            
+            // If we're very close to the end, and screen is off, 
+            // force advancement to handle cases where ended event doesn't fire
+            if (!audio) return;
+            
+            // Mark this audio as processed to avoid duplicate triggers
+            if ((audio as any)._endProcessed) return;
+            (audio as any)._endProcessed = true;
+            
+            // Explicitly pause current audio
+            audio.pause();
+            
+            // Force next track
+            const store = usePlayerStore.getState();
+            store.playNext();
+            store.setIsPlaying(true);
+            
+            // Try to start playing with retries
+            setTimeout(() => {
+              const updatedAudio = audioRef.current;
+              if (updatedAudio) {
+                updatedAudio.play().catch(() => {
+                  setTimeout(() => {
+                    if (audioRef.current) audioRef.current.play().catch(() => {});
+                  }, 500);
+                });
+              }
+            }, 100);
+          }
+        }}
         onLoadedMetadata={updateAudioMetadata}
         onError={handleError}
         preload="auto"
@@ -2110,18 +2388,64 @@ const AudioPlayer = () => {
         x-webkit-airplay="allow"
         loop={usePlayerStore.getState().isRepeating}
         data-testid="audio-element"
+        // Enhanced onEnded handler with direct retry mechanism
         onEnded={() => {
-          console.log("Audio onEnded event triggered");
+          // Store information about this ended event
+          try {
+            localStorage.setItem('audio_ended_event', JSON.stringify({
+              timestamp: new Date().toISOString(),
+              songId: currentSong._id,
+              isScreenOff: document.hidden,
+              isAndroid: /Android/.test(navigator.userAgent)
+            }));
+          } catch (e) {}
+          
+          // Get fresh state to avoid closure issues
           const state = usePlayerStore.getState();
           state.setUserInteracted();
+          
+          // Check for repeat mode first
+          if (state.isRepeating) {
+            if (audioRef.current) {
+              audioRef.current.currentTime = 0;
+              audioRef.current.play().catch(() => {});
+            }
+            return;
+          }
+          
+          // Otherwise advance to next track
           state.playNext();
           state.setIsPlaying(true);
+          
+          // Aggressive play retry mechanism
+          setTimeout(() => {
+            if (audioRef.current) {
+              const playPromise = audioRef.current.play();
+              if (playPromise) {
+                playPromise.catch(() => {
+                  // First retry
+                  setTimeout(() => {
+                    if (audioRef.current) {
+                      audioRef.current.play().catch(() => {
+                        // Second retry with longer delay
+                        setTimeout(() => {
+                          if (audioRef.current) {
+                            // Final attempt
+                            audioRef.current.play().catch(() => {});
+                          }
+                        }, 1000);
+                      });
+                    }
+                  }, 300);
+                });
+              }
+            }
+          }, 50);
         }}
         onPause={() => {
           // Check if this is an unintended pause (like system-initiated)
           // but only if we're supposed to be playing
           if (isPlaying && !document.hidden) {
-            console.log("Detected unintended pause, attempting to resume");
             // Try to resume playback after a short delay
             setTimeout(() => {
               const audio = audioRef.current;
@@ -2147,6 +2471,10 @@ const AudioPlayer = () => {
           // Try to play if we're supposed to be playing
           if (isPlaying && audioRef.current?.paused) {
             audioRef.current.play().catch(() => {});
+          }
+          // Reset the end processed flag
+          if (audioRef.current) {
+            (audioRef.current as any)._endProcessed = false;
           }
         }}
         controls={false}
