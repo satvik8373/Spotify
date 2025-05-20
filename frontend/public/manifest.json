@@ -72,31 +72,5 @@
       "sizes": "1920x1080",
       "form_factor": "wide"
     }
-  ],
-  "automotive": {
-    "media_capabilities": {
-      "action_types": ["play", "pause", "seekto", "seekforward", "seekbackward", "previoustrack", "nexttrack"],
-      "presentation_metadata": ["title", "artist", "artwork", "album", "duration", "position"]
-    },
-    "auto_resume": true,
-    "requires_car_mode": false,
-    "requires_automotive_permission": true
-  },
-  "automotive_media_bundle": {
-    "android_auto": true,
-    "carplay": true
-  },
-  "related_applications": [
-    {
-      "platform": "chromeos_play",
-      "url": "https://play.google.com/store/apps/details?id=com.android.chrome",
-      "id": "com.mavrix.spotify"
-    },
-    {
-      "platform": "play",
-      "url": "https://play.google.com/store/apps/details?id=com.android.chrome",
-      "id": "com.mavrix.spotify"
-    }
-  ],
-  "display_override": ["window-controls-overlay", "standalone", "browser", "car"]
+  ]
 } 
