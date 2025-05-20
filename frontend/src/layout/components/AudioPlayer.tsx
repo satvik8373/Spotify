@@ -35,6 +35,27 @@ const isMediaSessionSupported = () => {
   return 'mediaSession' in navigator;
 };
 
+// Check if running in a car environment
+const isCarEnvironment = () => {
+  // Android Auto detection
+  if (window.navigator.userAgent.includes('Android Auto')) {
+    return true;
+  }
+  
+  // Apple CarPlay detection (harder to detect, check for specific features)
+  if (
+    'standalone' in window.navigator && 
+    (window.navigator as any).standalone && 
+    window.navigator.userAgent.includes('Safari') &&
+    window.navigator.userAgent.includes('iPhone')
+  ) {
+    const isCarPlayProbable = window.matchMedia('(display-mode: fullscreen)').matches;
+    return isCarPlayProbable;
+  }
+  
+  return false;
+};
+
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const prevSongRef = useRef<string | null>(null);
@@ -52,6 +73,9 @@ const AudioPlayer = () => {
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [currentDevice, setCurrentDevice] = useState<string>('');
   const deviceSelectorRef = useRef<HTMLDivElement>(null);
+  const [isCarMode, setIsCarMode] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const mediaSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
   const { 
     currentSong, 
@@ -83,6 +107,38 @@ const AudioPlayer = () => {
     };
   }, []);
 
+  // Detect if we're running in a car environment
+  useEffect(() => {
+    const carEnv = isCarEnvironment();
+    setIsCarMode(carEnv);
+    
+    // Optimize for car environment if detected
+    if (carEnv) {
+      // Use larger UI elements on car displays
+      document.documentElement.classList.add('car-mode');
+      
+      // Disable screen timeout in car mode
+      if ('wakeLock' in navigator) {
+        const requestWakeLock = async () => {
+          try {
+            // @ts-ignore - TypeScript doesn't know about the Wake Lock API yet
+            const wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Wake Lock is active in car mode');
+          } catch (err) {
+            console.error(`Failed to enable wake lock in car mode: ${err}`);
+          }
+        };
+        requestWakeLock();
+      }
+    }
+    
+    return () => {
+      if (carEnv) {
+        document.documentElement.classList.remove('car-mode');
+      }
+    };
+  }, []);
+
   // Update MediaSession metadata and action handlers
   useEffect(() => {
     // Only proceed if MediaSession API is supported and we have a current song
@@ -98,6 +154,21 @@ const AudioPlayer = () => {
           artist: currentSong.artist || 'Unknown Artist',
           album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
           artwork: [
+            {
+              src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+              sizes: '96x96',
+              type: 'image/jpeg'
+            },
+            {
+              src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+              sizes: '128x128',
+              type: 'image/jpeg'
+            },
+            {
+              src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+              sizes: '192x192',
+              type: 'image/jpeg'
+            },
             {
               src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
               sizes: '512x512',
@@ -134,22 +205,10 @@ const AudioPlayer = () => {
     audioRef.current?.addEventListener('play', handleAudioChange);
     audioRef.current?.addEventListener('pause', handleAudioChange);
 
-    // Update metadata
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentSong.title || 'Unknown Title',
-      artist: currentSong.artist || 'Unknown Artist',
-      album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
-      artwork: [
-        {
-          src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-          sizes: '512x512',
-          type: 'image/jpeg'
-        }
-      ]
-    });
-
     // Set up media session action handlers with better responsiveness
     navigator.mediaSession.setActionHandler('play', () => {
+      // Mark user interaction to allow autoplay
+      usePlayerStore.getState().setUserInteracted();
       setIsPlaying(true);
       // Explicitly attempt to play for more reliable playback
       if (audioRef.current && audioRef.current.paused) {
@@ -172,7 +231,7 @@ const AudioPlayer = () => {
       usePlayerStore.getState().setUserInteracted();
       // Call previous from store directly for better state handling
       if (playPrevious) {
-      playPrevious();
+        playPrevious();
         // Force playing state
         setTimeout(() => {
           if (audioRef.current && audioRef.current.paused) {
@@ -194,6 +253,56 @@ const AudioPlayer = () => {
         }
       }, 100);
     });
+
+    // Add seek forward/backward support for car systems
+    try {
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        const skipTime = details?.seekOffset || 10;
+        if (audioRef.current) {
+          const newTime = Math.max(audioRef.current.currentTime - skipTime, 0);
+          audioRef.current.currentTime = newTime;
+          setLocalCurrentTime(newTime);
+          if (setCurrentTime) {
+            setCurrentTime(newTime);
+          }
+          
+          // Update position state after seeking
+          if ('setPositionState' in navigator.mediaSession) {
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration,
+              playbackRate: audioRef.current.playbackRate,
+              position: newTime
+            });
+          }
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        const skipTime = details?.seekOffset || 10;
+        if (audioRef.current) {
+          const newTime = Math.min(
+            audioRef.current.currentTime + skipTime,
+            audioRef.current.duration || 0
+          );
+          audioRef.current.currentTime = newTime;
+          setLocalCurrentTime(newTime);
+          if (setCurrentTime) {
+            setCurrentTime(newTime);
+          }
+          
+          // Update position state after seeking
+          if ('setPositionState' in navigator.mediaSession) {
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration,
+              playbackRate: audioRef.current.playbackRate,
+              position: newTime
+            });
+          }
+        }
+      });
+    } catch (error) {
+      // Silent error handling for unsupported actions
+    }
 
     // Seeking handlers with better reliability
     try {
@@ -1656,6 +1765,100 @@ const AudioPlayer = () => {
     };
   }, [currentSong, isPlaying]);
 
+  // Setup audio for car mode and better audio focus handling
+  useEffect(() => {
+    if (!audioRef.current) return;
+    
+    // Special handling for car mode
+    if (isCarMode) {
+      // Configure audio for car mode
+      audioRef.current.volume = 1.0; // Max volume for car systems
+      
+      try {
+        // Create an audio context to get better control
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!audioContextRef.current && AudioContext) {
+          audioContextRef.current = new AudioContext();
+          mediaSourceRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
+          mediaSourceRef.current.connect(audioContextRef.current.destination);
+          
+          // Resume audio context to avoid auto-play restrictions
+          if (audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume();
+          }
+        }
+      } catch (e) {
+        console.error('Failed to setup AudioContext for car mode', e);
+      }
+    }
+    
+    // Setup handlers for car-specific events
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Prevent accidental navigation in car mode
+      if (isCarMode && isPlaying) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      
+      // Clean up audio context
+      if (mediaSourceRef.current) {
+        mediaSourceRef.current.disconnect();
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, [isCarMode, isPlaying]);
+
+  // Handle car connection state changes
+  useEffect(() => {
+    const handleCarConnectionChange = () => {
+      const carEnv = isCarEnvironment();
+      if (carEnv !== isCarMode) {
+        setIsCarMode(carEnv);
+        
+        // Apply car-specific settings when connecting to car
+        if (carEnv) {
+          document.documentElement.classList.add('car-mode');
+          
+          // Force repaint of MediaSession metadata for car display
+          if (isMediaSessionSupported() && currentSong) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: currentSong.title || 'Unknown Title',
+              artist: currentSong.artist || 'Unknown Artist',
+              album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
+              artwork: [
+                {
+                  src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+                  sizes: '512x512',
+                  type: 'image/jpeg'
+                }
+              ]
+            });
+          }
+        } else {
+          document.documentElement.classList.remove('car-mode');
+        }
+      }
+    };
+    
+    // Check for car connection changes
+    window.addEventListener('visibilitychange', handleCarConnectionChange);
+    window.addEventListener('focus', handleCarConnectionChange);
+    
+    return () => {
+      window.removeEventListener('visibilitychange', handleCarConnectionChange);
+      window.removeEventListener('focus', handleCarConnectionChange);
+    };
+  }, [isCarMode, currentSong]);
+
   if (!currentSong) {
     return (
       <audio
@@ -1899,6 +2102,8 @@ const AudioPlayer = () => {
           }
         }}
         controls={false}
+        data-automotive="true"
+        data-media-session="true"
       />
     </>
   );

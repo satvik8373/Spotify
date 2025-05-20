@@ -72,5 +72,47 @@
       "sizes": "1920x1080",
       "form_factor": "wide"
     }
-  ]
+  ],
+  "media_session": {
+    "supported_actions": [
+      "play",
+      "pause",
+      "seekbackward",
+      "seekforward",
+      "previoustrack",
+      "nexttrack"
+    ],
+    "artwork": [
+      {
+        "src": "/spotify-icon-96.png",
+        "sizes": "96x96",
+        "type": "image/png"
+      },
+      {
+        "src": "/spotify-icon-128.png",
+        "sizes": "128x128",
+        "type": "image/png"
+      },
+      {
+        "src": "/spotify-icon-192.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      },
+      {
+        "src": "/spotify-icon-512.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+  },
+  "automotive": {
+    "enabled": true,
+    "media_capabilities": {
+      "audio_streaming": true,
+      "background_playback": true,
+      "voice_controls": true,
+      "car_display": true
+    }
+  },
+  "permissions": ["mediaSession", "backgroundAudio", "wake-lock"]
 } 
