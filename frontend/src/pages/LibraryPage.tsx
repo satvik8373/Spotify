@@ -260,24 +260,24 @@ const LibraryPage = () => {
           onScroll={handleScroll}
         >
           <div className="p-2 sm:p-4">
-          {isLibraryLoading || loading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader className="h-8 w-8 animate-spin text-green-500" />
-            </div>
-          ) : !isAuthenticated ? (
-            <div className="bg-zinc-800/50 rounded-lg p-8 text-center">
-              <Library className="h-12 w-12 mx-auto mb-4 text-zinc-500" />
-              <h2 className="text-xl font-semibold mb-2">Sign in to view your library</h2>
-              <p className="text-zinc-400 mb-6">
-                Create an account or sign in to save and access your favorite music
-              </p>
-              <Button
-                onClick={() => navigate('/')}
-                className="bg-white text-black hover:bg-zinc-200"
-              >
-                Sign In
-              </Button>
-            </div>
+            {isLibraryLoading || loading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader className="h-8 w-8 animate-spin text-green-500" />
+              </div>
+            ) : !isAuthenticated ? (
+              <div className="bg-zinc-800/50 rounded-lg p-8 text-center">
+                <Library className="h-12 w-12 mx-auto mb-4 text-zinc-500" />
+                <h2 className="text-xl font-semibold mb-2">Sign in to view your library</h2>
+                <p className="text-zinc-400 mb-6">
+                  Create an account or sign in to save and access your favorite music
+                </p>
+                <Button
+                  onClick={() => navigate('/')}
+                  className="bg-white text-black hover:bg-zinc-200"
+                >
+                  Sign In
+                </Button>
+              </div>
             ) : userPlaylists.length === 0 ? (
               <div className="bg-zinc-800/40 rounded-xl p-8 text-center">
                 <div className="w-16 h-16 bg-zinc-700 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -300,8 +300,8 @@ const LibraryPage = () => {
                 <div className="mb-4">
                   <div 
                     className="flex items-center gap-3 p-3 hover:bg-zinc-800/60 rounded-md cursor-pointer transition-colors"
-                  onClick={() => navigate('/liked-songs')}
-                >
+                    onClick={() => navigate('/liked-songs')}
+                  >
                     <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-blue-400 rounded-md flex items-center justify-center">
                       <Heart className="h-6 w-6 text-white" fill="white" />
                     </div>
@@ -313,14 +313,14 @@ const LibraryPage = () => {
                     </div>
                   </div>
                 </div>
-
+                
                 {/* Pinned Playlists Section - Only show if there are pinned items */}
                 {pinnedItems.length > 0 && (
                   <div className="mb-4">
                     <div className="text-xs font-medium uppercase text-zinc-400 mb-2 px-2">
                       Pinned
-                </div>
-
+                    </div>
+                    
                     {viewMode === 'list' ? (
                       <div className="space-y-1">
                         {pinnedItems.map(playlist => (
@@ -382,9 +382,9 @@ const LibraryPage = () => {
                             </p>
                           </div>
                         ))}
-                </div>
+                      </div>
                     )}
-              </div>
+                  </div>
                 )}
                 
                 {/* Main Playlist List */}
@@ -393,7 +393,7 @@ const LibraryPage = () => {
                     {pinnedItems.length > 0 && (
                       <div className="text-xs font-medium uppercase text-zinc-400 mb-2 px-2">
                         Your Playlists
-                </div>
+                      </div>
                     )}
                     
                     {viewMode === 'list' ? (
@@ -431,7 +431,7 @@ const LibraryPage = () => {
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                         {unpinnedItems.map(playlist => (
                           <div 
-                        key={playlist._id}
+                            key={playlist._id}
                             className="bg-zinc-800/40 rounded-lg p-4 hover:bg-zinc-700/40 transition-colors cursor-pointer group relative"
                             onClick={() => navigateToPlaylist(playlist._id)}
                           >
@@ -463,7 +463,7 @@ const LibraryPage = () => {
                 )}
               </div>
             )}
-            </div>
+          </div>
         </div>
       </div>
 

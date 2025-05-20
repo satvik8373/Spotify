@@ -562,7 +562,7 @@ const SearchPage = () => {
               {indianSearchResults.length > 0 && (
                 <div>
                   <h2 className="text-xl font-bold mb-4">Songs</h2>
-            <IndianMusicPlayer />
+                  <IndianMusicPlayer />
                 </div>
               )}
               
