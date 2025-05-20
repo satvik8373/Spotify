@@ -9,6 +9,7 @@ import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import SongDetailsView from '@/components/SongDetailsView';
 import SpotifyConnectView from '@/components/SpotifyConnectView';
 import { signOut } from '@/services/hybridAuthService';
+import { toast } from 'sonner';
 
 /**
  * Mobile Navigation with Profile Menu and Lockscreen Controls
@@ -41,9 +42,8 @@ const MobileNav = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showTimeIndicators, setShowTimeIndicators] = useState(false);
-  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
-  const [availableDevices, setAvailableDevices] = useState<any[]>([]);
-  const [currentDevice, setCurrentDevice] = useState<string | null>(null);
+  const [showDevices, setShowDevices] = useState(false);
+  const [currentDevice, setCurrentDevice] = useState<string>('');
   
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
@@ -137,78 +137,6 @@ const MobileNav = () => {
       setProgress(0);
     }
   }, [currentTime, duration]);
-
-  // Function to fetch available devices
-  const fetchAvailableDevices = async () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-      console.warn("Media devices API not supported");
-      return;
-    }
-    
-    try {
-      // Request permission to access media devices
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Get all media devices
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      
-      // Filter to only get audio output devices
-      const audioOutputDevices = devices.filter(
-        device => device.kind === 'audiooutput' && device.deviceId !== 'default'
-      );
-      
-      setAvailableDevices(audioOutputDevices);
-      
-      // Try to get preferred device from localStorage
-      const preferredDevice = localStorage.getItem('preferredAudioDevice');
-      if (preferredDevice) {
-        setCurrentDevice(preferredDevice);
-      }
-    } catch (error) {
-      console.error('Error accessing media devices:', error);
-    }
-  };
-
-  // Handle device selection
-  const handleSelectDevice = async (deviceId: string) => {
-    try {
-      // Create a custom event to be handled by the AudioPlayer component
-      document.dispatchEvent(new CustomEvent('selectAudioDevice', {
-        detail: { deviceId }
-      }));
-      
-      // Update the current device state
-      setCurrentDevice(deviceId);
-    } catch (error) {
-      console.error('Error selecting audio device', error);
-    }
-  };
-
-  // Fetch devices when component mounts and when device connection changes
-  useEffect(() => {
-    fetchAvailableDevices();
-    
-    // Listen for device connection changes
-    const handleDeviceChange = () => {
-      fetchAvailableDevices();
-    };
-    
-    // Listen for audio device change events from AudioPlayer
-    const handleAudioDeviceChanged = (event: CustomEvent) => {
-      const { deviceId } = event.detail;
-      if (deviceId) {
-        setCurrentDevice(deviceId);
-      }
-    };
-    
-    navigator.mediaDevices?.addEventListener('devicechange', handleDeviceChange);
-    document.addEventListener('audioDeviceChanged', handleAudioDeviceChanged as EventListener);
-    
-    return () => {
-      navigator.mediaDevices?.removeEventListener('devicechange', handleDeviceChange);
-      document.removeEventListener('audioDeviceChanged', handleAudioDeviceChanged as EventListener);
-    };
-  }, []);
 
   const navItems = [
     {
@@ -353,6 +281,51 @@ const MobileNav = () => {
     }
   };
 
+  // Handle device selection
+  const handleSelectDevice = async (deviceId: string) => {
+    try {
+      const audio = document.querySelector('audio');
+      if (!audio) return;
+      
+      // Store current playback state
+      const wasPlaying = !(audio as HTMLAudioElement).paused;
+      
+      // Pause current playback
+      if (wasPlaying) {
+        (audio as HTMLAudioElement).pause();
+      }
+      
+      // Set the audio output device if browser supports it
+      if ('setSinkId' in HTMLMediaElement.prototype) {
+        await (audio as any).setSinkId(deviceId);
+        setCurrentDevice(deviceId);
+        
+        // Create custom event to notify the system about device change
+        document.dispatchEvent(new CustomEvent('audioDeviceChanged', {
+          detail: { deviceId }
+        }));
+        
+        // Resume playback if it was playing
+        if (wasPlaying) {
+          (audio as HTMLAudioElement).play().catch(() => {
+            // If play fails, user might need to interact first
+            console.log('Play failed after device change');
+          });
+        }
+        
+        toast.success('Connected to audio device');
+      } else {
+        toast.error('Your browser does not support audio output device selection');
+      }
+      
+      // Close the device selector
+      setShowDevices(false);
+    } catch (error) {
+      console.error('Error setting audio output device:', error);
+      toast.error('Failed to connect to device');
+    }
+  };
+
   return (
     <>
       {/* Song Details View */}
@@ -361,13 +334,12 @@ const MobileNav = () => {
         onClose={() => setShowSongDetails(false)} 
       />
       
-      {/* Spotify Connect View for device selection */}
+      {/* Connected Devices Panel */}
       <SpotifyConnectView 
-        isOpen={showDeviceSelector}
-        onClose={() => setShowDeviceSelector(false)}
-        onDeviceSelect={handleSelectDevice}
+        isOpen={showDevices}
+        onClose={() => setShowDevices(false)}
         currentDevice={currentDevice}
-        availableDevices={availableDevices}
+        onSelectDevice={handleSelectDevice}
       />
       
       {/* Mobile Header - Spotify style */}
@@ -453,7 +425,7 @@ const MobileNav = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowDeviceSelector(true);
+                    setShowDevices(true);
                   }}
                   className="mr-2 h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 text-zinc-400 active:bg-zinc-800"
                 >
