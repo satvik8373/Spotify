@@ -7,7 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import SongDetailsView from '@/components/SongDetailsView';
+import SpotifyConnectView from '@/components/SpotifyConnectView';
 import { signOut } from '@/services/hybridAuthService';
+import { toast } from 'sonner';
 
 /**
  * Mobile Navigation with Profile Menu and Lockscreen Controls
@@ -41,6 +43,7 @@ const MobileNav = () => {
   const [progress, setProgress] = useState(0);
   const [showTimeIndicators, setShowTimeIndicators] = useState(false);
   const [showDevices, setShowDevices] = useState(false);
+  const [currentDevice, setCurrentDevice] = useState<string>('');
   
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
@@ -278,35 +281,49 @@ const MobileNav = () => {
     }
   };
 
-  // Mock connected devices (in a real app, this would come from an API)
-  const connectedDevices = [
-    { id: '1', name: 'This device', type: 'smartphone', active: true },
-    { id: '2', name: 'Living Room TV', type: 'tv', active: false },
-    { id: '3', name: 'MacBook Pro', type: 'laptop', active: false }
-  ];
-  
-  // Get device icon based on type
-  const getDeviceIcon = (type: string) => {
-    switch (type) {
-      case 'smartphone':
-        return <Smartphone className="h-4 w-4" />;
-      case 'tv':
-        return <Tv className="h-4 w-4" />;
-      case 'laptop':
-        return <Laptop className="h-4 w-4" />;
-      case 'speaker':
-        return <Speaker className="h-4 w-4" />;
-      default:
-        return <Smartphone className="h-4 w-4" />;
-    }
-  };
-  
   // Handle device selection
-  const handleSelectDevice = (deviceId: string) => {
-    // In a real app, you'd update the active device through an API
-    console.log(`Switching to device: ${deviceId}`);
-    // Close the devices panel
-    setShowDevices(false);
+  const handleSelectDevice = async (deviceId: string) => {
+    try {
+      const audio = document.querySelector('audio');
+      if (!audio) return;
+      
+      // Store current playback state
+      const wasPlaying = !(audio as HTMLAudioElement).paused;
+      
+      // Pause current playback
+      if (wasPlaying) {
+        (audio as HTMLAudioElement).pause();
+      }
+      
+      // Set the audio output device if browser supports it
+      if ('setSinkId' in HTMLMediaElement.prototype) {
+        await (audio as any).setSinkId(deviceId);
+        setCurrentDevice(deviceId);
+        
+        // Create custom event to notify the system about device change
+        document.dispatchEvent(new CustomEvent('audioDeviceChanged', {
+          detail: { deviceId }
+        }));
+        
+        // Resume playback if it was playing
+        if (wasPlaying) {
+          (audio as HTMLAudioElement).play().catch(() => {
+            // If play fails, user might need to interact first
+            console.log('Play failed after device change');
+          });
+        }
+        
+        toast.success('Connected to audio device');
+      } else {
+        toast.error('Your browser does not support audio output device selection');
+      }
+      
+      // Close the device selector
+      setShowDevices(false);
+    } catch (error) {
+      console.error('Error setting audio output device:', error);
+      toast.error('Failed to connect to device');
+    }
   };
 
   return (
@@ -318,51 +335,12 @@ const MobileNav = () => {
       />
       
       {/* Connected Devices Panel */}
-      {showDevices && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
-          <div className="p-4 flex items-center justify-between border-b border-white/10">
-            <h2 className="text-white text-lg font-bold">Connect to a device</h2>
-            <button 
-              onClick={() => setShowDevices(false)}
-              className="text-white/70 p-1 rounded-full hover:bg-white/10"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-          
-          <div className="p-4 flex-1 overflow-auto">
-            <p className="text-white/60 text-sm mb-4">Select where you want your music to play</p>
-            
-            <div className="space-y-2">
-              {connectedDevices.map(device => (
-                <button
-                  key={device.id}
-                  className={cn(
-                    "w-full flex items-center gap-3 p-3 rounded-md",
-                    device.active 
-                      ? "bg-white/10 text-[#1ed760]" 
-                      : "text-white hover:bg-white/5"
-                  )}
-                  onClick={() => handleSelectDevice(device.id)}
-                >
-                  <div className={cn(
-                    "h-8 w-8 flex items-center justify-center rounded-full",
-                    device.active ? "bg-[#1ed760] text-black" : "bg-white/10"
-                  )}>
-                    {getDeviceIcon(device.type)}
-                  </div>
-                  <div className="text-left">
-                    <div className="font-medium">{device.name}</div>
-                    <div className="text-xs text-white/60">
-                      {device.active ? "Currently playing" : "Spotify Connect"}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      <SpotifyConnectView 
+        isOpen={showDevices}
+        onClose={() => setShowDevices(false)}
+        currentDevice={currentDevice}
+        onSelectDevice={handleSelectDevice}
+      />
       
       {/* Mobile Header - Spotify style */}
       <div className="fixed top-0 left-0 right-0 z-30 bg-zinc-900 md:hidden">
