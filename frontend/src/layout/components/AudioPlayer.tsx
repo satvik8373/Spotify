@@ -35,19 +35,6 @@ const isMediaSessionSupported = () => {
   return 'mediaSession' in navigator;
 };
 
-// Check if app is running in automotive context (Android Auto or CarPlay)
-const isAutomotiveContext = () => {
-  // Most reliable way to detect automotive contexts
-  return (
-    typeof window !== 'undefined' &&
-    (window.navigator.userAgent.includes('Android Auto') ||
-     window.navigator.userAgent.includes('CarPlay') ||
-     // More generic detection for in-car browsers
-     document.documentElement.classList.contains('automotive') ||
-     window.matchMedia('(display-mode: car)').matches)
-  );
-};
-
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const prevSongRef = useRef<string | null>(null);
@@ -106,7 +93,6 @@ const AudioPlayer = () => {
     // Function to update metadata that we can reuse
     const updateMediaSessionMetadata = () => {
       try {
-        // Create enhanced metadata with additional properties for automotive contexts
         navigator.mediaSession.metadata = new MediaMetadata({
           title: currentSong.title || 'Unknown Title',
           artist: currentSong.artist || 'Unknown Artist',
@@ -115,17 +101,6 @@ const AudioPlayer = () => {
             {
               src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
               sizes: '512x512',
-              type: 'image/jpeg'
-            },
-            // Adding multiple artwork sizes for better automotive display
-            {
-              src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-              sizes: '256x256',
-              type: 'image/jpeg'
-            },
-            {
-              src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-              sizes: '128x128',
               type: 'image/jpeg'
             }
           ]
@@ -139,17 +114,6 @@ const AudioPlayer = () => {
             position: audioRef.current.currentTime || 0
           });
         }
-        
-        // Dispatch custom event for automotive systems
-        document.dispatchEvent(new CustomEvent('mediaMetadataUpdated', {
-          detail: {
-            title: currentSong.title,
-            artist: currentSong.artist,
-            albumArt: currentSong.imageUrl,
-            duration: audioRef.current?.duration || 0,
-            isPlaying: isPlaying
-          }
-        }));
       } catch (error) {
         // Silent error handling for MediaSession errors
       }
@@ -170,6 +134,20 @@ const AudioPlayer = () => {
     audioRef.current?.addEventListener('play', handleAudioChange);
     audioRef.current?.addEventListener('pause', handleAudioChange);
 
+    // Update metadata
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentSong.title || 'Unknown Title',
+      artist: currentSong.artist || 'Unknown Artist',
+      album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
+      artwork: [
+        {
+          src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+          sizes: '512x512',
+          type: 'image/jpeg'
+        }
+      ]
+    });
+
     // Set up media session action handlers with better responsiveness
     navigator.mediaSession.setActionHandler('play', () => {
       setIsPlaying(true);
@@ -179,13 +157,6 @@ const AudioPlayer = () => {
           // Silent error handling
         });
       }
-      
-      // Additional events for automotive systems
-      if (isAutomotiveContext()) {
-        document.dispatchEvent(new CustomEvent('automotivePlayEvent', {
-          detail: { songId: currentSong._id }
-        }));
-      }
     });
 
     navigator.mediaSession.setActionHandler('pause', () => {
@@ -194,13 +165,6 @@ const AudioPlayer = () => {
       if (audioRef.current && !audioRef.current.paused) {
         audioRef.current.pause();
       }
-      
-      // Additional events for automotive systems
-      if (isAutomotiveContext()) {
-        document.dispatchEvent(new CustomEvent('automotivePauseEvent', {
-          detail: { songId: currentSong._id }
-        }));
-      }
     });
 
     navigator.mediaSession.setActionHandler('previoustrack', () => {
@@ -208,16 +172,11 @@ const AudioPlayer = () => {
       usePlayerStore.getState().setUserInteracted();
       // Call previous from store directly for better state handling
       if (playPrevious) {
-        playPrevious();
+      playPrevious();
         // Force playing state
         setTimeout(() => {
           if (audioRef.current && audioRef.current.paused) {
             audioRef.current.play().catch(() => {});
-          }
-          
-          // Additional events for automotive systems
-          if (isAutomotiveContext()) {
-            document.dispatchEvent(new CustomEvent('automotivePreviousTrackEvent'));
           }
         }, 100);
       }
@@ -233,60 +192,8 @@ const AudioPlayer = () => {
         if (audioRef.current && audioRef.current.paused) {
           audioRef.current.play().catch(() => {});
         }
-        
-        // Additional events for automotive systems
-        if (isAutomotiveContext()) {
-          document.dispatchEvent(new CustomEvent('automotiveNextTrackEvent'));
-        }
       }, 100);
     });
-
-    // Try to register additional actions that are helpful in automotive contexts
-    try {
-      // Skip forward 30 seconds
-      navigator.mediaSession.setActionHandler('seekforward', () => {
-        if (audioRef.current) {
-          const newTime = Math.min(audioRef.current.currentTime + 30, audioRef.current.duration);
-          audioRef.current.currentTime = newTime;
-          setLocalCurrentTime(newTime);
-          if (setCurrentTime) {
-            setCurrentTime(newTime);
-          }
-          
-          // Update position state after seeking
-          if ('setPositionState' in navigator.mediaSession) {
-            navigator.mediaSession.setPositionState({
-              duration: audioRef.current.duration,
-              playbackRate: audioRef.current.playbackRate,
-              position: newTime
-            });
-          }
-        }
-      });
-      
-      // Skip backward 10 seconds
-      navigator.mediaSession.setActionHandler('seekbackward', () => {
-        if (audioRef.current) {
-          const newTime = Math.max(audioRef.current.currentTime - 10, 0);
-          audioRef.current.currentTime = newTime;
-          setLocalCurrentTime(newTime);
-          if (setCurrentTime) {
-            setCurrentTime(newTime);
-          }
-          
-          // Update position state after seeking
-          if ('setPositionState' in navigator.mediaSession) {
-            navigator.mediaSession.setPositionState({
-              duration: audioRef.current.duration,
-              playbackRate: audioRef.current.playbackRate,
-              position: newTime
-            });
-          }
-        }
-      });
-    } catch (error) {
-      // Silent error handling
-    }
 
     // Seeking handlers with better reliability
     try {
@@ -1749,6 +1656,79 @@ const AudioPlayer = () => {
     };
   }, [currentSong, isPlaying]);
 
+  // Add background playback tracking to detect when a song has ended but not properly advanced
+  useEffect(() => {
+    // Only run if we have a current song and it's playing
+    if (!currentSong || !audioRef.current) return;
+    
+    let lastKnownPosition = 0;
+    let lastKnownDuration = 0;
+    let stagnantPositionCount = 0;
+    let checkInterval: NodeJS.Timeout;
+    
+    const checkPositionAdvancement = () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      
+      // Capture current position and duration
+      const currentPosition = audio.currentTime;
+      const currentDuration = audio.duration;
+      
+      // If we have valid duration
+      if (!isNaN(currentDuration) && currentDuration > 0) {
+        // First time, just store values
+        if (lastKnownDuration === 0) {
+          lastKnownPosition = currentPosition;
+          lastKnownDuration = currentDuration;
+          return;
+        }
+        
+        // Check if we're at the same position as before (indicating possible stall)
+        if (Math.abs(currentPosition - lastKnownPosition) < 0.1) {
+          stagnantPositionCount++;
+          
+          // If position hasn't changed for multiple checks AND we're near the end
+          if (stagnantPositionCount > 2 && currentPosition > currentDuration - 3) {
+            console.log("Detected stalled playback near end of track, forcing next song");
+            
+            // Reset counters
+            stagnantPositionCount = 0;
+            lastKnownPosition = 0;
+            
+            // Advance to next song
+            const state = usePlayerStore.getState();
+            state.setUserInteracted();
+            state.playNext();
+            state.setIsPlaying(true);
+            return;
+          }
+        } else {
+          // Position is advancing normally, reset stagnant counter
+          stagnantPositionCount = 0;
+        }
+        
+        // Update last known position
+        lastKnownPosition = currentPosition;
+        
+        // If duration has changed (metadata updated), update it
+        if (Math.abs(currentDuration - lastKnownDuration) > 0.1) {
+          lastKnownDuration = currentDuration;
+        }
+      }
+    };
+    
+    // Check more frequently when we know we're playing
+    if (isPlaying) {
+      checkInterval = setInterval(checkPositionAdvancement, 2000);
+    }
+    
+    return () => {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
+    };
+  }, [currentSong, isPlaying, playNext]);
+
   if (!currentSong) {
     return (
       <audio
@@ -1943,7 +1923,60 @@ const AudioPlayer = () => {
         ref={audioRef}
         src={currentSong?.audioUrl}
         autoPlay={isPlaying}
-        onTimeUpdate={updateAudioMetadata}
+        onTimeUpdate={(e) => {
+          updateAudioMetadata();
+          
+          // Check if we're near the end of the song (within last 1.5 seconds)
+          // This helps ensure transitions work even in background/lock screen
+          const audio = e.currentTarget;
+          if (audio && audio.duration && !isNaN(audio.duration) && 
+              audio.currentTime > 0 && !audio.paused &&
+              audio.duration - audio.currentTime < 1.5) {
+            
+            // Create a flag to prevent multiple triggers
+            if (!(audio as any)._isHandlingEndOfSong) {
+              (audio as any)._isHandlingEndOfSong = true;
+              
+              // Prepare for next song
+              console.log("Near end of song, preparing next track");
+              
+              // Ensure media session is updated for lock screen
+              if (isMediaSessionSupported() && 'setPositionState' in navigator.mediaSession) {
+                try {
+                  navigator.mediaSession.setPositionState({
+                    duration: audio.duration,
+                    playbackRate: audio.playbackRate,
+                    position: audio.currentTime
+                  });
+                } catch (e) {
+                  // Ignore position state errors
+                }
+              }
+              
+              // Schedule next song to play when current song ends
+              setTimeout(() => {
+                if (usePlayerStore.getState().isRepeating) {
+                  // Reset the current song
+                  audio.currentTime = 0;
+                  audio.play().catch(() => {});
+                } else {
+                  console.log("Auto advancing to next song near end");
+                  const state = usePlayerStore.getState();
+                  state.setUserInteracted();
+                  state.playNext();
+                  state.setIsPlaying(true);
+                }
+                // Reset flag after handling
+                (audio as any)._isHandlingEndOfSong = false;
+              }, 1000);
+            }
+          } else {
+            // Reset the flag when not at the end
+            if ((audio as any)._isHandlingEndOfSong && audio.duration - audio.currentTime >= 1.5) {
+              (audio as any)._isHandlingEndOfSong = false;
+            }
+          }
+        }}
         onLoadedMetadata={updateAudioMetadata}
         onError={handleError}
         preload="auto"
@@ -1954,10 +1987,36 @@ const AudioPlayer = () => {
         data-testid="audio-element"
         onEnded={() => {
           console.log("Audio onEnded event triggered");
+          // Clear any existing handler flag
+          if (audioRef.current) {
+            (audioRef.current as any)._isHandlingEndOfSong = false;
+          }
+          
+          // Use a more reliable method to play the next song
           const state = usePlayerStore.getState();
           state.setUserInteracted();
-          state.playNext();
-          state.setIsPlaying(true);
+          
+          // Delay slightly to avoid race conditions
+          setTimeout(() => {
+            // Double check that the audio is really ended
+            if (audioRef.current && (audioRef.current.ended || audioRef.current.currentTime >= audioRef.current.duration - 0.5)) {
+              if (state.isRepeating) {
+                // Restart current song
+                audioRef.current.currentTime = 0;
+                audioRef.current.play().catch(() => {});
+              } else {
+                // Play next song
+                state.playNext();
+                state.setIsPlaying(true);
+                
+                // Force the audio element to update
+                const newAudio = document.querySelector('audio');
+                if (newAudio && newAudio.paused) {
+                  newAudio.play().catch(() => {});
+                }
+              }
+            }
+          }, 100);
         }}
         onPause={() => {
           // Check if this is an unintended pause (like system-initiated)

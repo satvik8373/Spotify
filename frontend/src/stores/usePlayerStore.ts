@@ -164,7 +164,7 @@ export const usePlayerStore = create<PlayerState>()(
         
         // More reliable method to ensure the audio element updates
         // especially important for background/lock screen playback
-        setTimeout(() => {
+        const playNextAudio = () => {
           const audio = document.querySelector('audio');
           if (audio) {
             // Ensure the audio element has the latest src and is playing
@@ -172,7 +172,21 @@ export const usePlayerStore = create<PlayerState>()(
               audio.src = queue[newIndex].audioUrl;
               audio.load(); // Important for mobile browsers
             }
-            audio.play().catch(() => {});
+            
+            // Use a more forceful approach to ensure playback
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+              playPromise.catch((error) => {
+                // Retry playing after a short delay
+                setTimeout(() => {
+                  audio.play().catch(() => {
+                    // If it still fails, try with user activation flag
+                    set({ hasUserInteracted: true });
+                    setTimeout(() => audio.play().catch(() => {}), 100);
+                  });
+                }, 200);
+              });
+            }
             
             // Update MediaSession for lock screen controls if available
             if ('mediaSession' in navigator) {
@@ -191,9 +205,29 @@ export const usePlayerStore = create<PlayerState>()(
               
               // Update playback state
               navigator.mediaSession.playbackState = 'playing';
+              
+              // Update position state if supported
+              if ('setPositionState' in navigator.mediaSession) {
+                try {
+                  // Initially set to 0 position for the new track
+                  navigator.mediaSession.setPositionState({
+                    duration: audio.duration || 0,
+                    playbackRate: audio.playbackRate || 1,
+                    position: 0
+                  });
+                } catch (e) {
+                  // Ignore position state errors
+                }
+              }
             }
           }
-        }, 50);
+        };
+        
+        // Try playing immediately
+        playNextAudio();
+        
+        // And also after a small delay to ensure it works in lock screen
+        setTimeout(playNextAudio, 50);
         
         // Save to localStorage as a backup
         try {
