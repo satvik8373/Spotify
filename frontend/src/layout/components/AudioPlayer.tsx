@@ -9,9 +9,6 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import SongDetailsView from '@/components/SongDetailsView';
 import { useMusicStore } from '@/stores/useMusicStore';
-import SpotifyConnectView from '@/components/SpotifyConnectView';
-import { useAuth } from '@/contexts/AuthContext';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
@@ -55,7 +52,6 @@ const AudioPlayer = () => {
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [currentDevice, setCurrentDevice] = useState<string>('');
   const deviceSelectorRef = useRef<HTMLDivElement>(null);
-  const isMobile = useMediaQuery("(max-width: 768px)");
 
   const { 
     currentSong, 
@@ -130,7 +126,10 @@ const AudioPlayer = () => {
     // This ensures lock screen controls always show the right info
     const handleAudioChange = () => {
       updateMediaSessionMetadata();
-      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+      // Important: explicitly set the playback state to make lock screen controls more reliable
+      if (navigator.mediaSession) {
+        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+      }
     };
     
     // Listen for events that might indicate song changes
@@ -138,137 +137,92 @@ const AudioPlayer = () => {
     audioRef.current?.addEventListener('play', handleAudioChange);
     audioRef.current?.addEventListener('pause', handleAudioChange);
 
-    // Update metadata
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentSong.title || 'Unknown Title',
-      artist: currentSong.artist || 'Unknown Artist',
-      album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
-      artwork: [
-        {
-          src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-          sizes: '512x512',
-          type: 'image/jpeg'
-        }
-      ]
-    });
-
     // Set up media session action handlers with better responsiveness
     navigator.mediaSession.setActionHandler('play', () => {
+      // Mark as user-interacted to allow autoplay
+      usePlayerStore.getState().setUserInteracted();
+      
       setIsPlaying(true);
+      
       // Explicitly attempt to play for more reliable playback
       if (audioRef.current && audioRef.current.paused) {
-        audioRef.current.play().catch(() => {
-          // Silent error handling
-        });
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // If play fails due to auto-play restrictions, try again with a short delay
+            setTimeout(() => {
+              if (audioRef.current) {
+                audioRef.current.play().catch(() => {});
+              }
+            }, 300);
+          });
+        }
       }
+      
+      // Force update the media session state to keep UI in sync
+      navigator.mediaSession.playbackState = 'playing';
     });
 
     navigator.mediaSession.setActionHandler('pause', () => {
       setIsPlaying(false);
+      
       // Explicitly pause to ensure state consistency
       if (audioRef.current && !audioRef.current.paused) {
         audioRef.current.pause();
       }
+      
+      // Force update the media session state
+      navigator.mediaSession.playbackState = 'paused';
     });
 
     navigator.mediaSession.setActionHandler('previoustrack', () => {
       // Mark user interaction to allow autoplay
       usePlayerStore.getState().setUserInteracted();
+      
       // Call previous from store directly for better state handling
       if (playPrevious) {
-      playPrevious();
-        // Force playing state
-        setTimeout(() => {
+        playPrevious();
+        
+        // Force playing state - multiple attempts to ensure reliability in car/lock screen
+        const playWithRetry = () => {
           if (audioRef.current && audioRef.current.paused) {
-            audioRef.current.play().catch(() => {});
+            audioRef.current.play().catch(() => {
+              // If play fails, try again
+              setTimeout(playWithRetry, 300);
+            });
           }
-        }, 100);
+        };
+        
+        // Start retry attempts
+        setTimeout(playWithRetry, 100);
+        
+        // Update metadata after track change
+        setTimeout(updateMediaSessionMetadata, 300);
       }
     });
 
-    // Enhanced next track handler for better reliability with Bluetooth
     navigator.mediaSession.setActionHandler('nexttrack', () => {
       // Mark user interaction to allow autoplay
       usePlayerStore.getState().setUserInteracted();
       
-      // Store current state before advancing 
-      const currentState = usePlayerStore.getState();
-      const wasPlaying = currentState.isPlaying;
-      
-      // If connected to a Bluetooth device, special handling is required
-      const isBluetoothConnected = currentDevice && currentDevice !== '';
-      
       // Call next from store directly
       playNext();
       
-      // Force playing state
-      setTimeout(() => {
-        // Ensure playing state is set
-        usePlayerStore.getState().setIsPlaying(true);
-        
+      // Force playing state with multiple retry attempts for reliability
+      const playWithRetry = () => {
         if (audioRef.current && audioRef.current.paused) {
-          if (isBluetoothConnected) {
-            // For Bluetooth, force a reload before playing
-            audioRef.current.load();
-          }
-          
-          // More robust play attempt with better error handling
-          const playPromise = audioRef.current.play();
-          if (playPromise) {
-            playPromise.catch(err => {
-              console.error("MediaSession nexttrack play error:", err);
-              // If initial play fails, try again with another delay
-              setTimeout(() => {
-                if (audioRef.current) {
-                  // Force reload before retry
-                  audioRef.current.load();
-                  audioRef.current.play().catch(innerErr => {
-                    console.error("MediaSession nexttrack retry error:", innerErr);
-                    // If still failed, try one more time with longer delay
-                    setTimeout(() => {
-                      if (audioRef.current) {
-                        audioRef.current.play().catch(() => {
-                          // If all attempts fail, at least update state to match reality
-                          if (wasPlaying) {
-                            usePlayerStore.getState().setIsPlaying(false);
-                          }
-                        });
-                      }
-                    }, 1000);
-                  });
-                }
-              }, 300);
-            });
-          }
+          audioRef.current.play().catch(() => {
+            // If play fails, try again
+            setTimeout(playWithRetry, 300);
+          });
         }
-      }, 100);
+      };
       
-      // Special handling for car infotainment systems - update metadata again
-      // after a delay as some systems cache the initial metadata
-      if (isBluetoothConnected) {
-        setTimeout(() => {
-          try {
-            // Force update the metadata for the now-playing song
-            const currentSong = usePlayerStore.getState().currentSong;
-            if (currentSong) {
-              navigator.mediaSession.metadata = new MediaMetadata({
-                title: currentSong.title || 'Unknown Title',
-                artist: currentSong.artist || 'Unknown Artist',
-                album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
-                artwork: [
-                  {
-                    src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-                    sizes: '512x512',
-                    type: 'image/jpeg'
-                  }
-                ]
-              });
-            }
-          } catch (error) {
-            // Ignore errors updating metadata
-          }
-        }, 500);
-      }
+      // Start retry attempts
+      setTimeout(playWithRetry, 100);
+      
+      // Update metadata after track change
+      setTimeout(updateMediaSessionMetadata, 300);
     });
 
     // Seeking handlers with better reliability
@@ -284,9 +238,45 @@ const AudioPlayer = () => {
           // Update position state after seeking
           if ('setPositionState' in navigator.mediaSession) {
             navigator.mediaSession.setPositionState({
-              duration: audioRef.current.duration,
-              playbackRate: audioRef.current.playbackRate,
+              duration: audioRef.current.duration || 0,
+              playbackRate: audioRef.current.playbackRate || 1.0,
               position: details.seekTime
+            });
+          }
+        }
+      });
+      
+      // Add seekforward and seekbackward handlers for better car control
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        if (audioRef.current) {
+          const skipTime = details.seekOffset || 10; // Default to 10 seconds
+          const newTime = Math.min(audioRef.current.duration || 0, 
+                                  audioRef.current.currentTime + skipTime);
+          audioRef.current.currentTime = newTime;
+          
+          // Update position state
+          if ('setPositionState' in navigator.mediaSession) {
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration || 0,
+              playbackRate: audioRef.current.playbackRate || 1.0,
+              position: newTime
+            });
+          }
+        }
+      });
+      
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        if (audioRef.current) {
+          const skipTime = details.seekOffset || 10; // Default to 10 seconds
+          const newTime = Math.max(0, audioRef.current.currentTime - skipTime);
+          audioRef.current.currentTime = newTime;
+          
+          // Update position state
+          if ('setPositionState' in navigator.mediaSession) {
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration || 0,
+              playbackRate: audioRef.current.playbackRate || 1.0,
+              position: newTime
             });
           }
         }
@@ -301,9 +291,9 @@ const AudioPlayer = () => {
         const updatePositionState = () => {
           if (audioRef.current && !isNaN(audioRef.current.duration)) {
             navigator.mediaSession.setPositionState({
-              duration: audioRef.current.duration,
-              playbackRate: audioRef.current.playbackRate,
-              position: audioRef.current.currentTime
+              duration: audioRef.current.duration || 0,
+              playbackRate: audioRef.current.playbackRate || 1.0,
+              position: audioRef.current.currentTime || 0
             });
           }
         };
@@ -311,11 +301,17 @@ const AudioPlayer = () => {
         // Update position state initially and on time update
         updatePositionState();
         
-        // Use a throttled timeupdate listener for better performance
+        // Update position state more frequently for car displays
         let lastPositionUpdate = 0;
+        const carModeUpdateInterval = 250; // Update faster (250ms) when connected to car
+        const normalUpdateInterval = 1000; // Otherwise 1s is fine
+        
         const handleTimeUpdate = () => {
           const now = Date.now();
-          if (now - lastPositionUpdate > 1000) { // Update once per second is enough for lock screen
+          const updateInterval = (window as any).__carConnected ? 
+                                carModeUpdateInterval : normalUpdateInterval;
+                              
+          if (now - lastPositionUpdate > updateInterval) {
             lastPositionUpdate = now;
             updatePositionState();
           }
@@ -323,92 +319,31 @@ const AudioPlayer = () => {
         
         audioRef.current?.addEventListener('timeupdate', handleTimeUpdate);
         
-        // Also update position on play/pause to ensure lock screen is in sync
-        audioRef.current?.addEventListener('play', updatePositionState);
-        audioRef.current?.addEventListener('pause', updatePositionState);
+        // Create a backup interval to ensure position state updates even when timeupdate events are suppressed
+        const positionUpdateInterval = setInterval(() => {
+          // Only update if we're playing and browser is in background or screen is locked
+          if (isPlaying && audioRef.current && document.hidden) {
+            updatePositionState();
+          }
+        }, 1000);
         
         return () => {
           audioRef.current?.removeEventListener('timeupdate', handleTimeUpdate);
-          audioRef.current?.removeEventListener('play', updatePositionState);
-          audioRef.current?.removeEventListener('pause', updatePositionState);
+          clearInterval(positionUpdateInterval);
         };
       }
     } catch (error) {
       // Silent error handling
     }
+  }, [currentSong, setIsPlaying, playNext, playPrevious, setCurrentTime, isPlaying, queue]);
 
-    // Make sure we have proper initialization for lock screen controls
-    if (currentSong.audioUrl && isPlaying) {
-      setTimeout(() => {
-        if (audioRef.current && !isNaN(audioRef.current.duration) && 'setPositionState' in navigator.mediaSession) {
-          navigator.mediaSession.setPositionState({
-            duration: audioRef.current.duration,
-            playbackRate: audioRef.current.playbackRate,
-            position: audioRef.current.currentTime
-          });
-        }
-      }, 300);
-    }
-    
-    // Preload next track for smoother transitions
-    const preloadNextTrack = () => {
-      if (!currentSong || !queue.length) return;
-      
-      const currentIndex = queue.findIndex(song => song._id === currentSong._id);
-      if (currentIndex === -1) return;
-      
-      const nextIndex = (currentIndex + 1) % queue.length;
-      const nextSong = queue[nextIndex];
-      
-      if (nextSong && nextSong.audioUrl && isValidUrl(nextSong.audioUrl)) {
-        // Create a temporary audio element to preload the next song
-        const preloadAudio = new Audio();
-        preloadAudio.src = nextSong.audioUrl;
-        preloadAudio.load();
-        
-        // Set up metadata for lock screen to show next track info
-        setTimeout(() => {
-          // Clean up preload element to avoid memory leaks
-          preloadAudio.src = '';
-        }, 3000);
-      }
-    };
-    
-    // Call preload function with a delay to not interfere with current playback
-    const preloadTimeout = setTimeout(preloadNextTrack, 2000);
-    
-    return () => {
-      clearTimeout(preloadTimeout);
-      // Clean up event listeners
-      audioRef.current?.removeEventListener('loadedmetadata', handleAudioChange);
-      audioRef.current?.removeEventListener('play', handleAudioChange);
-      audioRef.current?.removeEventListener('pause', handleAudioChange);
-    };
-  }, [currentSong, setIsPlaying, playNext, playPrevious, setCurrentTime, isPlaying, queue, currentDevice]);
-
-  // Enhanced song end handling with better transition and device support
+  // Enhanced song end handling
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Create a variable to track if we're in the process of changing songs
-    let isChangingSong = false;
-    
-    // Track the last song that ended to prevent multiple triggers
-    let lastEndedSongId = '';
-
     const handleEnded = () => {
-      // Prevent duplicate end handling
-      const currentSongId = currentSong?._id || '';
-      if (isChangingSong || currentSongId === lastEndedSongId) {
-        return;
-      }
-      
-      // Mark that we're handling a song change to prevent duplicate execution
-      isChangingSong = true;
-      lastEndedSongId = currentSongId;
-      
-      // Get the current state
+      // Get the current state for better control
       const state = usePlayerStore.getState();
       
       // Mark that user has interacted to enable autoplay for next song
@@ -418,144 +353,56 @@ const AudioPlayer = () => {
       if (state.isRepeating) {
         // Just restart the current song
         audio.currentTime = 0;
-        const playPromise = audio.play().catch(() => {
-          // If play fails, try again after a short delay
-          setTimeout(() => {
-            if (audio) audio.play().catch(() => {});
-          }, 100);
-        });
-        isChangingSong = false;
+        audio.play().catch(() => {});
         return;
       }
       
-      // For Bluetooth connected devices, use a more robust approach
-      const isBluetoothConnected = currentDevice && currentDevice !== '';
-      const isBackgroundOrLocked = document.hidden;
-      
-      // Pause current playback immediately to ensure clean transition
-      audio.pause();
-      
-      // New mechanism: Instead of immediately playing next,
-      // first prepare everything, then attempt playback
-      
-      // Store position info for analytics
-      const positionInfo = {
-        songId: currentSongId,
-        position: audio.currentTime,
-        duration: audio.duration,
-        timestamp: new Date().toISOString()
-      };
-      
-      // Select the next song
-      state.playNext();
-      // Ensure playing state is true
-      state.setIsPlaying(true);
-      
-      // Reset flags to allow the new song to trigger events properly
-      isChangingSong = false;
-      
-      // Special handling for Bluetooth and background playback
-      if (isBluetoothConnected || isBackgroundOrLocked) {
-        // For Bluetooth devices, we need to give the browser more time 
-        // to properly establish the audio context with the device
-        setTimeout(() => {
-          // Force reload the audio element to ensure clean state
-          const freshAudio = audioRef.current;
-          if (freshAudio) {
-            freshAudio.load();
-            
-            // Extra delay for Bluetooth to establish connection
-            setTimeout(() => {
-              if (freshAudio && freshAudio.paused) {
-                const playAttempt = freshAudio.play();
-                if (playAttempt) {
-                  playAttempt.catch(err => {
-                    console.warn("Failed first play attempt after song change:", err);
-                    
-                    // Retry with increasing delays if needed
+      // Force a slight delay to ensure proper state updates
+      setTimeout(() => {
+        // Call playNext directly from store for more reliable progression
+        state.playNext();
+        
+        // Ensure playing state is maintained
+        state.setIsPlaying(true);
+        
+        // Get the updated audio element reference since it might have changed
+        const updatedAudio = audioRef.current || document.querySelector('audio');
+        
+        // Explicitly attempt to play after state updates to ensure next song starts
+        if (updatedAudio) {
+          const playPromise = updatedAudio.play();
+          
+          if (playPromise !== undefined) {
+            playPromise.catch(err => {
+              // If initial play fails, try again with another delay
+              setTimeout(() => {
+                const audio = audioRef.current || document.querySelector('audio');
+                if (audio) {
+                  audio.play().catch(() => {
+                    // If it still fails, try one more time with longer delay
                     setTimeout(() => {
-                      if (freshAudio) {
-                        freshAudio.play().catch(secondErr => {
-                          console.warn("Failed second play attempt:", secondErr);
-                          
-                          // Final attempt with forced user interaction
-                          setTimeout(() => {
-                            usePlayerStore.getState().setUserInteracted();
-                            if (freshAudio) freshAudio.play().catch(() => {});
-                          }, 500);
-                        });
-                      }
-                    }, 200);
+                      const finalAudio = audioRef.current || document.querySelector('audio');
+                      finalAudio?.play().catch(() => {});
+                    }, 1000);
                   });
                 }
-              }
-            }, isBluetoothConnected ? 200 : 50);
-          }
-        }, isBluetoothConnected ? 100 : 50);
-        
-        // For connected devices, force metadata update
-        if (isBluetoothConnected && isMediaSessionSupported() && currentSong) {
-          // Short delay to ensure the new song is loaded in the store
-          setTimeout(() => {
-            try {
-              // Get fresh song data
-              const newSong = usePlayerStore.getState().currentSong;
-              if (newSong) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                  title: newSong.title || 'Unknown Title',
-                  artist: newSong.artist || 'Unknown Artist',
-                  album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
-                  artwork: [
-                    {
-                      src: newSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-                      sizes: '512x512',
-                      type: 'image/jpeg'
-                    }
-                  ]
-                });
-                
-                // Ensure playback state is set to playing
-                navigator.mediaSession.playbackState = 'playing';
-              }
-            } catch (error) {
-              // Silent error handling
-            }
-          }, 300);
-        }
-      } else {
-        // Standard (non-Bluetooth) playback transition
-        setTimeout(() => {
-          if (audioRef.current && audioRef.current.paused) {
-            audioRef.current.play().catch(err => {
-              setTimeout(() => {
-                if (audioRef.current) audioRef.current.play().catch(() => {});
-              }, 200);
+              }, 300);
             });
           }
-        }, 50);
-      }
-      
-      // Log transition for debugging (store in sessionStorage to avoid filling localStorage)
-      try {
-        // Keep a rolling log of the last 5 song transitions
-        const existingLog = JSON.parse(sessionStorage.getItem('song_transitions') || '[]');
-        const newLog = [...existingLog.slice(-4), positionInfo];
-        sessionStorage.setItem('song_transitions', JSON.stringify(newLog));
-      } catch (e) {
-        // Ignore storage errors
-      }
+        }
+      }, 50);
     };
 
     // Set up multiple event listeners for song end detection
     audio.addEventListener('ended', handleEnded);
     
-    // Special fix for some browsers that don't reliably fire ended event
+    // Special fix for Firefox and some mobile browsers that don't reliably fire ended event
     let lastTime = 0;
     let endingDetectionInterval: NodeJS.Timeout | null = null;
     
     // Additional protection: monitor for song completion via timeupdate
     const handleTimeUpdate = () => {
-      if (!audio || isChangingSong) return;
+      if (!audio) return;
       
       // Don't continue if duration is invalid
       if (isNaN(audio.duration) || audio.duration <= 0) return;
@@ -565,8 +412,7 @@ const AudioPlayer = () => {
         lastTime = audio.currentTime;
       }
       
-      // Enhanced near-end detection that's more reliable
-      // This triggers when we're very close to the end (within 0.3 seconds)
+      // Detect if we're very close to the end (within 0.3 seconds)
       // This helps when the ended event doesn't fire properly
       if (audio.currentTime > 0 && 
           audio.duration > 0 && 
@@ -574,15 +420,18 @@ const AudioPlayer = () => {
           audio.currentTime > lastTime && // Ensure we're actually progressing
           !audio.paused) { // Only trigger for playing audio to avoid duplicate triggers
         
-        // Prevent triggering again immediately
-        if (currentSong && currentSong._id !== lastEndedSongId) {
-          console.log("Detected near-end of song via timeupdate, triggering handleEnded");
+        // Only trigger if we haven't reached the actual end yet (to avoid duplicates)
+        if (audio.currentTime < audio.duration) {
+          // Since we're not actually at the end, we need to handle specially
           handleEnded();
+          
+          // Ensure we don't trigger again by pausing
+          audio.pause();
         }
       }
     };
     
-    // Add timeupdate listener with throttling for better performance
+    // Add a throttled timeupdate listener
     let lastCheck = 0;
     audio.addEventListener('timeupdate', () => {
       const now = Date.now();
@@ -593,77 +442,45 @@ const AudioPlayer = () => {
       }
     });
     
-    // Add an enhanced background checker for lock screen / background mode
+    // Add an extra background checker for lock screen / background mode
     endingDetectionInterval = setInterval(() => {
-      // Skip if we're changing songs
-      if (isChangingSong) return;
-      
       // Only check if we're supposed to be playing
       if (isPlaying && audio) {
+        // Check for stalled playback (no movement for over 2 seconds)
+        const playbackStalled = (!audio.paused && !isNaN(audio.duration) && 
+                                Math.abs(audio.currentTime - lastTime) < 0.05 &&
+                                audio.currentTime < audio.duration - 1);
+                                
         // Special check for song completion when in background or locked screen
         if ((document.hidden || navigator.userActivation?.hasBeenActive === false) && 
             audio.currentTime > 0 && audio.duration > 0 &&
-            !isNaN(audio.duration) && audio.currentTime >= audio.duration - 0.5) {
-          console.log("Background/lockscreen song end detected, advancing to next track");
+            !isNaN(audio.duration) && audio.currentTime >= audio.duration - 1) {
+          // Force song transition when very close to end in background
           handleEnded();
         }
         
-        // Enhanced check for stalled playback or autopaused audio
-        if ((audio.paused && isPlaying) || 
-            (!audio.paused && Math.abs(audio.currentTime - lastTime) < 0.01 && 
-             audio.currentTime < audio.duration - 1)) {
-          
+        // Check if audio is paused but should be playing (autopaused by browser)
+        if (audio.paused && isPlaying && !isNaN(audio.duration) && 
+            audio.currentTime < audio.duration - 1) {
+          // Try to resume playback
+          audio.play().catch(() => {});
+        }
+        
+        // Handle stalled playback
+        if (playbackStalled) {
           // Count consecutive stall detections
           const stallCount = (audio as any)._stallCount || 0;
           (audio as any)._stallCount = stallCount + 1;
           
-          // If stalled for too long (3 checks = ~3s), try to recover
-          if (stallCount >= 3) {
-            console.log("Detected stalled playback, attempting recovery");
+          // If stalled for too long (2 checks = ~2s), try to recover
+          if (stallCount >= 2) {
+            // Try to unstick by seeking slightly forward
+            audio.currentTime += 0.1;
             
-            // Check if we're dealing with a Bluetooth connection
-            const isBluetoothConnected = currentDevice && currentDevice !== '';
-            
-            if (isBluetoothConnected) {
-              // For Bluetooth devices, more aggressive recovery is needed
-              // First ensure we have user interaction registered
-              usePlayerStore.getState().setUserInteracted();
-              
-              if (audio.paused) {
-                // If paused, try to play
-                audio.play().catch(() => {
-                  // If play fails and we're stuck, try reloading
-                  if (stallCount > 5) {
-                    audio.load();
-                    setTimeout(() => {
-                      audio.play().catch(() => {});
-                    }, 100);
-                  }
-                });
-              } else {
-                // If playing but stuck, try seeking slightly
-                audio.currentTime += 0.1;
-                
-                // If still stalled for too long, try to move to next song
-                if (stallCount > 7) {
-                  console.log("Stalled too long on Bluetooth, advancing to next track");
-                  handleEnded();
-                }
-              }
-            } else {
-              // Standard stall recovery
-              if (audio.paused) {
-                audio.play().catch(() => {});
-              } else {
-                // Try to unstick by seeking slightly forward
-                audio.currentTime += 0.1;
-              }
-              
-              // If still stalled after multiple attempts, try to play next
-              if (stallCount > 5) {
-                console.log("Stalled too long, advancing to next track");
-                handleEnded();
-              }
+            // If critically stalled, advance to next song
+            if (stallCount > 4) {
+              handleEnded();
+              (audio as any)._stallCount = 0;
             }
           }
         } else {
@@ -680,7 +497,7 @@ const AudioPlayer = () => {
       audio.removeEventListener('ended', handleEnded);
       if (endingDetectionInterval) clearInterval(endingDetectionInterval);
     };
-  }, [isPlaying, currentSong, currentDevice]);
+  }, [isPlaying]);
 
   // Enhanced phone call and audio focus handling
   useEffect(() => {
@@ -815,148 +632,91 @@ const AudioPlayer = () => {
       
       if (!audio) return;
       
+      // Get actual audio duration
       const audioDuration = audio.duration;
       
       // 1. Check if audio is paused but should be playing
       if (audio.paused && state.isPlaying && !audio.ended) {
-        // For Bluetooth devices, attempt playback with a slightly different approach
-        const isBluetoothConnected = currentDevice && currentDevice !== '';
-        
-        if (isBluetoothConnected) {
-          // For Bluetooth, mark user interaction and try to play with a short delay
-          state.setUserInteracted();
-          setTimeout(() => {
-            if (audioRef.current && audioRef.current.paused && !audioRef.current.ended) {
-              audioRef.current.play().catch(() => {});
-            }
-          }, 50);
-        }
-        // Else rely on the main isPlaying effect to handle this
+        audio.play().catch(() => {});
       }
       
-      // 2. Check if we need to advance to next song (with better duration validation)
+      // 2. Check if we need to advance to next song
       if (!isNaN(audioDuration) && audioDuration > 0) {
-        // If the song is actually ended OR if we're within 0.5 seconds of the end
-        // and ensure we haven't already processed this end_of_song event
-        if ((audio.ended || (audio.currentTime >= audioDuration - 0.5 && audio.currentTime > 0)) && !(audio as any)._songEndedProcessed) {
-          
-          (audio as any)._songEndedProcessed = true; // Mark as processed for this song instance/load
-
-          // Explicitly mark the current song as ended to prevent duplicate triggers
-          audio.pause();
+        // If the song is actually ended OR if we're within 0.3 seconds of the end
+        // Make the threshold smaller (0.3 instead of 0.5) to improve accuracy
+        if (audio.ended || (audio.currentTime >= audioDuration - 0.3 && audio.currentTime > 0)) {
+          // Ensure we don't trigger multiple times for the same ending
+          // This is crucial for car connectivity where events may fire unreliably
+          if (!audio.ended && Math.abs(audio.currentTime - audioDuration) <= 0.3) {
+            // Explicitly mark the current song as ended to prevent duplicate triggers
+            audio.pause();
             
-          // Store current song info before transitioning
-          const currentSongInfo = {
-            id: state.currentSong?._id,
-            position: audio.currentTime,
-            duration: audio.duration
-          };
+            // Store current song info before transitioning
+            const currentSongInfo = {
+              id: state.currentSong?._id,
+              position: audio.currentTime,
+              duration: audio.duration
+            };
             
-          // When connected to Bluetooth, ensure we can reliably advance songs
-          const isBluetoothConnected = currentDevice && currentDevice !== '';
-          
-          if (isBluetoothConnected) {
-            console.log("Advancing song with Bluetooth device connected");
+            // Set a flag to indicate transition is in progress
+            (window as any).__songTransitionInProgress = true;
             
-            // Get the next song info before advancing
-            const currentIndex = state.currentIndex;
-            const nextIndex = (currentIndex + 1) % state.queue.length;
-            const nextSong = state.queue[nextIndex];
+            // Increment to next song with proper state handling
+            state.playNext();
             
-            // Mark user as having interacted to ensure playback is allowed
+            // Ensure playback continues
+            state.setIsPlaying(true);
             state.setUserInteracted();
             
-            // Increment to next song with proper state handling
-            state.playNext(); // This updates currentSong in the store
+            // Add log for debugging
+            try {
+              localStorage.setItem('last_song_transition', JSON.stringify({
+                from: currentSongInfo.id,
+                position: currentSongInfo.position,
+                duration: currentSongInfo.duration, 
+                timestamp: new Date().toISOString(),
+                isLocked: document.hidden,
+                type: 'background_monitor'
+              }));
+            } catch (e) {
+              // Ignore storage errors
+            }
             
-            // Ensure playback continues by setting the state
-            state.setIsPlaying(true); 
-            
-            // For Bluetooth connections, give a bit more time before playing
+            // Actually play the audio with multiple fallback attempts
             setTimeout(() => {
               if (audioRef.current) {
-                // Force reload the audio element to ensure fresh connection to device
-                audioRef.current.load();
-                audioRef.current.play().catch(err => {
-                  console.error("Failed to play next song on Bluetooth:", err);
-                  // Try again with more delay
+                audioRef.current.play().catch(() => {
+                  // If initial attempt fails, try again after a delay
                   setTimeout(() => {
-                    if (audioRef.current) audioRef.current.play().catch(() => {});
-                  }, 300);
+                    // Get fresh reference in case it changed
+                    const freshAudio = audioRef.current || document.querySelector('audio');
+                    if (freshAudio) {
+                      freshAudio.play().catch(() => {
+                        // One final attempt with longer delay
+                        setTimeout(() => {
+                          const finalAudio = audioRef.current || document.querySelector('audio');
+                          if (finalAudio) {
+                            finalAudio.play().catch(() => {});
+                          }
+                          // Clear transition flag
+                          (window as any).__songTransitionInProgress = false;
+                        }, 1000);
+                      });
+                    }
+                  }, 500);
                 });
               }
-            }, 200);
-          } else {
-            // Regular (non-Bluetooth) device flow
-            // Increment to next song with proper state handling
-            state.playNext(); // This updates currentSong in the store
-              
-            // Ensure playback continues by setting the state
-            state.setIsPlaying(true);
+            }, 100);
           }
-            
-          // Log the transition for debugging
-          try {
-            localStorage.setItem('last_song_transition', JSON.stringify({
-              from: currentSongInfo.id,
-              position: currentSongInfo.position,
-              duration: currentSongInfo.duration, 
-              timestamp: new Date().toISOString(),
-              isLocked: document.hidden,
-              bluetoothConnected: isBluetoothConnected,
-              batteryLevel: (navigator as any).getBattery ? 
-                (navigator as any).getBattery().then((b: any) => b.level) : 'unknown'
-            }));
-          } catch (e) {
-            // Ignore storage errors
-          }
-        } else if (audio.currentTime < audioDuration - 0.5) {
-          // Reset the flag if we are clearly not at the end of the song
-          (audio as any)._songEndedProcessed = false;
-        }
-        
-        // Additional check for Bluetooth devices that might have stalled
-        const isBluetoothConnected = currentDevice && currentDevice !== '';
-        if (isBluetoothConnected && !audio.paused && !isLoading) {
-          // Check if the audio has stalled (no movement for over 1 second)
-          const stallCount = (audio as any)._bluetoothStallCount || 0;
-          
-          // If we haven't moved in playback position for a while, increment stall counter
-          if (Math.abs(currentTime - (audio as any)._lastTrackedTime || 0) < 0.05) {
-            (audio as any)._bluetoothStallCount = stallCount + 1;
-            
-            // If stalled for too long (3 checks = ~0.75s with our 250ms interval)
-            if (stallCount >= 3) {
-              console.log("Detected stalled playback on Bluetooth device");
-              // Try to unstick by seeking slightly
-              audio.currentTime += 0.1;
-              
-              // If still stalled after multiple attempts, try to reload
-              if (stallCount >= 6) {
-                console.log("Attempting to recover stalled Bluetooth playback");
-                const currentTime = audio.currentTime;
-                audio.load();
-                audio.currentTime = currentTime;
-                audio.play().catch(() => {});
-                (audio as any)._bluetoothStallCount = 0;
-              }
-            }
-          } else {
-            // Reset stall counter when playback is moving
-            (audio as any)._bluetoothStallCount = 0;
-          }
-          
-          // Track the current time for next stall check
-          (audio as any)._lastTrackedTime = currentTime;
         }
       }
-    }, 250); // More frequent checks to ensure we don't miss the end of a song
+    }, 200); // More frequent checks (200ms) to ensure we don't miss the end of songs in car/lock screen
     
     return () => {
       clearInterval(backgroundPlaybackMonitor);
     };
-  }, [currentSong, isPlaying, currentDevice, currentTime]); // Added currentDevice as dependency
-
+  }, [currentSong, isPlaying]);
+  
   // Wake lock API to prevent device from sleeping and stopping audio
   useEffect(() => {
     let wakeLock: any = null;
@@ -975,33 +735,168 @@ const AudioPlayer = () => {
               requestWakeLock();
             }
           });
-        } catch (err) {
-          // Silent error handling - not all browsers support this
+          
+          // Store wake lock for debugging
+          (window as any).__wakeLock = wakeLock;
+          
+          return true;
+        } catch (error) {
+          console.error('Failed to acquire wake lock:', error);
+          return false;
+        }
+      }
+      return false;
+    };
+    
+    // Release the wake lock
+    const releaseWakeLock = () => {
+      if (wakeLock) {
+        try {
+          wakeLock.release();
+          wakeLock = null;
+          (window as any).__wakeLock = null;
+        } catch (error) {
+          console.error('Failed to release wake lock:', error);
         }
       }
     };
     
-    const releaseWakeLock = () => {
-      if (wakeLock) {
-        wakeLock.release()
-          .then(() => {
-            wakeLock = null;
-          })
-          .catch(() => {});
-      }
-    };
-    
-    // Request wake lock when playing, release when paused
+    // Request wake lock when playing starts
     if (isPlaying && currentSong) {
       requestWakeLock();
     } else {
       releaseWakeLock();
     }
     
+    // Re-request wake lock when visibility changes (user returns to app)
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isPlaying && currentSong) {
+        // When the page becomes visible again, refresh the wake lock
+        releaseWakeLock();
+        requestWakeLock();
+        
+        // Also check if we need to refresh media session state
+        if (isMediaSessionSupported() && navigator.mediaSession) {
+          navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+          
+          if ('setPositionState' in navigator.mediaSession && audioRef.current) {
+            try {
+              navigator.mediaSession.setPositionState({
+                duration: audioRef.current.duration || 0,
+                playbackRate: audioRef.current.playbackRate || 1.0,
+                position: audioRef.current.currentTime || 0
+              });
+            } catch (e) {
+              // Silent error handling
+            }
+          }
+        }
+        
+        // Ensure audio is playing if it should be
+        if (isPlaying && audioRef.current && audioRef.current.paused) {
+          audioRef.current.play().catch(() => {});
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     return () => {
       releaseWakeLock();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isPlaying, currentSong]);
+
+  // Add a special effect for screen state and device locks
+  useEffect(() => {
+    if (!currentSong || !isPlaying) return;
+    
+    // Background-specific check interval
+    let backgroundCheckInterval: NodeJS.Timeout | null = null;
+    
+    // Special check for song advancement in background/lock screen
+    const backgroundPlaybackCheck = () => {
+      const audio = audioRef.current;
+      if (!audio || !isPlaying) return;
+      
+      // Handle end-of-song detection when in background
+      if (document.hidden && !isNaN(audio.duration) && audio.duration > 0) {
+        // If very close to the end or should have ended already
+        if (audio.currentTime >= audio.duration - 0.5) {
+          // Get state directly to avoid closure issues
+          const store = usePlayerStore.getState();
+          
+          // Only advance if not already transitioning
+          if (!(window as any).__songTransitionInProgress) {
+            // Set flag to prevent duplicate triggers
+            (window as any).__songTransitionInProgress = true;
+            
+            // Force song to next
+            store.playNext();
+            store.setIsPlaying(true);
+            store.setUserInteracted();
+            
+            // Attempt to start playing with retry mechanism
+            setTimeout(() => {
+              const retryPlay = () => {
+                if (audioRef.current) {
+                  audioRef.current.play().catch(() => {
+                    // Retry once more after a delay
+                    setTimeout(() => {
+                      if (audioRef.current) audioRef.current.play().catch(() => {});
+                      // Clear transition flag
+                      (window as any).__songTransitionInProgress = false;
+                    }, 1000);
+                  });
+                } else {
+                  // Clear transition flag if audio element not available
+                  (window as any).__songTransitionInProgress = false;
+                }
+              };
+              
+              retryPlay();
+            }, 100);
+          }
+        }
+      }
+    };
+    
+    // Create the interval - only active when document is hidden
+    const setupBackgroundCheck = () => {
+      if (document.hidden) {
+        // More frequent checks when hidden/locked to ensure songs advance properly
+        backgroundCheckInterval = setInterval(backgroundPlaybackCheck, 250);
+      }
+    };
+    
+    // Clean up check when becoming visible again
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Set up checks when hidden
+        setupBackgroundCheck();
+      } else {
+        // Clear checks when visible again
+        if (backgroundCheckInterval) {
+          clearInterval(backgroundCheckInterval);
+          backgroundCheckInterval = null;
+        }
+        
+        // Reset flag when becoming visible
+        (window as any).__songTransitionInProgress = false;
+      }
+    };
+    
+    // Run initially and add listener
+    handleVisibilityChange();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      if (backgroundCheckInterval) {
+        clearInterval(backgroundCheckInterval);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentSong, isPlaying]);
 
   // Handle iOS-specific background playback issues 
   useEffect(() => {
@@ -1742,140 +1637,41 @@ const AudioPlayer = () => {
     try {
       if (!audioRef.current) return;
       
-      // Toast notification at the beginning to indicate connection attempt
-      toast.loading('Connecting to device...');
-      
       // Store current playback state
       const wasPlaying = !audioRef.current.paused;
       const currentTime = audioRef.current.currentTime;
-      const currentSongUrl = audioRef.current.src;
       
       // Pause current playback
       if (wasPlaying) {
         audioRef.current.pause();
-        // Update the global state to show paused in UI immediately
-        setIsPlaying(false);
       }
-      
-      // Check if we're in a PWA environment
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches;
       
       // Set the audio output device if browser supports it
       if ('setSinkId' in HTMLMediaElement.prototype) {
-        // Try to set the sink ID
-        try {
-          await (audioRef.current as any).setSinkId(deviceId);
-          setCurrentDevice(deviceId);
-          
-          // Create custom event to notify the system about device change
-          document.dispatchEvent(new CustomEvent('audioDeviceChanged', {
-            detail: { deviceId, isPWA }
-          }));
-          
-          // Reinitialize audio element to ensure proper event handling
-          const audio = audioRef.current;
-          
-          // Reset the songEndedProcessed flag to ensure next song detection works
-          (audio as any)._songEndedProcessed = false;
-          
-          // Force refresh the audio context by briefly changing the src and restoring it
-          // This helps with Bluetooth connectivity issues in some browsers
-          const originalSrc = audio.src;
-          audio.src = '';
-          audio.load();
-          
-          // Short delay to ensure audio context is reset
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // Restore the original source
-          audio.src = originalSrc;
-          audio.load();
-          
-          // Save this device as preferred in localStorage for future sessions
-          try {
-            localStorage.setItem('preferredAudioDevice', deviceId);
-          } catch (e) {
-            console.warn('Could not save device preference');
-          }
-          
-          // Re-register MediaSession actions to ensure they work with the new device
-          // This is particularly important for Bluetooth devices like car systems
-          if (isMediaSessionSupported()) {
-            registerMediaSessionHandlers();
-          }
-          
-          // Wait for canplay event before resuming playback
-          const maxWaitTime = 5000; // 5 seconds max wait time
-          const playTimeoutId = setTimeout(() => {
-            // If we've waited too long and audio isn't ready, show an error
-            audio.removeEventListener('canplay', playAfterDeviceChange);
-            toast.dismiss();
-            toast.error('Connection timeout. Please try again');
-          }, maxWaitTime);
-          
-          // Setup the canplay handler
-          const playAfterDeviceChange = () => {
-            // Clear the timeout since we've connected successfully
-            clearTimeout(playTimeoutId);
-            
-            // Update UI to show successful connection
-            toast.dismiss();
-            toast.success(`Connected to ${deviceId ? (
-              availableDevices.find(d => d.deviceId === deviceId)?.label || 'Bluetooth device'
-            ) : 'this device'}`);
-            
-            // Resume playback if it was playing
-            if (wasPlaying) {
-              audio.currentTime = currentTime;
-              const playPromise = audio.play();
-              if (playPromise) {
-                playPromise.catch(() => {
-                  // If play fails, try again after a short delay (common with Bluetooth)
-                  setTimeout(() => {
-                    if (audio) {
-                      audio.play().catch(() => {
-                        // If it still fails, mark as not playing
-                        setIsPlaying(false);
-                        toast.error('Playback failed. Try tapping play');
-                      });
-                    }
-                  }, 500);
-                });
-              }
-              // Update the state to playing
-              setIsPlaying(true);
-            }
-            
-            // Make sure we refresh the user interaction state
-            usePlayerStore.getState().setUserInteracted();
-            
-            // Remove this one-time listener
-            audio.removeEventListener('canplay', playAfterDeviceChange);
-          };
-          
-          // Listen for the canplay event to know when audio is ready on the new device
-          audio.addEventListener('canplay', playAfterDeviceChange);
-        } catch (error) {
-          console.error('Error setting sink ID:', error);
-          toast.dismiss();
-          toast.error('Failed to connect to device');
-          
-          // If there was an error, try to restore playback on the original device
-          if (wasPlaying && audioRef.current) {
-            audioRef.current.play().catch(() => {});
-            setIsPlaying(true);
-          }
+        await (audioRef.current as any).setSinkId(deviceId);
+        setCurrentDevice(deviceId);
+        
+        // Create custom event to notify the system about device change
+        document.dispatchEvent(new CustomEvent('audioDeviceChanged', {
+          detail: { deviceId }
+        }));
+        
+        // Resume playback if it was playing
+        if (wasPlaying) {
+          audioRef.current.currentTime = currentTime;
+          audioRef.current.play().catch(() => {});
         }
+        
+        // Show success toast
+        toast.success('Connected to audio device');
       } else {
-        toast.dismiss();
-        toast.error('Your browser does not support Bluetooth connection');
+        toast.error('Your browser does not support audio output device selection');
       }
       
       // Close the device selector
       setShowDeviceSelector(false);
     } catch (error) {
       console.error('Error setting audio output device:', error);
-      toast.dismiss();
       toast.error('Failed to connect to device');
     }
   };
@@ -1917,6 +1713,9 @@ const AudioPlayer = () => {
   
   // Toggle device selector visibility
   const toggleDeviceSelector = () => {
+    if (!showDeviceSelector) {
+      fetchAvailableDevices();
+    }
     setShowDeviceSelector(prev => !prev);
   };
   
@@ -2029,460 +1828,84 @@ const AudioPlayer = () => {
     };
   }, [currentSong, isPlaying]);
 
-  // Register Media Session handlers for lock screen controls
-  const registerMediaSessionHandlers = () => {
-    if (!isMediaSessionSupported() || !audioRef.current) return;
-    
-    navigator.mediaSession.setActionHandler('play', () => {
-      setIsPlaying(true);
-      if (audioRef.current && audioRef.current.paused) {
-        audioRef.current.play().catch(() => {});
-      }
-    });
-    
-    navigator.mediaSession.setActionHandler('pause', () => {
-      setIsPlaying(false);
-      if (audioRef.current && !audioRef.current.paused) {
-        audioRef.current.pause();
-      }
-    });
-    
-    navigator.mediaSession.setActionHandler('nexttrack', () => {
-      usePlayerStore.getState().setUserInteracted();
-      playNext();
-      setTimeout(() => {
-        if (audioRef.current && audioRef.current.paused) {
-          audioRef.current.play().catch(() => {});
-        }
-      }, 100);
-    });
-    
-    if (playPrevious) {
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        usePlayerStore.getState().setUserInteracted();
-        playPrevious();
-        setTimeout(() => {
-          if (audioRef.current && audioRef.current.paused) {
-            audioRef.current.play().catch(() => {});
-          }
-        }, 100);
-      });
-    }
-    
-    if ('setPositionState' in navigator.mediaSession) {
-      navigator.mediaSession.setPositionState({
-        duration: audioRef.current.duration || 0,
-        playbackRate: audioRef.current.playbackRate || 1,
-        position: audioRef.current.currentTime || 0
-      });
-    }
-  };
-
-  // Restore the preferred audio device from localStorage
+  // Add special handling for car connectivity
   useEffect(() => {
-    const restorePreferredDevice = async () => {
-      try {
-        // Check if browser supports audio output device selection
-        if (!('setSinkId' in HTMLMediaElement.prototype) || !audioRef.current) {
-          return;
-        }
-        
-        // Get the preferred device from localStorage
-        const preferredDeviceId = localStorage.getItem('preferredAudioDevice');
-        if (!preferredDeviceId) {
-          return;
-        }
-        
-        // Verify the device exists by enumerating devices
-        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-          return;
-        }
-        
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const deviceExists = devices.some(device => 
-          device.kind === 'audiooutput' && device.deviceId === preferredDeviceId
-        );
-        
-        if (deviceExists) {
-          // Set the device without UI notification
-          await (audioRef.current as any).setSinkId(preferredDeviceId);
-          setCurrentDevice(preferredDeviceId);
-          console.log('Restored preferred audio device');
-        }
-      } catch (error) {
-        console.warn('Could not restore preferred audio device', error);
-      }
-    };
+    if (!audioRef.current || !currentSong) return;
     
-    // Only try to restore the device once audio is available
-    if (audioRef.current) {
-      restorePreferredDevice();
-    }
-  }, []);
-
-  // Add improved audio element configuration
-  useEffect(() => {
-    if (!audioRef.current) return;
-    
-    const audio = audioRef.current;
-    
-    // Configure audio element for better mobile background playback
-    audio.setAttribute('playsinline', '');
-    audio.setAttribute('webkit-playsinline', '');
-    audio.setAttribute('preload', 'auto');
-    
-    // Critical for iOS audio focus handling
-    audio.setAttribute('x-webkit-airplay', 'allow');
-    
-    // Optimize for better performance
-    audio.volume = volume / 100;
-    
-    // Set audio channel type for Firefox OS (if supported)
-    if ('mozAudioChannelType' in audio) {
-      (audio as any).mozAudioChannelType = 'content';
-    }
-    
-    // Enhanced error recovery - listen for unexpected errors
-    const handleUnexpectedError = (event: ErrorEvent) => {
-      // Don't handle if we're already loading something
-      if (isLoading) return;
+    // Car connectivity detection
+    const detectCarConnection = () => {
+      // Car connection can be detected via several means:
+      // 1. Bluetooth connected
+      // 2. WebAudio destination changed to car
+      let isCarConnected = false;
       
-      console.warn('Audio error:', event);
-      
-      // Try to recover by reloading current song
-      const currentSong = usePlayerStore.getState().currentSong;
-      if (currentSong && currentSong.audioUrl) {
-        // Wait a moment before trying to reload
-        setTimeout(() => {
-          if (audioRef.current) {
-            audioRef.current.src = currentSong.audioUrl;
-            audioRef.current.load();
-            
-            // If we were playing, try to resume
-            if (isPlaying) {
-              audioRef.current.play().catch(() => {
-                // If play fails, try one more time after delay
-                setTimeout(() => {
-                  if (audioRef.current) audioRef.current.play().catch(() => {});
-                }, 300);
-              });
-            }
-          }
-        }, 200);
-      }
-    };
-    
-    // Add error handler
-    audio.addEventListener('error', handleUnexpectedError);
-    
-    return () => {
-      audio.removeEventListener('error', handleUnexpectedError);
-    };
-  }, [volume, isPlaying, isLoading]);
-
-  // Enhance device change handling for car audio systems
-  useEffect(() => {
-    // Only run if we have an established device connection
-    if (!currentDevice || !audioRef.current) return;
-    
-    // This function monitors device connection stability
-    const monitorDeviceConnection = () => {
-      // Create a periodic check for device connection status
-      const deviceCheckInterval = setInterval(() => {
-        if (!audioRef.current || !currentDevice) {
-          clearInterval(deviceCheckInterval);
-          return;
-        }
-        
-        // Check if audio is supposed to be playing but isn't
-        if (isPlaying && audioRef.current.paused && !audioRef.current.ended) {
-          // Count connection issues
-          const connectionIssueCount = (audioRef.current as any)._connectionIssueCount || 0;
-          (audioRef.current as any)._connectionIssueCount = connectionIssueCount + 1;
+      // Try to check if connected to external audio device
+      if (navigator.mediaDevices && 'enumerateDevices' in navigator.mediaDevices) {
+        navigator.mediaDevices.enumerateDevices().then(devices => {
+          // Check for Bluetooth audio output devices
+          const hasBluetooth = devices.some(device => 
+            device.kind === 'audiooutput' && 
+            (device.label.toLowerCase().includes('bluetooth') ||
+             device.label.toLowerCase().includes('car') ||
+             device.label.toLowerCase().includes('vehicle') ||
+             // Many car systems appear as external or hands-free devices
+             device.label.toLowerCase().includes('external') ||
+             device.label.toLowerCase().includes('hands-free'))
+          );
           
-          // After 3 failed checks, try to restore connection
-          if (connectionIssueCount >= 3) {
-            console.log("Detected device connection issue, attempting to restore");
+          if (hasBluetooth) {
+            // We might be connected to a car system
+            isCarConnected = true;
+            // Store this state for use in other effects
+            (window as any).__carConnected = true;
             
-            // Reset counter
-            (audioRef.current as any)._connectionIssueCount = 0;
-            
-            // Try to restore device connection
-            try {
-              if ('setSinkId' in audioRef.current) {
-                // Re-apply the device ID to reestablish connection
-                (audioRef.current as any).setSinkId(currentDevice).then(() => {
-                  // If successful, try to resume playback
-                  if (isPlaying && audioRef.current) {
-                    audioRef.current.play().catch(() => {});
-                  }
-                }).catch(() => {
-                  // If reconnection fails, fall back to default device
-                  if (audioRef.current) {
-                    (audioRef.current as any).setSinkId('').catch(() => {});
-                  }
-                });
-              }
-            } catch (error) {
-              console.warn("Error restoring device connection:", error);
-            }
-          }
-        } else {
-          // Reset connection issue counter when playing correctly
-          if (audioRef.current) {
-            (audioRef.current as any)._connectionIssueCount = 0;
-          }
-        }
-      }, 2000);
-      
-      return () => {
-        clearInterval(deviceCheckInterval);
-      };
-    };
-    
-    // Start monitoring
-    const cleanup = monitorDeviceConnection();
-    
-    return cleanup;
-  }, [currentDevice, isPlaying]);
-
-  // Enhance the onEnded handler on the audio element for Bluetooth devices
-  const enhancedOnEnded = (e: React.SyntheticEvent<HTMLAudioElement>) => {
-    console.log("Audio onEnded event triggered");
-    const state = usePlayerStore.getState();
-    state.setUserInteracted();
-    
-    // Reset flags to avoid confusion in other event handlers
-    if (audioRef.current) {
-      (audioRef.current as any)._songEndedProcessed = true;
-      (audioRef.current as any)._stallCount = 0;
-      (audioRef.current as any)._connectionIssueCount = 0;
-    }
-    
-    // Before playing next, explicitly pause the current track
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-    
-    // Check if connected to an external device
-    const isBluetoothConnected = currentDevice && currentDevice !== '';
-    
-    // Play next with special handling for Bluetooth
-    state.playNext();
-    state.setIsPlaying(true);
-    
-    // More robust handling for Bluetooth devices
-    if (isBluetoothConnected) {
-      console.log("Advancing song with Bluetooth device connected");
-      
-      // For Bluetooth, we need to ensure a clean transition
-      setTimeout(() => {
-        if (audioRef.current) {
-          // Force reload the audio element to establish fresh connection
-          audioRef.current.load();
-          
-          // Multiple play attempts with increasing delays
-          setTimeout(() => {
+            // When connected to car, enable more aggressive end detection
+            // to ensure songs always advance properly
             if (audioRef.current) {
-              audioRef.current.play().catch(err => {
-                console.log("First play attempt failed:", err);
-                
-                // Try again with more delay
-                setTimeout(() => {
-                  if (audioRef.current) {
-                    // Before second attempt, ensure we have permission
-                    usePlayerStore.getState().setUserInteracted();
-                    audioRef.current.play().catch(err => {
-                      console.log("Second play attempt failed:", err);
-                      
-                      // Final attempt with reload
-                      setTimeout(() => {
-                        if (audioRef.current) {
-                          audioRef.current.load();
-                          audioRef.current.play().catch(() => {});
-                        }
-                      }, 500);
-                    });
-                  }
-                }, 300);
-              });
+              // Set a special property to mark car connectivity
+              (audioRef.current as any).__carMode = true;
             }
-          }, 150);
-        }
-      }, 100);
-    } else {
-      // Standard playback continuation
-      setTimeout(() => {
-        if (audioRef.current && audioRef.current.paused) {
-          audioRef.current.play().catch((err) => {
-            // Try once more if this fails
-            setTimeout(() => {
-              if (audioRef.current) {
-                audioRef.current.play().catch(() => {});
-              }
-            }, 200);
-          });
-        }
-      }, 100);
-    }
-  };
-
-  // Add PWA detection and special handling for continuous playback
-  useEffect(() => {
-    // Only run if we have a current song and we're supposed to be playing
-    if (!currentSong || !isPlaying) return;
-    
-    // Check if we're running in PWA mode
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
-    const isNativePWA = isPWA || (window.navigator as any).standalone === true;
-    
-    // Set up a heartbeat interval to keep playback alive in background
-    const heartbeatInterval = setInterval(() => {
-      // Only do extra work when in background or screen is off
-      if (document.hidden && audioRef.current) {
-        const audio = audioRef.current;
-        
-        // Log background activity periodically for debugging
-        console.log('Background heartbeat: song playing:', !audio.paused, 
-                    'position:', audio.currentTime.toFixed(1),
-                    'duration:', audio.duration.toFixed(1));
-        
-        // Check if audio is paused but should be playing
-        if (audio.paused && isPlaying && !audio.ended) {
-          // Log the unexpected pause
-          console.log('Detected background pause, attempting to resume');
-          
-          // Force user interaction flag to allow autoplay
-          usePlayerStore.getState().setUserInteracted();
-          
-          // Try to resume playback
-          audio.play().catch(err => {
-            console.warn('Background resume failed:', err);
-          });
-        }
-        
-        // Advanced check for song completion in background
-        // This is particularly important when the device screen is off
-        if (!audio.paused && audio.currentTime > 0 && !isNaN(audio.duration) &&
-            audio.duration > 0 && audio.currentTime >= audio.duration - 0.5) {
-          // We're very close to the end, force a song change
-          console.log('Background playback: detected end of song, advancing');
-          
-          // Force song change using the same logic as the enhanced onEnded handler
-          const isBluetoothConnected = currentDevice && currentDevice !== '';
-          const state = usePlayerStore.getState();
-          
-          // Explicitly pause the current track
-          audio.pause();
-          
-          // Mark user as having interacted
-          state.setUserInteracted();
-          
-          // Move to next song
-          state.playNext();
-          state.setIsPlaying(true);
-          
-          // Special handling for Bluetooth devices
-          if (isBluetoothConnected) {
-            // For Bluetooth, we need additional steps to ensure proper transition
-            setTimeout(() => {
-              if (audioRef.current) {
-                audioRef.current.load();
-                
-                setTimeout(() => {
-                  if (audioRef.current) {
-                    audioRef.current.play().catch(() => {
-                      // If first attempt fails, try again
-                      setTimeout(() => {
-                        if (audioRef.current) audioRef.current.play().catch(() => {});
-                      }, 300);
-                    });
-                  }
-                }, 200);
-              }
-            }, 100);
           } else {
-            // Standard playback continuation
-            setTimeout(() => {
-              if (audioRef.current) {
-                audioRef.current.play().catch(() => {});
-              }
-            }, 200);
-          }
-        }
-        
-        // Detect stalled/silent playback by monitoring position changes
-        const wasLastPosition = (audio as any)._lastBackgroundPosition || 0;
-        const currentPosition = audio.currentTime;
-        (audio as any)._lastBackgroundPosition = currentPosition;
-        
-        // If position hasn't changed but we're supposed to be playing
-        if (!audio.paused && Math.abs(currentPosition - wasLastPosition) < 0.1 && 
-            currentPosition < audio.duration - 1) {
-          
-          // Count stall incidents
-          const stallCount = (audio as any)._backgroundStallCount || 0;
-          (audio as any)._backgroundStallCount = stallCount + 1;
-          
-          // After several stalled checks, try recovery
-          if (stallCount >= 3) {
-            console.log('Background playback: detected stalled audio, attempting recovery');
-            
-            // Try to unstick by seeking forward slightly
-            try {
-              audio.currentTime += 0.1;
-            } catch (e) {}
-            
-            // If stalled too long, restart the song or advance
-            if (stallCount >= 6) {
-              console.log('Background playback: stalled too long, advancing');
-              
-              // Reset counter
-              (audio as any)._backgroundStallCount = 0;
-              
-              // If near the end, go to next song, otherwise restart current
-              if (audio.currentTime > audio.duration * 0.8) {
-                // Near the end, move to next song
-                const state = usePlayerStore.getState();
-                state.playNext();
-                state.setIsPlaying(true);
-                
-                setTimeout(() => {
-                  if (audioRef.current) {
-                    audioRef.current.play().catch(() => {});
-                  }
-                }, 200);
-              } else {
-                // Not near end, try to restart current song from last position
-                const currentPos = audio.currentTime;
-                audio.load();
-                
-                setTimeout(() => {
-                  if (audioRef.current) {
-                    // Restore position before playing
-                    audioRef.current.currentTime = currentPos;
-                    audioRef.current.play().catch(() => {});
-                  }
-                }, 200);
-              }
+            (window as any).__carConnected = false;
+            if (audioRef.current) {
+              (audioRef.current as any).__carMode = false;
             }
           }
-        } else {
-          // Reset stall counter if position is changing
-          (audio as any)._backgroundStallCount = 0;
-        }
-      } else {
-        // Reset background counters when not in background
-        if (audioRef.current) {
-          (audioRef.current as any)._backgroundStallCount = 0;
+        }).catch(() => {
+          // If we can't check devices, assume we're not in car mode
+          (window as any).__carConnected = false;
+        });
+      }
+    };
+    
+    // Run detection initially and on changes
+    detectCarConnection();
+    
+    // Set up device change monitoring
+    const handleDeviceChange = () => {
+      detectCarConnection();
+    };
+    
+    // Add device change listener
+    if (navigator.mediaDevices) {
+      try {
+        navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+      } catch (e) {
+        // Some browsers may not support this event
+      }
+    }
+    
+    // Clean up
+    return () => {
+      if (navigator.mediaDevices) {
+        try {
+          navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+        } catch (e) {
+          // Some browsers may not support this event
         }
       }
-    }, 2000); // Check every 2 seconds in background
-    
-    return () => {
-      clearInterval(heartbeatInterval);
     };
-  }, [currentSong, isPlaying, currentDevice]);
+  }, [currentSong]);
 
   if (!currentSong) {
     return (
@@ -2501,13 +1924,71 @@ const AudioPlayer = () => {
         onClose={() => setShowSongDetails(false)} 
       />
       
-      {/* Use the new SpotifyConnectView component */}
-      <SpotifyConnectView 
-        isOpen={showDeviceSelector}
-        onClose={() => setShowDeviceSelector(false)}
-        currentDevice={currentDevice}
-        onSelectDevice={handleDeviceSelection}
-      />
+      {/* Device selector dropdown */}
+      {showDeviceSelector && (
+        <div
+          ref={deviceSelectorRef}
+          className="fixed bottom-16 right-4 sm:bottom-16 sm:right-4 z-50 bg-zinc-900 rounded-md shadow-lg border border-zinc-800 w-72 overflow-hidden"
+        >
+          <div className="flex items-center justify-between p-3 border-b border-zinc-800">
+            <h3 className="text-sm font-medium">Connect to a device</h3>
+            <button 
+              onClick={() => setShowDeviceSelector(false)}
+              className="text-zinc-400 hover:text-white"
+            >
+              <X size={18} />
+            </button>
+                </div>
+
+          <div className="max-h-64 overflow-y-auto">
+            {availableDevices.length === 0 ? (
+              <div className="p-4 text-sm text-zinc-400 text-center">
+                No devices found. Make sure your Bluetooth is on.
+                </div>
+            ) : (
+              <ul className="py-1">
+                {/* Default device (this device) */}
+                <li 
+                  className={`px-4 py-2 flex items-center hover:bg-zinc-800 cursor-pointer ${currentDevice === '' ? 'bg-zinc-800/50 text-green-500' : 'text-white'}`}
+                  onClick={() => handleDeviceSelection('')}
+                >
+                  <Speaker size={16} className="mr-2" />
+                  <span className="text-sm">This device</span>
+                  {currentDevice === '' && (
+                    <span className="ml-auto text-xs text-green-500">Connected</span>
+                  )}
+                </li>
+                
+                {/* List of other devices */}
+                {availableDevices.map((device) => (
+                  <li 
+                    key={device.deviceId}
+                    className={`px-4 py-2 flex items-center hover:bg-zinc-800 cursor-pointer ${currentDevice === device.deviceId ? 'bg-zinc-800/50 text-green-500' : 'text-white'}`}
+                    onClick={() => handleDeviceSelection(device.deviceId)}
+                  >
+                    <Bluetooth size={16} className="mr-2" />
+                    <span className="text-sm truncate max-w-[180px]">
+                      {device.label || `Device (${device.deviceId.slice(0, 8)}...)`}
+                    </span>
+                    {currentDevice === device.deviceId && (
+                      <span className="ml-auto text-xs text-green-500">Connected</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          
+          <div className="border-t border-zinc-800 p-3">
+            <button 
+              onClick={fetchAvailableDevices}
+              className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-1.5 px-3 rounded-full"
+            >
+              Refresh Devices
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Desktop mini player (only shows when not visible on mobile) */}
       <div 
@@ -2629,7 +2110,13 @@ const AudioPlayer = () => {
         x-webkit-airplay="allow"
         loop={usePlayerStore.getState().isRepeating}
         data-testid="audio-element"
-        onEnded={enhancedOnEnded}
+        onEnded={() => {
+          console.log("Audio onEnded event triggered");
+          const state = usePlayerStore.getState();
+          state.setUserInteracted();
+          state.playNext();
+          state.setIsPlaying(true);
+        }}
         onPause={() => {
           // Check if this is an unintended pause (like system-initiated)
           // but only if we're supposed to be playing
