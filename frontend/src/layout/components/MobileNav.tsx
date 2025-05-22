@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, Laptop, Speaker, Smartphone, Tv, X } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, Laptop, Speaker, Smartphone, Tv, X, Music2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -152,9 +152,9 @@ const MobileNav = () => {
       path: '/library',
     },
     {
-      label: 'Liked Songs',
-      icon: Heart,
-      path: '/liked-songs',
+      label: 'Spotify',
+      icon: Music2,
+      path: '/spotify/songs',
     },
   ];
 

@@ -8,15 +8,20 @@ import {
   List,
   LayoutGrid,
   Plus,
+  Music2,
+  ListMusic,
+  Mic2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../../components/playlist/CreatePlaylistDialog';
+import { useSpotify } from '../../contexts/SpotifyContext';
 
 export const LeftSidebar = () => {
   const { user, isAuthenticated } = useAuth();
+  const spotify = useSpotify();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { userPlaylists, fetchUserPlaylists } = usePlaylistStore();
   const location = useLocation();
@@ -82,6 +87,47 @@ export const LeftSidebar = () => {
       {/* Playlists */}
       <div className="flex-1 overflow-y-auto px-2 min-h-0">
         <div className="space-y-2 py-2">
+          {/* Spotify Section */}
+          {spotify.isAuthenticated && (
+            <div className="mb-4">
+              <h3 className="text-sm text-zinc-400 px-2 mb-2">Spotify</h3>
+              <Link
+                to="/spotify/songs"
+                className={cn(
+                  'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
+                  isActive('/spotify/songs') ? 'bg-zinc-800/50' : ''
+                )}
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-md flex items-center justify-center">
+                  <Music2 size={20} className="text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-white truncate">Spotify Songs</p>
+                  <p className="text-sm text-zinc-400 truncate">
+                    Songs from your Spotify account
+                  </p>
+                </div>
+              </Link>
+              <Link
+                to="/spotify/playlists"
+                className={cn(
+                  'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
+                  isActive('/spotify/playlists') ? 'bg-zinc-800/50' : ''
+                )}
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-md flex items-center justify-center">
+                  <ListMusic size={20} className="text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-white truncate">Spotify Playlists</p>
+                  <p className="text-sm text-zinc-400 truncate">
+                    Playlists from your Spotify account
+                  </p>
+                </div>
+              </Link>
+            </div>
+          )}
+
           {/* Liked Songs */}
           <Link
             to="/liked-songs"
