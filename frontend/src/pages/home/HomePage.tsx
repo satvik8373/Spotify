@@ -42,8 +42,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
-import { useSpotify } from '../../contexts/SpotifyContext';
-import SpotifyLogin from '../../components/SpotifyLogin';
 
 // Suggested genres
 
@@ -194,8 +192,6 @@ const HomePage = () => {
     useMusicStore();
 
   const { setCurrentSong } = usePlayerStore();
-
-  const spotify = useSpotify();
 
   useEffect(() => {
     fetchFeaturedPlaylists();
@@ -520,21 +516,6 @@ const HomePage = () => {
     <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-zinc-900 to-black">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
         <div className="pt-1 pb-6 max-w-full overflow-x-hidden">
-          {/* Add Spotify connect section if not connected */}
-          {!spotify.loading && !spotify.isAuthenticated && (
-            <div className="bg-gradient-to-r from-green-900 to-black rounded-lg p-6 mx-4 mt-4 mb-6">
-              <div className="flex flex-col md:flex-row items-center justify-between">
-                <div className="mb-4 md:mb-0">
-                  <h2 className="text-xl font-bold mb-2">Connect to Spotify</h2>
-                  <p className="text-zinc-300">
-                    Link your Spotify account to access your playlists, saved songs, and more.
-                  </p>
-                </div>
-                <SpotifyLogin className="whitespace-nowrap" />
-              </div>
-            </div>
-          )}
-
           {/* Recently played section */}
           <div className="px-2 sm:px-4">
             {/* Top Picks Section - Enhanced Design */}

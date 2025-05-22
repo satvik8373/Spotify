@@ -19,10 +19,7 @@ import Welcome from './pages/Welcome';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
-import SpotifyCallback from './pages/SpotifyCallback';
 import { SpotifyProvider } from './contexts/SpotifyContext';
-import SpotifySongsPage from './pages/spotify/SpotifySongsPage';
-import SpotifyPlaylistsPage from './pages/spotify/SpotifyPlaylistsPage';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -132,10 +129,6 @@ const router = createBrowserRouter(
 			element: <ResetPassword />
 		},
 		{
-			path: '/callback',
-			element: <SpotifyCallback />
-		},
-		{
 			element: <MainLayout />,
 			errorElement: <ErrorFallback />,
 			children: [
@@ -162,14 +155,6 @@ const router = createBrowserRouter(
 				{
 					path: '/playlist/:id',
 					element: <AuthGate><PlaylistPage /></AuthGate>
-				},
-				{
-					path: '/spotify/songs',
-					element: <AuthGate><SpotifySongsPage /></AuthGate>
-				},
-				{
-					path: '/spotify/playlists',
-					element: <AuthGate><SpotifyPlaylistsPage /></AuthGate>
 				},
 				{
 					path: '/debug/api',

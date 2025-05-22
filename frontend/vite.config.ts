@@ -10,9 +10,6 @@ export default defineConfig(({ mode }) => {
 	const cloudinaryPreset = env.REACT_APP_CLOUDINARY_UPLOAD_PRESET || 'spotify_clone';
 	const cloudinaryKey = env.REACT_APP_CLOUDINARY_API_KEY || '';
 	const cloudinarySecret = env.REACT_APP_CLOUDINARY_API_SECRET || '';
-	const spotifyClientId = env.VITE_SPOTIFY_CLIENT_ID || '7f22a495ad7e4587acf6cc2f82e41748';
-	const spotifyClientSecret = env.VITE_SPOTIFY_CLIENT_SECRET || '6bba9755ba50486cb299448e011b55e3';
-	const redirectUri = env.VITE_REDIRECT_URI || 'http://localhost:3000/callback';
 	
 	console.log(`Mode: ${mode}`);
 	console.log(`API URL: ${apiUrl}`);
@@ -38,13 +35,7 @@ export default defineConfig(({ mode }) => {
 					secure: false,
 					rewrite: (path) => path.replace(/^\/api/, '')
 				}
-			},
-			allowedHosts: [
-				'localhost',
-				'127.0.0.1',
-				'ce4f-2401-4900-8898-7024-3944-aa1f-aae5-fc2d.ngrok-free.app',
-				'.ngrok-free.app' // Allow all ngrok subdomains
-			]
+			}
 		},
 		preview: {
 			port: 3000,
@@ -79,10 +70,7 @@ export default defineConfig(({ mode }) => {
 			'process.env.REACT_APP_CLOUDINARY_CLOUD_NAME': JSON.stringify(cloudinaryName),
 			'process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET': JSON.stringify(cloudinaryPreset),
 			'process.env.REACT_APP_CLOUDINARY_API_KEY': JSON.stringify(cloudinaryKey),
-			'process.env.REACT_APP_CLOUDINARY_API_SECRET': JSON.stringify(cloudinarySecret),
-			'process.env.VITE_SPOTIFY_CLIENT_ID': JSON.stringify(spotifyClientId),
-			'process.env.VITE_SPOTIFY_CLIENT_SECRET': JSON.stringify(spotifyClientSecret),
-			'process.env.VITE_REDIRECT_URI': JSON.stringify(redirectUri)
+			'process.env.REACT_APP_CLOUDINARY_API_SECRET': JSON.stringify(cloudinarySecret)
 		}
 	}
 });
