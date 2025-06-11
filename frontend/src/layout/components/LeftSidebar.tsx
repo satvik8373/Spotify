@@ -44,12 +44,12 @@ export const LeftSidebar = () => {
         <h1 className="text-2xl font-bold text-white">Your Library</h1>
         <div className="flex gap-2">
           <button 
-            className="p-2 hover:bg-zinc-800 rounded-full"
+            className="liquid-glass-button p-2"
             onClick={() => setShowCreateDialog(true)}
           >
             <Plus size={20} className="text-zinc-400 hover:text-white" />
           </button>
-          <button className="p-2 hover:bg-zinc-800 rounded-full">
+          <button className="liquid-glass-button p-2">
             <ArrowUpRight size={20} className="text-zinc-400 hover:text-white" />
           </button>
         </div>
@@ -64,7 +64,7 @@ export const LeftSidebar = () => {
             className={cn(
               'px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap',
               activeTab === tab
-                ? 'bg-zinc-800 text-white'
+                ? 'liquid-glass bg-zinc-800/50 text-white'
                 : 'text-zinc-400 hover:text-white'
             )}
           >
@@ -75,7 +75,7 @@ export const LeftSidebar = () => {
 
       {/* Search and View Options */}
       <div className="p-2 flex justify-between items-center mt-1">
-        <button className="p-2 hover:bg-zinc-800 rounded-full">
+        <button className="liquid-glass-button p-2">
           <Search size={20} className="text-zinc-400 hover:text-white" />
         </button>
         <button className="flex items-center gap-2 text-zinc-400 hover:text-white text-sm font-medium">
@@ -95,10 +95,10 @@ export const LeftSidebar = () => {
                 to="/spotify/songs"
                 className={cn(
                   'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
-                  isActive('/spotify/songs') ? 'bg-zinc-800/50' : ''
+                  isActive('/spotify/songs') ? 'liquid-glass' : ''
                 )}
               >
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-md flex items-center justify-center">
+                <div className="liquid-glass-album w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-md flex items-center justify-center">
                   <Music2 size={20} className="text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -112,10 +112,10 @@ export const LeftSidebar = () => {
                 to="/spotify/playlists"
                 className={cn(
                   'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
-                  isActive('/spotify/playlists') ? 'bg-zinc-800/50' : ''
+                  isActive('/spotify/playlists') ? 'liquid-glass' : ''
                 )}
               >
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-md flex items-center justify-center">
+                <div className="liquid-glass-album w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-md flex items-center justify-center">
                   <ListMusic size={20} className="text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -133,10 +133,10 @@ export const LeftSidebar = () => {
             to="/liked-songs"
             className={cn(
               'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
-              isActive('/liked-songs') ? 'bg-zinc-800/50' : ''
+              isActive('/liked-songs') ? 'liquid-glass' : ''
             )}
           >
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-white rounded-md flex items-center justify-center">
+            <div className="liquid-glass-album w-12 h-12 bg-gradient-to-br from-indigo-600 to-white rounded-md flex items-center justify-center">
               <Heart size={20} className="text-white" />
             </div>
             <div className="min-w-0 flex-1">
@@ -155,18 +155,20 @@ export const LeftSidebar = () => {
                 to={`/playlist/${playlist._id}`}
                 className={cn(
                   'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
-                  isActive(`/playlist/${playlist._id}`) ? 'bg-zinc-800/50' : ''
+                  isActive(`/playlist/${playlist._id}`) ? 'liquid-glass' : ''
                 )}
               >
-                <div className="w-12 h-12 bg-zinc-800 rounded-md flex items-center justify-center flex-shrink-0">
+                <div className="liquid-glass-album w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {playlist.imageUrl ? (
                     <img
                       src={playlist.imageUrl}
                       alt={playlist.name}
-                      className="w-full h-full object-cover rounded-md"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
-                    <LayoutGrid size={20} className="text-zinc-400" />
+                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                      <LayoutGrid size={20} className="text-zinc-400" />
+                    </div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -181,14 +183,14 @@ export const LeftSidebar = () => {
             <>
               {/* Sample Playlists */}
               <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-blue-500 rounded-md flex-shrink-0" />
+                <div className="liquid-glass-album w-12 h-12 bg-gradient-to-br from-green-500 to-blue-500 rounded-md flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white truncate">Trending Hindi Songs 2025</p>
                   <p className="text-sm text-zinc-400 truncate">Playlist • Feel Magical Vibes</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50">
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-md flex-shrink-0" />
+                <div className="liquid-glass-album w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-md flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white truncate">Trending Now India</p>
                   <p className="text-sm text-zinc-400 truncate">Playlist • Spotify</p>

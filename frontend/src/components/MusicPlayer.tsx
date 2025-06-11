@@ -225,7 +225,7 @@ const MusicPlayer = () => {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 bg-zinc-900/90 backdrop-blur-lg border-t border-zinc-800 p-2 pb-3 md:p-4 z-50">
+      <div className="fixed bottom-0 left-0 right-0 playback-controls-glass p-2 pb-3 md:p-4 z-50">
         {showPlaybackError && (
           <Alert className="mb-2 bg-amber-900/20 border-amber-800 text-amber-500">
             <AlertDescription className="flex items-center text-sm">
@@ -247,7 +247,7 @@ const MusicPlayer = () => {
         <div className="flex items-center gap-3 md:gap-4">
           {/* Song info */}
           <div className="flex items-center flex-1 min-w-0 gap-3">
-            <div className="h-12 w-12 md:h-14 md:w-14 flex-shrink-0 rounded overflow-hidden">
+            <div className="liquid-glass-album h-12 w-12 md:h-14 md:w-14 flex-shrink-0 overflow-hidden">
               <img
                 src={image}
                 alt={title}
@@ -270,7 +270,7 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
                 onClick={() => toggleShuffle()}
                 title="Shuffle"
               >
@@ -282,7 +282,7 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
                 onClick={playPrevious}
                 title="Previous"
                 disabled={queue.length <= 1}
@@ -294,7 +294,7 @@ const MusicPlayer = () => {
                 variant="default"
                 size="icon"
                 onClick={togglePlay}
-                className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-white text-black hover:bg-zinc-200"
+                className="liquid-glass-primary h-8 w-8 md:h-10 md:w-10 text-white hover:scale-105 transition"
                 title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? (
@@ -307,7 +307,7 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
                 onClick={() => playNext()}
                 title="Next"
                 disabled={queue.length <= 1}
@@ -318,7 +318,7 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
                 onClick={handleToggleRepeat}
                 title="Repeat"
               >
@@ -331,14 +331,17 @@ const MusicPlayer = () => {
               <span className="text-xs text-zinc-500 w-8 text-right">
                 {formatTime(currentTime)}
               </span>
-              <Slider
-                value={[currentTime]}
-                min={0}
-                max={duration || 1}
-                step={0.1}
-                className="flex-1"
-                onValueChange={handleSeek}
-              />
+              <div className="flex-1 relative py-1">
+                <Slider
+                  value={[currentTime]}
+                  min={0}
+                  max={duration || 1}
+                  step={0.1}
+                  className="flex-1"
+                  onValueChange={handleSeek}
+                />
+                <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
+              </div>
               <span className="text-xs text-zinc-500 w-8">{formatTime(duration)}</span>
             </div>
           </div>
@@ -348,20 +351,23 @@ const MusicPlayer = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-zinc-400 hover:text-white"
+              className="liquid-glass-button h-8 w-8 text-zinc-400 hover:text-white"
               onClick={handleToggleMute}
               title={isMuted ? 'Unmute' : 'Mute'}
             >
               {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume className="h-4 w-4" />}
             </Button>
-            <Slider
-              value={[volume]}
-              min={0}
-              max={1}
-              step={0.01}
-              className="flex-1"
-              onValueChange={value => setVolume(value[0])}
-            />
+            <div className="flex-1 relative py-1">
+              <Slider
+                value={[volume]}
+                min={0}
+                max={1}
+                step={0.01}
+                className="flex-1"
+                onValueChange={value => setVolume(value[0])}
+              />
+              <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
+            </div>
           </div>
         </div>
 

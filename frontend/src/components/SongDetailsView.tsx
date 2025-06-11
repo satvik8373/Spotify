@@ -332,7 +332,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="text-white/70 hover:text-white hover:bg-white/10"
+          className="liquid-glass-button text-white/70 hover:text-white"
           onClick={onClose}
         >
           <ChevronDown className="h-6 w-6" />
@@ -341,7 +341,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="text-white/70 hover:text-white hover:bg-white/10"
+          className="liquid-glass-button text-white/70 hover:text-white"
           onClick={(e) => {
             e.stopPropagation();
             setShowOptionsMenu(!showOptionsMenu);
@@ -453,7 +453,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           <div 
             ref={albumArtRef}
             className={cn(
-              "aspect-square w-full rounded-md overflow-hidden shadow-2xl relative transition-all duration-300 touch-none",
+              "liquid-glass-album aspect-square w-full overflow-hidden shadow-2xl relative transition-all duration-300 touch-none",
               albumArtLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
             )}
             style={{
@@ -479,12 +479,12 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             {swipingDirection === 'horizontal' && swipeSource === 'albumArt' && (
               <>
                 {swipeOffset.x > 50 && (
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/40 rounded-full p-3 z-10">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 liquid-glass-button p-3 z-10">
                     <SkipBack className="h-6 w-6 text-white" />
                   </div>
                 )}
                 {swipeOffset.x < -50 && (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/40 rounded-full p-3 z-10">
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 liquid-glass-button p-3 z-10">
                     <SkipForward className="h-6 w-6 text-white" />
                   </div>
                 )}
@@ -505,7 +505,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             
             {/* Down swipe indicator */}
             {swipingDirection === 'vertical' && swipeOffset.y > 30 && (
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/40 rounded-full p-3 z-10">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 liquid-glass-button p-3 z-10">
                 <ChevronDown className="h-6 w-6 text-white" />
               </div>
             )}
@@ -522,7 +522,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             <Button
               variant="ghost"
               size="icon"
-              className="text-white/80 hover:bg-transparent"
+              className="liquid-glass-button text-white/80 hover:text-white"
               onClick={handleLikeToggle}
             >
               <Heart
@@ -628,14 +628,14 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-transparent"
+                className="liquid-glass-button text-white"
                 onClick={playPrevious}
               >
                 <SkipBack className="h-7 w-7" />
               </Button>
               <Button
                 size="icon"
-                className="bg-white hover:bg-white/90 text-[#081c2c] rounded-full h-14 w-14 transition-transform active:scale-95 flex items-center justify-center"
+                className="liquid-glass-primary h-14 w-14 transition-transform active:scale-95 flex items-center justify-center"
                 onClick={togglePlay}
               >
                 {isPlaying ? (
@@ -647,7 +647,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-transparent"
+                className="liquid-glass-button text-white"
                 onClick={playNext}
               >
                 <SkipForward className="h-7 w-7" />
@@ -663,7 +663,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             <Button
               variant="ghost"
               size="sm"
-              className="text-white/70 hover:text-white hover:bg-transparent flex flex-col items-center gap-1"
+              className="liquid-glass-button text-white/70 hover:text-white flex flex-col items-center gap-1"
               onClick={handleShare}
             >
               <Share2 className="h-5 w-5" />
@@ -673,7 +673,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             <Button
               variant="ghost"
               size="sm" 
-              className="text-white/70 hover:text-white hover:bg-transparent flex flex-col items-center gap-1"
+              className="liquid-glass-button text-white/70 hover:text-white flex flex-col items-center gap-1"
             >
               <ListMusic className="h-5 w-5" />
               <span className="text-[11px] font-medium">Queue</span>

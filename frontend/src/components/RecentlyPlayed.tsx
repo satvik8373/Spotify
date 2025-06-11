@@ -126,7 +126,7 @@ export function RecentlyPlayed() {
             onMouseLeave={() => setHoveredItemId(null)}
           >
             <div className="p-2 flex flex-col h-full">
-              <div className="relative mb-1.5 aspect-square rounded-md overflow-hidden shadow-md bg-zinc-900">
+              <div className="liquid-glass-album relative mb-1.5 aspect-square overflow-hidden shadow-md">
                 {item.imageUrl ? (
                   <img
                     src={item.imageUrl}
@@ -145,7 +145,7 @@ export function RecentlyPlayed() {
                 )}
                 <button
                   className={cn(
-                    'absolute right-1.5 bottom-1.5 bg-green-500 rounded-full p-1.5 shadow-lg z-10 transition-all duration-300',
+                    'absolute right-1.5 bottom-1.5 liquid-glass-primary p-1.5 shadow-lg z-10 transition-all duration-300',
                     hoveredItemId === item.id
                       ? 'opacity-100 translate-y-0'
                       : 'opacity-0 translate-y-3'
@@ -155,7 +155,7 @@ export function RecentlyPlayed() {
                     handleItemClick(item);
                   }}
                 >
-                  <Play className="h-3.5 w-3.5 text-black" />
+                  <Play className="h-3.5 w-3.5 text-white" />
                 </button>
               </div>
               <div className="min-h-[40px] flex flex-col justify-between">

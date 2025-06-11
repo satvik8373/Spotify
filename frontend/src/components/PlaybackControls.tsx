@@ -12,8 +12,8 @@ const PlaybackControls = () => {
     currentTime,
     duration,
     togglePlay,
-    nextSong: skipToNext,
-    previousSong: skipToPrevious,
+    playNext,
+    playPrevious,
     setCurrentTime,
   } = usePlayerStore();
   
@@ -70,10 +70,21 @@ const PlaybackControls = () => {
   
   useEffect(() => {
     if (currentSong) {
-      setIsLiked(isSongLiked(currentSong._id));
+      // Check if the song is liked
+      const checkLikedStatus = async () => {
+        try {
+          const liked = await isSongLiked(currentSong._id);
+          setIsLiked(liked);
+        } catch (error) {
+          console.error("Error checking liked status:", error);
+          setIsLiked(false);
+        }
+      };
+      
+      checkLikedStatus();
       
       const handleLikedSongsUpdated = () => {
-        setIsLiked(isSongLiked(currentSong._id));
+        checkLikedStatus();
       };
       
       document.addEventListener('likedSongsUpdated', handleLikedSongsUpdated);
@@ -83,36 +94,43 @@ const PlaybackControls = () => {
     }
   }, [currentSong]);
 
-  const toggleLike = () => {
+  const toggleLike = async () => {
     if (!currentSong) return;
     
-    if (isLiked) {
-      removeLikedSong(currentSong._id);
-    } else {
-      addLikedSong({
-        id: currentSong._id,
-        title: currentSong.title,
-        artist: currentSong.artist,
-        imageUrl: currentSong.imageUrl || '', // Provide fallback for empty URLs
-        audioUrl: currentSong.audioUrl,
-        duration: currentSong.duration || 0,
-        album: currentSong.albumId || '' // Using albumId instead of album
-      });
+    try {
+      if (isLiked) {
+        await removeLikedSong(currentSong._id);
+      } else {
+        await addLikedSong({
+          id: currentSong._id,
+          title: currentSong.title,
+          artist: currentSong.artist,
+          imageUrl: currentSong.imageUrl || '', // Provide fallback for empty URLs
+          audioUrl: currentSong.audioUrl,
+          duration: currentSong.duration || 0,
+          albumName: currentSong.albumId || '' // Using albumId instead of album
+        });
+      }
+      
+      setIsLiked(!isLiked);
+    } catch (error) {
+      console.error("Error toggling like status:", error);
     }
-    
-    setIsLiked(!isLiked);
   };
 
   return (
-    <div className="px-2 py-2 bg-zinc-900 border-t border-zinc-800 flex flex-col">
+    <div className="px-2 py-2 playback-controls-glass flex flex-col">
       <div className="w-full px-2 pb-1">
-        <Slider
-          value={[currentTime]}
-          max={duration}
-          step={1}
-          onValueChange={handleSeek}
-          className="cursor-pointer"
-        />
+        <div className="relative py-1">
+          <Slider
+            value={[currentTime]}
+            max={duration}
+            step={1}
+            onValueChange={handleSeek}
+            className="cursor-pointer"
+          />
+          <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
+        </div>
         <div className="flex justify-between text-xs text-zinc-400 mt-1">
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
@@ -122,7 +140,7 @@ const PlaybackControls = () => {
       <div className="flex items-center justify-between">
         <button
           onClick={toggleLike}
-          className={`p-2 rounded-full ${isLiked ? 'text-green-500' : 'text-zinc-400 hover:text-white'}`}
+          className={`liquid-glass-button p-2 ${isLiked ? 'text-green-500' : 'text-zinc-400 hover:text-white'}`}
           aria-label={isLiked ? "Unlike song" : "Like song"}
         >
           <Heart className={isLiked ? "fill-green-500" : ""} size={20} />
@@ -130,8 +148,8 @@ const PlaybackControls = () => {
         
         <div className="flex items-center gap-4">
           <button
-            onClick={skipToPrevious}
-            className="p-2 text-zinc-400 hover:text-white"
+            onClick={playPrevious}
+            className="liquid-glass-button p-2 text-zinc-400 hover:text-white"
             aria-label="Previous track"
           >
             <SkipBack size={20} />
@@ -139,15 +157,15 @@ const PlaybackControls = () => {
           
           <button
             onClick={togglePlay}
-            className="p-3 bg-white rounded-full text-black hover:scale-105 transition"
+            className="liquid-glass-primary p-3 text-white hover:scale-105 transition"
             aria-label={isPlaying ? "Pause" : "Play"}
           >
             {isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
           </button>
           
           <button
-            onClick={() => skipToNext()}
-            className="p-2 text-zinc-400 hover:text-white"
+            onClick={playNext}
+            className="liquid-glass-button p-2 text-zinc-400 hover:text-white"
             aria-label="Next track"
           >
             <SkipForward size={20} />
@@ -157,19 +175,22 @@ const PlaybackControls = () => {
         <div className="flex items-center">
           <button
             onClick={toggleMute}
-            className="p-2 text-zinc-400 hover:text-white"
+            className="liquid-glass-button p-2 text-zinc-400 hover:text-white"
             aria-label={isMuted ? "Unmute" : "Mute"}
           >
             {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
           </button>
           
-          <Slider
-            value={[isMuted ? 0 : volume]}
-            max={100}
-            step={1}
-            onValueChange={handleVolumeChange}
-            className="w-24"
-          />
+          <div className="relative w-24">
+            <Slider
+              value={[isMuted ? 0 : volume]}
+              max={100}
+              step={1}
+              onValueChange={handleVolumeChange}
+              className="w-24"
+            />
+            <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
+          </div>
         </div>
       </div>
     </div>

@@ -417,7 +417,7 @@ const MobileNav = () => {
       {/* Bottom Navigation */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/90 to-transparent backdrop-blur-md border-t border-zinc-800/20 md:hidden",
+          "fixed bottom-0 left-0 right-0 z-30 mobile-nav-glass md:hidden",
           hasActiveSong ? "player-active" : ""
         )}
         style={{
@@ -426,17 +426,19 @@ const MobileNav = () => {
       >
         {/* Add mini player when song is active */}
         {hasActiveSong && (
-          <div className="flex flex-col justify-between bg-black/50 backdrop-blur-md border-b border-zinc-800/30">
+          <div className="flex flex-col justify-between mobile-player-glass">
             <div className="flex items-center justify-between px-3 py-2">
               <div 
                 className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-zinc-800/30 rounded-md py-1"
                 onClick={handleSongTap}
               >
-                <img 
-                  src={currentSong.imageUrl} 
-                  alt={currentSong.title} 
-                  className="h-10 w-10 rounded-md object-cover flex-shrink-0"
-                />
+                <div className="liquid-glass-album h-10 w-10 flex-shrink-0 overflow-hidden">
+                  <img 
+                    src={currentSong.imageUrl} 
+                    alt={currentSong.title} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-white truncate">{currentSong.title}</p>
                   <p className="text-xs text-zinc-400 truncate">{currentSong.artist}</p>
@@ -449,14 +451,14 @@ const MobileNav = () => {
                     e.stopPropagation();
                     setShowDevices(true);
                   }}
-                  className="mr-2 h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 text-zinc-400 active:bg-zinc-800"
+                  className="liquid-glass-button mr-2 h-7 w-7 flex items-center justify-center flex-shrink-0 text-zinc-400"
                 >
                   <Speaker className="h-4 w-4" />
                 </button>
                 
                 <button
                   onClick={handleLikeToggle}
-                  className={`mr-2 h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 ${songLiked ? 'text-green-500' : 'text-zinc-400'} active:bg-zinc-800`}
+                  className={`liquid-glass-button mr-2 h-7 w-7 flex items-center justify-center flex-shrink-0 ${songLiked ? 'text-green-500' : 'text-zinc-400'}`}
                 >
                   <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
                 </button>
@@ -465,12 +467,12 @@ const MobileNav = () => {
                     e.stopPropagation();
                     usePlayerStore.getState().togglePlay();
                   }}
-                  className="h-8 w-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 active:bg-gray-200"
+                  className="liquid-glass-primary h-8 w-8 flex items-center justify-center flex-shrink-0"
                 >
                   {isPlaying ? (
-                    <Pause className="h-4 w-4 text-black" />
+                    <Pause className="h-4 w-4 text-white" />
                   ) : (
-                    <Play className="h-4 w-4 text-black translate-x-0.5" />
+                    <Play className="h-4 w-4 text-white translate-x-0.5" />
                   )}
                 </button>
               </div>
@@ -489,14 +491,14 @@ const MobileNav = () => {
               </div>
               <div className="h-[3px] w-full bg-[#0b3d59]/40 relative">
                 <div 
-                  className="h-full bg-white" 
+                  className="h-full bg-green-500" 
                   style={{ width: `${progress || 0}%` }}
                 />
                 
                 {/* Position dot indicator */}
                 {showTimeIndicators && (
                   <div 
-                    className="absolute top-1/2 -translate-y-1/2 h-3 w-3 bg-white rounded-full shadow-md pointer-events-none" 
+                    className="absolute top-1/2 -translate-y-1/2 h-3 w-3 bg-green-500 rounded-full shadow-md pointer-events-none" 
                     style={{ left: `calc(${progress || 0}% - 4px)` }}
                   />
                 )}
@@ -513,7 +515,7 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-14 bg-black/70">
+        <div className="grid grid-cols-4 h-14">
           {navItems.map(item => (
             <Link
               key={item.path}
@@ -525,10 +527,15 @@ const MobileNav = () => {
                   : 'text-zinc-400 hover:text-zinc-200'
               )}
             >
-              <item.icon className={cn(
-                'h-5 w-5 mb-1', 
-                isActive(item.path) && 'text-white'
-              )} />
+              <div className={cn(
+                'flex items-center justify-center h-6 w-6 mb-1 rounded-full',
+                isActive(item.path) && 'liquid-glass-button'
+              )}>
+                <item.icon className={cn(
+                  'h-4 w-4', 
+                  isActive(item.path) ? 'text-green-500' : 'text-zinc-400'
+                )} />
+              </div>
               <span className="text-[10px] font-medium">{item.label}</span>
             </Link>
           ))}

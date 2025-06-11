@@ -902,7 +902,7 @@ export function PlaylistPage() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="w-10 h-10 rounded-full text-gray-400 hover:text-white"
+                    className="liquid-glass-button w-10 h-10 rounded-full text-gray-400 hover:text-white"
                     onClick={() => setShowEditDialog(true)}
                   >
                     <Pencil className="h-5 w-5" />
@@ -911,7 +911,7 @@ export function PlaylistPage() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="w-10 h-10 rounded-full text-gray-400 hover:text-white sm:hidden"
+                    className="liquid-glass-button w-10 h-10 rounded-full text-gray-400 hover:text-white sm:hidden"
                     onClick={() => openAddSongsDialog('upload')}
                   >
                     <FileText className="h-5 w-5" />
@@ -919,7 +919,7 @@ export function PlaylistPage() {
 
                 <Button
                     variant="ghost"
-                    className="rounded-full text-gray-400 hover:text-white hidden sm:flex items-center gap-1.5"
+                    className="liquid-glass-button rounded-full text-gray-400 hover:text-white hidden sm:flex items-center gap-1.5"
                     onClick={() => openAddSongsDialog('upload')}
                   >
                     <FileText className="h-4 w-4" />
@@ -933,7 +933,7 @@ export function PlaylistPage() {
                 <Button
                     variant="ghost"
                   size="icon"
-                    className="w-10 h-10 rounded-full text-gray-400 hover:text-white"
+                    className="liquid-glass-button w-10 h-10 rounded-full text-gray-400 hover:text-white"
                 >
                     <MoreHorizontal className="h-5 w-5" />
                 </Button>
@@ -973,7 +973,7 @@ export function PlaylistPage() {
             <div className="flex items-center gap-3 sm:gap-5">
                     <Button
                 variant="ghost"
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full text-gray-400 hover:text-white flex items-center justify-center"
+                className="liquid-glass-button w-10 h-10 sm:w-12 sm:h-12 rounded-full text-gray-400 hover:text-white flex items-center justify-center"
                 onClick={handleLike}
               >
                 <Heart 
@@ -987,7 +987,7 @@ export function PlaylistPage() {
                     <Button
                 variant="ghost"
                 className={cn(
-                  'w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center',
+                  'liquid-glass-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center',
                   isShuffleOn ? 'text-green-500' : 'text-gray-400 hover:text-white'
                 )}
                 onClick={(e) => {
@@ -1003,10 +1003,8 @@ export function PlaylistPage() {
                 onClick={isCurrentPlaylistPlaying ? handlePausePlaylist : handlePlayPlaylist}
                 disabled={totalSongs === 0 || isPlaying}
                 className={cn(
-                  "w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all shadow-lg",
-                  isCurrentPlaylistPlaying 
-                    ? "bg-white text-black hover:bg-gray-200 hover:scale-105" 
-                    : "bg-green-500 text-black hover:bg-green-400 hover:scale-105"
+                  "liquid-glass-primary w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all shadow-lg",
+                  "text-white hover:scale-105"
                 )}
                 variant="default"
               >
@@ -1058,24 +1056,24 @@ export function PlaylistPage() {
                           <div className="w-3 h-3 bg-green-500 rounded-sm animate-pulse"></div>
                         </div>
                       ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-white hover:bg-white/10 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlaySong(song, index);
-                          }}
-                        >
-                          <Play className={cn("h-4 w-4 ml-0.5", isCurrentSong && "text-green-500")} />
-                        </Button>
+                                        <Button
+                  variant="ghost"
+                  size="sm"
+                  className="liquid-glass-button w-8 h-8 rounded-full flex items-center justify-center text-white p-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePlaySong(song, index);
+                  }}
+                >
+                  <Play className={cn("h-4 w-4 ml-0.5", isCurrentSong && "text-green-500")} />
+                </Button>
                     )}
                   </div>
                     
                     {/* Song info with image */}
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={cn(
-                        "h-10 w-10 flex-shrink-0 bg-[#282828] rounded overflow-hidden",
+                        "h-10 w-10 flex-shrink-0 liquid-glass-album overflow-hidden",
                         isCurrentSong && "ring-2 ring-green-500"
                       )}>
                         <img
@@ -1106,7 +1104,7 @@ export function PlaylistPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-white p-0"
+                            className="liquid-glass-button h-8 w-8 text-gray-400 hover:text-white p-0"
                             onClick={(e) => {
                           e.stopPropagation();
                           handleRemoveSong(song._id, e);
@@ -1121,7 +1119,7 @@ export function PlaylistPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white p-0"
+                          className="liquid-glass-button h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white p-0"
                           onClick={(e) => {
                           e.stopPropagation();
                             handleFindAudio(song, index, e);
@@ -1163,7 +1161,7 @@ export function PlaylistPage() {
               </p>
               <Button 
                 onClick={() => openAddSongsDialog('search')}
-                className="mt-6 bg-white text-black hover:bg-gray-200 font-medium"
+                className="mt-6 liquid-glass-primary text-white font-medium"
               >
                 Add songs
               </Button>
@@ -1195,7 +1193,7 @@ export function PlaylistPage() {
         <div className="fixed bottom-20 right-6 z-30">
           <Button
             onClick={() => openAddSongsDialog('search')}
-            className="rounded-full shadow-lg flex items-center gap-2 px-4 sm:px-6 py-4 sm:py-6 h-auto bg-green-500 hover:bg-green-400 hover:scale-105 transition-all"
+            className="liquid-glass-primary rounded-full shadow-lg flex items-center gap-2 px-4 sm:px-6 py-4 sm:py-6 h-auto hover:scale-105 transition-all"
           >
             <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
             <span className="text-sm sm:text-base">Add Songs</span>

@@ -12,6 +12,7 @@
 		--popover-foreground: 240 10% 3.9%;
 		--primary: 142.1 76.2% 36.3%;
 		--primary-foreground: 355.7 100% 97.3%;
+		--primary-rgb: 20, 184, 92;
 		--secondary: 240 4.8% 95.9%;
 		--secondary-foreground: 240 5.9% 10%;
 		--muted: 240 4.8% 95.9%;
@@ -45,6 +46,7 @@
 		--popover-foreground: 0 0% 95%;
 		--primary: 142.1 70.6% 45.3%;
 		--primary-foreground: 144.9 80.4% 10%;
+		--primary-rgb: 20, 184, 92;
 		--secondary: 240 3.7% 15.9%;
 		--secondary-foreground: 0 0% 98%;
 		--muted: 0 0% 15%;
@@ -593,4 +595,159 @@ button, .button, a.button {
   .spotify-liked-song-row:active {
     background-color: rgba(255, 255, 255, 0.1);
   }
+}
+
+/* iOS 26 Liquid Glass Design - Enhanced */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border-radius: 1rem;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.03) 30%,
+    transparent 70%
+  );
+  opacity: 0.6;
+  transform: rotate(-45deg);
+  pointer-events: none;
+}
+
+.liquid-glass-button {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border-radius: 50%;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.liquid-glass-button::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.05) 30%,
+    transparent 70%
+  );
+  opacity: 0.6;
+  transform: rotate(-45deg);
+  pointer-events: none;
+}
+
+.liquid-glass-button:hover {
+  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.liquid-glass-button:active {
+  transform: scale(0.95);
+}
+
+.liquid-glass-album {
+  border-radius: 1rem;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 
+    0 8px 20px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.liquid-glass-album::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0) 50%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  pointer-events: none;
+}
+
+.liquid-glass-album img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+/* Primary action button with liquid glass effect */
+.liquid-glass-primary {
+  background: rgba(var(--primary-rgb, 20, 184, 92), 0.85);
+  backdrop-filter: blur(20px);
+  border-radius: 50%;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-glass-primary::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.08) 30%,
+    transparent 70%
+  );
+  opacity: 0.7;
+  transform: rotate(-45deg);
+  pointer-events: none;
+}
+
+/* Mobile navigation with liquid glass effect */
+.mobile-nav-glass {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-player-glass {
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(25px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Playback controls with liquid glass effect */
+.playback-controls-glass {
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(25px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
 }

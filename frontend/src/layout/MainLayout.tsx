@@ -53,7 +53,7 @@ const MainLayout = () => {
         style={{
           height: isMobile 
             ? hasActiveSong
-              ? 'calc(100vh - 46px - 14px - 40px)' // Mobile header + nav + mini player
+              ? 'calc(100vh - 46px - 14px - 42px)' // Mobile header + nav + mini player
               : 'calc(100vh - 46px - 14px)' // Mobile header + nav
             : hasActiveSong
               ? 'calc(100vh - 44px - 90px)' // Desktop header + player
@@ -78,7 +78,7 @@ const MainLayout = () => {
 
         {/* Main content - full width on mobile */}
         <ResizablePanel defaultSize={isMobile ? 100 : 80} className="overflow-hidden flex flex-col max-w-full">
-          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-black mobile-scroll-fix">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-black mobile-scroll-fix pb-safe">
             <Outlet />
           </div>
         </ResizablePanel>

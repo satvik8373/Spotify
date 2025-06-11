@@ -435,7 +435,7 @@ const LikedSongsPage = () => {
               <Button 
                 onClick={playAllSongs}
                 className={cn(
-                  "bg-green-500 hover:bg-green-600 rounded-full w-10 h-10 p-0 flex-shrink-0 shadow-lg transition-opacity",
+                  "liquid-glass-primary rounded-full w-10 h-10 p-0 flex-shrink-0 shadow-lg transition-opacity",
                   headerOpacity > 0.7 ? "opacity-100" : "opacity-0"
                 )}
                 disabled={likedSongs.length === 0}
@@ -518,7 +518,7 @@ const LikedSongsPage = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-white/90 hover:text-white bg-white/10 rounded-full text-xs px-6 py-1 h-9 border-none"
+                  className="liquid-glass-button text-white/90 hover:text-white rounded-full text-xs px-6 py-1 h-9 border-none"
                   onClick={smartShuffle}
                 >
                   <Shuffle className="h-3.5 w-3.5 mr-2" />
@@ -526,7 +526,7 @@ const LikedSongsPage = () => {
                 </Button>
                 <Button 
                   onClick={playAllSongs}
-                  className="bg-green-500 hover:bg-green-600 text-white rounded-full h-14 w-14 flex items-center justify-center shadow-lg transition-all"
+                  className="liquid-glass-primary text-white rounded-full h-14 w-14 flex items-center justify-center shadow-lg transition-all"
                 >
                   <Play className="h-7 w-7 ml-0.5" />
                 </Button>
@@ -611,7 +611,7 @@ const LikedSongsPage = () => {
                       {/* Title and artist column */}
                       <div className="flex items-center min-w-0">
                         <div className={cn(
-                          "flex-shrink-0 bg-zinc-800 rounded overflow-hidden mr-3",
+                          "flex-shrink-0 liquid-glass-album overflow-hidden mr-3",
                           isMobile ? "w-12 h-12" : "w-10 h-10"
                         )}>
                           {song.imageUrl ? (
@@ -662,7 +662,7 @@ const LikedSongsPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-red-500 hover:text-red-400 h-8 w-8"
+                            className="liquid-glass-button text-red-500 hover:text-red-400 h-8 w-8"
                             onClick={(e) => {
                               e.stopPropagation();
                               unlikeSong(song.id);
@@ -679,7 +679,7 @@ const LikedSongsPage = () => {
                               variant="ghost"
                               size="icon"
                               className={cn(
-                                "text-zinc-400 hover:text-white",
+                                "liquid-glass-button text-zinc-400 hover:text-white",
                                 isMobile ? "h-8 w-8" : "h-8 w-8"
                               )}
                               onClick={(e) => e.stopPropagation()}
