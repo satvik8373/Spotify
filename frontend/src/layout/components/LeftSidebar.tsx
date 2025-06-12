@@ -167,7 +167,7 @@ export const LeftSidebar = () => {
                     />
                   ) : (
                     <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                      <LayoutGrid size={20} className="text-zinc-400" />
+                    <LayoutGrid size={20} className="text-zinc-400" />
                     </div>
                   )}
                 </div>

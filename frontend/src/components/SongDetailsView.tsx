@@ -228,18 +228,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       
       // Check if this event includes details about which song was updated
       if (e instanceof CustomEvent && e.detail) {
-        // Get all possible ID formats from the event
-        const eventSongId = e.detail.songId || e.detail.id || e.detail._id;
-        
         // If we have details and it's not for our current song, ignore
-        if (eventSongId && eventSongId !== songId) {
-          // Also check alternate ID formats
-          const alternateId = (currentSong as any).id === undefined ? 
-            currentSong._id : (currentSong as any).id;
-          
-          if (eventSongId !== alternateId) {
-            return; // Not our song, ignore
-          }
+        if (e.detail.songId && e.detail.songId !== songId) {
+          return;
         }
         
         // If we have explicit like state in the event, use it
@@ -250,12 +241,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       }
       
       // Otherwise do a fresh check from the store
-      // Check both ID formats (id and _id) against the store
-      const freshCheck = songId ? 
-        likedSongIds?.has(songId) || 
-        ((currentSong as any).id !== undefined && likedSongIds?.has((currentSong as any).id)) : 
-        false;
-      
+      const freshCheck = songId ? likedSongIds?.has(songId) : false;
       setIsLiked(freshCheck);
     };
     
@@ -285,16 +271,23 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     // Optimistically update the UI immediately
     setIsLiked(!isLiked);
     
-    // Perform the actual toggle
-    toggleLikeSong(currentSong);
+    // Perform the actual toggle with the correct song format
+    toggleLikeSong({
+      _id: songId,
+      title: currentSong.title,
+      artist: currentSong.artist,
+      albumId: currentSong.albumId || null,
+      imageUrl: currentSong.imageUrl || '',
+      audioUrl: currentSong.audioUrl,
+      duration: currentSong.duration || 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
     
     // Also dispatch a direct event for immediate notification
-    // Include both id and _id formats to ensure all components receive the update
     document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
       detail: {
         songId,
-        id: songId,
-        _id: songId,
         song: currentSong,
         isLiked: !isLiked,
         timestamp: Date.now(),

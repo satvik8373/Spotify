@@ -332,14 +332,14 @@ const MusicPlayer = () => {
                 {formatTime(currentTime)}
               </span>
               <div className="flex-1 relative py-1">
-                <Slider
-                  value={[currentTime]}
-                  min={0}
-                  max={duration || 1}
-                  step={0.1}
-                  className="flex-1"
-                  onValueChange={handleSeek}
-                />
+              <Slider
+                value={[currentTime]}
+                min={0}
+                max={duration || 1}
+                step={0.1}
+                className="flex-1"
+                onValueChange={handleSeek}
+              />
                 <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
               </div>
               <span className="text-xs text-zinc-500 w-8">{formatTime(duration)}</span>
@@ -358,14 +358,14 @@ const MusicPlayer = () => {
               {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume className="h-4 w-4" />}
             </Button>
             <div className="flex-1 relative py-1">
-              <Slider
-                value={[volume]}
-                min={0}
-                max={1}
-                step={0.01}
-                className="flex-1"
-                onValueChange={value => setVolume(value[0])}
-              />
+            <Slider
+              value={[volume]}
+              min={0}
+              max={1}
+              step={0.01}
+              className="flex-1"
+              onValueChange={value => setVolume(value[0])}
+            />
               <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
             </div>
           </div>

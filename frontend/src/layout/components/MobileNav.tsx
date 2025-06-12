@@ -204,8 +204,18 @@ const MobileNav = () => {
       // Optimistically update UI
       setSongLiked(!songLiked);
       
-      // Perform the actual toggle
-      toggleLikeSong(currentSong);
+      // Perform the actual toggle with the correct song format
+      toggleLikeSong({
+        _id: songId,
+        title: currentSong.title,
+        artist: currentSong.artist,
+        albumId: currentSong.albumId || null,
+        imageUrl: currentSong.imageUrl || '',
+        audioUrl: currentSong.audioUrl,
+        duration: currentSong.duration || 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
       
       // Also dispatch a direct event for immediate notification
       document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
@@ -433,11 +443,11 @@ const MobileNav = () => {
                 onClick={handleSongTap}
               >
                 <div className="liquid-glass-album h-10 w-10 flex-shrink-0 overflow-hidden">
-                  <img 
-                    src={currentSong.imageUrl} 
-                    alt={currentSong.title} 
+                <img 
+                  src={currentSong.imageUrl} 
+                  alt={currentSong.title} 
                     className="w-full h-full object-cover"
-                  />
+                />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-white truncate">{currentSong.title}</p>
@@ -531,10 +541,10 @@ const MobileNav = () => {
                 'flex items-center justify-center h-6 w-6 mb-1 rounded-full',
                 isActive(item.path) && 'liquid-glass-button'
               )}>
-                <item.icon className={cn(
+              <item.icon className={cn(
                   'h-4 w-4', 
                   isActive(item.path) ? 'text-green-500' : 'text-zinc-400'
-                )} />
+              )} />
               </div>
               <span className="text-[10px] font-medium">{item.label}</span>
             </Link>

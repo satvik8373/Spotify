@@ -98,21 +98,37 @@ const PlaybackControls = () => {
     if (!currentSong) return;
     
     try {
+      // Get the song ID consistently
+      const songId = currentSong._id;
+      
+      // Optimistically update UI
+      setIsLiked(!isLiked);
+      
       if (isLiked) {
-        await removeLikedSong(currentSong._id);
+        await removeLikedSong(songId);
       } else {
         await addLikedSong({
-          id: currentSong._id,
+          id: songId,
           title: currentSong.title,
           artist: currentSong.artist,
-          imageUrl: currentSong.imageUrl || '', // Provide fallback for empty URLs
+          imageUrl: currentSong.imageUrl || '', 
           audioUrl: currentSong.audioUrl,
           duration: currentSong.duration || 0,
-          albumName: currentSong.albumId || '' // Using albumId instead of album
+          albumName: currentSong.albumId || ''
         });
       }
       
-      setIsLiked(!isLiked);
+      // Dispatch events to update all components
+      document.dispatchEvent(new Event('likedSongsUpdated'));
+      document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
+        detail: {
+          songId,
+          song: currentSong,
+          isLiked: !isLiked,
+          timestamp: Date.now(),
+          source: 'PlaybackControls'
+        }
+      }));
     } catch (error) {
       console.error("Error toggling like status:", error);
     }
@@ -122,13 +138,13 @@ const PlaybackControls = () => {
     <div className="px-2 py-2 playback-controls-glass flex flex-col">
       <div className="w-full px-2 pb-1">
         <div className="relative py-1">
-          <Slider
-            value={[currentTime]}
-            max={duration}
-            step={1}
-            onValueChange={handleSeek}
-            className="cursor-pointer"
-          />
+        <Slider
+          value={[currentTime]}
+          max={duration}
+          step={1}
+          onValueChange={handleSeek}
+          className="cursor-pointer"
+        />
           <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
         </div>
         <div className="flex justify-between text-xs text-zinc-400 mt-1">
@@ -182,13 +198,13 @@ const PlaybackControls = () => {
           </button>
           
           <div className="relative w-24">
-            <Slider
-              value={[isMuted ? 0 : volume]}
-              max={100}
-              step={1}
-              onValueChange={handleVolumeChange}
-              className="w-24"
-            />
+          <Slider
+            value={[isMuted ? 0 : volume]}
+            max={100}
+            step={1}
+            onValueChange={handleVolumeChange}
+            className="w-24"
+          />
             <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
           </div>
         </div>

@@ -157,34 +157,7 @@ const IndianMusicPlayer = () => {
     
     const initialLoadTimeout = setTimeout(loadLikedSongsDebounced, 500);
     
-    const handleLikedSongsUpdated = (e: Event) => {
-      // Check if the event has detailed information
-      if (e instanceof CustomEvent && e.detail) {
-        // If we have a specific song ID update
-        if (e.detail.songId || e.detail.id) {
-          const songId = e.detail.songId || e.detail.id;
-          const isLiked = e.detail.isLiked;
-          
-          // Update just that specific song's like status
-          setLikedSongIds(prev => {
-            const newSet = new Set(prev);
-            if (isLiked === true) {
-              newSet.add(songId);
-            } else if (isLiked === false) {
-              newSet.delete(songId);
-            }
-            return newSet;
-          });
-        } else {
-          // No specific song info, reload all
-          loadLikedSongsDebounced();
-        }
-      } else {
-        // No detailed event info, reload all
-        loadLikedSongsDebounced();
-      }
-    };
-    
+    const handleLikedSongsUpdated = () => loadLikedSongsDebounced();
     document.addEventListener('likedSongsUpdated', handleLikedSongsUpdated);
     
     return () => {
@@ -301,32 +274,6 @@ const IndianMusicPlayer = () => {
           newSet.delete(songId);
           return newSet;
         });
-        
-        // Dispatch detailed events for better listener handling
-        document.dispatchEvent(new CustomEvent('likedSongsUpdated', { 
-          detail: {
-            songId: songId,
-            id: songId,
-            _id: songId,
-            song: song,
-            isLiked: false,
-            timestamp: Date.now(),
-            source: 'IndianMusicPlayer'
-          }
-        }));
-        
-        document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
-          detail: {
-            songId: songId,
-            id: songId,
-            _id: songId,
-            song: song,
-            isLiked: false,
-            timestamp: Date.now(),
-            source: 'IndianMusicPlayer'
-          }
-        }));
-        
         toast.success(`Removed "${song.title}" from Liked Songs`);
       } else {
         // Add to liked songs - Convert to required format for addLikedSong
@@ -340,32 +287,6 @@ const IndianMusicPlayer = () => {
         };
         addLikedSong(likedSong);
         setLikedSongIds(prev => new Set([...prev, songId]));
-        
-        // Dispatch detailed events for better listener handling
-        document.dispatchEvent(new CustomEvent('likedSongsUpdated', { 
-          detail: {
-            songId: songId,
-            id: songId,
-            _id: songId,
-            song: song,
-            isLiked: true,
-            timestamp: Date.now(),
-            source: 'IndianMusicPlayer'
-          }
-        }));
-        
-        document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
-          detail: {
-            songId: songId,
-            id: songId,
-            _id: songId,
-            song: song,
-            isLiked: true,
-            timestamp: Date.now(),
-            source: 'IndianMusicPlayer'
-          }
-        }));
-        
         toast.success(`Added "${song.title}" to Liked Songs`);
       }
     } catch (error) {

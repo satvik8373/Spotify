@@ -286,13 +286,9 @@ const LikedSongsPage = () => {
     setLikedSongs(prev => prev.filter(song => song.id !== id));
     
     // Dispatch detailed events for better listener handling
-    // First ensure we're using a consistent ID format that all components can recognize
-    // Use BOTH possible ID formats (id and _id) to ensure all components receive the update
     document.dispatchEvent(new CustomEvent('likedSongsUpdated', { 
       detail: {
         songId: id,
-        _id: id, // Add the _id field to ensure compatibility with components expecting this format
-        id: id,  // Add explicit id field for components expecting this format
         isLiked: false,
         timestamp: Date.now(),
         source: 'LikedSongsPage'
@@ -302,8 +298,6 @@ const LikedSongsPage = () => {
     document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
       detail: {
         songId: id,
-        _id: id, // Add the _id field to ensure compatibility with components expecting this format
-        id: id,  // Add explicit id field for components expecting this format
         isLiked: false,
         timestamp: Date.now(),
         source: 'LikedSongsPage'
