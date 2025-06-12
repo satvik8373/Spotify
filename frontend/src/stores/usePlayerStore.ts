@@ -219,6 +219,35 @@ export const usePlayerStore = create<PlayerState>()(
                   // Ignore position state errors
                 }
               }
+              
+              // Re-register media session handlers for better reliability in background
+              navigator.mediaSession.setActionHandler('nexttrack', () => {
+                // Directly access the store to avoid closure issues
+                const store = get();
+                store.setUserInteracted();
+                store.playNext();
+              });
+              
+              navigator.mediaSession.setActionHandler('previoustrack', () => {
+                // Directly access the store to avoid closure issues
+                const store = get();
+                store.setUserInteracted();
+                store.playPrevious();
+              });
+              
+              navigator.mediaSession.setActionHandler('play', () => {
+                set({ isPlaying: true });
+                if (audio.paused) {
+                  audio.play().catch(() => {});
+                }
+              });
+              
+              navigator.mediaSession.setActionHandler('pause', () => {
+                set({ isPlaying: false });
+                if (!audio.paused) {
+                  audio.pause();
+                }
+              });
             }
           }
         };
@@ -228,6 +257,16 @@ export const usePlayerStore = create<PlayerState>()(
         
         // And also after a small delay to ensure it works in lock screen
         setTimeout(playNextAudio, 50);
+        
+        // Additional attempts with increasing delays for better reliability
+        [200, 500, 1000].forEach(delay => {
+          setTimeout(() => {
+            const audio = document.querySelector('audio');
+            if (audio && audio.paused && !audio.ended) {
+              audio.play().catch(() => {});
+            }
+          }, delay);
+        });
         
         // Save to localStorage as a backup
         try {

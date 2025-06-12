@@ -1602,6 +1602,49 @@ const AudioPlayer = () => {
               });
             } catch (e) {}
           }
+          
+          // Ensure media session handlers are registered
+          navigator.mediaSession.setActionHandler('nexttrack', () => {
+            // Mark user interaction to allow autoplay
+            usePlayerStore.getState().setUserInteracted();
+            // Call next from store directly with enhanced reliability
+            const state = usePlayerStore.getState();
+            state.playNext();
+            state.setIsPlaying(true);
+            
+            // Try to force audio to play with multiple attempts
+            const playAttempts = [0, 200, 500, 1000];
+            playAttempts.forEach(delay => {
+              setTimeout(() => {
+                const audio = document.querySelector('audio');
+                if (audio && audio.paused && !audio.ended) {
+                  audio.play().catch(() => {});
+                }
+              }, delay);
+            });
+          });
+          
+          // Re-register play/pause handlers for reliability
+          navigator.mediaSession.setActionHandler('play', () => {
+            usePlayerStore.getState().setIsPlaying(true);
+            const audio = document.querySelector('audio');
+            if (audio && audio.paused) {
+              audio.play().catch(() => {});
+            }
+          });
+          
+          navigator.mediaSession.setActionHandler('pause', () => {
+            usePlayerStore.getState().setIsPlaying(false);
+            const audio = document.querySelector('audio');
+            if (audio && !audio.paused) {
+              audio.pause();
+            }
+          });
+        }
+        
+        // If playing, make sure audio element is actually playing
+        if (isPlaying && audioRef.current && audioRef.current.paused && !audioRef.current.ended) {
+          audioRef.current.play().catch(() => {});
         }
       } else {
         // Page is visible again
@@ -1611,6 +1654,12 @@ const AudioPlayer = () => {
         if (isPlaying && audioRef.current?.paused && !audioRef.current?.ended) {
           console.log("Restarting paused audio after visibility change");
           audioRef.current.play().catch(() => {});
+        }
+        
+        // Check if we need to update the UI state based on actual audio element state
+        if (!isPlaying && audioRef.current && !audioRef.current.paused) {
+          // Audio is playing but our state says it's not - sync them
+          usePlayerStore.getState().setIsPlaying(true);
         }
       }
     };
@@ -1965,10 +2014,27 @@ const AudioPlayer = () => {
                   state.setUserInteracted();
                   state.playNext();
                   state.setIsPlaying(true);
+                  
+                  // For background/lock screen playback, we need to be more aggressive
+                  // in ensuring the audio element actually starts playing
+                  setTimeout(() => {
+                    const newAudio = document.querySelector('audio');
+                    if (newAudio && newAudio.paused) {
+                      // Try multiple times with increasing delays
+                      const playAttempts = [0, 100, 300, 700];
+                      playAttempts.forEach((delay) => {
+                        setTimeout(() => {
+                          if (newAudio.paused && !newAudio.ended) {
+                            newAudio.play().catch(() => {});
+                          }
+                        }, delay);
+                      });
+                    }
+                  }, 50);
                 }
                 // Reset flag after handling
                 (audio as any)._isHandlingEndOfSong = false;
-              }, 1000);
+              }, 800); // Reduced from 1000ms to 800ms to start transition sooner
             }
           } else {
             // Reset the flag when not at the end
@@ -2009,14 +2075,25 @@ const AudioPlayer = () => {
                 state.playNext();
                 state.setIsPlaying(true);
                 
-                // Force the audio element to update
-                const newAudio = document.querySelector('audio');
-                if (newAudio && newAudio.paused) {
-                  newAudio.play().catch(() => {});
-                }
+                // Force the audio element to update - use multiple attempts for reliability
+                // This is crucial for background/lock screen playback
+                const playAttempts = [0, 100, 300, 700, 1500];
+                playAttempts.forEach((delay) => {
+                  setTimeout(() => {
+                    const newAudio = document.querySelector('audio');
+                    if (newAudio && newAudio.paused && !newAudio.ended) {
+                      newAudio.play().catch(() => {});
+                      
+                      // Also update MediaSession for lock screen
+                      if (isMediaSessionSupported()) {
+                        navigator.mediaSession.playbackState = 'playing';
+                      }
+                    }
+                  }, delay);
+                });
               }
             }
-          }, 100);
+          }, 50); // Reduced from 100ms to 50ms for faster response
         }}
         onPause={() => {
           // Check if this is an unintended pause (like system-initiated)
