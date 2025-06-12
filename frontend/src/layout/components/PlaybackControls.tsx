@@ -91,9 +91,18 @@ export const PlaybackControls = () => {
 			
 			// Check if this event includes details about which song was updated
 			if (e instanceof CustomEvent && e.detail) {
+				// Get all possible ID formats from the event
+				const eventSongId = e.detail.songId || e.detail.id || e.detail._id;
+				
 				// If we have details and it's not for our current song, ignore
-				if (e.detail.songId && e.detail.songId !== songId) {
-					return;
+				if (eventSongId && eventSongId !== songId) {
+					// Also check alternate ID formats
+					const alternateId = (currentSong as any).id === undefined ? 
+						currentSong._id : (currentSong as any).id;
+					
+					if (eventSongId !== alternateId) {
+						return; // Not our song, ignore
+					}
 				}
 				
 				// If we have explicit like state in the event, use it
@@ -104,8 +113,13 @@ export const PlaybackControls = () => {
 			}
 			
 			// Otherwise do a fresh check from the store
-			const freshCheck = songId ? likedSongIds?.has(songId) : false;
-			setIsLiked(freshCheck);
+			// Check both ID formats (id and _id) against the store
+			setIsLiked(
+				songId ? 
+					likedSongIds?.has(songId) || 
+					((currentSong as any).id !== undefined && likedSongIds?.has((currentSong as any).id)) : 
+					false
+			);
 		};
 		
 		document.addEventListener('likedSongsUpdated', handleLikeUpdate);
@@ -170,9 +184,12 @@ export const PlaybackControls = () => {
 		toggleLikeSong(currentSong);
 		
 		// Also dispatch a direct event for immediate notification
+		// Include both id and _id formats to ensure all components receive the update
 		document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
 			detail: {
 				songId,
+				id: songId,
+				_id: songId,
 				song: currentSong,
 				isLiked: !isLiked,
 				timestamp: Date.now(),

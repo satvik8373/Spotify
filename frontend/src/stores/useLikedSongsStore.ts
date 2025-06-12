@@ -176,8 +176,18 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
             });
           }
           
-          // Notify listeners through event
-          document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
+          // Notify listeners through event with consistent ID format
+          document.dispatchEvent(new CustomEvent('likedSongsUpdated', {
+            detail: {
+              songId: songId,
+              id: songId,
+              _id: songId,
+              song: song,
+              isLiked: true,
+              timestamp: Date.now(),
+              source: 'useLikedSongsStore'
+            }
+          }));
           
           // Success without notification
         } catch (error) {
@@ -216,8 +226,17 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
             });
           }
           
-          // Notify listeners through event
-          document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
+          // Notify listeners through event with consistent ID format
+          document.dispatchEvent(new CustomEvent('likedSongsUpdated', {
+            detail: {
+              songId: songId,
+              id: songId,
+              _id: songId,
+              isLiked: false,
+              timestamp: Date.now(),
+              source: 'useLikedSongsStore'
+            }
+          }));
           
           // Success without notification
         } catch (error) {
@@ -248,6 +267,8 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Dispatch a CustomEvent with detailed information for better listener handling
           const detail = {
             songId,
+            id: songId,  // Add explicit id field for components expecting this format
+            _id: songId, // Add the _id field to ensure compatibility with components expecting this format
             song,
             isLiked: !isLiked,
             timestamp: Date.now()
