@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { Button } from './ui/button';
+import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { 
   ChevronDown, 
   Heart, 
@@ -52,6 +53,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const [albumArtLoaded, setAlbumArtLoaded] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const albumColors = useAlbumColors(currentSong?.imageUrl);
   
   // Swipe handling
   const containerRef = useRef<HTMLDivElement>(null);
@@ -325,13 +327,16 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     <div
       ref={containerRef}
       className={cn(
-        'fixed inset-0 bg-gradient-to-b from-[#0b273b] via-[#081c2c] to-[#051525] z-50 transition-transform duration-500 flex flex-col',
+        'fixed inset-0 z-50 transition-transform duration-500 flex flex-col',
         isOpen ? 'translate-y-0' : 'translate-y-full'
       )}
       style={{ 
         transform: isOpen 
           ? `translateY(${swipeOffset.y}px)` 
-          : 'translateY(100%)' 
+          : 'translateY(100%)',
+        background: albumColors.isLight
+          ? `linear-gradient(to bottom, ${albumColors.primary}, ${albumColors.secondary})`
+          : `linear-gradient(to bottom, ${albumColors.primary}, ${albumColors.secondary})`,
       }}
       onTouchStart={(e) => handleTouchStart(e, 'container')}
       onTouchMove={handleTouchMove}

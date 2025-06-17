@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, Laptop, Speaker, Smartphone, Tv, X } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import SongDetailsView from '@/components/SongDetailsView';
 import { signOut } from '@/services/hybridAuthService';
+import { useAlbumColors } from '@/hooks/useAlbumColors';
 
 /**
  * Mobile Navigation with Profile Menu and Lockscreen Controls
@@ -40,7 +41,7 @@ const MobileNav = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showTimeIndicators, setShowTimeIndicators] = useState(false);
-  const [showDevices, setShowDevices] = useState(false);
+  const albumColors = useAlbumColors(currentSong?.imageUrl);
   
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
@@ -288,37 +289,6 @@ const MobileNav = () => {
     }
   };
 
-  // Mock connected devices (in a real app, this would come from an API)
-  const connectedDevices = [
-    { id: '1', name: 'This device', type: 'smartphone', active: true },
-    { id: '2', name: 'Living Room TV', type: 'tv', active: false },
-    { id: '3', name: 'MacBook Pro', type: 'laptop', active: false }
-  ];
-  
-  // Get device icon based on type
-  const getDeviceIcon = (type: string) => {
-    switch (type) {
-      case 'smartphone':
-        return <Smartphone className="h-4 w-4" />;
-      case 'tv':
-        return <Tv className="h-4 w-4" />;
-      case 'laptop':
-        return <Laptop className="h-4 w-4" />;
-      case 'speaker':
-        return <Speaker className="h-4 w-4" />;
-      default:
-        return <Smartphone className="h-4 w-4" />;
-    }
-  };
-  
-  // Handle device selection
-  const handleSelectDevice = (deviceId: string) => {
-    // In a real app, you'd update the active device through an API
-    console.log(`Switching to device: ${deviceId}`);
-    // Close the devices panel
-    setShowDevices(false);
-  };
-
   return (
     <>
       {/* Song Details View */}
@@ -327,57 +297,9 @@ const MobileNav = () => {
         onClose={() => setShowSongDetails(false)} 
       />
       
-      {/* Connected Devices Panel */}
-      {showDevices && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
-          <div className="p-4 flex items-center justify-between border-b border-white/10">
-            <h2 className="text-white text-lg font-bold">Connect to a device</h2>
-            <button 
-              onClick={() => setShowDevices(false)}
-              className="text-white/70 p-1 rounded-full hover:bg-white/10"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-          
-          <div className="p-4 flex-1 overflow-auto">
-            <p className="text-white/60 text-sm mb-4">Select where you want your music to play</p>
-            
-            <div className="space-y-2">
-              {connectedDevices.map(device => (
-                <button
-                  key={device.id}
-                  className={cn(
-                    "w-full flex items-center gap-3 p-3 rounded-md",
-                    device.active 
-                      ? "bg-white/10 text-[#1ed760]" 
-                      : "text-white hover:bg-white/5"
-                  )}
-                  onClick={() => handleSelectDevice(device.id)}
-                >
-                  <div className={cn(
-                    "h-8 w-8 flex items-center justify-center rounded-full",
-                    device.active ? "bg-[#1ed760] text-black" : "bg-white/10"
-                  )}>
-                    {getDeviceIcon(device.type)}
-                  </div>
-                  <div className="text-left">
-                    <div className="font-medium">{device.name}</div>
-                    <div className="text-xs text-white/60">
-                      {device.active ? "Currently playing" : "Spotify Connect"}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Mobile Header - Spotify style */}
       <div className="fixed top-0 left-0 right-0 z-30 bg-zinc-900 md:hidden">
         <div className="flex items-center justify-end px-4 py-3">
-          {/* Logo and Search removed - Only showing profile */}
           {isAuthenticated ? (
             <div className="relative">
               <button 
@@ -427,48 +349,67 @@ const MobileNav = () => {
       {/* Bottom Navigation */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-30 mobile-nav-glass md:hidden",
+          "fixed bottom-0 left-0 right-0 z-30 mobile-nav-glass md:hidden transition-colors duration-500",
           hasActiveSong ? "player-active" : ""
         )}
         style={{
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
+          ...(hasActiveSong && {
+            backgroundColor: albumColors.isLight 
+              ? `${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.4)')}`
+              : `${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.4)')}`,
+          })
         }}
       >
         {/* Add mini player when song is active */}
         {hasActiveSong && (
-          <div className="flex flex-col justify-between mobile-player-glass">
+          <div 
+            className="flex flex-col justify-between mobile-player-glass transition-colors duration-500"
+            style={{
+              backgroundColor: albumColors.isLight
+                ? `${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.4)')}`
+                : `${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.4)')}`,
+              color: albumColors.isLight ? '#000' : '#fff'
+            }}
+          >
             <div className="flex items-center justify-between px-3 py-2">
               <div 
                 className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-zinc-800/30 rounded-md py-1"
                 onClick={handleSongTap}
               >
                 <div className="liquid-glass-album h-10 w-10 flex-shrink-0 overflow-hidden">
-                <img 
-                  src={currentSong.imageUrl} 
-                  alt={currentSong.title} 
+                  <img 
+                    src={currentSong.imageUrl} 
+                    alt={currentSong.title} 
                     className="w-full h-full object-cover"
-                />
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white truncate">{currentSong.title}</p>
-                  <p className="text-xs text-zinc-400 truncate">{currentSong.artist}</p>
+                  <p 
+                    className={cn(
+                      "text-sm font-medium truncate",
+                      albumColors.isLight ? "text-black" : "text-white"
+                    )}
+                  >
+                    {currentSong.title}
+                  </p>
+                  <p 
+                    className={cn(
+                      "text-xs truncate",
+                      albumColors.isLight ? "text-black/60" : "text-zinc-400"
+                    )}
+                  >
+                    {currentSong.artist}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center">
-                {/* Connected Devices Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDevices(true);
-                  }}
-                  className="liquid-glass-button mr-2 h-7 w-7 flex items-center justify-center flex-shrink-0 text-zinc-400"
-                >
-                  <Speaker className="h-4 w-4" />
-                </button>
-                
                 <button
                   onClick={handleLikeToggle}
-                  className={`liquid-glass-button mr-2 h-7 w-7 flex items-center justify-center flex-shrink-0 ${songLiked ? 'text-green-500' : 'text-zinc-400'}`}
+                  className={cn(
+                    "liquid-glass-button mr-2 h-7 w-7 flex items-center justify-center flex-shrink-0",
+                    songLiked ? "text-green-500" : albumColors.isLight ? "text-black/60" : "text-zinc-400"
+                  )}
                 >
                   <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
                 </button>
@@ -477,12 +418,15 @@ const MobileNav = () => {
                     e.stopPropagation();
                     usePlayerStore.getState().togglePlay();
                   }}
-                  className="liquid-glass-primary h-8 w-8 flex items-center justify-center flex-shrink-0"
+                  className={cn(
+                    "liquid-glass-primary h-8 w-8 flex items-center justify-center flex-shrink-0",
+                    albumColors.isLight ? "bg-black/10" : "bg-white/10"
+                  )}
                 >
                   {isPlaying ? (
-                    <Pause className="h-4 w-4 text-white" />
+                    <Pause className={cn("h-4 w-4", albumColors.isLight ? "text-black" : "text-white")} />
                   ) : (
-                    <Play className="h-4 w-4 text-white translate-x-0.5" />
+                    <Play className={cn("h-4 w-4 translate-x-0.5", albumColors.isLight ? "text-black" : "text-white")} />
                   )}
                 </button>
               </div>
@@ -499,7 +443,14 @@ const MobileNav = () => {
               <div className="h-6 w-full absolute bottom-0 opacity-0">
                 {/* Invisible touch target to make seeking easier */}
               </div>
-              <div className="h-[3px] w-full bg-[#0b3d59]/40 relative">
+              <div 
+                className="h-[3px] w-full relative transition-colors duration-500"
+                style={{
+                  backgroundColor: albumColors.isLight 
+                    ? 'rgba(0, 0, 0, 0.2)' 
+                    : 'rgba(255, 255, 255, 0.2)'
+                }}
+              >
                 <div 
                   className="h-full bg-green-500" 
                   style={{ width: `${progress || 0}%` }}
@@ -516,7 +467,12 @@ const MobileNav = () => {
               
               {/* Time indicators - conditionally shown */}
               {showTimeIndicators && (
-                <div className="flex justify-between px-3 py-1 text-[10px] text-white/60">
+                <div 
+                  className={cn(
+                    "flex justify-between px-3 py-1 text-[10px]",
+                    albumColors.isLight ? "text-black/60" : "text-white/60"
+                  )}
+                >
                   <span>{formatTime(currentTime || 0)}</span>
                   <span>{formatTime(duration || 0)}</span>
                 </div>
@@ -525,7 +481,7 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-14">
+        <div className="grid grid-cols-4 h-14 bg-zinc-900">
           {navItems.map(item => (
             <Link
               key={item.path}
@@ -533,7 +489,7 @@ const MobileNav = () => {
               className={cn(
                 'flex flex-col items-center justify-center py-1.5 transition-colors',
                 isActive(item.path) 
-                  ? 'text-white' 
+                  ? 'text-white'
                   : 'text-zinc-400 hover:text-zinc-200'
               )}
             >
@@ -541,10 +497,10 @@ const MobileNav = () => {
                 'flex items-center justify-center h-6 w-6 mb-1 rounded-full',
                 isActive(item.path) && 'liquid-glass-button'
               )}>
-              <item.icon className={cn(
+                <item.icon className={cn(
                   'h-4 w-4', 
                   isActive(item.path) ? 'text-green-500' : 'text-zinc-400'
-              )} />
+                )} />
               </div>
               <span className="text-[10px] font-medium">{item.label}</span>
             </Link>
