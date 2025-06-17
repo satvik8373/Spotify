@@ -3,6 +3,7 @@ const CACHE_VERSION = '1.2.4'; // Increment this version whenever you make chang
 const CACHE_NAME = `spotify-mavrix-v${CACHE_VERSION}`;
 const APP_SHELL_CACHE = 'app-shell-v' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'dynamic-v' + CACHE_VERSION;
+const OFFLINE_URL = '/offline.html';
 
 // Resources to cache immediately 
 const STATIC_ASSETS = [
@@ -140,12 +141,41 @@ self.addEventListener('message', (event) => {
       });
     });
   }
+
+  // Handle background audio
+  if (event.data && event.data.type === 'AUDIO_STATE') {
+    // Update notification with current track info
+    if (self.registration.showNotification) {
+      self.registration.showNotification('Now Playing', {
+        body: `${event.data.title} - ${event.data.artist}`,
+        icon: event.data.imageUrl,
+        badge: '/icons/icon-96x96.png',
+        tag: 'music-playback',
+        actions: [
+          { action: 'previous', title: 'Previous' },
+          { action: 'pause', title: event.data.isPlaying ? 'Pause' : 'Play' },
+          { action: 'next', title: 'Next' }
+        ],
+        silent: true
+      });
+    }
+  }
 });
 
 // Fetch event - serve from cache or network
 self.addEventListener('fetch', (event) => {
   // Skip API requests and Chrome extensions
   if (EXCLUDE_FROM_CACHE.some(url => event.request.url.includes(url))) {
+    return;
+  }
+
+  // Skip cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // Handle audio files differently - no caching for now
+  if (event.request.url.includes('/audio/')) {
     return;
   }
 
@@ -202,7 +232,7 @@ self.addEventListener('fetch', (event) => {
         // Otherwise try to fetch from network
         return fetch(event.request)
           .then((response) => {
-            // Don't cache if not a valid response
+            // Check if we received a valid response
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
@@ -219,11 +249,10 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => {
-            // If both cache and network fail, serve a fallback for image resources
-            if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg|webp)$/)) {
-              return caches.match('/pwa-icons/spotify-mavrix-icon.svg');
+            // If the network is unavailable, try to return the offline page
+            if (event.request.mode === 'navigate') {
+              return caches.match(OFFLINE_URL);
             }
-            return null;
           });
       })
   );
@@ -320,4 +349,37 @@ async function syncLikedSongs() {
   } catch (error) {
     console.error('Error syncing liked songs:', error);
   }
-} 
+}
+
+// Handle notification actions
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  if (event.action === 'previous') {
+    clients.matchAll().then((clients) => {
+      clients.forEach((client) => client.postMessage({ type: 'PLAYBACK_CONTROL', action: 'previous' }));
+    });
+  } else if (event.action === 'pause') {
+    clients.matchAll().then((clients) => {
+      clients.forEach((client) => client.postMessage({ type: 'PLAYBACK_CONTROL', action: 'toggle' }));
+    });
+  } else if (event.action === 'next') {
+    clients.matchAll().then((clients) => {
+      clients.forEach((client) => client.postMessage({ type: 'PLAYBACK_CONTROL', action: 'next' }));
+    });
+  } else {
+    // If clicked on the notification itself, focus/open the web app
+    event.waitUntil(
+      clients.matchAll({ type: 'window' }).then((clientList) => {
+        for (const client of clientList) {
+          if (client.url === '/' && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow('/');
+        }
+      })
+    );
+  }
+}); 

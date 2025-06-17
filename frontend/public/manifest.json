@@ -1,62 +1,82 @@
 {
-  "name": "Spotify x Mavrix",
-  "short_name": "Spotify x Mavrix",
-  "description": "A premium Spotify experience with real-time features and enhanced music discovery",
+  "name": "Spotify Clone",
+  "short_name": "Spotify",
+  "description": "A modern music streaming experience",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#121212",
+  "background_color": "#000000",
   "theme_color": "#1DB954",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "/spotify-icon-192.png",
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
       "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "purpose": "any"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/spotify-icon-512.png",
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
       "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
-      "src": "/spotify-icon-maskable-192.png",
       "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/spotify-icon-maskable-512.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "shortcuts": [
     {
-      "name": "Liked Songs",
-      "short_name": "Liked",
-      "description": "View your liked songs",
-      "url": "/liked-songs",
-      "icons": [
-        {
-          "src": "/shortcut-liked-96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "name": "Home",
+      "url": "/home",
+      "icons": [{ "src": "/icons/home.png", "sizes": "96x96" }]
     },
     {
       "name": "Search",
-      "short_name": "Search",
-      "description": "Search for music",
       "url": "/search",
-      "icons": [
-        {
-          "src": "/shortcut-search-96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "icons": [{ "src": "/icons/search.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Library",
+      "url": "/library",
+      "icons": [{ "src": "/icons/library.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Liked Songs",
+      "url": "/liked-songs",
+      "icons": [{ "src": "/icons/liked.png", "sizes": "96x96" }]
     }
   ],
   "screenshots": [
