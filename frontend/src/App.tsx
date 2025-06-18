@@ -51,20 +51,23 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   
   // Check if we previously saved auth info in localStorage as a quick check
-  // before the full authentication process completes
   const hasCachedAuth = Boolean(
     localStorage.getItem('auth-store') && 
     JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
   );
 
-  // Don't redirect while auth is still loading
+  // If we have cached auth, immediately render children
+  if (hasCachedAuth) {
+    return <>{children}</>;
+  }
+
+  // If authenticated through context, render children
+  if (isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  // Show minimal loading only if still checking auth and no cached auth
   if (loading) {
-    // If we have cached auth, render children optimistically
-    if (hasCachedAuth) {
-      return <>{children}</>;
-    }
-    
-    // Otherwise show loading indicator
     return (
       <div className="flex items-center justify-center h-screen bg-zinc-900">
         <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-green-500"></div>
@@ -72,14 +75,8 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // If not authenticated, redirect to login with return URL
-  if (!isAuthenticated) {
-    // Store the redirect path so we can redirect back after login
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
-  }
-
-  // User is authenticated, render children
-  return <>{children}</>;
+  // Not authenticated, redirect to login with return URL
+  return <Navigate to="/login" state={{ from: location.pathname }} replace />;
 };
 
 // Landing page router redirector - checks auth status and redirects accordingly
@@ -90,13 +87,18 @@ const LandingRedirector = () => {
     JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
   );
   
-  // If we have cached auth or are authenticated, redirect to home
-  if (hasCachedAuth || isAuthenticated) {
+  // If we have cached auth, immediately redirect to home without waiting
+  if (hasCachedAuth) {
     return <Navigate to="/home" replace />;
   }
   
-  // Still loading, but no cached auth - show loading indicator
-  if (loading && !hasCachedAuth) {
+  // If authenticated through context, redirect to home
+  if (isAuthenticated) {
+    return <Navigate to="/home" replace />;
+  }
+  
+  // Still loading and no cached auth - show minimal loading
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-zinc-900">
         <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-green-500"></div>
@@ -175,10 +177,8 @@ function AppContent() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// Minimal initialization delay
-				setTimeout(() => {
-					setInitialized(true);
-				}, 100);
+				// Minimal initialization delay - almost immediate
+				setInitialized(true);
 			} catch (error) {
 				console.error("Error initializing app:", error);
 				// Continue anyway in case of initialization errors
