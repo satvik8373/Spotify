@@ -8,7 +8,6 @@ import { Toaster } from 'react-hot-toast';
 import AlbumPage from './pages/album/AlbumPage';
 import { PlaylistPage } from './pages/playlist/PlaylistPage';
 import { useState, useEffect } from "react";
-import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 // @ts-ignore
 import ApiDebugPage from './pages/debug/ApiDebugPage.jsx';
@@ -170,31 +169,16 @@ const router = createBrowserRouter(
 );
 
 function AppContent() {
-	const [showSplash, setShowSplash] = useState(true);
 	const [initialized, setInitialized] = useState(false);
 	
 	// Initialize Firestore data and check if user is already logged in
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// Check for cached authentication
-				const hasCachedAuth = Boolean(
-					localStorage.getItem('auth-store') && 
-					JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
-				);
-				
-				// Reduce splash screen time for logged-in users
-				if (hasCachedAuth) {
-					// For logged-in users, reduce splash screen time to minimum
-					setTimeout(() => {
-						setInitialized(true);
-					}, 500); // Reduce to just 500ms for authenticated users
-				} else {
-					// For new visitors, keep the normal timing
-					setTimeout(() => {
-						setInitialized(true);
-					}, 1000);
-				}
+				// Minimal initialization delay
+				setTimeout(() => {
+					setInitialized(true);
+				}, 100);
 			} catch (error) {
 				console.error("Error initializing app:", error);
 				// Continue anyway in case of initialization errors
@@ -205,9 +189,13 @@ function AppContent() {
 		initializeApp();
 	}, []);
 	
-	// Always show splash screen on initial load until initialization completes
-	if (showSplash || !initialized) {
-		return <SplashScreen onComplete={() => initialized && setShowSplash(false)} />;
+	// Show loading indicator while initializing
+	if (!initialized) {
+		return (
+			<div className="flex items-center justify-center h-screen bg-zinc-900">
+				<div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-green-500"></div>
+			</div>
+		);
 	}
 	
 	// Always show main app content, login will be handled in the header
