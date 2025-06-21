@@ -867,7 +867,7 @@ const HomePage = () => {
                     const convertedSong = {
                       _id: song.id,
                       title: song.title,
-                      artist: song.artist || 'Unknown Artist',
+                      artist: song.artist || 'Artist-Mavrix',
                       albumId: null,
                       imageUrl: song.image,
                       audioUrl: song.url || '',

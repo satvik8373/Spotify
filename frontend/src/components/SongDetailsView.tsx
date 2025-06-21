@@ -35,6 +35,73 @@ const formatTime = (seconds: number) => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
 
+// Create a new component for marquee text animation with automatic scrolling
+const AutoScrollMarquee = ({ text, className }: { text: string, className?: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const [shouldScroll, setShouldScroll] = useState(false);
+  const [scrollDistance, setScrollDistance] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detect mobile devices
+  useEffect(() => {
+    const checkMobile = () => {
+      // Check for mobile devices based on screen width and touch capability
+      const isMobileDevice = window.innerWidth < 768 || 
+        ('ontouchstart' in window) || 
+        (navigator.maxTouchPoints > 0);
+      setIsMobile(isMobileDevice);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  // Check if text is overflowing and needs animation
+  useEffect(() => {
+    if (containerRef.current && textRef.current) {
+      const container = containerRef.current;
+      const textEl = textRef.current;
+      
+      // Check if text overflows its container
+      const isOverflowing = textEl.scrollWidth > container.clientWidth;
+      
+      // Calculate scroll distance if needed
+      if (isOverflowing) {
+        const distance = -(textEl.scrollWidth - container.clientWidth);
+        setScrollDistance(distance);
+        setShouldScroll(true);
+      } else {
+        setShouldScroll(false);
+      }
+    }
+  }, [text]);
+  
+  return (
+    <div 
+      ref={containerRef}
+      className={cn("text-auto-scroll", className)}
+    >
+      <div
+        ref={textRef}
+        className={cn(
+          "text-auto-scroll-inner",
+          shouldScroll && (isMobile ? true : "hover:scrolling") && "scrolling"
+        )}
+        style={
+          shouldScroll ? {
+            '--max-scroll': `${scrollDistance}px`
+          } as React.CSSProperties : 
+          undefined
+        }
+      >
+        {text}
+      </div>
+    </div>
+  );
+};
+
 const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const { 
     currentSong, 
@@ -531,8 +598,17 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         <div className="mt-6 flex-1 flex flex-col min-h-0">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <h1 className="text-xl font-bold truncate text-white">{currentSong.title}</h1>
-              <p className="text-sm text-white/70 mt-0.5">{currentSong.artist}</p>
+              {/* Song title with marquee effect for long titles */}
+              <AutoScrollMarquee
+                text={currentSong.title || 'Unknown Title'}
+                className="text-2xl md:text-3xl font-bold mb-1"
+              />
+              
+              {/* Artist name with marquee effect */}
+              <AutoScrollMarquee
+                text={currentSong.artist || 'Unknown Artist'}
+                className="text-lg text-white/70"
+              />
             </div>
             <Button
               variant="ghost"

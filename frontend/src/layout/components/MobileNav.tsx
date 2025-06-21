@@ -349,11 +349,13 @@ const MobileNav = () => {
       {/* Bottom Navigation */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-30 mobile-nav-glass md:hidden transition-colors duration-500",
+          "fixed bottom-0 left-0 right-0 z-30 mobile-nav-glass md:hidden transition-colors duration-500 border-t border-zinc-800/80 shadow-lg",
           hasActiveSong ? "player-active" : ""
         )}
         style={{
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
           ...(hasActiveSong && {
             backgroundColor: albumColors.isLight 
               ? `${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.4)')}`
@@ -481,28 +483,35 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-14 bg-zinc-900">
+        <div className="grid grid-cols-4 h-16 bg-zinc-900">
           {navItems.map(item => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                'flex flex-col items-center justify-center py-1.5 transition-colors',
+                'flex flex-col items-center justify-center py-1 transition-colors',
                 isActive(item.path) 
                   ? 'text-white'
                   : 'text-zinc-400 hover:text-zinc-200'
               )}
             >
-              <div className={cn(
-                'flex items-center justify-center h-6 w-6 mb-1 rounded-full',
-                isActive(item.path) && 'liquid-glass-button'
+                              <div className={cn(
+                'flex items-center justify-center h-8 w-8 mb-1 rounded-full transition-all',
+                isActive(item.path) 
+                  ? 'bg-gradient-to-br from-green-400 to-green-600 shadow-lg shadow-green-500/20 nav-icon-active' 
+                  : 'bg-zinc-800/80 hover:bg-zinc-700'
               )}>
                 <item.icon className={cn(
                   'h-4 w-4', 
-                  isActive(item.path) ? 'text-green-500' : 'text-zinc-400'
+                  isActive(item.path) ? 'text-white' : 'text-zinc-400'
                 )} />
               </div>
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className={cn(
+                "text-[11px] font-medium tracking-tight transition-all",
+                isActive(item.path) 
+                  ? "text-white drop-shadow-md" 
+                  : "text-zinc-500"
+              )}>{item.label}</span>
             </Link>
           ))}
         </div>

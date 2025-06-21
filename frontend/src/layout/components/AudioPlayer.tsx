@@ -30,6 +30,73 @@ const formatTime = (seconds: number) => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
 
+// Create a new component for marquee text animation
+const MarqueeText = ({ text, className }: { text: string, className?: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const [shouldScroll, setShouldScroll] = useState(false);
+  const [scrollDistance, setScrollDistance] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile devices
+  useEffect(() => {
+    const checkMobile = () => {
+      // Check for mobile devices based on screen width and touch capability
+      const isMobileDevice = window.innerWidth < 768 || 
+        ('ontouchstart' in window) || 
+        (navigator.maxTouchPoints > 0);
+      setIsMobile(isMobileDevice);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Check if text is overflowing and needs animation
+  useEffect(() => {
+    if (containerRef.current && textRef.current) {
+      const container = containerRef.current;
+      const textEl = textRef.current;
+      
+      // Check if text overflows its container
+      const isOverflowing = textEl.scrollWidth > container.clientWidth;
+      
+      // Calculate scroll distance if needed
+      if (isOverflowing) {
+        const distance = -(textEl.scrollWidth - container.clientWidth);
+        setScrollDistance(distance);
+        setShouldScroll(true);
+      } else {
+        setShouldScroll(false);
+      }
+    }
+  }, [text]);
+  
+  return (
+    <div 
+      ref={containerRef}
+      className={cn("text-auto-scroll", className)}
+    >
+      <div
+        ref={textRef}
+        className={cn(
+          "text-auto-scroll-inner",
+          shouldScroll && (isMobile ? true : "hover:scrolling") && "scrolling"
+        )}
+        style={
+          shouldScroll ? {
+            '--max-scroll': `${scrollDistance}px`
+          } as React.CSSProperties : 
+          undefined
+        }
+      >
+        {text}
+      </div>
+    </div>
+  );
+};
+
 // Check if MediaSession API is supported
 const isMediaSessionSupported = () => {
   return 'mediaSession' in navigator;
@@ -1887,8 +1954,14 @@ const AudioPlayer = () => {
 
                 {/* Song info */}
                 <div className="truncate min-w-0 flex-1">
-                  <h4 className="text-sm font-medium truncate">{currentSong.title || "Unknown Title"}</h4>
-                  <p className="text-xs text-zinc-400 truncate">{currentSong.artist || "Unknown Artist"}</p>
+                  <MarqueeText 
+                    text={currentSong.title || "Unknown Title"} 
+                    className="text-sm font-medium" 
+                  />
+                  <MarqueeText 
+                    text={currentSong.artist || "Unknown Artist"} 
+                    className="text-xs text-zinc-400" 
+                  />
                 </div>
               </>
             )}

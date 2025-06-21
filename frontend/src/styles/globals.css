@@ -11,6 +11,62 @@
   transition: color 0.5s ease-in-out, background-color 0.5s ease-in-out, opacity 0.5s ease-in-out;
 }
 
+/* Marquee animations for long text */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(var(--scroll-distance, -100%));
+  }
+}
+
+.animate-marquee {
+  animation: marquee 10s linear infinite;
+  /* Control timing in component via style prop instead */
+  animation: none;
+}
+
+/* Auto scroll for text that's too long */
+.text-auto-scroll {
+  position: relative;
+  overflow: hidden;
+}
+
+.text-auto-scroll-inner {
+  white-space: nowrap;
+  transition: transform 3s ease-in-out;
+  will-change: transform;
+}
+
+.text-auto-scroll-inner.scrolling {
+  animation: scroll-text 8s linear infinite;
+  animation-delay: 1s;
+}
+
+/* Make scrolling activate on hover for desktop */
+@media (hover: hover) {
+  .text-auto-scroll:hover .text-auto-scroll-inner.hover\:scrolling {
+    animation: scroll-text 8s linear infinite;
+    animation-delay: 0.5s;
+  }
+}
+
+@keyframes scroll-text {
+  0% {
+    transform: translateX(0);
+  }
+  40% {
+    transform: translateX(var(--max-scroll, -40%));
+  }
+  60% {
+    transform: translateX(var(--max-scroll, -40%));
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
 /* Liquid glass effects */
 .liquid-glass-album {
   position: relative;
@@ -60,4 +116,39 @@
 
 .liquid-glass-primary:active {
   transform: scale(0.95);
+}
+
+/* Mobile Nav Animation */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px 0 rgba(74, 222, 128, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(74, 222, 128, 0.6);
+    transform: scale(1.05);
+  }
+}
+
+.nav-icon-active {
+  animation: pulse-glow 2s infinite;
+  transition: all 0.3s ease;
+}
+
+/* Mini Player Glass Effect */
+.mobile-nav-glass {
+  background-color: rgba(24, 24, 27, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Liquid Glass Buttons */
+.liquid-glass-button {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.liquid-glass-button:active {
+  transform: scale(0.94);
 } 

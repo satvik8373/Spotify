@@ -17,6 +17,7 @@
     "@capacitor/splash-screen": "^7.0.1",
     "cloudinary": "^2.6.0",
     "colorthief": "^2.6.0",
+    "framer-motion": "^12.18.1",
     "fs-extra": "^11.3.0",
     "node-fetch": "^2.7.0",
     "react-router-dom": "^6.30.0",
