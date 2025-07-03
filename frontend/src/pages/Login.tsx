@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { login, signInWithGoogle } from '@/services/hybridAuthService';
+import { login, signInWithGoogle, checkCurrentDomain } from '@/services/hybridAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -14,6 +14,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [domainStatus, setDomainStatus] = useState<{authorized: boolean, message: string} | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -32,6 +33,23 @@ const Login = () => {
       navigate(redirectTo, { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate, location.state]);
+  
+  // Check if current domain is authorized for Firebase authentication
+  useEffect(() => {
+    const checkDomain = async () => {
+      const status = await checkCurrentDomain();
+      setDomainStatus(status);
+      
+      // Log the message to console for debugging
+      if (!status.authorized) {
+        console.warn('Firebase Auth Domain Warning:', status.message);
+      } else {
+        console.log('Firebase Auth Domain Status:', status.message);
+      }
+    };
+    
+    checkDomain();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +99,20 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-black flex flex-col items-center">
       <div className="w-full max-w-md px-6 py-8">
+        {/* Domain warning banner */}
+        {domainStatus && !domainStatus.authorized && (
+          <div className="mb-4 p-3 bg-yellow-900/40 border border-yellow-800 rounded-md text-yellow-200 text-sm flex items-start gap-2">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium mb-1">Authentication Warning</p>
+              <p>{domainStatus.message}</p>
+              <p className="mt-1 text-xs">
+                If login fails, try using a standard browser instead of an in-app browser.
+              </p>
+            </div>
+          </div>
+        )}
+        
         <div className="flex items-center mb-8">
           <Button 
             variant="ghost" 
