@@ -496,22 +496,10 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
     // Cache check - prevent duplicate signins
     const cacheKey = `google:${Date.now()}`;
     
-    // Create a new GoogleAuthProvider instance with universal browser support
+    // Create a new GoogleAuthProvider instance with optimal settings
     const provider = new GoogleAuthProvider();
-    
-    // Add scopes for better auth data
-    provider.addScope('profile');
-    provider.addScope('email');
-    
-    // Configure provider with parameters that work in all browsers
-    provider.setCustomParameters({
-      // Force account selection even when one account is available
-      prompt: 'select_account',
-      // Allow redirect in WebView and mobile app browsers
-      display: 'popup',
-      // Enable multiple domains support
-      hd: '*'
-    });
+    // Add select_account to force the account picker every time
+    provider.setCustomParameters({ prompt: 'select_account' });
     
     // Start Firebase authentication
     const userCredential = await signInWithPopup(auth, provider);
@@ -589,23 +577,7 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
     return userProfile;
   } catch (error: any) {
     console.error("Error in Google login:", error);
-    
-    // Provide more helpful error messages for various browser environments
-    if (error.code === 'auth/popup-closed-by-user') {
-      throw new Error("Sign in was cancelled. Please try again.");
-    } else if (error.code === 'auth/popup-blocked') {
-      throw new Error("Sign in popup was blocked. Please allow popups for this site or try in a different browser.");
-    } else if (error.code === 'auth/cancelled-popup-request') {
-      throw new Error("Another sign in attempt is in progress. Please try again.");
-    } else if (error.code === 'auth/network-request-failed') {
-      throw new Error("Network error. Please check your internet connection and try again.");
-    } else if (error.code === 'auth/unauthorized-domain') {
-      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'unknown';
-      console.error(`Unauthorized domain: ${currentOrigin}`);
-      throw new Error(`This domain (${currentOrigin}) is not authorized for Firebase authentication. Please contact support.`);
-    } else {
-      throw new Error(error.message || "Failed to login with Google");
-    }
+    throw new Error(error.message || "Failed to login with Google");
   }
 };
 
@@ -643,51 +615,5 @@ export const refreshUserData = async (): Promise<UserProfile | null> => {
   } catch (error) {
     console.error("Error refreshing user data:", error);
     return null;
-  }
-};
-
-// Helper function to check if current domain is in Firebase authorized domains
-export const checkCurrentDomain = async () => {
-  try {
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : null;
-    if (!currentOrigin) return { authorized: false, message: 'Cannot determine current origin' };
-    
-    const hostname = new URL(currentOrigin).hostname;
-    
-    console.log(`Current origin: ${currentOrigin}`);
-    console.log(`Hostname: ${hostname}`);
-    
-    // List of known good domains that should work with Firebase
-    const knownDomains = [
-      'localhost',
-      '127.0.0.1',
-      'spotify-8fefc.firebaseapp.com',
-      'spotify-8fefc.web.app'
-    ];
-    
-    if (knownDomains.includes(hostname)) {
-      return { 
-        authorized: true, 
-        message: `Domain ${hostname} is a known authorized domain.` 
-      };
-    }
-    
-    // Check if it's an IP address (often used in testing)
-    const isIPAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
-    
-    if (isIPAddress) {
-      return { 
-        authorized: false, 
-        message: `${hostname} appears to be an IP address. Firebase authentication may not work. Add this IP to your Firebase authorized domains.` 
-      };
-    }
-    
-    return { 
-      authorized: false, 
-      message: `Domain ${hostname} may not be authorized in Firebase. If authentication fails, add this domain to your Firebase authorized domains list.` 
-    };
-  } catch (error) {
-    console.error("Error checking domain:", error);
-    return { authorized: false, message: 'Error checking domain authorization status' };
   }
 }; 

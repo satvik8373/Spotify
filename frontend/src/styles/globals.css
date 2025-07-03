@@ -116,7 +116,7 @@
 
 .liquid-glass-primary:active {
   transform: scale(0.95);
-}
+} 
 
 /* Mobile Nav Animation */
 @keyframes pulse-glow {

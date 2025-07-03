@@ -495,7 +495,7 @@ const MobileNav = () => {
                   : 'text-zinc-400 hover:text-zinc-200'
               )}
             >
-                              <div className={cn(
+              <div className={cn(
                 'flex items-center justify-center h-8 w-8 mb-1 rounded-full transition-all',
                 isActive(item.path) 
                   ? 'bg-gradient-to-br from-green-400 to-green-600 shadow-lg shadow-green-500/20 nav-icon-active' 

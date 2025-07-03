@@ -1,6 +1,6 @@
 // Import Firebase SDK
 import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged, User, setPersistence, browserLocalPersistence, connectAuthEmulator } from "firebase/auth";
+import { getAuth, onAuthStateChanged, User, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
@@ -20,28 +20,19 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Handle authentication in various browser environments
-const initializeAuthConfig = async () => {
+// Initialize persistence for auth - do this asynchronously
+const initializeAuth = async () => {
   try {
-    // Set persistent auth
     await setPersistence(auth, browserLocalPersistence);
-    
-    // Configure Firebase to accept auth from any domain
-    // This is important for mobile app webviews and other non-standard browsers
-    auth.useDeviceLanguage();
-    
-    // Set custom auth parameters for popup providers
-    auth.settings.appVerificationDisabledForTesting = process.env.NODE_ENV === 'development';
-    
-    console.log("Firebase auth configured for universal browser support");
+    console.log("Firebase persistence set to LOCAL");
   } catch (error) {
-    console.error("Error configuring Firebase auth:", error);
+    console.error("Error setting persistence:", error);
   }
 };
 
 // Call initialize function
-initializeAuthConfig().catch(error => {
-  console.error("Failed to initialize auth configuration:", error);
+initializeAuth().catch(error => {
+  console.error("Failed to initialize auth persistence:", error);
 });
 
 export const db = getFirestore(app);
@@ -70,11 +61,6 @@ export { analytics };
 // Auth state observer helper
 export const onAuthStateChangedHelper = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
-};
-
-// Helper function to get the current origin dynamically
-export const getCurrentOrigin = () => {
-  return typeof window !== 'undefined' ? window.location.origin : null;
 };
 
 export default app; 
