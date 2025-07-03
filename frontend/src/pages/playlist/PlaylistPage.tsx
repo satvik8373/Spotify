@@ -4,7 +4,9 @@ import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { useMusicStore } from '../../stores/useMusicStore';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useAlbumColors } from '../../hooks/useAlbumColors';
 import { Button } from '../../components/ui/button';
+import '../../styles/playlist-page.css';
 import {
   Play,
   Pencil,
@@ -22,7 +24,8 @@ import {
   Pause,
   Music2,
   Image as ImageIcon,
-  Volume2
+  Volume2,
+  ChevronLeft
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
@@ -314,6 +317,9 @@ export function PlaylistPage() {
   // New state for scroll behavior
   const [scrollPosition, setScrollPosition] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Get colors from album cover
+  const albumColors = useAlbumColors(currentPlaylist?.imageUrl);
 
   // Check if the current playlist is playing
   const isCurrentPlaylistPlaying = playerIsPlaying && 
@@ -321,6 +327,9 @@ export function PlaylistPage() {
 
   // Track shuffle state
   const [isShuffleOn, setIsShuffleOn] = useState(false);
+  
+  // Determine if we've scrolled enough to hide other buttons
+  const hasScrolled = scrollPosition > 150;
   
   // Keep shuffle state in sync with player store
   useEffect(() => {
@@ -333,6 +342,17 @@ export function PlaylistPage() {
     });
     
     return () => unsubscribe();
+  }, []);
+
+  // Hide mobile navigation when on playlist page
+  useEffect(() => {
+    // Add class to hide mobile nav
+    document.body.classList.add('hide-mobile-nav');
+    
+    // Cleanup function to remove class when leaving page
+    return () => {
+      document.body.classList.remove('hide-mobile-nav');
+    };
   }, []);
 
   useEffect(() => {
@@ -830,32 +850,53 @@ export function PlaylistPage() {
   const formattedTotalDuration = formatTime(totalDuration);
   const totalSongs = currentPlaylist.songs.length;
   
-  // Calculate dominant color for gradient based on playlist name (simulated)
-  const dominantColor = `hsl(${currentPlaylist.name.length * 10 % 360}, 70%, 50%)`;
+  // Calculate header opacity based on scroll position
+  const headerOpacity = Math.min(scrollPosition / 300, 1);
+  
+  // Convert rgba for header background
+  const headerBgColor = `rgba(${albumColors.primary.replace('rgb(', '').replace(')', '')}, ${Math.min(Math.max(headerOpacity * 0.85, 0.4), 0.85)})`;
+
+  // Handle back button click
+  const handleBackClick = () => {
+    navigate(-1);
+  };
 
   return (
-    <div className="flex flex-col h-full bg-[#121212] text-white">
+    <div className="flex flex-col h-full bg-[#121212] text-white playlist-fullscreen">
       {/* Main scrollable container */}
-      <div ref={containerRef} className="h-full overflow-y-auto">
+      <div ref={containerRef} className="h-full overflow-y-auto playlist-content">
+        {/* Back button - visible only when not scrolled */}
+        <div className={`absolute top-3 left-3 z-30 transition-opacity duration-300 ${hasScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-8 h-8 rounded-full text-white"
+            onClick={handleBackClick}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        </div>
+        
         {/* Spotify-style gradient header */}
         <div
-          className="relative pt-14 pb-6 px-4 sm:px-6" 
+          className="relative pt-12 pb-6 px-4 sm:px-6" 
           style={{
-            background: `linear-gradient(180deg, ${dominantColor} 0%, rgba(18, 18, 18, 0.8) 90%)`,
+            background: `linear-gradient(180deg, ${albumColors.primary} 0%, rgba(18, 18, 18, 0.8) 90%)`,
           }}
         >
-          <div className="flex flex-col md:flex-row items-center md:items-end gap-6 relative z-10 pb-4">
-            {/* Playlist cover image - larger on desktop */}
-            <div className="w-40 h-40 sm:w-56 sm:h-56 md:w-60 md:h-60 flex-shrink-0 shadow-2xl mx-auto md:mx-0 relative group">
+          <div className="flex flex-col md:flex-row items-start md:items-end gap-6 relative z-10 pb-4">
+            {/* Playlist cover image - shadow styling like Spotify - ENLARGED */}
+            <div className="w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 flex-shrink-0 shadow-xl mx-auto md:mx-0 relative group">
+              <div className="absolute inset-0 shadow-[0_8px_24px_rgba(0,0,0,0.5)] rounded"></div>
               <img
                 src={currentPlaylist.imageUrl || '/default-playlist.jpg'}
                 alt={currentPlaylist.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover relative z-10"
               />
               
               {/* Regenerate cover overlay - only for playlist owners */}
               {isOwner && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
                   <Button 
                     variant="ghost" 
                     className="text-white hover:bg-white/20"
@@ -864,14 +905,14 @@ export function PlaylistPage() {
                     <ImageIcon className="mr-2 h-4 w-4" />
                     Update Cover
                   </Button>
-            </div>
+                </div>
               )}
-              </div>
+            </div>
 
             {/* Playlist info */}
             <div className="flex flex-col justify-end text-white text-center md:text-left w-full">
               <p className="text-xs sm:text-sm uppercase font-medium mt-2">Playlist</p>
-              <h1 className="text-2xl sm:text-4xl md:text-7xl font-bold mt-2 mb-2 sm:mb-4 drop-shadow-md">
+              <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold mt-2 mb-2 sm:mb-4 drop-shadow-md tracking-tight">
                 {currentPlaylist.name}
               </h1>
               
@@ -882,27 +923,29 @@ export function PlaylistPage() {
               
               <div className="flex items-center gap-1 text-sm text-gray-300 justify-center md:justify-start flex-wrap">
                 <span className="font-medium text-white">{currentPlaylist.createdBy.fullName}</span>
-                <span>•</span>
+                <span className="mx-1">•</span>
                 <span>{metrics.likes} likes</span>
-                <span>•</span>
+                <span className="mx-1">•</span>
                 <span>{totalSongs} songs,</span>
-                <span className="text-gray-400">{formattedTotalDuration}</span>
+                <span className="text-gray-400 ml-1">{formattedTotalDuration}</span>
               </div>
             </div>
           </div>
-              </div>
+        </div>
 
-        {/* Action buttons - sticky header */}
-        <div className="sticky top-0 z-20 bg-gradient-to-b from-[#121212] to-[#121212]/95 px-4 sm:px-6 py-4 backdrop-blur-sm">
+        {/* Action buttons - sticky header without background color */}
+        <div 
+          className="sticky top-0 z-20 transition-colors duration-300 px-4 sm:px-6 py-4"
+        >
           <div className="flex items-center justify-between">
-            {/* Left side tools */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            {/* Left side tools - hidden when scrolled */}
+            <div className={`flex items-center gap-2 sm:gap-4 transition-opacity duration-300 ${hasScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
               {isOwner && (
                 <>
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="liquid-glass-button w-10 h-10 rounded-full text-gray-400 hover:text-white"
+                    className="w-10 h-10 rounded-full text-gray-200 hover:text-white transition-colors"
                     onClick={() => setShowEditDialog(true)}
                   >
                     <Pencil className="h-5 w-5" />
@@ -911,7 +954,7 @@ export function PlaylistPage() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="liquid-glass-button w-10 h-10 rounded-full text-gray-400 hover:text-white sm:hidden"
+                    className="w-10 h-10 rounded-full text-gray-200 hover:text-white transition-colors sm:hidden"
                     onClick={() => openAddSongsDialog('upload')}
                   >
                     <FileText className="h-5 w-5" />
@@ -919,7 +962,7 @@ export function PlaylistPage() {
 
                 <Button
                     variant="ghost"
-                    className="liquid-glass-button rounded-full text-gray-400 hover:text-white hidden sm:flex items-center gap-1.5"
+                    className="rounded-full text-gray-200 hover:text-white transition-colors hidden sm:flex items-center gap-1.5"
                     onClick={() => openAddSongsDialog('upload')}
                   >
                     <FileText className="h-4 w-4" />
@@ -932,8 +975,8 @@ export function PlaylistPage() {
                 <DropdownMenuTrigger asChild>
                 <Button
                     variant="ghost"
-                  size="icon"
-                    className="liquid-glass-button w-10 h-10 rounded-full text-gray-400 hover:text-white"
+                    size="icon"
+                    className="w-10 h-10 rounded-full text-gray-200 hover:text-white transition-colors"
                 >
                     <MoreHorizontal className="h-5 w-5" />
                 </Button>
@@ -970,10 +1013,11 @@ export function PlaylistPage() {
             </div>
 
             {/* Right side play button */}
-            <div className="flex items-center gap-3 sm:gap-5">
-                    <Button
+            <div className={`flex items-center gap-3 sm:gap-5 transition-all duration-300 ${hasScrolled ? 'ml-auto mr-auto' : ''}`}>
+              {/* Heart button - hidden when scrolled */}
+              <Button
                 variant="ghost"
-                className="liquid-glass-button w-10 h-10 sm:w-12 sm:h-12 rounded-full text-gray-400 hover:text-white flex items-center justify-center"
+                className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full text-gray-200 hover:text-white transition-all duration-300 flex items-center justify-center ${hasScrolled ? 'opacity-0 w-0 ml-0 mr-0 p-0' : ''}`}
                 onClick={handleLike}
               >
                 <Heart 
@@ -982,13 +1026,15 @@ export function PlaylistPage() {
                   stroke={isLiked ? 'none' : 'currentColor'}
                   color={isLiked ? '#1DB954' : 'currentColor'} 
                 />
-                    </Button>
+              </Button>
 
-                    <Button
+              {/* Shuffle button - hidden when scrolled */}
+              <Button
                 variant="ghost"
                 className={cn(
-                  'liquid-glass-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center',
-                  isShuffleOn ? 'text-green-500' : 'text-gray-400 hover:text-white'
+                  'w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300',
+                  isShuffleOn ? 'text-green-500' : 'text-gray-200 hover:text-white',
+                  hasScrolled ? 'opacity-0 w-0 ml-0 mr-0 p-0' : ''
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -997,14 +1043,15 @@ export function PlaylistPage() {
                 }}
               >
                 <Shuffle className="h-5 w-5 sm:h-6 sm:w-6" />
-                    </Button>
+              </Button>
 
+              {/* Play/Pause button - always visible */}
               <Button
                 onClick={isCurrentPlaylistPlaying ? handlePausePlaylist : handlePlayPlaylist}
                 disabled={totalSongs === 0 || isPlaying}
                 className={cn(
-                  "liquid-glass-primary w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all shadow-lg",
-                  "text-white hover:scale-105"
+                  "w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all shadow-lg",
+                  "bg-green-500 text-black hover:scale-105 hover:bg-green-400 disabled:opacity-70"
                 )}
                 variant="default"
               >
@@ -1022,7 +1069,7 @@ export function PlaylistPage() {
         {/* Songs list with Spotify-style design */}
         <div className="px-4 sm:px-6 pb-24">
           {currentPlaylist.songs.length > 0 ? (
-            <div className="mt-2">
+            <div className="mt-4">
               {/* Spotify-style header row */}
               <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_3fr_minmax(120px,1fr)] border-b border-[#2A2A2A] text-sm text-gray-400 py-2 px-4 mb-2">
                 <div className="flex items-center justify-center">#</div>
@@ -1039,89 +1086,95 @@ export function PlaylistPage() {
                 const isThisSongPlaying = isCurrentSong && playerIsPlaying;
                 
                 return (
-                <div
-                  key={song._id}
-                  className={cn(
-                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_3fr_minmax(120px,1fr)] items-center py-4 px-4 mx-[-16px] rounded-md group',
-                      'hover:bg-[#2A2A2A] active:bg-[#333] transition-colors duration-200',
-                      isCurrentSong && 'bg-[#2A2A2A]',
+                  <div
+                    key={song._id}
+                    className={cn(
+                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_3fr_minmax(120px,1fr)] items-center py-2 px-4 mx-[-16px] rounded-md group',
+                      'hover:bg-white/10 transition-colors duration-200',
+                      isCurrentSong && 'bg-white/10',
                       !song.audioUrl && 'opacity-60'
                     )}
                     onClick={() => handlePlaySong(song, index)}
                   >
-                    {/* Play button / track number column - wider for mobile */}
+                    {/* Track number/play button */}
                     <div className="flex items-center justify-center">
                       {isThisSongPlaying ? (
                         <div className="w-8 h-8 flex items-center justify-center">
                           <div className="w-3 h-3 bg-green-500 rounded-sm animate-pulse"></div>
                         </div>
                       ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                  className="liquid-glass-button w-8 h-8 rounded-full flex items-center justify-center text-white p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlaySong(song, index);
-                          }}
-                        >
-                          <Play className={cn("h-4 w-4 ml-0.5", isCurrentSong && "text-green-500")} />
-                        </Button>
-                    )}
-                  </div>
+                        <>
+                          <span className="text-gray-400 group-hover:hidden flex items-center justify-center w-8">{index + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-white p-0 hidden group-hover:flex"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlaySong(song, index);
+                            }}
+                          >
+                            <Play className="h-4 w-4 ml-0.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                     
                     {/* Song info with image */}
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={cn(
-                        "h-10 w-10 flex-shrink-0 liquid-glass-album overflow-hidden",
-                        isCurrentSong && "ring-2 ring-green-500"
+                        "h-10 w-10 flex-shrink-0 overflow-hidden rounded",
+                        isCurrentSong && "shadow-md"
                       )}>
                         <img
                           src={song.imageUrl || '/default-song.jpg'}
-                        alt={song.title}
+                          alt={song.title}
                           className="h-full w-full object-cover"
-                      />
-                        </div>
+                        />
+                      </div>
                       <div className="flex flex-col min-w-0">
-                        <span className={cn("font-medium truncate text-base", isCurrentSong && "text-green-500")}>
+                        <span className={cn(
+                          "font-medium truncate text-base",
+                          isCurrentSong && "text-green-500"
+                        )}>
                           {song.title}
                         </span>
                         <span className="text-sm text-gray-400 truncate">
-                        {song.artist}
-                      </span>
+                          {song.artist}
+                        </span>
+                      </div>
                     </div>
-                  </div>
                     
                     {/* Album info (placeholder) */}
                     <div className="text-gray-400 text-sm truncate hidden md:block">
                       {/* Empty for now, would show album name */}
-                  </div>
+                    </div>
                     
                     {/* Duration and actions */}
                     <div className="flex items-center justify-end gap-2 sm:gap-4 text-gray-400">
-                    {isOwner && (
+                      {isOwner && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="liquid-glass-button h-8 w-8 text-gray-400 hover:text-white p-0"
+                            className="h-8 w-8 text-gray-400 hover:text-white p-0"
                             onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveSong(song._id, e);
-                        }}
-                      >
+                              e.stopPropagation();
+                              handleRemoveSong(song._id, e);
+                            }}
+                          >
                             <Trash className="h-4 w-4" />
                           </Button>
-                    </div>
+                        </div>
                       )}
                       
                       {!song.audioUrl && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="liquid-glass-button h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white p-0"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white p-0"
                           onClick={(e) => {
-                          e.stopPropagation();
+                            e.stopPropagation();
                             handleFindAudio(song, index, e);
                           }}
                         >
@@ -1161,7 +1214,7 @@ export function PlaylistPage() {
               </p>
               <Button 
                 onClick={() => openAddSongsDialog('search')}
-                className="mt-6 liquid-glass-primary text-white font-medium"
+                className="mt-6 bg-white hover:bg-white/90 text-black font-medium"
               >
                 Add songs
               </Button>
@@ -1169,6 +1222,19 @@ export function PlaylistPage() {
           )}
         </div>
       </div>
+
+      {/* Fixed position Add Songs button - only shown when playlist is empty */}
+      {currentPlaylist && currentPlaylist.songs.length === 0 && (
+        <div className="fixed bottom-20 right-6 z-30">
+          <Button
+            onClick={() => openAddSongsDialog('search')}
+            className="bg-green-500 text-black rounded-full shadow-lg flex items-center gap-2 px-4 sm:px-6 py-4 sm:py-6 h-auto hover:scale-105 transition-all hover:bg-green-400"
+          >
+            <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-sm sm:text-base">Add Songs</span>
+          </Button>
+        </div>
+      )}
 
       {/* Dialogs */}
       {showEditDialog && (
@@ -1186,19 +1252,6 @@ export function PlaylistPage() {
           playlistId={currentPlaylist._id}
           initialTab={addSongsDialogTab}
         />
-      )}
-
-      {/* Fixed position Add Songs button - only shown when playlist is empty */}
-      {currentPlaylist && currentPlaylist.songs.length === 0 && (
-        <div className="fixed bottom-20 right-6 z-30">
-          <Button
-            onClick={() => openAddSongsDialog('search')}
-            className="liquid-glass-primary rounded-full shadow-lg flex items-center gap-2 px-4 sm:px-6 py-4 sm:py-6 h-auto hover:scale-105 transition-all"
-          >
-            <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-sm sm:text-base">Add Songs</span>
-          </Button>
-        </div>
       )}
 
       {/* New dialog for regenerating cover image */}

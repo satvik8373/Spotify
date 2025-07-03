@@ -31,38 +31,57 @@
 .text-auto-scroll {
   position: relative;
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 .text-auto-scroll-inner {
   white-space: nowrap;
-  transition: transform 3s ease-in-out;
+  transition: transform 0.5s ease-out;
   will-change: transform;
+  display: inline-block;
+  padding-right: 1rem; /* Add some space after text */
 }
 
+/* Improved scrolling animation like Spotify */
 .text-auto-scroll-inner.scrolling {
-  animation: scroll-text 8s linear infinite;
+  animation: enhanced-spotify-scroll 12s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
   animation-delay: 1s;
 }
 
 /* Make scrolling activate on hover for desktop */
 @media (hover: hover) {
   .text-auto-scroll:hover .text-auto-scroll-inner.hover\:scrolling {
-    animation: scroll-text 8s linear infinite;
+    animation: enhanced-spotify-scroll 12s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
     animation-delay: 0.5s;
   }
 }
 
-@keyframes scroll-text {
-  0% {
+/* New Spotify-like scrolling animation with pause at beginning and end */
+@keyframes spotify-scroll {
+  0%, 5% {
     transform: translateX(0);
   }
-  40% {
-    transform: translateX(var(--max-scroll, -40%));
+  45% {
+    transform: translateX(var(--max-scroll, -100%));
   }
-  60% {
-    transform: translateX(var(--max-scroll, -40%));
+  55% {
+    transform: translateX(var(--max-scroll, -100%));
   }
-  100% {
+  95%, 100% {
+    transform: translateX(0);
+  }
+}
+
+/* Enhance marquee animation with better timing */
+@keyframes enhanced-spotify-scroll {
+  0%, 10% {
+    transform: translateX(0);
+  }
+  40%, 60% {
+    transform: translateX(var(--max-scroll, -100%));
+  }
+  90%, 100% {
     transform: translateX(0);
   }
 }
@@ -151,4 +170,62 @@
 
 .liquid-glass-button:active {
   transform: scale(0.94);
+} 
+
+/* Song title container in player */
+.song-title-container {
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Audio player song title styling */
+.song-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* Single line marquee for song details */
+.single-line-marquee {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Mask effect for the marquee */
+.has-mask {
+  position: relative;
+}
+
+.marquee-mask-left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to right, rgba(0,0,0,0.5), transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.marquee-mask-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to left, rgba(0,0,0,0.5), transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Only apply marquee when title overflows */
+.song-title.overflow {
+  animation: enhanced-spotify-scroll 12s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+  animation-delay: 1s;
+  display: inline-block;
 } 

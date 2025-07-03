@@ -69,7 +69,7 @@ const AutoScrollMarquee = ({ text, className }: { text: string, className?: stri
       
       // Calculate scroll distance if needed
       if (isOverflowing) {
-        const distance = -(textEl.scrollWidth - container.clientWidth);
+        const distance = -(textEl.scrollWidth - container.clientWidth + 16); // Added small padding
         setScrollDistance(distance);
         setShouldScroll(true);
       } else {
@@ -81,23 +81,51 @@ const AutoScrollMarquee = ({ text, className }: { text: string, className?: stri
   return (
     <div 
       ref={containerRef}
-      className={cn("text-auto-scroll", className)}
+      className={cn(
+        "text-auto-scroll", 
+        "song-title-container", 
+        shouldScroll && "has-mask",
+        className
+      )}
+      style={{ 
+        maxWidth: '100%', 
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        textOverflow: 'ellipsis',
+        position: 'relative'
+      }}
     >
       <div
         ref={textRef}
         className={cn(
           "text-auto-scroll-inner",
+          "song-title",
+          shouldScroll && "overflow",
           shouldScroll && (isMobile ? true : "hover:scrolling") && "scrolling"
         )}
-        style={
-          shouldScroll ? {
-            '--max-scroll': `${scrollDistance}px`
-          } as React.CSSProperties : 
-          undefined
-        }
+        style={{
+          ...shouldScroll ? {
+            '--max-scroll': `${scrollDistance}px`,
+            display: 'inline-block',
+            whiteSpace: 'nowrap',
+            textOverflow: 'clip',
+            paddingRight: '24px' // Add extra padding for better scroll appearance
+          } as React.CSSProperties : {
+            display: 'inline-block',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+          },
+          width: 'auto'
+        }}
       >
         {text}
       </div>
+      {shouldScroll && (
+        <>
+          <div className="marquee-mask-left" />
+          <div className="marquee-mask-right" />
+        </>
+      )}
     </div>
   );
 };
@@ -596,24 +624,24 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
         {/* Song Info */}
         <div className="mt-6 flex-1 flex flex-col min-h-0">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
+          <div className="flex justify-between items-start w-full">
+            <div className="flex-1 min-w-0 pr-2 max-w-full overflow-hidden">
               {/* Song title with marquee effect for long titles */}
               <AutoScrollMarquee
                 text={currentSong.title || 'Unknown Title'}
-                className="text-2xl md:text-3xl font-bold mb-1"
+                className="text-2xl md:text-3xl font-bold mb-1 single-line-marquee"
               />
               
               {/* Artist name with marquee effect */}
               <AutoScrollMarquee
                 text={currentSong.artist || 'Unknown Artist'}
-                className="text-lg text-white/70"
+                className="text-lg text-white/70 single-line-marquee"
               />
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="liquid-glass-button text-white/80 hover:text-white"
+              className="liquid-glass-button text-white/80 hover:text-white flex-shrink-0"
               onClick={handleLikeToggle}
             >
               <Heart

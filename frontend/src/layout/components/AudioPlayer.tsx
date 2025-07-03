@@ -64,7 +64,7 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
       
       // Calculate scroll distance if needed
       if (isOverflowing) {
-        const distance = -(textEl.scrollWidth - container.clientWidth);
+        const distance = -(textEl.scrollWidth - container.clientWidth + 16); // Added small padding
         setScrollDistance(distance);
         setShouldScroll(true);
       } else {
@@ -76,23 +76,42 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
   return (
     <div 
       ref={containerRef}
-      className={cn("text-auto-scroll", className)}
+      className={cn(
+        "text-auto-scroll", 
+        "song-title-container", 
+        shouldScroll && "has-mask",
+        className
+      )}
+      style={{ 
+        position: 'relative'
+      }}
     >
       <div
         ref={textRef}
         className={cn(
           "text-auto-scroll-inner",
+          "song-title",
+          shouldScroll && "overflow",
           shouldScroll && (isMobile ? true : "hover:scrolling") && "scrolling"
         )}
         style={
           shouldScroll ? {
-            '--max-scroll': `${scrollDistance}px`
+            '--max-scroll': `${scrollDistance}px`,
+            display: 'inline-block',
+            whiteSpace: 'nowrap',
+            paddingRight: '24px' // Add extra padding for better scroll appearance
           } as React.CSSProperties : 
           undefined
         }
       >
         {text}
       </div>
+      {shouldScroll && (
+        <>
+          <div className="marquee-mask-left" />
+          <div className="marquee-mask-right" />
+        </>
+      )}
     </div>
   );
 };
