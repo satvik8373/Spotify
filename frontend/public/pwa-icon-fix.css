@@ -8,13 +8,23 @@
     /* Ensure icon displays properly */
     -webkit-mask-image: url('/spotify-icon.svg');
     mask-image: url('/spotify-icon.svg');
-    -webkit-mask-size: contain;
-    mask-size: contain;
+    -webkit-mask-size: 75% !important; /* Show more black border */
+    mask-size: 75% !important; /* Show more black border */
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
     -webkit-mask-position: center;
     mask-position: center;
     background-color: #1DB954; /* Spotify green */
+  }
+  
+  /* Fix for home screen icons */
+  [class*="home-screen-icon"],
+  [class*="homescreen-icon"] {
+    border-radius: 17% !important;
+    overflow: hidden !important;
+    background-color: #191414 !important;
+    background-size: 75% !important;
+    background-position: center !important;
   }
 }
 
@@ -24,6 +34,15 @@
   link[rel="apple-touch-icon"] {
     background-color: #1DB954;
     border-radius: 17%; /* Match Spotify's rounded square shape */
+    -webkit-mask-size: 75% !important; /* Show more black border */
+    mask-size: 75% !important; /* Show more black border */
+  }
+  
+  /* iOS home screen icon */
+  [class*="apple-touch-icon"] {
+    background-size: 75% !important; /* Show more black border */
+    border-radius: 17% !important;
+    background-color: #191414 !important;
   }
 }
 
@@ -38,5 +57,7 @@
   /* Fix Android icon corners */
   .app-icon {
     border-radius: 17% !important;
+    background-size: 75% !important; /* Show more black border */
+    background-color: #191414 !important;
   }
 } 

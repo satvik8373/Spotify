@@ -187,7 +187,7 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
           .app-icon {
             -webkit-mask-image: none !important;
             mask-image: none !important;
-            background-size: contain !important;
+            background-size: 75% !important; /* Show more black border */
             background-position: center !important;
             border-radius: 17% !important; /* Exact match to Spotify's icon */
             overflow: hidden !important;
@@ -198,10 +198,20 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
           [class*="launcher-icon"] {
             border-radius: 17% !important;
             overflow: hidden !important;
+            background-size: 75% !important; /* Show more black border */
           }
           
           /* Additional styling for any adaptive icons */
           [class*="adaptive-icon"] {
+            border-radius: 17% !important;
+            background-color: #191414 !important;
+            background-size: 75% !important; /* Show more black border */
+          }
+          
+          /* Force home screen icon to show proper border */
+          [class*="home-screen"] [class*="icon"],
+          [class*="homescreen"] [class*="icon"] {
+            background-size: 75% !important; /* Show more black border */
             border-radius: 17% !important;
             background-color: #191414 !important;
           }

@@ -35,9 +35,9 @@ async function createMaskableIcon(size) {
     // Load the source icon
     const icon = await loadImage(SOURCE_ICON);
     
-    // Calculate dimensions for the icon - use 85% of space to match Spotify's exact style
-    // Original Spotify icon has minimal padding
-    const safeZoneRatio = 0.85; // Using 85% to exactly match Spotify's style
+    // Calculate dimensions for the icon - use 75% of space for the green circle
+    // This creates more visible black border like the original Spotify icon
+    const safeZoneRatio = 0.75; // Reduced from 85% to 75% to show more black border
     const iconSize = Math.round(size * safeZoneRatio);
     
     // Calculate position to center the icon
