@@ -23,7 +23,7 @@
   /* High DPI iOS devices */
   link[rel="apple-touch-icon"] {
     background-color: #1DB954;
-    border-radius: 20%; /* Less rounded corners to match Spotify */
+    border-radius: 17%; /* Match Spotify's rounded square shape */
   }
 }
 
@@ -33,5 +33,10 @@
   link[rel="manifest"] + meta {
     /* Ensure theme color is properly set */
     content: "#1DB954" !important;
+  }
+
+  /* Fix Android icon corners */
+  .app-icon {
+    border-radius: 17% !important;
   }
 } 

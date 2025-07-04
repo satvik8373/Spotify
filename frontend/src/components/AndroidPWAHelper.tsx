@@ -189,7 +189,21 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
             mask-image: none !important;
             background-size: contain !important;
             background-position: center !important;
-            border-radius: 15% !important;
+            border-radius: 17% !important; /* Exact match to Spotify's icon */
+            overflow: hidden !important;
+            background-color: #191414 !important;
+          }
+          
+          /* Force icon corners to match Spotify */
+          [class*="launcher-icon"] {
+            border-radius: 17% !important;
+            overflow: hidden !important;
+          }
+          
+          /* Additional styling for any adaptive icons */
+          [class*="adaptive-icon"] {
+            border-radius: 17% !important;
+            background-color: #191414 !important;
           }
         }
       `;

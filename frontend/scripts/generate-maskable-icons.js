@@ -28,16 +28,16 @@ async function createMaskableIcon(size) {
     const canvas = createCanvas(size, size);
     const ctx = canvas.getContext('2d');
 
-    // Fill with Spotify green background
-    ctx.fillStyle = '#1DB954';
+    // Fill with Spotify black background - this is the actual color Spotify uses
+    ctx.fillStyle = '#191414';
     ctx.fillRect(0, 0, size, size);
 
     // Load the source icon
     const icon = await loadImage(SOURCE_ICON);
     
-    // Calculate dimensions for the icon - use 75% of space to better match Spotify's style
-    // Original Spotify icon uses more space with less padding
-    const safeZoneRatio = 0.75; // Using 75% to better match Spotify's style
+    // Calculate dimensions for the icon - use 85% of space to match Spotify's exact style
+    // Original Spotify icon has minimal padding
+    const safeZoneRatio = 0.85; // Using 85% to exactly match Spotify's style
     const iconSize = Math.round(size * safeZoneRatio);
     
     // Calculate position to center the icon
