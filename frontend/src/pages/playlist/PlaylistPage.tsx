@@ -905,9 +905,9 @@ export function PlaylistPage() {
                     <ImageIcon className="mr-2 h-4 w-4" />
                     Update Cover
                   </Button>
-                </div>
-              )}
             </div>
+              )}
+              </div>
 
             {/* Playlist info */}
             <div className="flex flex-col justify-end text-white text-center md:text-left w-full">
@@ -931,7 +931,7 @@ export function PlaylistPage() {
               </div>
             </div>
           </div>
-        </div>
+              </div>
 
         {/* Action buttons - sticky header without background color */}
         <div 
@@ -975,7 +975,7 @@ export function PlaylistPage() {
                 <DropdownMenuTrigger asChild>
                 <Button
                     variant="ghost"
-                    size="icon"
+                  size="icon"
                     className="w-10 h-10 rounded-full text-gray-200 hover:text-white transition-colors"
                 >
                     <MoreHorizontal className="h-5 w-5" />
@@ -1015,7 +1015,7 @@ export function PlaylistPage() {
             {/* Right side play button */}
             <div className={`flex items-center gap-3 sm:gap-5 transition-all duration-300 ${hasScrolled ? 'ml-auto mr-auto' : ''}`}>
               {/* Heart button - hidden when scrolled */}
-              <Button
+                    <Button
                 variant="ghost"
                 className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full text-gray-200 hover:text-white transition-all duration-300 flex items-center justify-center ${hasScrolled ? 'opacity-0 w-0 ml-0 mr-0 p-0' : ''}`}
                 onClick={handleLike}
@@ -1026,10 +1026,10 @@ export function PlaylistPage() {
                   stroke={isLiked ? 'none' : 'currentColor'}
                   color={isLiked ? '#1DB954' : 'currentColor'} 
                 />
-              </Button>
+                    </Button>
 
               {/* Shuffle button - hidden when scrolled */}
-              <Button
+                    <Button
                 variant="ghost"
                 className={cn(
                   'w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300',
@@ -1043,7 +1043,7 @@ export function PlaylistPage() {
                 }}
               >
                 <Shuffle className="h-5 w-5 sm:h-6 sm:w-6" />
-              </Button>
+                    </Button>
 
               {/* Play/Pause button - always visible */}
               <Button
@@ -1086,9 +1086,9 @@ export function PlaylistPage() {
                 const isThisSongPlaying = isCurrentSong && playerIsPlaying;
                 
                 return (
-                  <div
-                    key={song._id}
-                    className={cn(
+                <div
+                  key={song._id}
+                  className={cn(
                       'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_3fr_minmax(120px,1fr)] items-center py-2 px-4 mx-[-16px] rounded-md group',
                       'hover:bg-white/10 transition-colors duration-200',
                       isCurrentSong && 'bg-white/10',
@@ -1105,20 +1105,20 @@ export function PlaylistPage() {
                       ) : (
                         <>
                           <span className="text-gray-400 group-hover:hidden flex items-center justify-center w-8">{index + 1}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                        <Button
+                          variant="ghost"
+                          size="sm"
                             className="w-8 h-8 rounded-full flex items-center justify-center text-white p-0 hidden group-hover:flex"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePlaySong(song, index);
-                            }}
-                          >
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlaySong(song, index);
+                          }}
+                        >
                             <Play className="h-4 w-4 ml-0.5" />
-                          </Button>
+                        </Button>
                         </>
-                      )}
-                    </div>
+                    )}
+                  </div>
                     
                     {/* Song info with image */}
                     <div className="flex items-center gap-3 min-w-0">
@@ -1128,10 +1128,10 @@ export function PlaylistPage() {
                       )}>
                         <img
                           src={song.imageUrl || '/default-song.jpg'}
-                          alt={song.title}
+                        alt={song.title}
                           className="h-full w-full object-cover"
-                        />
-                      </div>
+                      />
+                        </div>
                       <div className="flex flex-col min-w-0">
                         <span className={cn(
                           "font-medium truncate text-base",
@@ -1140,32 +1140,32 @@ export function PlaylistPage() {
                           {song.title}
                         </span>
                         <span className="text-sm text-gray-400 truncate">
-                          {song.artist}
-                        </span>
-                      </div>
+                        {song.artist}
+                      </span>
                     </div>
+                  </div>
                     
                     {/* Album info (placeholder) */}
                     <div className="text-gray-400 text-sm truncate hidden md:block">
                       {/* Empty for now, would show album name */}
-                    </div>
+                  </div>
                     
                     {/* Duration and actions */}
                     <div className="flex items-center justify-end gap-2 sm:gap-4 text-gray-400">
-                      {isOwner && (
+                    {isOwner && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-gray-400 hover:text-white p-0"
                             onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveSong(song._id, e);
-                            }}
-                          >
+                          e.stopPropagation();
+                          handleRemoveSong(song._id, e);
+                        }}
+                      >
                             <Trash className="h-4 w-4" />
                           </Button>
-                        </div>
+                    </div>
                       )}
                       
                       {!song.audioUrl && (
@@ -1174,7 +1174,7 @@ export function PlaylistPage() {
                           size="icon"
                           className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white p-0"
                           onClick={(e) => {
-                            e.stopPropagation();
+                          e.stopPropagation();
                             handleFindAudio(song, index, e);
                           }}
                         >

@@ -58,12 +58,12 @@ const PWAInstallPrompt = () => {
     // Detect platform
     const detectedPlatform = detectPlatform();
     setPlatform(detectedPlatform);
-
+    
     // Handle the beforeinstallprompt event (Chrome/Edge/Android)
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowPrompt(true);
+        setShowPrompt(true);
     });
 
     // For iOS, we'll show our custom prompt after a delay
@@ -85,7 +85,7 @@ const PWAInstallPrompt = () => {
     if (detectedPlatform === 'ios') {
       addIOSMetaTags();
     }
-
+    
     return () => {
       window.removeEventListener('beforeinstallprompt', (e) => {
         setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -147,7 +147,7 @@ const PWAInstallPrompt = () => {
     localStorage.setItem('pwaPromptDismissed', new Date().getTime().toString());
     setShowPrompt(false);
   };
-
+  
   const installPWA = async () => {
     if (!deferredPrompt && !isIOSDevice) return;
     
@@ -251,8 +251,8 @@ const PWAInstallPrompt = () => {
             ) : (
               <p>Install this app on your device for a better experience.</p>
             )}
-          </div>
-        </div>
+      </div>
+    </div>
         <div className="flex justify-between">
           <Button variant="outline" onClick={handleDismiss}>
             Not Now
