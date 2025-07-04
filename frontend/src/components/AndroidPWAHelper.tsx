@@ -177,6 +177,23 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
         meta.content = '#1DB954'; // Spotify green
         document.head.appendChild(meta);
       }
+
+      // Add additional styling for better icon appearance
+      const style = document.createElement('style');
+      style.textContent = `
+        /* Fixes for Android icon appearance */
+        @media (display-mode: standalone) {
+          /* Ensure proper icon styling */
+          .app-icon {
+            -webkit-mask-image: none !important;
+            mask-image: none !important;
+            background-size: contain !important;
+            background-position: center !important;
+            border-radius: 15% !important;
+          }
+        }
+      `;
+      document.head.appendChild(style);
     };
 
     ensureMaskableIcons();

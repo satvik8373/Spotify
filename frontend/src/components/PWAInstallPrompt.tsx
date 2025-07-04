@@ -104,7 +104,7 @@ const PWAInstallPrompt = () => {
     const metaTags = [
       { name: 'apple-mobile-web-app-capable', content: 'yes' },
       { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-      { name: 'apple-mobile-web-app-title', content: 'Spotify x Mavrix' }
+      { name: 'apple-mobile-web-app-title', content: 'Mavrixfy' }
     ];
 
     metaTags.forEach(tag => {
@@ -228,7 +228,7 @@ const PWAInstallPrompt = () => {
     <Dialog open={showPrompt} onOpenChange={setShowPrompt}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Install Spotify x Mavrix</DialogTitle>
+          <DialogTitle>Install Mavrixfy</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="flex flex-col gap-4">

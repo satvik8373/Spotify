@@ -6,10 +6,15 @@
  * 2. Run: node scripts/generate-maskable-icons.js
  */
 
-const fs = require('fs-extra');
-const path = require('path');
-const { createCanvas, loadImage } = require('canvas');
-const sharp = require('sharp');
+import fs from 'fs-extra';
+import path from 'path';
+import { createCanvas, loadImage } from 'canvas';
+import sharp from 'sharp';
+import { fileURLToPath } from 'url';
+
+// Get current file directory with ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const SOURCE_ICON = path.join(__dirname, '../public/pwa-icons/spotify-mavrix-icon.svg');
 const OUTPUT_DIR = path.join(__dirname, '../public');
@@ -30,9 +35,9 @@ async function createMaskableIcon(size) {
     // Load the source icon
     const icon = await loadImage(SOURCE_ICON);
     
-    // Calculate dimensions for the icon within the safe zone (which is ~60% of the total area)
-    // For maskable icons, the inner 80% is the "safe zone" where content should appear
-    const safeZoneRatio = 0.66; // Using 66% to be safe
+    // Calculate dimensions for the icon - use 75% of space to better match Spotify's style
+    // Original Spotify icon uses more space with less padding
+    const safeZoneRatio = 0.75; // Using 75% to better match Spotify's style
     const iconSize = Math.round(size * safeZoneRatio);
     
     // Calculate position to center the icon
