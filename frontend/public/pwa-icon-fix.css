@@ -1,0 +1,37 @@
+/* PWA Icon Styling */
+
+/* Style for the PWA icon when added to home screen */
+@media (display-mode: standalone) {
+  /* Custom icon styling for standalone mode */
+  link[rel="icon"],
+  link[rel="apple-touch-icon"] {
+    /* Ensure icon displays properly */
+    -webkit-mask-image: url('/spotify-icon.svg');
+    mask-image: url('/spotify-icon.svg');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    background-color: #1DB954; /* Spotify green */
+  }
+}
+
+/* Specific iOS fixes */
+@media (display-mode: standalone) and (-webkit-device-pixel-ratio: 2) {
+  /* High DPI iOS devices */
+  link[rel="apple-touch-icon"] {
+    background-color: #1DB954;
+    border-radius: 25%;
+  }
+}
+
+/* Android maskable icon improvements */
+@media (display-mode: standalone) and (-webkit-min-device-pixel-ratio: 1) {
+  /* Android devices */
+  link[rel="manifest"] + meta {
+    /* Ensure theme color is properly set */
+    content: "#1DB954" !important;
+  }
+} 

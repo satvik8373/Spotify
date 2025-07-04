@@ -152,6 +152,36 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
     if (onDismiss) onDismiss();
   };
   
+  useEffect(() => {
+    // Only run on Android devices
+    const isAndroid = /android/i.test(navigator.userAgent);
+    if (!isAndroid) return;
+
+    // Fix for maskable icons - ensure we have proper metadata
+    const ensureMaskableIcons = () => {
+      // Check if we already have a manifest link
+      const manifestLink = document.querySelector('link[rel="manifest"]');
+      if (!manifestLink) {
+        // Add manifest link if missing
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = '/manifest.json';
+        document.head.appendChild(link);
+      }
+
+      // Check for theme-color meta tag
+      const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+      if (!themeColorMeta) {
+        const meta = document.createElement('meta');
+        meta.name = 'theme-color';
+        meta.content = '#1DB954'; // Spotify green
+        document.head.appendChild(meta);
+      }
+    };
+
+    ensureMaskableIcons();
+  }, []);
+  
   if (isInstalledPWA || !showHelper) return null;
   
   return (
