@@ -85,6 +85,24 @@
 	}
 }
 
+/* Spotify-like player styling */
+.slider-hover-effect [data-radix-slider-thumb] {
+	height: 12px;
+	width: 12px;
+	opacity: 1;
+	transition: all 0.2s ease;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.slider-hover-effect [data-radix-slider-range] {
+	background-color: #1DB954;
+	height: 4px;
+}
+
+.slider-hover-effect [data-radix-slider-track] {
+	height: 4px;
+}
+
 /* Sidebar layout fixes */
 .h-full > div[data-panel] {
 	height: 100%;
@@ -756,4 +774,83 @@ button, .button, a.button {
   backdrop-filter: blur(25px);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #121212;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f3f3f;
+  border-radius: 6px;
+  border: 3px solid #121212;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Slider hover effect */
+.slider-hover-effect .bg-foreground {
+  height: 6px !important;
+  margin-top: -2px;
+}
+
+.slider-hover-effect .bg-foreground::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background-color: white;
+  border-radius: 50%;
+}
+
+/* Resizable panel styling */
+.resizable-handle {
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: background-color 0.2s;
+}
+
+.resizable-handle:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Glass effects for mobile player */
+.mobile-nav-glass {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.mobile-player-glass {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.liquid-glass-album {
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.liquid-glass-button {
+  border-radius: 50%;
+  backdrop-filter: blur(5px);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.liquid-glass-primary {
+  border-radius: 50%;
+  backdrop-filter: blur(5px);
+}
+
+/* Desktop playback controls glass effect */
+.playback-controls-glass {
+  background-color: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.3);
 }

@@ -1,22 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { usePlayerStore } from "@/stores/usePlayerStore";
-import { Heart, Laptop2, ListMusic, Mic2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2 } from "lucide-react";
+import { Heart, Laptop2, ListMusic, Mic2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, Volume1, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import SongDetailsView from "@/components/SongDetailsView";
 import { cn } from "@/lib/utils";
 import { useLikedSongsStore } from "@/stores/useLikedSongsStore";
+import { useAlbumColors } from "@/hooks/useAlbumColors";
 
 const formatTime = (seconds: number) => {
 	if (isNaN(seconds)) return "0:00";
 	const minutes = Math.floor(seconds / 60);
 	const remainingSeconds = Math.floor(seconds % 60);
-	return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+	return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;	
 };
 
 export const PlaybackControls = () => {
 	const { currentSong, isPlaying, togglePlay, playNext, playPrevious, toggleShuffle, isShuffled } = usePlayerStore();
 	const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
+	const albumColors = useAlbumColors(currentSong?.imageUrl);
 
 	const [volume, setVolume] = useState(75);
 	const [currentTime, setCurrentTime] = useState(0);
@@ -25,8 +27,10 @@ export const PlaybackControls = () => {
 	const [showSongDetails, setShowSongDetails] = useState(false);
 	const [isRepeating, setIsRepeating] = useState(false);
 	const [isLiked, setIsLiked] = useState(false);
+	const [showVolumeSlider, setShowVolumeSlider] = useState(false);
 	const audioRef = useRef<HTMLAudioElement | null>(null);
 	const playerRef = useRef<HTMLDivElement>(null);
+	const volumeControlRef = useRef<HTMLDivElement>(null);
 
 	// Get liked state from the liked songs store if possible
 	useEffect(() => {
@@ -148,6 +152,20 @@ export const PlaybackControls = () => {
 		};
 	}, []);
 
+	// Handle click outside volume control
+	useEffect(() => {
+		const handleClickOutside = (e: MouseEvent) => {
+			if (volumeControlRef.current && !volumeControlRef.current.contains(e.target as Node)) {
+				setShowVolumeSlider(false);
+			}
+		};
+
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, []);
+
 	const handleSeek = (value: number[]) => {
 		if (audioRef.current) {
 			audioRef.current.currentTime = value[0];
@@ -184,6 +202,12 @@ export const PlaybackControls = () => {
 	const toggleRepeat = () => {
 		setIsRepeating(!isRepeating);
 	};
+
+	const getVolumeIcon = () => {
+		if (volume === 0) return <VolumeX className="h-4 w-4" />;
+		if (volume < 50) return <Volume1 className="h-4 w-4" />;
+		return <Volume2 className="h-4 w-4" />;
+	};
 	
 	if (!currentSong) return null;
 	
@@ -194,143 +218,172 @@ export const PlaybackControls = () => {
 			{/* Desktop Player */}
 			<footer 
 				ref={playerRef}
-				className='h-20 sm:h-[90px] bg-gradient-to-b from-zinc-900 to-black border-t border-zinc-800/50 px-4 hidden sm:block transition-opacity duration-300'
-				style={{ opacity: isTransitioning ? 0.8 : 1 }}
+				className="h-[90px] border-t border-zinc-800/50 px-4 hidden sm:block transition-opacity duration-300 playback-controls-glass"
+				style={{ 
+					opacity: isTransitioning ? 0.8 : 1,
+					background: albumColors.isLight
+						? `linear-gradient(to bottom, ${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.85)')}, ${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.7)')})`
+						: `linear-gradient(to bottom, ${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.85)')}, ${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.7)')})`,
+					backdropFilter: "blur(25px)",
+					WebkitBackdropFilter: "blur(25px)"
+				}}
 			>
-				<div className='flex justify-between items-center h-full max-w-[1800px] mx-auto'>
+				<div className="flex justify-between items-center h-full max-w-[1800px] mx-auto">
 					{/* currently playing song */}
-					<div className='flex items-center gap-4 min-w-[180px] w-[30%]'>
+					<div className="flex items-center gap-4 min-w-[180px] w-[30%]">
 						{currentSong && (
 							<>
-								<div className="relative group">
+								<div className="relative group cursor-pointer" onClick={() => setShowSongDetails(true)}>
 									<img
 										src={currentSong.imageUrl}
 										alt={currentSong.title}
-										className='w-14 h-14 object-cover rounded-md shadow-md cursor-pointer group-hover:brightness-75 transition-all'
-										onClick={() => setShowSongDetails(true)}
+										className="w-14 h-14 object-cover shadow-md"
 									/>
-									<div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-										<Play className="h-6 w-6 text-white" />
-									</div>
 								</div>
-								<div className='flex-1 min-w-0 cursor-pointer' onClick={() => setShowSongDetails(true)}>
-									<div className='font-medium truncate hover:underline text-sm text-white'>
+								<div className="flex-1 min-w-0 cursor-pointer" onClick={() => setShowSongDetails(true)}>
+									<div className="font-medium truncate text-sm text-white hover:underline">
 										{currentSong.title}
 									</div>
-									<div className='text-xs text-zinc-400 truncate hover:underline'>
+									<div className="text-xs text-zinc-400 truncate hover:underline">
 										{currentSong.artist}
 									</div>
 								</div>
 								<Button
-									size='icon'
-									variant='ghost'
+									size="icon"
+									variant="ghost"
 									className={`hover:text-white ${isLiked ? 'text-green-500' : 'text-zinc-400'}`}
 									onClick={(e) => handleLikeToggle(e)}
 								>
-									<Heart className='h-4 w-4' fill={isLiked ? 'currentColor' : 'none'} />
+									<Heart className="h-4 w-4" fill={isLiked ? 'currentColor' : 'none'} />
 								</Button>
 							</>
 						)}
 					</div>
 
-					{/* player controls*/}
-					<div className='flex flex-col items-center gap-2 flex-1 max-w-[40%]'>
-						<div className='flex items-center justify-center gap-4 sm:gap-5 mb-1'>
+					{/* player controls */}
+					<div className="flex flex-col items-center gap-1 flex-1 max-w-[40%]">
+						<div className="flex items-center justify-center gap-5 mb-1">
 							<Button
-								size='icon'
-								variant='ghost'
+								size="icon"
+								variant="ghost"
 								className={cn('hover:text-white h-8 w-8', isShuffled ? 'text-green-500' : 'text-zinc-400')}
 								onClick={toggleShuffle}
 							>
-								<Shuffle className='h-4 w-4' />
+								<Shuffle className="h-4 w-4" />
 							</Button>
 
 							<Button
-								size='icon'
-								variant='ghost'
-								className='hover:text-white text-zinc-400 h-8 w-8'
+								size="icon"
+								variant="ghost"
+								className="hover:text-white text-zinc-400 h-8 w-8"
 								onClick={playPrevious}
 								disabled={!currentSong}
 							>
-								<SkipBack className='h-4 w-4' />
+								<SkipBack className="h-4 w-4" />
 							</Button>
 
 							<Button
-								size='icon'
-								className='bg-white hover:bg-white/90 text-black rounded-full h-9 w-9 transition-transform hover:scale-105'
+								size="icon"
+								className="bg-white hover:bg-white/90 text-black rounded-full h-8 w-8 flex items-center justify-center transition-transform hover:scale-105"
 								onClick={togglePlay}
 								disabled={!currentSong}
 							>
 								{isPlaying ? 
-									<Pause className='h-4 w-4' /> : 
-									<Play className='h-4 w-4 ml-[2px]' />
+									<Pause className="h-4 w-4" /> : 
+									<Play className="h-4 w-4 ml-[1px]" />
 								}
 							</Button>
 							
 							<Button
-								size='icon'
-								variant='ghost'
-								className='hover:text-white text-zinc-400 h-8 w-8'
+								size="icon"
+								variant="ghost"
+								className="hover:text-white text-zinc-400 h-8 w-8"
 								onClick={playNext}
 								disabled={!currentSong}
 							>
-								<SkipForward className='h-4 w-4' />
+								<SkipForward className="h-4 w-4" />
 							</Button>
 							
 							<Button
-								size='icon'
-								variant='ghost'
+								size="icon"
+								variant="ghost"
 								className={cn('hover:text-white h-8 w-8', isRepeating ? 'text-green-500' : 'text-zinc-400')}
 								onClick={toggleRepeat}
 							>
-								<Repeat className='h-4 w-4' />
+								<Repeat className="h-4 w-4" />
 							</Button>
 						</div>
 
-						<div className='flex items-center gap-2 w-full'>
-							<div className='text-[11px] text-zinc-400 w-10 text-right'>{formatTime(currentTime)}</div>
-							<Slider
-								value={[currentTime]}
-								max={duration || 100}
-								step={1}
-								className='w-full cursor-pointer'
-								onValueChange={handleSeek}
-							/>
-							<div className='text-[11px] text-zinc-400 w-10'>{formatTime(duration)}</div>
+						<div className="flex items-center gap-2 w-full">
+							<div className="text-[11px] text-zinc-400 w-[35px] text-right">{formatTime(currentTime)}</div>
+							<div className="w-full relative group">
+								<Slider
+									value={[currentTime]}
+									max={duration || 100}
+									step={1}
+									className="w-full cursor-pointer"
+									onValueChange={handleSeek}
+								/>
+								<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
+									<Slider
+										value={[currentTime]}
+										max={duration || 100}
+										step={1}
+										className="w-full cursor-pointer slider-hover-effect"
+										onValueChange={handleSeek}
+									/>
+								</div>
+							</div>
+							<div className="text-[11px] text-zinc-400 w-[35px]">{formatTime(duration)}</div>
 						</div>
 					</div>
 					
 					{/* volume controls */}
-					<div className='flex items-center gap-4 min-w-[180px] w-[30%] justify-end'>
-						<div className='flex items-center gap-3'>
-							<Button size='icon' variant='ghost' className='hover:text-white text-zinc-400 h-8 w-8'>
-								<Mic2 className='h-4 w-4' />
+					<div className="flex items-center gap-4 min-w-[180px] w-[30%] justify-end">
+						<div className="flex items-center gap-2">
+							<Button size="icon" variant="ghost" className="hover:text-white text-zinc-400 h-8 w-8">
+								<Mic2 className="h-4 w-4" />
 							</Button>
-							<Button size='icon' variant='ghost' className='hover:text-white text-zinc-400 h-8 w-8'>
-								<ListMusic className='h-4 w-4' />
+							<Button size="icon" variant="ghost" className="hover:text-white text-zinc-400 h-8 w-8">
+								<ListMusic className="h-4 w-4" />
 							</Button>
-							<Button size='icon' variant='ghost' className='hover:text-white text-zinc-400 h-8 w-8'>
-								<Laptop2 className='h-4 w-4' />
+							<Button size="icon" variant="ghost" className="hover:text-white text-zinc-400 h-8 w-8">
+								<Laptop2 className="h-4 w-4" />
 							</Button>
 						</div>
 
-						<div className='flex items-center gap-2 ml-2'>
-							<Button size='icon' variant='ghost' className='hover:text-white text-zinc-400 h-8 w-8'>
-								<Volume2 className='h-4 w-4' />
+						<div 
+							className="flex items-center gap-2 relative" 
+							ref={volumeControlRef}
+							onMouseEnter={() => setShowVolumeSlider(true)}
+							onMouseLeave={() => setShowVolumeSlider(false)}
+						>
+							<Button 
+								size="icon" 
+								variant="ghost" 
+								className="hover:text-white text-zinc-400 h-8 w-8"
+								onClick={() => setVolume(volume === 0 ? 75 : 0)}
+							>
+								{getVolumeIcon()}
 							</Button>
 
-							<Slider
-								value={[volume]}
-								max={100}
-								step={1}
-								className='w-24 cursor-pointer'
-								onValueChange={(value) => {
-									setVolume(value[0]);
-									if (audioRef.current) {
-										audioRef.current.volume = value[0] / 100;
-									}
-								}}
-							/>
+							<div className={cn(
+								"transition-all duration-200 overflow-hidden", 
+								showVolumeSlider ? "w-24 opacity-100" : "w-0 opacity-0"
+							)}>
+								<Slider
+									value={[volume]}
+									max={100}
+									step={1}
+									className="cursor-pointer"
+									onValueChange={(value) => {
+										setVolume(value[0]);
+										if (audioRef.current) {
+											audioRef.current.volume = value[0] / 100;
+										}
+									}}
+								/>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -351,7 +404,7 @@ export const PlaybackControls = () => {
 									<img
 										src={currentSong.imageUrl}
 										alt={currentSong.title}
-										className="h-full w-full object-cover bg-zinc-800"
+										className="w-full h-full object-cover bg-zinc-800"
 										onError={(e) => {
 											(e.target as HTMLImageElement).src = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
 										}}

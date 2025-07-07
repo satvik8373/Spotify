@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import SongDetailsView from '@/components/SongDetailsView';
 import { useMusicStore } from '@/stores/useMusicStore';
+import { useAlbumColors } from '@/hooks/useAlbumColors';
 
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
@@ -153,6 +154,7 @@ const AudioPlayer = () => {
   } = usePlayerStore();
 
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
+  const albumColors = useAlbumColors(currentSong?.imageUrl);
 
   // These may not exist in the store based on linter errors
   const playerStore = usePlayerStore();
@@ -2059,6 +2061,171 @@ const AudioPlayer = () => {
           />
         </div>
       </div>
+      
+      {/* Fullscreen mobile player */}
+      {isFullscreenMobile && currentSong && (
+        <div 
+          className="fixed inset-0 z-50 bg-black flex flex-col"
+          style={{
+            background: albumColors.isLight
+              ? `linear-gradient(to bottom, ${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.95)')}, ${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.85)')})`
+              : `linear-gradient(to bottom, ${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.95)')}, ${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.85)')})`,
+            backdropFilter: "blur(25px)",
+            WebkitBackdropFilter: "blur(25px)"
+          }}
+        >
+          {/* Close button */}
+          <div className="flex justify-between items-center p-4">
+            <button 
+              onClick={() => setIsFullscreenMobile(false)}
+              className="text-white p-2"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <div className="text-white text-sm">Now Playing</div>
+            <div className="w-10"></div> {/* Empty div for layout balance */}
+          </div>
+
+          {/* Album art */}
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div 
+              className="w-full max-w-xs aspect-square rounded-md overflow-hidden shadow-2xl"
+              style={{ boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3)" }}
+            >
+              <img 
+                src={currentSong.imageUrl} 
+                alt={currentSong.title}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Song info */}
+          <div className="px-6 pt-4">
+            <h2 
+              className={cn(
+                "text-xl font-bold truncate mb-1",
+                albumColors.isLight ? "text-black" : "text-white"
+              )}
+            >
+              {currentSong.title}
+            </h2>
+            <p 
+              className={cn(
+                "text-sm truncate mb-6",
+                albumColors.isLight ? "text-black/70" : "text-white/70"
+              )}
+            >
+              {currentSong.artist}
+            </p>
+          </div>
+
+          {/* Progress bar */}
+          <div className="px-6 mb-2">
+            <div className="flex items-center gap-2">
+              <Slider
+                value={[currentTime]}
+                max={duration || 100}
+                step={1}
+                className="cursor-pointer"
+                onValueChange={handleSeek}
+              />
+            </div>
+            <div className="flex justify-between mt-1 mb-6">
+              <span 
+                className={cn(
+                  "text-xs",
+                  albumColors.isLight ? "text-black/70" : "text-white/70"
+                )}
+              >
+                {formatTime(currentTime)}
+              </span>
+              <span 
+                className={cn(
+                  "text-xs",
+                  albumColors.isLight ? "text-black/70" : "text-white/70"
+                )}
+              >
+                {formatTime(duration)}
+              </span>
+            </div>
+          </div>
+
+          {/* Playback controls */}
+          <div className="px-6 pb-12">
+            <div className="flex items-center justify-between mb-8">
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  "h-10 w-10",
+                  isShuffled ? "text-green-500" : albumColors.isLight ? "text-black/70" : "text-white/70"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleShuffle();
+                }}
+              >
+                <Shuffle className="h-5 w-5" />
+              </Button>
+
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  "h-10 w-10",
+                  albumColors.isLight ? "text-black" : "text-white"
+                )}
+                onClick={handlePrevious}
+              >
+                <SkipBack className="h-6 w-6" />
+              </Button>
+
+              <Button
+                size="icon"
+                className={cn(
+                  "h-14 w-14 rounded-full flex items-center justify-center",
+                  albumColors.isLight ? "bg-black text-white" : "bg-white text-black"
+                )}
+                onClick={handlePlayPause}
+              >
+                {isPlaying ? (
+                  <Pause className="h-7 w-7" />
+                ) : (
+                  <Play className="h-7 w-7 ml-1" />
+                )}
+              </Button>
+
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  "h-10 w-10",
+                  albumColors.isLight ? "text-black" : "text-white"
+                )}
+                onClick={handleNext}
+              >
+                <SkipForward className="h-6 w-6" />
+              </Button>
+
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  "h-10 w-10",
+                  isLiked ? "text-green-500" : albumColors.isLight ? "text-black/70" : "text-white/70"
+                )}
+                onClick={handleLikeToggle}
+              >
+                <Heart className="h-5 w-5" fill={isLiked ? "currentColor" : "none"} />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <audio
         ref={audioRef}
