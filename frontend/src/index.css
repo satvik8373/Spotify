@@ -85,57 +85,6 @@
 	}
 }
 
-/* Enhanced control buttons with better touch feedback */
-.control-button {
-	@apply h-12 w-12 rounded-full flex items-center justify-center relative;
-	background: rgba(255, 255, 255, 0.1);
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.control-button:active {
-	transform: scale(0.92);
-	background: rgba(255, 255, 255, 0.15);
-}
-
-.control-button.active {
-	background: rgba(29, 185, 84, 0.2);
-	box-shadow: 
-		0 0 0 1px rgba(29, 185, 84, 0.3),
-		0 0 10px rgba(29, 185, 84, 0.4);
-}
-
-.control-button.active svg {
-	color: rgb(29, 185, 84);
-	filter: drop-shadow(0 0 3px rgba(29, 185, 84, 0.5));
-}
-
-/* Animated active state for control buttons */
-@keyframes pulse-active {
-	0% {
-		box-shadow: 
-			0 0 0 1px rgba(29, 185, 84, 0.3),
-			0 0 10px rgba(29, 185, 84, 0.4);
-	}
-	50% {
-		box-shadow: 
-			0 0 0 1px rgba(29, 185, 84, 0.4),
-			0 0 15px rgba(29, 185, 84, 0.6);
-	}
-	100% {
-		box-shadow: 
-			0 0 0 1px rgba(29, 185, 84, 0.3),
-			0 0 10px rgba(29, 185, 84, 0.4);
-	}
-}
-
-.control-button.active-animated {
-	animation: pulse-active 2s infinite;
-	background: rgba(29, 185, 84, 0.2);
-}
-
 /* Sidebar layout fixes */
 .h-full > div[data-panel] {
 	height: 100%;

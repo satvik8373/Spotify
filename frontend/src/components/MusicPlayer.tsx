@@ -267,57 +267,63 @@ const MusicPlayer = () => {
           {/* Controls */}
           <div className="flex flex-col items-center gap-1 flex-1 max-w-md">
             <div className="flex items-center gap-2 md:gap-4">
-              <button
-                className={cn(
-                  'control-button h-10 w-10 md:h-12 md:w-12',
-                  isShuffled ? 'active active-animated' : ''
-                )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
                 onClick={() => toggleShuffle()}
-                aria-label={isShuffled ? "Disable shuffle" : "Enable shuffle"}
+                title="Shuffle"
               >
-                <Shuffle className="h-5 w-5 md:h-6 md:w-6" />
-              </button>
+                <Shuffle
+                  className={cn('h-4 w-4 md:h-5 md:w-5', isShuffled ? 'text-green-500' : '')}
+                />
+              </Button>
 
-              <button
-                className="control-button h-10 w-10 md:h-12 md:w-12"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
                 onClick={playPrevious}
+                title="Previous"
                 disabled={queue.length <= 1}
-                aria-label="Previous track"
               >
-                <SkipBack className="h-5 w-5 md:h-6 md:w-6" />
-              </button>
+                <SkipBack className="h-4 w-4 md:h-5 md:w-5" />
+              </Button>
 
-              <button
+              <Button
+                variant="default"
+                size="icon"
                 onClick={togglePlay}
-                className="control-button h-12 w-12 md:h-14 md:w-14 bg-white text-black hover:scale-105 transition"
-                aria-label={isPlaying ? "Pause" : "Play"}
+                className="liquid-glass-primary h-8 w-8 md:h-10 md:w-10 text-white hover:scale-105 transition"
+                title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? (
-                  <Pause className="h-6 w-6 md:h-7 md:w-7" />
+                  <Pause className="h-4 w-4 md:h-5 md:w-5" />
                 ) : (
-                  <Play className="h-6 w-6 md:h-7 md:w-7 ml-0.5" />
+                  <Play className="h-4 w-4 md:h-5 md:w-5 ml-0.5" />
                 )}
-              </button>
+              </Button>
 
-              <button
-                className="control-button h-10 w-10 md:h-12 md:w-12"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
                 onClick={() => playNext()}
+                title="Next"
                 disabled={queue.length <= 1}
-                aria-label="Next track"
               >
-                <SkipForward className="h-5 w-5 md:h-6 md:w-6" />
-              </button>
+                <SkipForward className="h-4 w-4 md:h-5 md:w-5" />
+              </Button>
 
-              <button
-                className={cn(
-                  'control-button h-10 w-10 md:h-12 md:w-12',
-                  isRepeat ? 'active active-animated' : ''
-                )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
                 onClick={handleToggleRepeat}
-                aria-label={isRepeat ? "Disable repeat" : "Enable repeat"}
+                title="Repeat"
               >
-                <Repeat className="h-5 w-5 md:h-6 md:w-6" />
-              </button>
+                <Repeat className={cn('h-4 w-4 md:h-5 md:w-5', isRepeat ? 'text-green-500' : '')} />
+              </Button>
             </div>
 
             {/* Seek bar */}
