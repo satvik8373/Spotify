@@ -236,55 +236,57 @@ export const PlaybackControls = () => {
 					{/* player controls*/}
 					<div className='flex flex-col items-center gap-2 flex-1 max-w-[40%]'>
 						<div className='flex items-center justify-center gap-4 sm:gap-5 mb-1'>
-							<Button
-								size='icon'
-								variant='ghost'
-								className={cn('hover:text-white h-8 w-8', isShuffled ? 'text-green-500' : 'text-zinc-400')}
+							<button
+								className={cn(
+									'control-button',
+									isShuffled ? 'active active-animated' : ''
+								)}
 								onClick={toggleShuffle}
+								aria-label={isShuffled ? "Disable shuffle" : "Enable shuffle"}
 							>
-								<Shuffle className='h-4 w-4' />
-							</Button>
+								<Shuffle className='h-5 w-5' />
+							</button>
 
-							<Button
-								size='icon'
-								variant='ghost'
-								className='hover:text-white text-zinc-400 h-8 w-8'
+							<button
+								className="control-button"
 								onClick={playPrevious}
 								disabled={!currentSong}
+								aria-label="Previous track"
 							>
-								<SkipBack className='h-4 w-4' />
-							</Button>
+								<SkipBack className='h-5 w-5' />
+							</button>
 
-							<Button
-								size='icon'
-								className='bg-white hover:bg-white/90 text-black rounded-full h-9 w-9 transition-transform hover:scale-105'
+							<button
+								className="control-button bg-white hover:bg-white/90 text-black"
 								onClick={togglePlay}
 								disabled={!currentSong}
+								aria-label={isPlaying ? "Pause" : "Play"}
 							>
 								{isPlaying ? 
-									<Pause className='h-4 w-4' /> : 
-									<Play className='h-4 w-4 ml-[2px]' />
+									<Pause className='h-6 w-6' /> : 
+									<Play className='h-6 w-6 ml-[2px]' />
 								}
-							</Button>
+							</button>
 							
-							<Button
-								size='icon'
-								variant='ghost'
-								className='hover:text-white text-zinc-400 h-8 w-8'
+							<button
+								className="control-button"
 								onClick={playNext}
 								disabled={!currentSong}
+								aria-label="Next track"
 							>
-								<SkipForward className='h-4 w-4' />
-							</Button>
+								<SkipForward className='h-5 w-5' />
+							</button>
 							
-							<Button
-								size='icon'
-								variant='ghost'
-								className={cn('hover:text-white h-8 w-8', isRepeating ? 'text-green-500' : 'text-zinc-400')}
+							<button
+								className={cn(
+									'control-button',
+									isRepeating ? 'active active-animated' : ''
+								)}
 								onClick={toggleRepeat}
+								aria-label={isRepeating ? "Disable repeat" : "Enable repeat"}
 							>
-								<Repeat className='h-4 w-4' />
-							</Button>
+								<Repeat className='h-5 w-5' />
+							</button>
 						</div>
 
 						<div className='flex items-center gap-2 w-full'>
@@ -299,31 +301,43 @@ export const PlaybackControls = () => {
 							<div className='text-[11px] text-zinc-400 w-10'>{formatTime(duration)}</div>
 						</div>
 					</div>
-					
-					{/* volume controls */}
-					<div className='flex items-center gap-4 min-w-[180px] w-[30%] justify-end'>
-						<div className='flex items-center gap-3'>
-							<Button size='icon' variant='ghost' className='hover:text-white text-zinc-400 h-8 w-8'>
-								<Mic2 className='h-4 w-4' />
-							</Button>
-							<Button size='icon' variant='ghost' className='hover:text-white text-zinc-400 h-8 w-8'>
-								<ListMusic className='h-4 w-4' />
-							</Button>
-							<Button size='icon' variant='ghost' className='hover:text-white text-zinc-400 h-8 w-8'>
-								<Laptop2 className='h-4 w-4' />
-							</Button>
-						</div>
 
-						<div className='flex items-center gap-2 ml-2'>
-							<Button size='icon' variant='ghost' className='hover:text-white text-zinc-400 h-8 w-8'>
+					{/* Volume and device controls */}
+					<div className='flex items-center gap-2 min-w-[180px] w-[30%] justify-end'>
+						<Button
+							size='icon'
+							variant='ghost'
+							className='text-zinc-400 hover:text-white'
+						>
+							<Mic2 className='h-4 w-4' />
+						</Button>
+						<Button
+							size='icon'
+							variant='ghost'
+							className='text-zinc-400 hover:text-white'
+						>
+							<ListMusic className='h-4 w-4' />
+						</Button>
+						<Button
+							size='icon'
+							variant='ghost'
+							className='text-zinc-400 hover:text-white'
+						>
+							<Laptop2 className='h-4 w-4' />
+						</Button>
+						<div className='flex items-center gap-2 w-24'>
+							<Button
+								size='icon'
+								variant='ghost'
+								className='text-zinc-400 hover:text-white'
+							>
 								<Volume2 className='h-4 w-4' />
 							</Button>
-
 							<Slider
 								value={[volume]}
 								max={100}
 								step={1}
-								className='w-24 cursor-pointer'
+								className='w-full cursor-pointer'
 								onValueChange={(value) => {
 									setVolume(value[0]);
 									if (audioRef.current) {
@@ -336,77 +350,70 @@ export const PlaybackControls = () => {
 				</div>
 			</footer>
 
-			{/* Mobile Player */}
+			{/* Mobile Player - Minimal version */}
 			<div 
-				className="fixed bottom-14 left-0 right-0 bg-gradient-to-b from-zinc-900 to-black border-t border-zinc-800/50 h-16 backdrop-blur-md z-40 sm:hidden transition-all duration-300"
+				className="fixed bottom-0 left-0 right-0 z-50 h-16 bg-gradient-to-b from-zinc-900/70 to-zinc-900/90 backdrop-blur-lg sm:hidden border-t border-zinc-800/30"
 				style={{ opacity: isTransitioning ? 0.8 : 1 }}
-				onClick={() => setShowSongDetails(true)}
 			>
-				<div className="relative h-full flex items-center justify-between px-3">
-					{/* Song info / left side */}
-					<div className="flex items-center gap-2 flex-1 min-w-0 max-w-[45%]">
-						{currentSong && (
-							<>
-								<div className="h-10 w-10 flex-shrink-0 rounded overflow-hidden cursor-pointer">
-									<img
-										src={currentSong.imageUrl}
-										alt={currentSong.title}
-										className="h-full w-full object-cover bg-zinc-800"
-										onError={(e) => {
-											(e.target as HTMLImageElement).src = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
-										}}
-									/>
-								</div>
-
-								{/* Song info */}
-								<div className="truncate min-w-0 flex-1">
-									<h4 className="text-xs font-medium truncate">{currentSong.title || "Unknown Title"}</h4>
-									<p className="text-[10px] text-zinc-400 truncate">{currentSong.artist || "Unknown Artist"}</p>
-								</div>
-							</>
-						)}
+				<div className="flex items-center justify-between h-full px-3">
+					{/* Song info */}
+					<div 
+						className="flex items-center flex-1 min-w-0 h-full"
+						onClick={() => setShowSongDetails(true)}
+					>
+						<img
+							src={currentSong.imageUrl}
+							alt={currentSong.title}
+							className="h-10 w-10 rounded-md object-cover mr-3"
+						/>
+						<div className="min-w-0 flex-1">
+							<div className="text-sm font-medium text-white truncate">
+								{currentSong.title}
+							</div>
+							<div className="text-xs text-zinc-400 truncate">
+								{currentSong.artist}
+							</div>
+						</div>
 					</div>
 
-					{/* Playback controls / right side */}
+					{/* Controls */}
 					<div className="flex items-center gap-1.5">
-						<Button
-							size="icon"
-							variant="ghost"
-							className="h-9 w-9 text-white p-0"
+						<button
+							className="control-button h-10 w-10"
 							onClick={(e) => {
 								e.stopPropagation();
 								playPrevious();
 							}}
+							aria-label="Previous track"
 						>
 							<SkipBack className="h-4 w-4" />
-						</Button>
+						</button>
 
-						<Button
-							size="icon"
-							className="h-8 w-8 rounded-full bg-white text-black flex items-center justify-center p-0"
+						<button
+							className="control-button h-10 w-10 bg-white text-black"
 							onClick={(e) => {
 								e.stopPropagation();
 								togglePlay();
 							}}
+							aria-label={isPlaying ? "Pause" : "Play"}
 						>
 							{isPlaying ? (
-								<Pause className="h-3.5 w-3.5" />
+								<Pause className="h-4 w-4" />
 							) : (
-								<Play className="h-3.5 w-3.5 ml-[2px]" />
+								<Play className="h-4 w-4 ml-[2px]" />
 							)}
-						</Button>
+						</button>
 
-						<Button
-							size="icon"
-							variant="ghost"
-							className="h-9 w-9 text-white p-0"
+						<button
+							className="control-button h-10 w-10"
 							onClick={(e) => {
 								e.stopPropagation();
 								playNext();
 							}}
+							aria-label="Next track"
 						>
 							<SkipForward className="h-4 w-4" />
-						</Button>
+						</button>
 					</div>
 				</div>
 				

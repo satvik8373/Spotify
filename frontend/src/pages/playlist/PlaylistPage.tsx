@@ -1029,21 +1029,21 @@ export function PlaylistPage() {
                     </Button>
 
               {/* Shuffle button - hidden when scrolled */}
-                    <Button
-                variant="ghost"
+                    <button
                 className={cn(
-                  'w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300',
-                  isShuffleOn ? 'text-green-500' : 'text-gray-200 hover:text-white',
-                  hasScrolled ? 'opacity-0 w-0 ml-0 mr-0 p-0' : ''
+                  'control-button transition-all duration-300',
+                  isShuffleOn ? 'active active-animated' : '',
+                  hasScrolled ? 'opacity-0 w-0 h-0 p-0 m-0 overflow-hidden' : ''
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
                   // Toggle shuffle first
                   usePlayerStore.getState().toggleShuffle();
                 }}
+                aria-label={isShuffleOn ? "Disable shuffle" : "Enable shuffle"}
               >
-                <Shuffle className="h-5 w-5 sm:h-6 sm:w-6" />
-                    </Button>
+                <Shuffle className="h-6 w-6 sm:h-7 sm:w-7" />
+                    </button>
 
               {/* Play/Pause button - always visible */}
               <Button

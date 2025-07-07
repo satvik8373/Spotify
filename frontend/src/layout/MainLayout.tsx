@@ -67,9 +67,9 @@ const MainLayout = () => {
         {/* Left sidebar - hidden on mobile */}
         <ResizablePanel
           defaultSize={20}
-          minSize={isMobile ? 0 : 10}
-          maxSize={30}
-          className={isMobile ? 'hidden md:block' : ''}
+          minSize={isMobile ? 0 : 15}
+          maxSize={25}
+          className={`${isMobile ? 'hidden' : 'block'} h-full`}
         >
           <LeftSidebar />
         </ResizablePanel>

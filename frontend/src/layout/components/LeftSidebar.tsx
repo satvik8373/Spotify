@@ -38,7 +38,7 @@ export const LeftSidebar = () => {
   };
 
   return (
-    <div className="hidden md:flex flex-col w-[340px] bg-zinc-900 h-full">
+    <div className="hidden md:flex flex-col h-full bg-zinc-900 w-full overflow-hidden">
       {/* Header */}
       <div className="p-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-white">Your Library</h1>
@@ -85,7 +85,7 @@ export const LeftSidebar = () => {
       </div>
 
       {/* Playlists */}
-      <div className="flex-1 overflow-y-auto px-2 min-h-0">
+      <div className="flex-1 overflow-y-auto px-2 min-h-0 pb-4">
         <div className="space-y-2 py-2">
           {/* Spotify Section */}
           {spotify.isAuthenticated && (
