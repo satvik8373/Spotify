@@ -1,5 +1,5 @@
 // Service Worker for Mavrixfy
-const CACHE_VERSION = '1.2.4'; // Increment this version whenever you make changes
+const CACHE_VERSION = '1.2.5'; // Increment this version whenever you make changes
 const CACHE_NAME = `spotify-mavrix-v${CACHE_VERSION}`;
 const APP_SHELL_CACHE = 'app-shell-v' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'dynamic-v' + CACHE_VERSION;
@@ -9,11 +9,14 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/spotify-icon-192.png',
-  '/spotify-icon-512.png',
-  '/pwa-icons/spotify-mavrix-icon.svg',
   '/shortcut-liked-96.png',
-  '/shortcut-search-96.png'
+  '/shortcut-search-96.png',
+  '/spotify-icons/spotify-logo-green.png',
+  '/spotify-icons/spotify-logo-white.png',
+  '/spotify-icons/spotify-logo-black.png',
+  '/spotify-icons/spotify-logo-green.svg',
+  '/spotify-icons/spotify-logo-white.svg',
+  '/spotify-icons/spotify-logo-black.svg'
 ];
 
 // Files that shouldn't be cached
