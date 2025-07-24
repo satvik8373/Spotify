@@ -15,6 +15,7 @@ import {
 } from './ui/dropdown-menu';
 import { useLikedSongsStore } from '../stores/useLikedSongsStore';
 import { AddToPlaylistDialog } from './playlist/AddToPlaylistDialog';
+import { ShareSong } from './ShareSong';
 import { toast } from 'sonner';
 
 interface SongMenuProps {
@@ -26,6 +27,7 @@ interface SongMenuProps {
 
 export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: SongMenuProps) {
   const [showAddToPlaylistDialog, setShowAddToPlaylistDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   
   const songId = (song as any).id || song._id;
@@ -89,22 +91,7 @@ export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: 
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Create a shareable link
-    const shareText = `Check out ${song.title} by ${song.artist}`;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: song.title,
-        text: shareText,
-        url: window.location.href,
-      }).catch(() => {
-        // Silent error handling
-      });
-    } else {
-      // Fallback for browsers that don't support Web Share API
-      navigator.clipboard.writeText(`${shareText} - ${window.location.href}`);
-      toast.success('Link copied to clipboard');
-    }
+    setShowShareDialog(true);
   };
 
   return (
@@ -147,6 +134,13 @@ export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: 
           song={song}
           isOpen={showAddToPlaylistDialog}
           onClose={() => setShowAddToPlaylistDialog(false)}
+        />
+      )}
+      
+      {showShareDialog && (
+        <ShareSong
+          song={song}
+          trigger={null}
         />
       )}
     </>

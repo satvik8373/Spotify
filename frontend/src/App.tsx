@@ -7,6 +7,7 @@ import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
 import { Toaster } from 'react-hot-toast';
 import AlbumPage from './pages/album/AlbumPage';
 import { PlaylistPage } from './pages/playlist/PlaylistPage';
+import SharedSongPage from './pages/SharedSongPage';
 import { useState, useEffect } from "react";
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -127,6 +128,10 @@ const router = createBrowserRouter(
 		{
 			path: '/reset-password',
 			element: <ResetPassword />
+		},
+		{
+			path: '/share/song/:songId',
+			element: <SharedSongPage />
 		},
 		{
 			element: <MainLayout />,

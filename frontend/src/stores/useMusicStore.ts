@@ -51,6 +51,7 @@ interface MusicStore {
   fetchHindiSongs: () => Promise<void>;
   searchIndianSongs: (query: string) => Promise<void>;
   convertIndianSongToAppSong: (song: IndianSong) => Song;
+  fetchSongById: (id: string) => Promise<Song | null>;
 }
 
 // Generate SVG data URL for song thumbnails
@@ -550,5 +551,67 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+  },
+
+  // Fetch a single song by ID for sharing
+  fetchSongById: async (id: string): Promise<Song | null> => {
+    try {
+      // First check if it's in our current songs
+      const currentSongs = get().songs;
+      const foundSong = currentSongs.find(song => song._id === id);
+      if (foundSong) return foundSong;
+
+      // Check in Indian songs collections
+      const allIndianSongs = [
+        ...get().indianTrendingSongs,
+        ...get().indianNewReleases,
+        ...get().bollywoodSongs,
+        ...get().hollywoodSongs,
+        ...get().officialTrendingSongs,
+        ...get().hindiSongs,
+        ...get().indianSearchResults,
+      ];
+      
+      const foundIndianSong = allIndianSongs.find(song => song.id === id);
+      if (foundIndianSong) {
+        return get().convertIndianSongToAppSong(foundIndianSong);
+      }
+
+      // Try to fetch from JioSaavn API by ID
+      try {
+        const response = await fetch(`https://saavn.dev/api/songs/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data && data.data.length > 0) {
+            const songData = data.data[0];
+            return get().convertIndianSongToAppSong({
+              id: songData.id,
+              title: songData.name,
+              artist: songData.primaryArtists,
+              album: songData.album?.name,
+              year: songData.year,
+              duration: songData.duration,
+              image: songData.image?.[2]?.url,
+              url: songData.downloadUrl?.[4]?.url,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching song from JioSaavn:', error);
+      }
+
+      // Try backend API as fallback
+      try {
+        const response = await axiosInstance.get(`/songs/${id}`);
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching song from backend:', error);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error in fetchSongById:', error);
+      return null;
+    }
   },
 }));
