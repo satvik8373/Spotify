@@ -9,37 +9,49 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon.spotify.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon.spotify.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon.spotify.png",
+      "src": "/favicon.png",
       "type": "image/png",
       "sizes": "64x64",
       "purpose": "any"
     },
     {
-      "src": "/icon.spotify.png",
+      "src": "/spotify-icons/spotify-logo-green.png",
       "type": "image/png",
-      "sizes": "32x32",
+      "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/icon.spotify.png",
+      "src": "/spotify-icons/spotify-logo-white.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/spotify-icons/spotify-logo-black.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/spotify-icons/spotify-icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/spotify-icons/spotify-icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/spotify-icons/spotify-icon-maskable-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "/icon.spotify.png",
+      "src": "/spotify-icons/spotify-icon-maskable-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
@@ -53,7 +65,7 @@
       "url": "/liked-songs",
       "icons": [
         {
-          "src": "/icon.spotify.png",
+          "src": "/shortcut-liked-96.png",
           "sizes": "96x96"
         }
       ]
@@ -65,7 +77,7 @@
       "url": "/search",
       "icons": [
         {
-          "src": "/icon.spotify.png",
+          "src": "/shortcut-search-96.png",
           "sizes": "96x96"
         }
       ]

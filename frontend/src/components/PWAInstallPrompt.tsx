@@ -114,11 +114,21 @@ const PWAInstallPrompt = () => {
       document.head.appendChild(metaTag);
     });
 
-    // Add apple touch icon
-    const link = document.createElement('link');
-    link.rel = 'apple-touch-icon';
-    link.href = `/icon.spotify.png`;
-    document.head.appendChild(link);
+    // Add apple touch icons
+    const iconSizes = [180, 167, 152, 120];
+    iconSizes.forEach(size => {
+      const link = document.createElement('link');
+      link.rel = 'apple-touch-icon';
+      link.setAttribute('sizes', `${size}x${size}`);
+      link.href = `/apple-touch-icon-${size}.png`;
+      document.head.appendChild(link);
+    });
+
+    // Add default apple touch icon
+    const defaultLink = document.createElement('link');
+    defaultLink.rel = 'apple-touch-icon';
+    defaultLink.href = `/apple-touch-icon.png`;
+    document.head.appendChild(defaultLink);
   };
 
   const handleInstall = async () => {

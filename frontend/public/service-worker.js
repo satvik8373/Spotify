@@ -9,7 +9,18 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon.spotify.png'
+  '/shortcut-liked-96.png',
+  '/shortcut-search-96.png',
+  '/spotify-icons/spotify-logo-green.png',
+  '/spotify-icons/spotify-logo-white.png',
+  '/spotify-icons/spotify-logo-black.png',
+  '/spotify-icons/spotify-logo-green.svg',
+  '/spotify-icons/spotify-logo-white.svg',
+  '/spotify-icons/spotify-logo-black.svg',
+  '/spotify-icons/spotify-icon-192.png',
+  '/spotify-icons/spotify-icon-512.png',
+  '/spotify-icons/spotify-icon-maskable-192.png',
+  '/spotify-icons/spotify-icon-maskable-512.png'
 ];
 
 // Files that shouldn't be cached
