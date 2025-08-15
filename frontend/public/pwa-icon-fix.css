@@ -6,8 +6,8 @@
   link[rel="icon"],
   link[rel="apple-touch-icon"] {
     /* Ensure icon displays properly */
-    -webkit-mask-image: url('/spotify-icons/spotify-logo-green.svg');
-    mask-image: url('/spotify-icons/spotify-logo-green.svg');
+    -webkit-mask-image: url('/spotify-icons/spotify-logo-green.png');
+    mask-image: url('/spotify-icons/spotify-logo-green.png');
     -webkit-mask-size: 75% !important; /* Show more black border */
     mask-size: 75% !important; /* Show more black border */
     -webkit-mask-repeat: no-repeat;
