@@ -136,13 +136,6 @@ export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: 
           onClose={() => setShowAddToPlaylistDialog(false)}
         />
       )}
-      
-      {showShareDialog && (
-        <ShareSong
-          song={song}
-          trigger={null}
-        />
-      )}
     </>
   );
 } 

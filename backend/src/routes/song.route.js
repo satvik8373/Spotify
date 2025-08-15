@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { getAllSongs, getFeaturedSongs, getMadeForYouSongs, getTrendingSongs } from "../controllers/song.controller.js";
 import { protectRoute, requireAdmin } from "../middleware/auth.middleware.js";
-import fetch from 'node-fetch';
 
 const router = Router();
 
@@ -17,44 +16,6 @@ router.get("/all", async (req, res) => {
     res.json({ message: "This endpoint now uses Firebase. Please use the frontend Firebase implementation." });
   } catch (error) {
     res.status(500).json({ message: error.message });
-  }
-});
-
-// Get a single song by ID for sharing
-router.get("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Try to fetch from JioSaavn API first
-    try {
-      const response = await fetch(`https://saavn.dev/api/songs/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.data && data.data.length > 0) {
-          const songData = data.data[0];
-          const formattedSong = {
-            _id: songData.id,
-            title: songData.name,
-            artist: songData.primaryArtists,
-            albumId: null,
-            imageUrl: songData.image?.[2]?.url || '',
-            audioUrl: songData.downloadUrl?.[4]?.url || '',
-            duration: parseInt(songData.duration || '0'),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          return res.json(formattedSong);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching from JioSaavn:', error);
-    }
-    
-    // Firebase version would go here as fallback
-    res.status(404).json({ message: "Song not found" });
-  } catch (error) {
-    console.error("Error fetching song:", error);
-    res.status(500).json({ message: "Failed to fetch song", error: error.message });
   }
 });
 

@@ -130,10 +130,6 @@ const router = createBrowserRouter(
 			element: <ResetPassword />
 		},
 		{
-			path: '/share/song/:songId',
-			element: <SharedSongPage />
-		},
-		{
 			element: <MainLayout />,
 			errorElement: <ErrorFallback />,
 			children: [

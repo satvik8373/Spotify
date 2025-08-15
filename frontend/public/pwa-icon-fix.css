@@ -6,15 +6,11 @@
   link[rel="icon"],
   link[rel="apple-touch-icon"] {
     /* Ensure icon displays properly */
-    -webkit-mask-image: url('/spotify-icons/spotify-logo-green.svg');
-    mask-image: url('/spotify-icons/spotify-logo-green.svg');
-    -webkit-mask-size: 75% !important; /* Show more black border */
-    mask-size: 75% !important; /* Show more black border */
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    mask-position: center;
-    background-color: #1DB954; /* Spotify green */
+    background-image: url('/spotify-icons/spotify-icon-192.png');
+    background-size: 75% !important; /* Show more black border */
+    background-repeat: no-repeat;
+    background-position: center;
+    background-color: transparent; /* Transparent background */
   }
   
   /* Fix for home screen icons */
@@ -22,9 +18,10 @@
   [class*="homescreen-icon"] {
     border-radius: 17% !important;
     overflow: hidden !important;
-    background-color: #191414 !important;
+    background-color: transparent !important;
     background-size: 75% !important;
     background-position: center !important;
+    background-image: url('/spotify-icons/spotify-icon-192.png') !important;
   }
 }
 
@@ -32,17 +29,18 @@
 @media (display-mode: standalone) and (-webkit-device-pixel-ratio: 2) {
   /* High DPI iOS devices */
   link[rel="apple-touch-icon"] {
-    background-color: #1DB954;
+    background-color: transparent;
     border-radius: 17%; /* Match Spotify's rounded square shape */
-    -webkit-mask-size: 75% !important; /* Show more black border */
-    mask-size: 75% !important; /* Show more black border */
+    background-size: 75% !important; /* Show more black border */
+    background-image: url('/spotify-icons/spotify-icon-192.png');
   }
   
   /* iOS home screen icon */
   [class*="apple-touch-icon"] {
     background-size: 75% !important; /* Show more black border */
     border-radius: 17% !important;
-    background-color: #191414 !important;
+    background-color: transparent !important;
+    background-image: url('/spotify-icons/spotify-icon-192.png') !important;
   }
 }
 
@@ -58,6 +56,26 @@
   .app-icon {
     border-radius: 17% !important;
     background-size: 75% !important; /* Show more black border */
-    background-color: #191414 !important;
+    background-color: transparent !important;
+    background-image: url('/spotify-icons/spotify-icon-192.png') !important;
   }
+}
+
+/* General icon styling for all contexts */
+.app-icon,
+[class*="icon"] {
+  background-image: url('/spotify-icons/spotify-icon-192.png') !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-color: transparent !important;
+}
+
+/* Favicon specific styling */
+link[rel="icon"] {
+  background-image: url('/favicon.png') !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-color: transparent !important;
 } 
