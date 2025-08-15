@@ -9,19 +9,7 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.png',
-  '/apple-touch-icon.png',
-  '/apple-touch-icon-120.png',
-  '/apple-touch-icon-152.png',
-  '/apple-touch-icon-167.png',
-  '/apple-touch-icon-180.png',
-  '/spotify-icons/spotify-icon-32.png',
-  '/spotify-icons/spotify-icon-64.png',
-  '/spotify-icons/spotify-icon-96.png',
-  '/spotify-icons/spotify-icon-192.png',
-  '/spotify-icons/spotify-icon-512.png',
-  '/spotify-icons/spotify-icon-maskable-192.png',
-  '/spotify-icons/spotify-icon-maskable-512.png'
+  '/icon.spotify.png'
 ];
 
 // Files that shouldn't be cached
