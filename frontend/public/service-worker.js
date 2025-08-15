@@ -1,5 +1,5 @@
 // Service Worker for Mavrixfy
-const CACHE_VERSION = '1.2.6'; // Increment this version whenever you make changes
+const CACHE_VERSION = '1.2.7'; // Increment this version whenever you make changes
 const CACHE_NAME = `spotify-mavrix-v${CACHE_VERSION}`;
 const APP_SHELL_CACHE = 'app-shell-v' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'dynamic-v' + CACHE_VERSION;
@@ -11,12 +11,6 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/shortcut-liked-96.png',
   '/shortcut-search-96.png',
-  '/spotify-icons/spotify-logo-green.png',
-  '/spotify-icons/spotify-logo-white.png',
-  '/spotify-icons/spotify-logo-black.png',
-  '/spotify-icons/spotify-logo-green.svg',
-  '/spotify-icons/spotify-logo-white.svg',
-  '/spotify-icons/spotify-logo-black.svg',
   '/spotify-icons/spotify-icon-192.png',
   '/spotify-icons/spotify-icon-512.png',
   '/spotify-icons/spotify-icon-maskable-192.png',

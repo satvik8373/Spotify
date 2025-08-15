@@ -2,28 +2,27 @@
 
 /* Style for the PWA icon when added to home screen */
 @media (display-mode: standalone) {
-  /* Custom icon styling for standalone mode */
+  /* Remove any mask forcing borders - let full icon show */
   link[rel="icon"],
   link[rel="apple-touch-icon"] {
-    /* Ensure icon displays properly */
-    -webkit-mask-image: url('/spotify-icons/spotify-logo-green.svg');
-    mask-image: url('/spotify-icons/spotify-logo-green.svg');
-    -webkit-mask-size: 75% !important; /* Show more black border */
-    mask-size: 75% !important; /* Show more black border */
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    mask-position: center;
-    background-color: #1DB954; /* Spotify green */
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    -webkit-mask-size: auto !important;
+    mask-size: auto !important;
+    -webkit-mask-repeat: initial !important;
+    mask-repeat: initial !important;
+    -webkit-mask-position: initial !important;
+    mask-position: initial !important;
+    background: transparent !important;
   }
   
   /* Fix for home screen icons */
   [class*="home-screen-icon"],
   [class*="homescreen-icon"] {
-    border-radius: 17% !important;
-    overflow: hidden !important;
-    background-color: #191414 !important;
-    background-size: 75% !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    background-size: contain !important;
     background-position: center !important;
   }
 }
@@ -32,17 +31,17 @@
 @media (display-mode: standalone) and (-webkit-device-pixel-ratio: 2) {
   /* High DPI iOS devices */
   link[rel="apple-touch-icon"] {
-    background-color: #1DB954;
-    border-radius: 17%; /* Match Spotify's rounded square shape */
-    -webkit-mask-size: 75% !important; /* Show more black border */
-    mask-size: 75% !important; /* Show more black border */
+    background-color: transparent;
+    border-radius: 0;
+    -webkit-mask-size: auto !important;
+    mask-size: auto !important;
   }
   
   /* iOS home screen icon */
   [class*="apple-touch-icon"] {
-    background-size: 75% !important; /* Show more black border */
-    border-radius: 17% !important;
-    background-color: #191414 !important;
+    background-size: contain !important;
+    border-radius: 0 !important;
+    background-color: transparent !important;
   }
 }
 
@@ -56,8 +55,8 @@
 
   /* Fix Android icon corners */
   .app-icon {
-    border-radius: 17% !important;
-    background-size: 75% !important; /* Show more black border */
-    background-color: #191414 !important;
+    border-radius: 0 !important;
+    background-size: contain !important;
+    background-color: transparent !important;
   }
 } 

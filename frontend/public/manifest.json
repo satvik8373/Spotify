@@ -15,24 +15,6 @@
       "purpose": "any"
     },
     {
-      "src": "/spotify-icons/spotify-logo-green.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
-      "src": "/spotify-icons/spotify-logo-white.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
-      "src": "/spotify-icons/spotify-logo-black.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
       "src": "/spotify-icons/spotify-icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
