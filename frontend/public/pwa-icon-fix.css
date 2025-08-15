@@ -1,4 +1,4 @@
-/* PWA Icon Styling - FULL BLEED (No Borders) */
+/* PWA Icon Styling - FULL BLEED (No Borders) - iOS Optimized */
 
 /* Style for the PWA icon when added to home screen */
 @media (display-mode: standalone) {
@@ -16,6 +16,7 @@
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
+    outline: none !important;
   }
   
   /* Fix for home screen icons - FULL BLEED */
@@ -28,10 +29,11 @@
     background-position: center !important;
     border: none !important;
     box-shadow: none !important;
+    outline: none !important;
   }
 }
 
-/* Specific iOS fixes - FULL BLEED */
+/* Specific iOS fixes - FULL BLEED - AGGRESSIVE */
 @media (display-mode: standalone) and (-webkit-device-pixel-ratio: 2) {
   /* High DPI iOS devices */
   link[rel="apple-touch-icon"] {
@@ -41,15 +43,35 @@
     mask-size: auto !important;
     border: none !important;
     box-shadow: none !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
   }
   
-  /* iOS home screen icon - FULL BLEED */
+  /* iOS home screen icon - FULL BLEED - AGGRESSIVE */
   [class*="apple-touch-icon"] {
     background-size: contain !important;
     border-radius: 0 !important;
     background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+  
+  /* iOS specific icon fixes */
+  [class*="ios-icon"],
+  [class*="iphone-icon"],
+  [class*="ipad-icon"] {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    background-size: contain !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
   }
 }
 
@@ -68,16 +90,34 @@
     background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
+    outline: none !important;
   }
 }
 
-/* Additional full-bleed fixes */
+/* Additional full-bleed fixes - AGGRESSIVE */
 *[class*="icon"],
 *[class*="logo"],
 *[class*="app-icon"] {
   border: none !important;
   box-shadow: none !important;
+  outline: none !important;
   background-size: contain !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific */
+  link[rel="apple-touch-icon"],
+  [class*="apple-touch-icon"] {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    background-size: contain !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
 } 

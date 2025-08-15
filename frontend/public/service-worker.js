@@ -1,5 +1,5 @@
 // Service Worker for Mavrixfy
-const CACHE_VERSION = '1.2.9'; // Increment this version whenever you make changes
+const CACHE_VERSION = '1.3.0'; // Increment this version whenever you make changes
 const CACHE_NAME = `spotify-mavrix-v${CACHE_VERSION}`;
 const APP_SHELL_CACHE = 'app-shell-v' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'dynamic-v' + CACHE_VERSION;
