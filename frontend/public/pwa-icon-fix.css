@@ -1,8 +1,8 @@
-/* PWA Icon Styling */
+/* PWA Icon Styling - FULL BLEED (No Borders) */
 
 /* Style for the PWA icon when added to home screen */
 @media (display-mode: standalone) {
-  /* Remove any mask forcing borders - let full icon show */
+  /* Ensure full-bleed icons show without any borders */
   link[rel="icon"],
   link[rel="apple-touch-icon"] {
     -webkit-mask-image: none !important;
@@ -14,9 +14,11 @@
     -webkit-mask-position: initial !important;
     mask-position: initial !important;
     background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
   }
   
-  /* Fix for home screen icons */
+  /* Fix for home screen icons - FULL BLEED */
   [class*="home-screen-icon"],
   [class*="homescreen-icon"] {
     border-radius: 0 !important;
@@ -24,28 +26,34 @@
     background: transparent !important;
     background-size: contain !important;
     background-position: center !important;
+    border: none !important;
+    box-shadow: none !important;
   }
 }
 
-/* Specific iOS fixes */
+/* Specific iOS fixes - FULL BLEED */
 @media (display-mode: standalone) and (-webkit-device-pixel-ratio: 2) {
   /* High DPI iOS devices */
   link[rel="apple-touch-icon"] {
-    background-color: transparent;
-    border-radius: 0;
+    background-color: transparent !important;
+    border-radius: 0 !important;
     -webkit-mask-size: auto !important;
     mask-size: auto !important;
+    border: none !important;
+    box-shadow: none !important;
   }
   
-  /* iOS home screen icon */
+  /* iOS home screen icon - FULL BLEED */
   [class*="apple-touch-icon"] {
     background-size: contain !important;
     border-radius: 0 !important;
     background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
   }
 }
 
-/* Android maskable icon improvements */
+/* Android maskable icon improvements - FULL BLEED */
 @media (display-mode: standalone) and (-webkit-min-device-pixel-ratio: 1) {
   /* Android devices */
   link[rel="manifest"] + meta {
@@ -53,10 +61,23 @@
     content: "#1DB954" !important;
   }
 
-  /* Fix Android icon corners */
+  /* Fix Android icon corners - FULL BLEED */
   .app-icon {
     border-radius: 0 !important;
     background-size: contain !important;
     background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
   }
+}
+
+/* Additional full-bleed fixes */
+*[class*="icon"],
+*[class*="logo"],
+*[class*="app-icon"] {
+  border: none !important;
+  box-shadow: none !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 } 
