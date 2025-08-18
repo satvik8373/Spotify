@@ -224,7 +224,8 @@ self.addEventListener('fetch', (event) => {
             if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg|webp)$/)) {
               return caches.match('/pwa-icons/spotify-mavrix-icon.svg');
             }
-            return null;
+            // Return a valid Response object for other requests to avoid TypeError
+            return new Response('', { status: 504, statusText: 'Gateway Timeout' });
           });
       })
   );

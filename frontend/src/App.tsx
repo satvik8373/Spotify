@@ -7,7 +7,7 @@ import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
 import { Toaster } from 'react-hot-toast';
 import AlbumPage from './pages/album/AlbumPage';
 import { PlaylistPage } from './pages/playlist/PlaylistPage';
-import SharedSongPage from './pages/SharedSongPage';
+// import SharedSongPage from './pages/SharedSongPage';
 import { useState, useEffect } from "react";
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -184,8 +184,10 @@ function AppContent() {
 					JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
 				);
 				
-				// Reduce splash screen time for logged-in users
-				if (hasCachedAuth) {
+				const fromAuthRedirect = (() => { try { return sessionStorage.getItem('auth_redirect') === '1'; } catch { return false; } })();
+
+				// Reduce splash screen time for logged-in users or after auth redirect
+				if (hasCachedAuth || fromAuthRedirect) {
 					// For logged-in users, reduce splash screen time to minimum
 					setTimeout(() => {
 						setInitialized(true);

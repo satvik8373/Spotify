@@ -29,7 +29,17 @@ export const firebaseAuth = async (req, res, next) => {
       
       next();
     } catch (error) {
-      console.error('Firebase auth error:', error);
+      console.error('Firebase auth error:', error.message);
+      
+      // Check if it's a Firebase initialization error
+      if (error.message.includes('Unable to detect a Project Id')) {
+        console.error('Firebase Project ID not configured properly. Please check your environment variables.');
+        return res.status(500).json({
+          message: 'Authentication service temporarily unavailable',
+          success: false,
+          error: process.env.NODE_ENV === 'development' ? 'Firebase Project ID not configured' : undefined
+        });
+      }
       
       return res.status(401).json({
         message: 'Invalid or expired token',
@@ -68,7 +78,11 @@ export const optionalFirebaseAuth = async (req, res, next) => {
       };
     } catch (error) {
       // Don't fail on invalid token, just log and continue
-      console.log('Optional Firebase auth failed:', error.message);
+      if (error.message.includes('Unable to detect a Project Id')) {
+        console.error('Firebase Project ID not configured properly. Please check your environment variables.');
+      } else {
+        console.log('Optional Firebase auth failed:', error.message);
+      }
     }
     
     next();

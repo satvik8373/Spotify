@@ -18,6 +18,7 @@ interface AuthContextType {
   error: Error | null;
   isAuthenticated: boolean;
   refreshUserData: () => Promise<void>;
+  isOnline: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,7 +26,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   isAuthenticated: false,
-  refreshUserData: async () => {}
+  refreshUserData: async () => {},
+  isOnline: true
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -34,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(true);
   const loadingRef = useRef(false);
   const initialLoadCompletedRef = useRef(false);
   const authStateCheckedRef = useRef(false);
@@ -55,7 +58,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Get user's ID token for subsequent API requests
           const idToken = await getIdToken(firebaseUser, true);
           if (idToken) {
-            console.log('Auth token refreshed successfully');
+            // Suppress noisy logs in production
+            if (import.meta.env.MODE === 'development') {
+              console.log('Auth token refreshed successfully');
+            }
           }
           
           // Get additional user data from Firestore
@@ -85,7 +91,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Log success but not on every update
             if (!user || user.id !== firebaseUser.uid) {
-              console.log("User authenticated:", userObj.name);
+              if (import.meta.env.MODE === 'development') {
+                console.log("User authenticated:", userObj.name);
+              }
             }
           }
         } catch (firestoreError) {
@@ -140,7 +148,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user && auth.currentUser) {
         // Refresh token every 55 minutes (Firebase tokens expire after 60 min)
         tokenRefreshIntervalRef.current = window.setInterval(() => {
-          console.log("Refreshing auth token...");
+          if (import.meta.env.MODE === 'development') {
+            console.log("Refreshing auth token...");
+          }
           loadUser(true);
         }, 55 * 60 * 1000);
       }
@@ -157,6 +167,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Set up auth state listener
   useEffect(() => {
+    // Network status listeners
+    const updateOnline = () => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    updateOnline();
+    window.addEventListener('online', updateOnline);
+    window.addEventListener('offline', updateOnline);
+
+    // Cleanup network listeners on unmount
+    return () => {
+      window.removeEventListener('online', updateOnline);
+      window.removeEventListener('offline', updateOnline);
+    };
+  }, []);
+
+  // Auth state + redirect handling
+  useEffect(() => {
+    // If coming back from auth redirect, skip splash and route quickly
+    try {
+      if (sessionStorage.getItem('auth_redirect') === '1') {
+        sessionStorage.removeItem('auth_redirect');
+        // Force quick user load and avoid long splash after login redirect
+        setLoading(true);
+        loadUser(true).finally(() => {
+          setLoading(false);
+        });
+      }
+    } catch {}
+
     // If cached user exists in auth store, use it immediately
     const authStore = useAuthStore.getState();
     if (authStore.isAuthenticated && authStore.userId && !user) {
@@ -168,7 +205,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       setUser(cachedUser);
-      console.log("Using cached user from auth store while waiting for Firebase");
+      if (import.meta.env.MODE === 'development') {
+        console.log("Using cached user from auth store while waiting for Firebase");
+      }
     }
 
     // Listen for Firebase auth state changes
@@ -178,11 +217,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (firebaseUser) {
         // User is signed in
-        console.log("Firebase auth state changed: User is signed in");
+        if (import.meta.env.MODE === 'development') {
+          console.log("Firebase auth state changed: User is signed in");
+        }
         loadUser();
       } else {
         // User is signed out
-        console.log("Firebase auth state changed: User is signed out");
+        if (import.meta.env.MODE === 'development') {
+          console.log("Firebase auth state changed: User is signed out");
+        }
         setUser(null);
         setLoading(false);
         // Reset auth store
@@ -203,11 +246,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkInterval = setInterval(() => {
       const authStore = useAuthStore.getState();
       if (authStore.isAuthenticated && authStore.userId && !user && initialLoadCompletedRef.current) {
-        console.log('Auth inconsistency detected - forcing refresh');
+        if (import.meta.env.MODE === 'development') {
+          console.log('Auth inconsistency detected - forcing refresh');
+        }
         loadUser(true);
       } else if (!authStore.isAuthenticated && user) {
         // Also check the reverse inconsistency
-        console.log('Reverse auth inconsistency detected - user in AuthContext but not in authStore');
+        if (import.meta.env.MODE === 'development') {
+          console.log('Reverse auth inconsistency detected - user in AuthContext but not in authStore');
+        }
         setUser(null);
       }
     }, 3000); // Check every 3 seconds
@@ -226,7 +273,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading, 
       error, 
       isAuthenticated: !!user,
-      refreshUserData
+      refreshUserData,
+      isOnline
     }}>
       {children}
     </AuthContext.Provider>

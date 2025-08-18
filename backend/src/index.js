@@ -81,7 +81,13 @@ app.use(async (req, res, next) => {
       };
       console.log(`Firebase auth successful for user: ${decodedToken.uid}`);
     } catch (error) {
-      console.log("Firebase auth failed, continuing with other auth methods:", error.message);
+      // Check if it's a Firebase initialization error
+      if (error.message.includes('Unable to detect a Project Id')) {
+        console.error('Firebase Project ID not configured properly. Please check your environment variables.');
+        console.error('To fix this, set FIREBASE_PROJECT_ID=spotify-8fefc in your environment variables.');
+      } else {
+        console.log("Firebase auth failed, continuing with other auth methods:", error.message);
+      }
       // Don't fail the request - allow other auth methods to be checked
     }
   }

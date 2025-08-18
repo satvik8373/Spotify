@@ -1,25 +1,21 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import IndianMusicPlayer from '@/components/IndianMusicPlayer';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { PlaylistCard } from '../../components/playlist/PlaylistCard';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useAuth } from '@/contexts/AuthContext';
 import {
-  PlusCircle,
-  Disc,
   Heart,
-  Clock,
-  Library,
   Music2,
   PlayCircle,
   Share2,
   ThumbsUp,
-  Hash,
   ChevronRight,
+  WifiOff,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { useNavigate, Link } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { toast } from 'react-hot-toast';
 import {
@@ -178,17 +174,18 @@ const HomePage = () => {
   } = usePlaylistStore();
   const { isAuthenticated, userId } = useAuthStore();
   const navigate = useNavigate();
+  const { isOnline } = useAuth();
   const [showCreatePlaylistDialog, setShowCreatePlaylistDialog] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistDesc, setNewPlaylistDesc] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [showAllPlaylists, setShowAllPlaylists] = useState(false);
+  
   const [recentPlaylists, setRecentPlaylists] = useState<RecentPlaylist[]>([]);
   const [topPlaylists, setTopPlaylists] = useState<TopPlaylist[]>([]);
-  const [sortBy, setSortBy] = useState<'clicks' | 'likes' | 'shares'>('clicks');
+  
 
-  const { indianTrendingSongs } =
+  const { indianTrendingSongs, fetchIndianTrendingSongs } =
     useMusicStore();
 
   const { setCurrentSong } = usePlayerStore();
@@ -199,7 +196,11 @@ const HomePage = () => {
     if (isAuthenticated) {
       fetchUserPlaylists();
     }
-  }, [fetchFeaturedPlaylists, fetchUserPlaylists, fetchPublicPlaylists, isAuthenticated]);
+    // Ensure Indian songs are available (will use mock data first then try network)
+    if (!indianTrendingSongs || indianTrendingSongs.length === 0) {
+      fetchIndianTrendingSongs().catch(() => {});
+    }
+  }, [fetchFeaturedPlaylists, fetchUserPlaylists, fetchPublicPlaylists, isAuthenticated, fetchIndianTrendingSongs, indianTrendingSongs?.length]);
 
   // Load recent playlists from localStorage
   useEffect(() => {
@@ -232,7 +233,7 @@ const HomePage = () => {
             rank: index + 1,
             isLiked: false,
           }))
-          .sort((a, b) => b.metrics[sortBy] - a.metrics[sortBy])
+          .sort((a, b) => b.metrics.clicks - a.metrics.clicks)
           .slice(0, 10)
           .map((playlist, index) => ({ ...playlist, rank: index + 1 }));
 
@@ -243,7 +244,7 @@ const HomePage = () => {
     }
     // For non-authenticated users, use featured playlists or create dummy ones
     else {
-      // If we have featured playlists, use those
+      // If we have featured playlists, use those without fake metrics
       if (featuredPlaylists.length > 0) {
         const top = featuredPlaylists
           .map((playlist, index) => ({
@@ -252,9 +253,9 @@ const HomePage = () => {
             imageUrl: playlist.imageUrl,
             lastPlayed: Date.now(),
             metrics: {
-              clicks: Math.floor(Math.random() * 1000) + 100,
-              likes: Math.floor(Math.random() * 500) + 50,
-              shares: Math.floor(Math.random() * 200) + 10,
+              clicks: 0,
+              likes: 0,
+              shares: 0,
             },
             rank: index + 1,
             isLiked: false,
@@ -264,75 +265,12 @@ const HomePage = () => {
 
         setTopPlaylists(top);
       }
-      // If no featured playlists, create dummy playlists
+      // If no featured playlists, don't show any demo data
       else {
-        const dummyPlaylists = [
-          {
-            _id: 'top1',
-            name: "Today's Top Hits",
-            imageUrl: 'https://i.scdn.co/image/ab67706f000000020377b345bbe437803ac0bc0b',
-          },
-          {
-            _id: 'top2',
-            name: 'RapCaviar',
-            imageUrl: 'https://i.scdn.co/image/ab67706f00000002ffa215be1a4c64e3cbf59d1e',
-          },
-          {
-            _id: 'top3',
-            name: 'All Out 2010s',
-            imageUrl: 'https://i.scdn.co/image/ab67706f0000000278b4745cb9ce8ffe32d763bc',
-          },
-          {
-            _id: 'top4',
-            name: 'Rock Classics',
-            imageUrl: 'https://i.scdn.co/image/ab67706f0000000278b4745cb9ce8ffe32d763bc',
-          },
-          {
-            _id: 'top5',
-            name: 'Chill Hits',
-            imageUrl: 'https://i.scdn.co/image/ab67706f00000002b60db5d0557bcd3ad97a44a7',
-          },
-          {
-            _id: 'top6',
-            name: 'Viva Latino',
-            imageUrl: 'https://i.scdn.co/image/ab67706f00000002b70e0223f544b1faa2e95ed0',
-          },
-          {
-            _id: 'top7',
-            name: 'Mood Booster',
-            imageUrl: 'https://i.scdn.co/image/ab67706f00000002bd0e19e810bb4b55ab164a95',
-          },
-          {
-            _id: 'top8',
-            name: 'Peaceful Piano',
-            imageUrl: 'https://i.scdn.co/image/ab67706f00000002ca5a7517156021292e5663a4',
-          },
-          {
-            _id: 'top9',
-            name: 'Indie Rock',
-            imageUrl: 'https://i.scdn.co/image/ab67706f000000025f7327d3fdc71af27917adba',
-          },
-          {
-            _id: 'top10',
-            name: 'Sleep',
-            imageUrl: 'https://i.scdn.co/image/ab67706f00000002b70e0223f544b1faa2e95ed0',
-          },
-        ].map((playlist, index) => ({
-          ...playlist,
-          lastPlayed: Date.now(),
-          metrics: {
-            clicks: Math.floor(Math.random() * 1000) + 100,
-            likes: Math.floor(Math.random() * 500) + 50,
-            shares: Math.floor(Math.random() * 200) + 10,
-          },
-          rank: index + 1,
-          isLiked: false,
-        }));
-
-        setTopPlaylists(dummyPlaylists);
+        setTopPlaylists([]);
       }
     }
-  }, [userPlaylists, sortBy, isAuthenticated, featuredPlaylists]);
+  }, [userPlaylists, isAuthenticated, featuredPlaylists]);
 
   // Function to add a playlist to recent
   const addToRecentPlaylists = (playlist: any) => {
@@ -358,21 +296,11 @@ const HomePage = () => {
     }
   };
 
-  // Function to get displayed items (6 total)
+  // Function to get displayed items (only real user data, no demo content)
   const getDisplayedItems = () => {
     const items = [];
 
-    // Always add Liked Songs first
-    items.push({
-      id: 'liked-songs',
-      title: 'Liked Songs',
-      image: 'https://misc.scdn.co/liked-songs/liked-songs-640.png',
-      path: '/liked-songs',
-      gradient: 'from-indigo-500 to-indigo-900',
-      fixed: true,
-    });
-
-    // Add recent playlists
+    // Add recent playlists only if they exist
     if (recentPlaylists.length > 0) {
       items.push(
         ...recentPlaylists.map(playlist => ({
@@ -396,10 +324,10 @@ const HomePage = () => {
     return items.slice(0, 6);
   };
 
-  // Handle playlist click
+  // Handle playlist click (only for real playlists, no demo data)
   const handlePlaylistClick = (playlist: any) => {
-    // For regular playlists with an id that's not a dummy "top" id
-    if (playlist._id && !playlist._id.startsWith('top')) {
+    // Only handle real playlists with valid IDs
+    if (playlist._id) {
       // Update metrics
       updateMetrics(playlist._id, 'clicks');
 
@@ -408,25 +336,6 @@ const HomePage = () => {
 
       // Navigate to playlist
       navigate(`/playlist/${playlist._id}`);
-    }
-    // For dummy top playlists (non-authenticated users)
-    else if (playlist._id && playlist._id.startsWith('top')) {
-      // Show a toast that encourages sign-up
-      toast(
-        <div>
-          <p className="font-medium">{playlist.name}</p>
-          <p className="text-xs mt-1">Sign up to create and save playlists</p>
-        </div>
-      );
-
-      // Still record metrics for the interaction
-      if (playlist._id) {
-        updateMetrics(playlist._id, 'clicks');
-      }
-    }
-    // For items like "Liked Songs"
-    else if (playlist.path) {
-      navigate(playlist.path);
     }
   };
 
@@ -516,7 +425,27 @@ const HomePage = () => {
     <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-zinc-900 to-black">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
         <div className="pt-1 pb-6 max-w-full overflow-x-hidden">
+          {/* Offline banner */}
+          {!isOnline && (
+            <div className="px-2 sm:px-4 mb-3">
+              <div className="bg-yellow-500/10 border border-yellow-600 text-yellow-200 text-xs sm:text-sm rounded-md px-3 py-2">
+                You are offline. Some features may be unavailable.
+              </div>
+            </div>
+          )}
+
+          {/* Offline placeholder */}
+          {!isOnline && (
+            <div className="px-2 sm:px-4 mb-4">
+              <div className="flex items-center gap-2 text-zinc-300">
+                <WifiOff className="h-4 w-4 text-yellow-400" />
+                <span className="text-xs sm:text-sm">No internet connection</span>
+              </div>
+            </div>
+          )}
+
           {/* Recently played section */}
+          {isOnline && (
           <div className="px-2 sm:px-4">
             {/* Top Picks Section - Enhanced Design */}
             <div className="mb-5">
@@ -852,7 +781,9 @@ const HomePage = () => {
               </div>
             </div>
           </div>
+          )}
 
+          {isOnline && (
           <div className="mb-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2.5 px-2 sm:px-4 gap-1">
               <h2 className="text-base font-bold tracking-tight">Indian Music</h2>
@@ -863,15 +794,17 @@ const HomePage = () => {
                   key={song.id}
                   className="flex flex-col rounded-md overflow-hidden cursor-pointer group transition-all duration-300 bg-zinc-800/30 hover:bg-zinc-800/70"
                   onClick={() => {
-                    // Convert IndianSong to Song format
+                    // Convert IndianSong to Song format (only if valid data exists)
+                    if (!song.id || !song.title) return;
+                    
                     const convertedSong = {
                       _id: song.id,
                       title: song.title,
-                      artist: song.artist || 'Artist-Mavrix',
+                      artist: song.artist || '',
                       albumId: null,
-                      imageUrl: song.image,
+                      imageUrl: song.image || '',
                       audioUrl: song.url || '',
-                      duration: song.duration || '0:00',
+                      duration: song.duration || '',
                       createdAt: new Date().toISOString(),
                       updatedAt: new Date().toISOString(),
                     };
@@ -901,6 +834,7 @@ const HomePage = () => {
               ))}
             </div>
           </div>
+          )}
 
           {/* Indian Music Player Component */}
           <IndianMusicPlayer />

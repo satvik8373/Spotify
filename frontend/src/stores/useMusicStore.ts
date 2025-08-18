@@ -53,74 +53,10 @@ interface MusicStore {
   convertIndianSongToAppSong: (song: IndianSong) => Song;
 }
 
-// Generate SVG data URL for song thumbnails
-const generateSongImage = (title: string, color: string = "#1DB954"): string => {
-  const safeText = title.replace(/['&<>]/g, ''); // Basic sanitization
-  return `data:image/svg+xml;base64,${btoa(`
-    <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
-      <rect width="300" height="300" fill="${color}"/>
-      <text x="150" y="150" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">${safeText}</text>
-      <path d="M200,150 C200,177.614 177.614,200 150,200 C122.386,200 100,177.614 100,150 C100,122.386 122.386,100 150,100 C177.614,100 200,122.386 200,150 Z" fill="rgba(255,255,255,0.2)"/>
-      <path d="M165,140 L140,125 L140,175 L165,160 Z" fill="white"/>
-    </svg>
-  `)}`;
-};
+//
 
-// Mock data for testing and fallback
-const mockTrendingSongs = [
-  {
-    id: "mock_trending_1",
-    title: "Bewafa",
-    artist: "Imran Khan",
-    album: "Unforgettable",
-    year: "2020",
-    duration: "4:25",
-    image: generateSongImage("Bewafa"),
-    url: "https://aac.saavncdn.com/532/9a6c47cac1eb5823f5a989fdd7d1c513_320.mp4"
-  },
-  {
-    id: "mock_trending_2",
-    title: "Kaise Hua",
-    artist: "Vishal Mishra",
-    album: "Kabir Singh",
-    year: "2019",
-    duration: "3:54",
-    image: generateSongImage("Kaise Hua", "#3D91F4"),
-    url: "https://aac.saavncdn.com/807/94f54b6e5292b6a0a3936e7465cba9ba_320.mp4"
-  },
-  {
-    id: "mock_trending_3",
-    title: "Tera Ban Jaunga",
-    artist: "Akhil Sachdeva, Tulsi Kumar",
-    album: "Kabir Singh",
-    year: "2019",
-    duration: "3:56",
-    image: generateSongImage("Tera Ban Jaunga", "#E13300"),
-    url: "https://aac.saavncdn.com/570/a16bb2ea6875145bf94cee3846abb701_320.mp4"
-  },
-  {
-    id: "mock_trending_4",
-    title: "Tujhe Kitna Chahne Lage",
-    artist: "Arijit Singh",
-    album: "Kabir Singh",
-    year: "2019",
-    duration: "4:45",
-    image: generateSongImage("Tujhe Kitna Chahne Lage", "#FFA42B"),
-    url: "https://aac.saavncdn.com/389/3978da62df331ad10f95e4ad7e8d6435_320.mp4"
-  },
-  {
-    id: "mock_trending_5",
-    title: "Duniyaa",
-    artist: "Abhijit Vaghani, Akhil, Dhvani Bhanushali",
-    album: "Luka Chuppi",
-    year: "2019",
-    duration: "3:42",
-    image: generateSongImage("Duniyaa", "#8B2AC2"),
-    url: "https://aac.saavncdn.com/904/a9a98c04d89b124259d9bcf56cefb0a4_320.mp4"
-  }
-];
 
-export const useMusicStore = create<MusicStore>((set, get) => ({
+export const useMusicStore = create<MusicStore>((set) => ({
   albums: [],
   songs: [],
   isLoading: false,
@@ -267,9 +203,6 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
   fetchIndianTrendingSongs: async () => {
     set({ isIndianMusicLoading: true });
     try {
-      // Use mock data first to ensure immediate content display
-      set({ indianTrendingSongs: mockTrendingSongs });
-      
       try {
         // Call JioSaavn API directly
         const response = await fetch(
@@ -292,17 +225,14 @@ export const useMusicStore = create<MusicStore>((set, get) => ({
               image: item.image[2].url,
               url: item.downloadUrl[4].url,
             }));
-            
-          if (formattedResults.length > 0) {
-            set({ indianTrendingSongs: formattedResults });
-          }
+
+          set({ indianTrendingSongs: formattedResults });
+        } else {
+          set({ indianTrendingSongs: [] });
         }
       } catch (error) {
-        // Already set mock data, no need to set again
+        set({ indianTrendingSongs: [] });
       }
-    } catch (error: any) {
-      // Ensure we have fallback data
-      set({ indianTrendingSongs: mockTrendingSongs });
     } finally {
       set({ isIndianMusicLoading: false });
     }

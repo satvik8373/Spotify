@@ -6,7 +6,9 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -50,7 +52,7 @@ interface UserProfile {
 export const login = async (email: string, password: string): Promise<UserProfile | null> => {
   try {
     // Generate a cache key
-    const cacheKey = `${email}:${Date.now()}`;
+    // const cacheKey = `${email}:${Date.now()}`;
     
     // Check if we have an ongoing login attempt with this email
     const existingLoginPromise = loginCache.get(email);
@@ -494,15 +496,35 @@ export const getCurrentUser = () => {
 export const signInWithGoogle = async (): Promise<UserProfile> => {
   try {
     // Cache check - prevent duplicate signins
-    const cacheKey = `google:${Date.now()}`;
+    // const cacheKey = `google:${Date.now()}`;
     
     // Create a new GoogleAuthProvider instance with optimal settings
     const provider = new GoogleAuthProvider();
     // Add select_account to force the account picker every time
     provider.setCustomParameters({ prompt: 'select_account' });
     
-    // Start Firebase authentication
-    const userCredential = await signInWithPopup(auth, provider);
+    // If returning from redirect, handle it first
+    const redirectCred = await getRedirectResult(auth);
+    const userCredential = redirectCred ?? (await (async () => {
+      try {
+        return await signInWithPopup(auth, provider);
+      } catch (e: any) {
+        const msg = String(e?.message || e);
+        // Fallback to redirect flow when COOP/COEP or popup policies interfere
+        if (
+          msg.includes('Cross-Origin-Opener-Policy') ||
+          msg.includes('window.closed') ||
+          msg.includes('popup') ||
+          msg.includes('operation-not-supported')
+        ) {
+          try { sessionStorage.setItem('auth_redirect', '1'); } catch {}
+          await signInWithRedirect(auth, provider);
+          // The page will navigate; throw to stop further processing
+          throw new Error('Redirecting to Google sign-in...');
+        }
+        throw e;
+      }
+    })());
     const user = userCredential.user;
     
     // Create a user profile object
@@ -590,7 +612,7 @@ export const refreshUserData = async (): Promise<UserProfile | null> => {
     }
     
     // Get fresh ID token
-    const idToken = await currentUser.getIdToken(true);
+    await currentUser.getIdToken(true);
     
     // Fetch user data from Firestore
     const userDoc = await getDoc(doc(db, "users", currentUser.uid));

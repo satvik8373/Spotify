@@ -1,21 +1,10 @@
 import { create } from 'zustand';
-import axiosInstance from '../lib/axios';
-import { Playlist, Song } from '../types';
-import { toast } from 'sonner';
-import { mockPlaylists, mockUserPlaylists } from '../utils/mockData';
+//
+import { Playlist } from '../types';
 import * as playlistService from '../services/playlistService';
 import { useMusicStore } from '../stores/useMusicStore';
 
-// Generate SVG data URL for fallback images
-const generateImageUrl = (text: string, bgColor: string = "#1DB954"): string => {
-  const safeText = text.replace(/['&<>]/g, ''); // Basic sanitization
-  return `data:image/svg+xml;base64,${btoa(`
-    <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
-      <rect width="300" height="300" fill="${bgColor}"/>
-      <text x="150" y="150" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">${safeText}</text>
-    </svg>
-  `)}`;
-};
+//
 
 interface PlaylistStore {
   // State
@@ -77,8 +66,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const playlists = await playlistService.getUserPlaylists();
         set({ playlists, isLoading: false });
       } catch (error) {
-        // Use mock data as fallback
-        set({ playlists: mockPlaylists, isLoading: false });
+        set({ playlists: [], isLoading: false });
       }
     } catch (error: any) {
       set({ isLoading: false });
@@ -94,8 +82,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const userPlaylists = await playlistService.getUserPlaylists();
         set({ userPlaylists, isLoading: false });
       } catch (error) {
-        // Use mock data as fallback
-        set({ userPlaylists: mockUserPlaylists, isLoading: false });
+        set({ userPlaylists: [], isLoading: false });
       }
     } catch (error: any) {
       set({ isLoading: false });
@@ -111,10 +98,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const featuredPlaylists = await playlistService.getFeaturedPlaylists();
         set({ featuredPlaylists, isLoading: false });
       } catch (error) {
-        // Use mock data as fallback
-        // Filter mock playlists to only include featured ones
-        const featured = mockPlaylists.filter(playlist => playlist.featured);
-        set({ featuredPlaylists: featured, isLoading: false });
+        set({ featuredPlaylists: [], isLoading: false });
       }
     } catch (error: any) {
       set({ isLoading: false });
@@ -130,10 +114,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const publicPlaylists = await playlistService.getPublicPlaylists();
         set({ publicPlaylists, isLoading: false });
       } catch (error) {
-        // Use mock data as fallback
-        // Filter mock playlists to only include public ones
-        const public_playlists = mockPlaylists.filter(playlist => playlist.isPublic);
-        set({ publicPlaylists: public_playlists, isLoading: false });
+        set({ publicPlaylists: [], isLoading: false });
       }
     } catch (error: any) {
       set({ isLoading: false });
@@ -150,13 +131,6 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         set({ currentPlaylist: playlist, isLoading: false });
         return playlist;
       } catch (error) {
-        // Use mock data as fallback
-        // Find a mock playlist with the matching ID
-        const mockPlaylist = [...mockPlaylists, ...mockUserPlaylists].find(p => p._id === id);
-        if (mockPlaylist) {
-          set({ currentPlaylist: mockPlaylist, isLoading: false });
-          return mockPlaylist;
-        }
       }
       
       set({ isLoading: false });
@@ -227,30 +201,8 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
 
         return playlist;
       } catch (firestoreError) {
-        // Use mock data as fallback
-        const mockPlaylist: Playlist = {
-          _id: `mock-playlist-${Date.now()}`,
-          name,
-          description,
-          isPublic,
-          imageUrl: imageUrl || generateImageUrl(name),
-          songs: [],
-          featured: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          createdBy: {
-            _id: "mock-user-1",
-            clerkId: "mock-clerk-id-1",
-            fullName: "Demo User",
-            imageUrl: generateImageUrl("User", "#555555")
-          }
-        };
-        
-        // Update the user playlists list
-        const userPlaylists = [...get().userPlaylists, mockPlaylist];
-        set({ userPlaylists, isCreating: false });
-        
-        return mockPlaylist;
+        set({ isCreating: false });
+        return null;
       }
     } catch (error) {
       set({ isCreating: false });

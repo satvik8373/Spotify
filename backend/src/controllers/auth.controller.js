@@ -132,3 +132,20 @@ export const verifyToken = async (req, res, next) => {
 		next(error);
 	}
 };
+
+// Logout endpoint (no-op for Firebase, kept for compatibility)
+export const logout = async (req, res) => {
+  try {
+    // For Firebase client-side sign out, nothing to do on server.
+    // Optionally we could revoke tokens:
+    const { uid } = req.body || {};
+    if (uid) {
+      try {
+        await admin.auth().revokeRefreshTokens(uid);
+      } catch {}
+    }
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return res.status(200).json({ success: true });
+  }
+};

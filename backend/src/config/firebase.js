@@ -33,8 +33,12 @@ if (!admin.apps.length) {
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
       });
     } else {
-      // Use application default credentials (for environments like Cloud Run)
-      admin.initializeApp();
+      // Use application default credentials with explicit project ID
+      admin.initializeApp({
+        projectId: process.env.FIREBASE_PROJECT_ID || 'spotify-8fefc',
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'spotify-8fefc.firebasestorage.app',
+        databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://spotify-8fefc-default-rtdb.firebaseio.com'
+      });
     }
     
     console.log("Firebase Admin SDK initialized successfully");

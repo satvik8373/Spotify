@@ -4,14 +4,10 @@ import axios from "axios";
 import { auth } from "./firebase";
 
 // Type declaration for ImportMetaEnv to include VITE environment variables
-interface ImportMetaEnv {
-	VITE_API_URL?: string;
-	MODE: string;
-}
+//
 
 // Get API URL from environment variables or fallback to default
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-console.log('API base URL:', API_URL);
 
 // Create and configure axios instance
 const axiosInstance = axios.create({
@@ -41,7 +37,10 @@ axiosInstance.interceptors.request.use(
 				const token = await auth.currentUser.getIdToken(true);
 				config.headers.Authorization = `Bearer ${token}`;
 			} catch (error) {
-				console.error('Error getting Firebase ID token:', error);
+				// Suppress token errors when offline to reduce console noise
+				if (typeof navigator === 'undefined' || navigator.onLine) {
+					console.error('Error getting Firebase ID token:', error);
+				}
 			}
 		}
 		return config;
@@ -57,12 +56,13 @@ axiosInstance.interceptors.response.use(
 		return response;
 	},
 	(error) => {
-		// Log errors only when not 404 to reduce console noise
-		if (error.response?.status !== 404) {
-			console.error('API request failed:', error.config?.url, error.message);
-		} else {
-			// For 404 errors, log a more concise message without the full error stack
-			console.info(`API endpoint not found: ${error.config?.url} - Using mock data`);
+		// Suppress most logs when offline
+		const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+		if (!isOffline) {
+			// Log errors only when not 404 to reduce console noise
+			if (error.response?.status !== 404) {
+				console.error('API request failed:', error.config?.url, error.message);
+			}
 		}
 		
 		// Handle 401 unauthorized
