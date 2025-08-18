@@ -5,15 +5,7 @@ import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { PlaylistCard } from '../../components/playlist/PlaylistCard';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  Heart,
-  Music2,
-  PlayCircle,
-  Share2,
-  ThumbsUp,
-  ChevronRight,
-  WifiOff,
-} from 'lucide-react';
+import { Music2, PlayCircle, ThumbsUp, ChevronRight, WifiOff, Share2, Heart } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useMusicStore } from '@/stores/useMusicStore';
@@ -31,13 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { RecentlyPlayed } from '@/components/RecentlyPlayed';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+//
 
 // Suggested genres
 
@@ -189,6 +175,7 @@ const HomePage = () => {
     useMusicStore();
 
   const { setCurrentSong } = usePlayerStore();
+  const hasTrending = indianTrendingSongs && indianTrendingSongs.length > 0;
 
   useEffect(() => {
     fetchFeaturedPlaylists();
@@ -424,7 +411,7 @@ const HomePage = () => {
   return (
     <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-zinc-900 to-black">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
-        <div className="pt-1 pb-6 max-w-full overflow-x-hidden">
+        <div className="pt-3 pb-6 max-w-full overflow-x-hidden">
           {/* Offline banner */}
           {!isOnline && (
             <div className="px-2 sm:px-4 mb-3">
@@ -444,57 +431,13 @@ const HomePage = () => {
             </div>
           )}
 
-          {/* Recently played section */}
-          {isOnline && (
-          <div className="px-2 sm:px-4">
-            {/* Top Picks Section - Enhanced Design */}
+          {/* Recently played section - render only when data exists and online */}
+          {isOnline && getDisplayedItems().length > 0 && (
+          <div className="px-2 sm:px-4 mt-1">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-base font-bold tracking-tight">Recently played</h2>
+            </div>
             <div className="mb-5">
-              <div className="flex items-center justify-between mb-2.5">
-                <h2 className="text-base font-bold tracking-tight">Recently played</h2>
-                {isAuthenticated && userPlaylists.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 hover:bg-white/10 rounded-full"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="w-56 bg-zinc-800 border-zinc-700 text-white"
-                    >
-                      {userPlaylists.map(playlist => (
-                        <DropdownMenuItem
-                          key={playlist._id}
-                          className="hover:bg-white/10 cursor-pointer py-1.5"
-                          onClick={() => handlePlaylistClick(playlist)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded overflow-hidden">
-                              {playlist.imageUrl ? (
-                                <img
-                                  src={playlist.imageUrl}
-                                  alt={playlist.name}
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-purple-500 to-purple-900 flex items-center justify-center">
-                                  <Music2 className="h-3.5 w-3.5 text-white" />
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-xs truncate">{playlist.name}</span>
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
                 {getDisplayedItems().map((item: any) => (
                   <div
@@ -718,11 +661,9 @@ const HomePage = () => {
               </div>
             )}
 
-            {/* Today's Hits Section */}
+            {/* Today's Hits Section - only when trending available */}
+            {hasTrending && (
             <div className="mb-5">
-              <div className="flex items-center justify-between mb-2.5">
-                <h2 className="text-base font-bold tracking-tight">Today's Hits</h2>
-              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
                 {indianTrendingSongs.slice(0, 6).map((song, index) => (
                   <div
@@ -780,14 +721,12 @@ const HomePage = () => {
                 ))}
               </div>
             </div>
+            )}
           </div>
           )}
 
-          {isOnline && (
+          {isOnline && hasTrending && (
           <div className="mb-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2.5 px-2 sm:px-4 gap-1">
-              <h2 className="text-base font-bold tracking-tight">Indian Music</h2>
-            </div>
             <div className="px-2 sm:px-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
               {indianTrendingSongs.slice(0, 6).map(song => (
                 <div
