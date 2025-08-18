@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Outlet } from 'react-router-dom';
 import LeftSidebar from './components/LeftSidebar';
@@ -41,12 +41,7 @@ const MainLayout = () => {
   }, []);
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col overflow-hidden max-w-full" style={{
-      paddingTop: 'env(safe-area-inset-top, 0px)',
-      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      paddingLeft: 'env(safe-area-inset-left, 0px)',
-      paddingRight: 'env(safe-area-inset-right, 0px)'
-    }}>
+    <div className="h-screen bg-black text-white flex flex-col overflow-hidden max-w-full">
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block">
         <Header />
