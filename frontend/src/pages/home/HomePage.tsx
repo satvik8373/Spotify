@@ -423,7 +423,7 @@ const HomePage = () => {
 
   return (
     <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-zinc-900 to-black">
-      <ScrollArea className="flex-1 h-full pb-safe" ref={scrollRef}>
+      <ScrollArea className="flex-1 h-full" ref={scrollRef}>
         <div className="pt-1 pb-6 max-w-full overflow-x-hidden">
           {/* Offline banner */}
           {!isOnline && (

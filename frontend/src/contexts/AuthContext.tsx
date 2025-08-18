@@ -58,10 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Get user's ID token for subsequent API requests
           const idToken = await getIdToken(firebaseUser, true);
           if (idToken) {
-            // Suppress noisy logs in production
-            if (import.meta.env.MODE === 'development') {
-              console.log('Auth token refreshed successfully');
-            }
+            console.log('Auth token refreshed successfully');
           }
           
           // Get additional user data from Firestore
@@ -91,9 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Log success but not on every update
             if (!user || user.id !== firebaseUser.uid) {
-              if (import.meta.env.MODE === 'development') {
-                console.log("User authenticated:", userObj.name);
-              }
+              console.log("User authenticated:", userObj.name);
             }
           }
         } catch (firestoreError) {
@@ -148,9 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user && auth.currentUser) {
         // Refresh token every 55 minutes (Firebase tokens expire after 60 min)
         tokenRefreshIntervalRef.current = window.setInterval(() => {
-          if (import.meta.env.MODE === 'development') {
-            console.log("Refreshing auth token...");
-          }
+          console.log("Refreshing auth token...");
           loadUser(true);
         }, 55 * 60 * 1000);
       }
@@ -205,9 +198,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       setUser(cachedUser);
-      if (import.meta.env.MODE === 'development') {
-        console.log("Using cached user from auth store while waiting for Firebase");
-      }
+      console.log("Using cached user from auth store while waiting for Firebase");
     }
 
     // Listen for Firebase auth state changes
@@ -217,15 +208,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (firebaseUser) {
         // User is signed in
-        if (import.meta.env.MODE === 'development') {
-          console.log("Firebase auth state changed: User is signed in");
-        }
+        console.log("Firebase auth state changed: User is signed in");
         loadUser();
       } else {
         // User is signed out
-        if (import.meta.env.MODE === 'development') {
-          console.log("Firebase auth state changed: User is signed out");
-        }
+        console.log("Firebase auth state changed: User is signed out");
         setUser(null);
         setLoading(false);
         // Reset auth store
@@ -246,15 +233,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkInterval = setInterval(() => {
       const authStore = useAuthStore.getState();
       if (authStore.isAuthenticated && authStore.userId && !user && initialLoadCompletedRef.current) {
-        if (import.meta.env.MODE === 'development') {
-          console.log('Auth inconsistency detected - forcing refresh');
-        }
+        console.log('Auth inconsistency detected - forcing refresh');
         loadUser(true);
       } else if (!authStore.isAuthenticated && user) {
         // Also check the reverse inconsistency
-        if (import.meta.env.MODE === 'development') {
-          console.log('Reverse auth inconsistency detected - user in AuthContext but not in authStore');
-        }
+        console.log('Reverse auth inconsistency detected - user in AuthContext but not in authStore');
         setUser(null);
       }
     }, 3000); // Check every 3 seconds

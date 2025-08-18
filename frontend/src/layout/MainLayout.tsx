@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Outlet } from 'react-router-dom';
 import LeftSidebar from './components/LeftSidebar';
@@ -41,7 +41,12 @@ const MainLayout = () => {
   }, []);
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col overflow-hidden max-w-full">
+    <div className="h-screen bg-black text-white flex flex-col overflow-hidden max-w-full" style={{
+      paddingTop: 'env(safe-area-inset-top, 0px)',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      paddingLeft: 'env(safe-area-inset-left, 0px)',
+      paddingRight: 'env(safe-area-inset-right, 0px)'
+    }}>
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block">
         <Header />
@@ -53,12 +58,12 @@ const MainLayout = () => {
         style={{
           height: isMobile 
             ? hasActiveSong
-              ? 'calc(100vh - 46px - 14px - 42px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))'
-              : 'calc(100vh - 46px - 14px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))'
+              ? 'calc(100vh - 46px - 14px - 42px)' // Mobile header + nav + mini player
+              : 'calc(100vh - 46px - 14px)' // Mobile header + nav
             : hasActiveSong
-              ? 'calc(100vh - 44px - 90px - env(safe-area-inset-top, 0px))'
-              : 'calc(100vh - 44px - env(safe-area-inset-top, 0px))',
-          marginTop: isMobile ? 'calc(46px + env(safe-area-inset-top, 0px))' : '0',
+              ? 'calc(100vh - 44px - 90px)' // Desktop header + player
+              : 'calc(100vh - 44px)', // Desktop header only
+          marginTop: isMobile ? '46px' : '0', // Add margin for the mobile header
         }}
       >
         {/* Audio player component - hidden but functional */}
