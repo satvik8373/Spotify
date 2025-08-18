@@ -53,12 +53,12 @@ const MainLayout = () => {
         style={{
           height: isMobile 
             ? hasActiveSong
-              ? 'calc(100vh - 46px - 14px - 42px)' // Mobile header + nav + mini player
-              : 'calc(100vh - 46px - 14px)' // Mobile header + nav
+              ? 'calc(100vh - 46px - 14px - 42px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))'
+              : 'calc(100vh - 46px - 14px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))'
             : hasActiveSong
-              ? 'calc(100vh - 44px - 90px)' // Desktop header + player
-              : 'calc(100vh - 44px)', // Desktop header only
-          marginTop: isMobile ? '46px' : '0', // Add margin for the mobile header
+              ? 'calc(100vh - 44px - 90px - env(safe-area-inset-top, 0px))'
+              : 'calc(100vh - 44px - env(safe-area-inset-top, 0px))',
+          marginTop: isMobile ? 'calc(46px + env(safe-area-inset-top, 0px))' : '0',
         }}
       >
         {/* Audio player component - hidden but functional */}
