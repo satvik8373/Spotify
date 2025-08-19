@@ -1,5 +1,5 @@
 {
-  "appId": "com.mavrix.spotify",
+  "appId": "com.mavrixfy.app",
   "appName": "Mavrixfy",
-  "webDir": "frontend"
+  "webDir": "frontend/dist"
 }
