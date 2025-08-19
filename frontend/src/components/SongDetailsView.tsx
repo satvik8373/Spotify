@@ -677,13 +677,23 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 const newTime = percentage * duration;
                 handleSeek([newTime]);
               }}
+              onTouchMove={(e) => {
+                // Allow dragging on mobile across the bar
+                const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                const touch = e.touches[0];
+                if (!touch) return;
+                const offsetX = Math.max(0, Math.min(rect.width, touch.clientX - rect.left));
+                const percentage = offsetX / rect.width;
+                const newTime = percentage * duration;
+                handleSeek([newTime]);
+              }}
             >
               <div 
                 className="h-full bg-[#1ed760] rounded-full"
                 style={{ width: `${progress}%` }}
               ></div>
               <div 
-                className="absolute top-1/2 -translate-y-1/2 h-3 w-3 bg-white rounded-full shadow-md cursor-pointer" 
+                className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 bg-white rounded-full shadow-md ring-2 ring-[#1ed760] cursor-pointer" 
                 style={{ left: `calc(${progress}% - 6px)` }}
                 onMouseDown={(e) => {
                   e.stopPropagation();
