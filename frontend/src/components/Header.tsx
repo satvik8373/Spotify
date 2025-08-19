@@ -147,7 +147,7 @@ const Header = ({ className }: HeaderProps) => {
               />
             </svg>
             <span className="text-foreground font-bold text-2xl ml-3 tracking-tight">
-              Spotify <span className="text-muted-foreground font-normal">x</span> Mavrix
+              mavrixfy
             </span>
           </div>
         </Link>
