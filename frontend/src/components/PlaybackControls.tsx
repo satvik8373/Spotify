@@ -156,7 +156,7 @@ const PlaybackControls = () => {
       <div className="flex items-center justify-between">
         <button
           onClick={toggleLike}
-          className={`liquid-glass-button p-2 ${isLiked ? 'text-green-500' : 'text-zinc-400 hover:text-white'}`}
+          className={`p-2 rounded-full ${isLiked ? 'text-green-500' : 'text-zinc-400 hover:text-white'}`}
           aria-label={isLiked ? "Unlike song" : "Like song"}
         >
           <Heart className={isLiked ? "fill-green-500" : ""} size={20} />
@@ -165,7 +165,7 @@ const PlaybackControls = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={playPrevious}
-            className="liquid-glass-button p-2 text-zinc-400 hover:text-white"
+            className="p-2 rounded-full text-zinc-400 hover:text-white"
             aria-label="Previous track"
           >
             <SkipBack size={20} />
@@ -173,7 +173,7 @@ const PlaybackControls = () => {
           
           <button
             onClick={togglePlay}
-            className="liquid-glass-primary p-3 text-white hover:scale-105 transition"
+            className="p-3 rounded-full bg-green-500 hover:bg-green-400 text-black transition"
             aria-label={isPlaying ? "Pause" : "Play"}
           >
             {isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
@@ -181,7 +181,7 @@ const PlaybackControls = () => {
           
           <button
             onClick={playNext}
-            className="liquid-glass-button p-2 text-zinc-400 hover:text-white"
+            className="p-2 rounded-full text-zinc-400 hover:text-white"
             aria-label="Next track"
           >
             <SkipForward size={20} />
@@ -191,7 +191,7 @@ const PlaybackControls = () => {
         <div className="flex items-center">
           <button
             onClick={toggleMute}
-            className="liquid-glass-button p-2 text-zinc-400 hover:text-white"
+            className="p-2 rounded-full text-zinc-400 hover:text-white"
             aria-label={isMuted ? "Unmute" : "Mute"}
           >
             {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}

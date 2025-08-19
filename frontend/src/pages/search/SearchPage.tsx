@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
@@ -8,27 +8,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Play, 
   Loader, 
-  Heart, 
   Search, 
   XCircle, 
-  ListMusic, 
-  Clock, 
-  Trash2, 
-  ChevronRight,
-  Music,
-  ExternalLink,
   Instagram,
   Mic,
-  MicOff
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '../../contexts/AuthContext';
-import { loadLikedSongs, saveLikedSongs } from '@/services/likedSongsService';
 import IndianMusicPlayer from '@/components/IndianMusicPlayer';
 import { PlaylistCard } from '@/components/playlist/PlaylistCard';
-import { Playlist } from '@/types';
-import { debounce } from 'lodash';
+import type { Playlist } from '@/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -75,14 +66,13 @@ interface Window {
 }
 
 const SearchPage = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const query = searchParams.get('q') || '';
 
-  const { isIndianMusicLoading, searchIndianSongs, indianSearchResults } = useMusicStore();
-  const { searchPlaylists, searchResults: playlistResults, isSearching } = usePlaylistStore();
+  const { searchIndianSongs, indianSearchResults } = useMusicStore();
+  const { searchPlaylists, searchResults: playlistResults } = usePlaylistStore();
   const { isAuthenticated, user } = useAuth();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   
@@ -91,8 +81,8 @@ const SearchPage = () => {
 
   // Speech recognition states
   const [isListening, setIsListening] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(false);
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [speechSupported, setSpeechSupported] = useState(false);
   
   // Check if speech recognition is supported
   useEffect(() => {
@@ -100,13 +90,13 @@ const SearchPage = () => {
                               (window as unknown as Window).webkitSpeechRecognition;
     
     if (SpeechRecognition) {
-      setSpeechSupported(true);
       const recognitionInstance = new SpeechRecognition();
       recognitionInstance.continuous = false;
       recognitionInstance.interimResults = false;
       recognitionInstance.lang = 'en-US';
       
       setRecognition(recognitionInstance);
+      setSpeechSupported(true);
     } else {
       setSpeechSupported(false);
     }
@@ -168,6 +158,13 @@ const SearchPage = () => {
       setIsListening(false);
     }
   }, [recognition, isListening, navigate]);
+
+  // Listen for voice-search toggle from MobileNav header
+  useEffect(() => {
+    const handler = () => toggleListening();
+    document.addEventListener('toggleVoiceSearch', handler);
+    return () => document.removeEventListener('toggleVoiceSearch', handler);
+  }, [toggleListening]);
   
   // Load recent searches from localStorage on component mount
   useEffect(() => {
@@ -281,12 +278,12 @@ const SearchPage = () => {
       {recentSearches.length > 0 && (
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-white">Recent searches</h2>
+            <h2 className="text-xl font-bold text-foreground">Recent searches</h2>
             <Button 
               variant="ghost" 
               size="sm"
               onClick={clearAllRecentSearches}
-              className="text-sm text-white/70 hover:text-white hover:bg-white/10"
+              className="text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               Clear all
             </Button>
@@ -297,22 +294,22 @@ const SearchPage = () => {
               <div 
                 key={index}
                 onClick={() => clickRecentSearch(search)}
-                className="bg-[#181818] hover:bg-[#282828] rounded-md p-4 cursor-pointer transition-colors group relative"
+                className="bg-card hover:bg-accent rounded-md p-4 cursor-pointer transition-colors group relative border border-border"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-md bg-neutral-800 flex items-center justify-center flex-shrink-0">
-                    <Search className="h-6 w-6 text-white" />
+                  <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                    <Search className="h-6 w-6 text-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-white truncate">{search}</h3>
-                    <p className="text-xs text-white/60">Recent search</p>
+                    <h3 className="text-sm font-medium text-foreground truncate">{search}</h3>
+                    <p className="text-xs text-muted-foreground">Recent search</p>
                   </div>
                 </div>
                 
                 {/* Delete button that appears on hover */}
                 <button
                   onClick={(e) => removeRecentSearch(search, e)}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-black/40 text-white/80 hover:text-white hover:bg-black/60 transition-opacity"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-muted text-muted-foreground hover:text-foreground hover:bg-accent transition-opacity"
                 >
                   <XCircle className="h-4 w-4" />
                 </button>
@@ -322,47 +319,13 @@ const SearchPage = () => {
         </div>
       )}
       
-      {/* Voice Search Section */}
-      {speechSupported && (
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">Search with your voice</h2>
-          <div className="bg-[#181818] p-6 rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex-1">
-              <p className="text-white/80 mb-3">Try searching by speaking instead of typing</p>
-              <Button
-                onClick={toggleListening}
-                className={cn(
-                  "bg-[#1db954] hover:bg-[#1ed760] text-white font-medium px-5 py-2 rounded-full flex items-center gap-2",
-                  isListening && "bg-[#1ed760]"
-                )}
-              >
-                {isListening ? (
-                  <>
-                    <Mic className="h-4 w-4 animate-pulse" />
-                    Listening...
-                  </>
-                ) : (
-                  <>
-                    <Mic className="h-4 w-4" />
-                    Search with voice
-                  </>
-                )}
-              </Button>
-            </div>
-            <div className="w-16 h-16 bg-[#1db954] rounded-full flex items-center justify-center flex-shrink-0">
-              <Mic className="h-8 w-8 text-white" />
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Follow on Instagram Section */}
       <div>
-        <h2 className="text-xl font-bold text-white mb-4">Follow Us</h2>
+        <h2 className="text-xl font-bold text-foreground mb-4">Follow Us</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* First Instagram Account */}
           <div 
-            onClick={(e: React.MouseEvent) => openInstagram(INSTAGRAM_URL)}
+            onClick={() => openInstagram(INSTAGRAM_URL)}
             className="bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-lg overflow-hidden p-6 relative cursor-pointer transition-transform hover:scale-[1.02] flex items-center"
           >
             <div className="flex-1">
@@ -392,7 +355,7 @@ const SearchPage = () => {
 
           {/* Second Instagram Account */}
           <div 
-            onClick={(e: React.MouseEvent) => openInstagram(INSTAGRAM_URL_TRADING)}
+            onClick={() => openInstagram(INSTAGRAM_URL_TRADING)}
             className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-400 rounded-lg overflow-hidden p-6 relative cursor-pointer transition-transform hover:scale-[1.02] flex items-center"
           >
             <div className="flex-1">
@@ -446,151 +409,139 @@ const SearchPage = () => {
   };
 
   return (
-    <main className="rounded-md overflow-hidden h-full bg-gradient-to-b from-zinc-800 to-zinc-900">
+    <main className="rounded-md overflow-hidden h-full bg-background text-foreground">
       <ScrollArea className="h-[calc(100vh-180px)]">
         <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-          <div className="mb-6 flex flex-col lg:flex-row lg:items-center gap-4">
-            <h1 className="text-3xl font-bold">Search</h1>
-            
-            {/* Search Box - Spotify-style white design with speech recognition */}
-            <form onSubmit={handleSearch} className="flex-1 max-w-xl flex items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-700" />
-                <Input
-                  type="search"
-                  placeholder="What do you want to listen to?"
-                  value={searchQuery}
-                  onChange={handleQueryChange}
-                  className="w-full rounded-l-full bg-white text-zinc-800 pl-10 pr-10 h-12 focus:outline-none focus:ring-1 focus:ring-[#1ed760] border-none font-medium"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
-                  >
-                    <XCircle size={18} />
-                  </button>
-                )}
-              </div>
-              <Button 
-                type="submit"
-                className="h-12 rounded-none bg-white hover:bg-white/90 text-zinc-800 font-medium px-5 border-none"
-              >
-                Search
-              </Button>
-              
-              {/* Speech recognition button */}
-              {speechSupported && (
-                <Button
+          {/* Search Box - Spotify-style white design with speech recognition */}
+          <form onSubmit={handleSearch} className="flex-1 max-w-xl flex items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="What do you want to listen to?"
+                value={searchQuery}
+                onChange={handleQueryChange}
+                className="w-full rounded-l-full bg-card text-foreground pl-10 pr-10 h-12 border border-border focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+              />
+              {searchQuery && (
+                <button
                   type="button"
-                  onClick={toggleListening}
-                  className={cn(
-                    "h-12 rounded-r-full bg-white hover:bg-white/90 text-zinc-800 font-medium px-3 border-none transition-all",
-                    isListening && "text-green-600 bg-white/90"
-                  )}
-                  title={isListening ? "Stop listening" : "Search with voice"}
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {isListening ? (
-                    <Mic className="h-5 w-5 animate-pulse" />
-                  ) : (
-                    <Mic className="h-5 w-5" />
-                  )}
-                </Button>
+                  <XCircle size={18} />
+                </button>
               )}
-            </form>
-          </div>
-
-          {isInitialLoad ? (
-            <div className="flex justify-center py-12">
-              <Loader className="w-8 h-8 animate-spin text-zinc-500" />
             </div>
-          ) : query ? (
-            <div className="space-y-6">
-              {/* Top Results - Featured Section */}
-              {(indianSearchResults.length > 0 || playlistResults.length > 0) && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-bold mb-4">Top Result</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Top Result Card */}
-                    {indianSearchResults.length > 0 && (
-                      <div className="bg-[#181818] hover:bg-[#282828] p-5 rounded-lg transition-colors shadow-lg">
-                        <div className="flex flex-col h-full">
-                          <div className="mb-4">
-                            <img 
-                              src={indianSearchResults[0].image} 
-                              alt={indianSearchResults[0].title}
-                              className="w-24 h-24 shadow-md rounded-md"
-                            />
-                          </div>
-                          <h3 className="text-xl font-bold text-white truncate">{indianSearchResults[0].title}</h3>
-                          <p className="text-sm text-white/60 mb-4">
-                            {indianSearchResults[0].artist || "Unknown Artist"}
-                          </p>
-                          <div className="mt-auto">
-                            <Button 
-                              className="rounded-full h-12 w-12 bg-[#1db954] hover:bg-[#1ed760] text-black shadow-lg shadow-black/50"
-                              size="icon"
-                              onClick={() => usePlayerStore.getState().setCurrentSong(indianSearchResults[0] as any)}
-                            >
-                              <Play className="h-6 w-6 ml-0.5" />
-                            </Button>
-                          </div>
+            <Button 
+              type="submit"
+              className="h-12 rounded-none bg-card hover:bg-accent text-foreground font-medium px-5 border border-border"
+            >
+              Search
+            </Button>
+            
+            {/* Speech recognition button */}
+            {speechSupported && (
+              <Button
+                type="button"
+                onClick={toggleListening}
+                className={cn(
+                  "h-12 rounded-r-full bg-card hover:bg-accent text-foreground font-medium px-3 border border-border transition-all",
+                  isListening && "text-primary"
+                )}
+                title={isListening ? "Stop listening" : "Search with voice"}
+              >
+                {isListening ? (
+                  <Mic className="h-5 w-5 animate-pulse" />
+                ) : (
+                  <Mic className="h-5 w-5" />
+                )}
+              </Button>
+            )}
+          </form>
+        </div>
+
+        {isInitialLoad ? (
+          <div className="flex justify-center py-12">
+            <Loader className="w-8 h-8 animate-spin text-zinc-500" />
+          </div>
+        ) : query ? (
+          <div className="space-y-6">
+            {/* Top Results - Featured Section */}
+            {(indianSearchResults.length > 0 || playlistResults.length > 0) && (
+              <div className="mb-8">
+                <h2 className="text-xl font-bold mb-4">Top Result</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Top Result Card */}
+                  {indianSearchResults.length > 0 && (
+                    <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
+                      <div className="flex flex-col h-full">
+                        <div className="mb-4">
+                          <img 
+                            src={indianSearchResults[0].image} 
+                            alt={indianSearchResults[0].title}
+                            className="w-24 h-24 shadow-md rounded-md"
+                          />
+                        </div>
+                        <h3 className="text-xl font-bold text-foreground truncate">{indianSearchResults[0].title}</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {indianSearchResults[0].artist || "Unknown Artist"}
+                        </p>
+                        <div className="mt-auto">
+                          <Button 
+                            className="rounded-full h-12 w-12 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                            size="icon"
+                            onClick={() => usePlayerStore.getState().setCurrentSong(indianSearchResults[0] as any)}
+                          >
+                            <Play className="h-6 w-6 ml-0.5" />
+                          </Button>
                         </div>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Alternative Top Result - Playlist */}
-                    {indianSearchResults.length === 0 && playlistResults.length > 0 && (
-                      <div className="bg-[#181818] hover:bg-[#282828] p-5 rounded-lg transition-colors shadow-lg">
-                        <PlaylistCard 
-                          playlist={playlistResults[0]}
-                          size="large"
-                          showDescription={true}
-                          className="bg-transparent hover:bg-transparent"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {/* Playlist Results */}
-              {renderPlaylistResults()}
-              
-              {/* Song Results */}
-              {indianSearchResults.length > 0 && (
-                <div>
-                  <h2 className="text-xl font-bold mb-4">Songs</h2>
-            <IndianMusicPlayer />
-                </div>
-              )}
-              
-              {/* Show message if no results */}
-              {indianSearchResults.length === 0 && playlistResults.length === 0 && (
-                <div className="py-16 text-center bg-[#181818] rounded-lg">
-                  <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Search className="h-8 w-8 text-zinc-400" />
-                  </div>
-                  <p className="text-zinc-200 font-semibold text-lg">No results found for "{query}"</p>
-                  <p className="text-zinc-400 text-sm mt-2">Try different keywords or check the spelling</p>
-                  {speechSupported && (
-                    <Button
-                      onClick={toggleListening}
-                      className="mt-4 bg-[#1db954] hover:bg-[#1ed760] text-white font-medium px-5 py-2 rounded-full flex items-center gap-2"
-                    >
-                      <Mic className="h-4 w-4" />
-                      Try voice search
-                    </Button>
+                  {/* Alternative Top Result - Playlist */}
+                  {indianSearchResults.length === 0 && playlistResults.length > 0 && (
+                    <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
+                      <PlaylistCard 
+                        playlist={playlistResults[0]}
+                        size="large"
+                        showDescription={true}
+                        className="bg-transparent hover:bg-transparent"
+                      />
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          ) : (
-            // Empty state with recent searches and Instagram follow
-            renderEmptyState()
-          )}
-        </div>
+              </div>
+            )}
+            
+            {/* Playlist Results */}
+            {renderPlaylistResults()}
+            
+            {/* Song Results */}
+            {indianSearchResults.length > 0 && (
+              <div>
+                <h2 className="text-xl font-bold mb-4">Songs</h2>
+                <IndianMusicPlayer />
+              </div>
+            )}
+            
+            {/* Show message if no results */}
+            {indianSearchResults.length === 0 && playlistResults.length === 0 && (
+              <div className="py-16 text-center bg-card rounded-lg border border-border">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <p className="text-foreground font-semibold text-lg">No results found for "{query}"</p>
+                <p className="text-muted-foreground text-sm mt-2">Try different keywords or check the spelling</p>
+                {/* Voice search button removed */}
+              </div>
+            )}
+          </div>
+        ) : (
+          // Empty state with recent searches and Instagram follow
+          renderEmptyState()
+        )}
       </ScrollArea>
     </main>
   );

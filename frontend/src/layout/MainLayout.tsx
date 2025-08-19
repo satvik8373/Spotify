@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import LeftSidebar from './components/LeftSidebar';
 import AudioPlayer from './components/AudioPlayer';
 import { PlaybackControls } from './components/PlaybackControls';
@@ -12,6 +12,7 @@ const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(false);
   const { currentSong } = usePlayerStore();
   const hasActiveSong = !!currentSong;
+  const location = useLocation();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -40,6 +41,18 @@ const MainLayout = () => {
     };
   }, []);
 
+  // Route-aware measurements for mobile header/nav/mini-player spacing
+  const MOBILE_HEADER_PX = 46;
+  const MOBILE_NAV_PX = 14;
+  const MINI_PLAYER_PX = 42;
+  const isMobileHeaderRoute = isMobile && (
+    location.pathname === '/home' ||
+    location.pathname === '/' ||
+    location.pathname.startsWith('/library') ||
+    location.pathname.startsWith('/search')
+  );
+  const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + MOBILE_NAV_PX + (hasActiveSong ? MINI_PLAYER_PX : 0);
+
   return (
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden max-w-full">
       {/* Header with login - hidden on mobile */}
@@ -52,13 +65,11 @@ const MainLayout = () => {
         className="flex-1 flex h-full overflow-hidden"
         style={{
           height: isMobile 
-            ? hasActiveSong
-              ? 'calc(100vh - 46px - 14px - 42px)' // Mobile header + nav + mini player
-              : 'calc(100vh - 46px - 14px)' // Mobile header + nav
+            ? `calc(100vh - ${mobileSubtractPx}px)`
             : hasActiveSong
               ? 'calc(100vh - 44px - 90px)' // Desktop header + player
               : 'calc(100vh - 44px)', // Desktop header only
-          marginTop: isMobile ? '46px' : '0', // Add margin for the mobile header
+          marginTop: isMobileHeaderRoute ? `${MOBILE_HEADER_PX}px` : '0',
         }}
       >
         {/* Audio player component - hidden but functional */}

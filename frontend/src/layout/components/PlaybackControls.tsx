@@ -1,12 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { usePlayerStore } from "@/stores/usePlayerStore";
-import { Heart, Laptop2, ListMusic, Mic2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, Volume1, VolumeX } from "lucide-react";
+import { Heart, Laptop2, ListMusic, Mic2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import SongDetailsView from "@/components/SongDetailsView";
 import { cn } from "@/lib/utils";
 import { useLikedSongsStore } from "@/stores/useLikedSongsStore";
-import { useAlbumColors } from "@/hooks/useAlbumColors";
 
 const formatTime = (seconds: number) => {
 	if (isNaN(seconds)) return "0:00";
@@ -18,7 +17,6 @@ const formatTime = (seconds: number) => {
 export const PlaybackControls = () => {
 	const { currentSong, isPlaying, togglePlay, playNext, playPrevious, toggleShuffle, isShuffled } = usePlayerStore();
 	const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
-	const albumColors = useAlbumColors(currentSong?.imageUrl);
 
 	const [volume, setVolume] = useState(75);
 	const [currentTime, setCurrentTime] = useState(0);
@@ -166,12 +164,14 @@ export const PlaybackControls = () => {
 		};
 	}, []);
 
-	const handleSeek = (value: number[]) => {
-		if (audioRef.current) {
-			audioRef.current.currentTime = value[0];
-			setCurrentTime(value[0]);
-		}
-	};
+	// Handle seeking
+	// const handleSeek = (value: number[]) => {
+	// 	const newTime = value[0];
+	// 	if (audioRef.current) {
+	// 		audioRef.current.currentTime = newTime;
+	// 		setCurrentTime(newTime);
+	// 	}
+	// };
 	
 	const handleLikeToggle = (e: React.MouseEvent) => {
 		// Stop event propagation to prevent the song details view from opening
@@ -203,12 +203,6 @@ export const PlaybackControls = () => {
 		setIsRepeating(!isRepeating);
 	};
 
-	const getVolumeIcon = () => {
-		if (volume === 0) return <VolumeX className="h-4 w-4" />;
-		if (volume < 50) return <Volume1 className="h-4 w-4" />;
-		return <Volume2 className="h-4 w-4" />;
-	};
-	
 	if (!currentSong) return null;
 	
 	return (
@@ -218,15 +212,8 @@ export const PlaybackControls = () => {
 			{/* Desktop Player */}
 			<footer 
 				ref={playerRef}
-				className="h-[90px] border-t border-border px-4 hidden sm:block transition-opacity duration-300 playback-controls-glass"
-				style={{ 
-					opacity: isTransitioning ? 0.8 : 1,
-					background: albumColors.isLight
-						? `linear-gradient(to bottom, ${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.85)')}, ${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.7)')})`
-						: `linear-gradient(to bottom, ${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.85)')}, ${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.7)')})`,
-					backdropFilter: "blur(25px)",
-					WebkitBackdropFilter: "blur(25px)"
-				}}
+				className="h-[90px] border-t border-border px-4 hidden sm:block transition-opacity duration-300 bg-background text-foreground"
+				style={{ opacity: isTransitioning ? 0.95 : 1 }}
 			>
 				<div className="flex justify-between items-center h-full max-w-[1800px] mx-auto">
 					{/* currently playing song */}
@@ -322,19 +309,12 @@ export const PlaybackControls = () => {
 									max={duration || 100}
 									step={1}
 									className="w-full cursor-pointer"
-									onValueChange={handleSeek}
+									onValueChange={(value) => {
+										setCurrentTime(value[0]);
+									}}
 								/>
-								<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-									<Slider
-										value={[currentTime]}
-										max={duration || 100}
-										step={1}
-										className="w-full cursor-pointer slider-hover-effect"
-										onValueChange={handleSeek}
-									/>
-								</div>
+								<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
 							</div>
-							<div className="text-[11px] text-muted-foreground w-[35px]">{formatTime(duration)}</div>
 						</div>
 					</div>
 					
@@ -364,7 +344,7 @@ export const PlaybackControls = () => {
 								className="hover:text-foreground text-muted-foreground h-8 w-8"
 								onClick={() => setVolume(volume === 0 ? 75 : 0)}
 							>
-								{getVolumeIcon()}
+								{volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
 							</Button>
 
 							<div className={cn(
@@ -391,8 +371,8 @@ export const PlaybackControls = () => {
 
 			{/* Mobile Player */}
 			<div 
-				className="fixed bottom-14 left-0 right-0 bg-gradient-to-b from-background to-background/95 border-t border-border h-16 backdrop-blur-md z-40 sm:hidden transition-all duration-300"
-				style={{ opacity: isTransitioning ? 0.8 : 1 }}
+				className="fixed bottom-14 left-0 right-0 bg-background border-t border-border h-16 z-40 sm:hidden transition-all duration-300"
+				style={{ opacity: isTransitioning ? 0.95 : 1 }}
 				onClick={() => setShowSongDetails(true)}
 			>
 				<div className="relative h-full flex items-center justify-between px-3">
@@ -474,3 +454,5 @@ export const PlaybackControls = () => {
 		</>
 	);
 };
+
+export default PlaybackControls;

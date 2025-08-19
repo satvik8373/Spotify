@@ -145,7 +145,7 @@ export function RecentlyPlayed() {
                 )}
                 <button
                   className={cn(
-                    'absolute right-1.5 bottom-1.5 liquid-glass-primary p-1.5 shadow-lg z-10 transition-all duration-300',
+                    'absolute right-1.5 bottom-1.5 p-1.5 bg-green-500 hover:bg-green-400 text-black rounded-full shadow-lg z-10 transition-all duration-300',
                     hoveredItemId === item.id
                       ? 'opacity-100 translate-y-0'
                       : 'opacity-0 translate-y-3'

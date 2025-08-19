@@ -569,10 +569,17 @@ button, .button, a.button {
 
 /* New Spotify mobile liked songs header with proper gradient */
 .spotify-mobile-liked-header {
-  background: linear-gradient(180deg, rgb(32, 65, 207) 0%, rgb(47, 73, 182) 40%, rgb(24, 32, 94) 70%, rgb(0, 0, 0) 100%);
   padding-top: 85px;
   padding-bottom: 20px;
   margin-bottom: 0;
+}
+
+.dark .spotify-mobile-liked-header {
+  background: linear-gradient(180deg, rgb(32, 65, 207) 0%, rgb(47, 73, 182) 40%, rgb(24, 32, 94) 70%, rgb(18, 18, 18) 100%);
+}
+
+.light .spotify-mobile-liked-header {
+  background: linear-gradient(180deg, rgb(200, 215, 255) 0%, rgb(230, 238, 255) 60%, rgb(255, 255, 255) 100%);
 }
 
 .spotify-mobile-liked-header::after {
@@ -582,9 +589,12 @@ button, .button, a.button {
   left: 0;
   right: 0;
   height: 30px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%);
+  background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, var(--mask-end, rgba(0,0,0,1)) 100%);
   pointer-events: none;
 }
+
+.dark .spotify-mobile-liked-header::after { --mask-end: rgba(0,0,0,1); }
+.light .spotify-mobile-liked-header::after { --mask-end: rgba(255,255,255,1); }
 
 .spotify-playlist-header {
   position: relative;
@@ -621,179 +631,9 @@ button, .button, a.button {
   }
 }
 
-/* iOS 26 Liquid Glass Design - Enhanced */
-.liquid-glass {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  border-radius: 1rem;
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.2),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  position: relative;
-  overflow: hidden;
-}
+/* removed liquid-glass visuals */
 
-.liquid-glass::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.15) 0%,
-    rgba(255, 255, 255, 0.03) 30%,
-    transparent 70%
-  );
-  opacity: 0.6;
-  transform: rotate(-45deg);
-  pointer-events: none;
-}
 
-.liquid-glass-button {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  border-radius: 50%;
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.2),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.liquid-glass-button::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.2) 0%,
-    rgba(255, 255, 255, 0.05) 30%,
-    transparent 70%
-  );
-  opacity: 0.6;
-  transform: rotate(-45deg);
-  pointer-events: none;
-}
-
-.liquid-glass-button:hover {
-  transform: scale(1.05);
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.liquid-glass-button:active {
-  transform: scale(0.95);
-}
-
-.liquid-glass-album {
-  border-radius: 1rem;
-  overflow: hidden;
-  position: relative;
-  box-shadow: 
-    0 8px 20px rgba(0, 0, 0, 0.25),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-.liquid-glass-album::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0) 50%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
-  pointer-events: none;
-}
-
-.liquid-glass-album img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-}
-
-/* Primary action button with liquid glass effect */
-.liquid-glass-primary {
-  background: rgba(var(--primary-rgb, 20, 184, 92), 0.85);
-  backdrop-filter: blur(20px);
-  border-radius: 50%;
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.25),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-  position: relative;
-  overflow: hidden;
-}
-
-.liquid-glass-primary::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.3) 0%,
-    rgba(255, 255, 255, 0.08) 30%,
-    transparent 70%
-  );
-  opacity: 0.7;
-  transform: rotate(-45deg);
-  pointer-events: none;
-}
-
-/* Mobile navigation with liquid glass effect */
-.mobile-nav-glass {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.mobile-player-glass {
-  background: rgba(20, 20, 20, 0.85);
-  backdrop-filter: blur(25px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Playback controls with liquid glass effect */
-.playback-controls-glass {
-  background: rgba(20, 20, 20, 0.85);
-  backdrop-filter: blur(25px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 12px;
-}
-
-::-webkit-scrollbar-track {
-  background: #121212;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #3f3f3f;
-  border-radius: 6px;
-  border: 3px solid #121212;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
 
 /* Slider hover effect */
 .slider-hover-effect .bg-foreground {
@@ -821,36 +661,4 @@ button, .button, a.button {
 
 .resizable-handle:hover {
   background-color: rgba(255, 255, 255, 0.2);
-}
-
-/* Glass effects for mobile player */
-.mobile-nav-glass {
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.mobile-player-glass {
-  background-color: rgba(0, 0, 0, 0.3);
-}
-
-.liquid-glass-album {
-  border-radius: 4px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.liquid-glass-button {
-  border-radius: 50%;
-  backdrop-filter: blur(5px);
-  background-color: rgba(0, 0, 0, 0.2);
-}
-
-.liquid-glass-primary {
-  border-radius: 50%;
-  backdrop-filter: blur(5px);
-}
-
-/* Desktop playback controls glass effect */
-.playback-controls-glass {
-  background-color: rgba(0, 0, 0, 0.5);
-  box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.3);
 }

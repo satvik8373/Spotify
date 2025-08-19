@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Heart, Music, Play, Pause, AlertCircle, Clock, MoreHorizontal, ChevronLeft, ArrowDownUp, Calendar, Shuffle, Download } from 'lucide-react';
+import { Heart, Music, Play, Clock, MoreHorizontal, ArrowDownUp, Calendar, Shuffle, Search } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { loadLikedSongs, removeLikedSong, syncWithServer } from '@/services/likedSongsService';
@@ -15,7 +15,6 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { TouchRipple } from '@/components/ui/touch-ripple';
-import { useNavigate } from 'react-router-dom';
 
 // Add CSS for desktop view
 import './liked-songs.css';
@@ -47,15 +46,15 @@ const LikedSongsPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [syncedWithServer, setSyncedWithServer] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [headerOpacity, setHeaderOpacity] = useState(0);
+  // Removed fixed header; opacity state no longer needed
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sortMethod, setSortMethod] = useState<'recent' | 'title' | 'artist'>('recent');
+  const [filterQuery, setFilterQuery] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
   
-  const { currentSong, isPlaying, playAlbum, togglePlay } = usePlayerStore();
+  const { currentSong, isPlaying, togglePlay } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
 
   // Load liked songs on mount
@@ -182,32 +181,18 @@ const LikedSongsPage = () => {
     setLikedSongs(prev => sortSongs([...prev], method));
   };
 
+  // Filtered view for display
+  const visibleSongs = filterQuery.trim()
+    ? likedSongs.filter((s) =>
+        `${s.title} ${s.artist}`.toLowerCase().includes(filterQuery.toLowerCase())
+      )
+    : likedSongs;
+
   // Manual sync function for retry button
-  const handleManualSync = async () => {
-    setIsLoading(true);
-    setSyncError(null);
-    
-    try {
-      const songs = loadLikedSongs();
-      const serverSongs = await syncWithServer(songs);
-      setLikedSongs(serverSongs);
-      setSyncedWithServer(true);
-      toast.success('Liked songs synchronized successfully');
-    } catch (error) {
-      console.error('Manual sync error:', error);
-      setSyncError('Sync failed. Using local data only.');
-      toast.error('Sync failed', {
-        description: 'Your liked songs are still available locally.'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Removed unused manual sync helper
 
   // Debug function to log player state
-  const debugPlayerState = () => {
-    // Function kept as a no-op but all console logs removed
-  };
+  // Removed unused debugPlayerState to reduce noise
 
   // Play all liked songs function - remove debugPlayerState() call  
   const playAllSongs = () => {
@@ -307,14 +292,9 @@ const LikedSongsPage = () => {
     toast.success('Removed from Liked Songs');
   };
 
-  // Handle scroll to update header opacity
+  // Removed header opacity tracking
   const handleScroll = useCallback(() => {
-    if (scrollRef.current) {
-      const scrollY = scrollRef.current.scrollTop;
-      // Faster opacity transition to match Spotify
-      const newOpacity = Math.min(scrollY / 150, 1);
-      setHeaderOpacity(newOpacity);
-    }
+    // no-op
   }, []);
 
   // Add touch handlers for pull-to-refresh
@@ -398,55 +378,8 @@ const LikedSongsPage = () => {
   );
 
   return (
-    <main className="h-full bg-black">
-      {/* Fixed header - visible when scrolling */}
-      <div 
-        className="fixed top-0 left-0 right-0 z-10 h-16 transition-colors duration-300"
-        style={{
-          backgroundColor: `rgba(32, 65, 207, ${headerOpacity})`,
-          borderBottom: headerOpacity > 0.8 ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'
-        }}
-      >
-        <div className="flex items-center h-full px-4 justify-between">
-          {isMobile && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-white mr-2"
-              onClick={() => navigate(-1)}
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-          )}
-          
-          <h1 
-            className={cn(
-              "font-bold transition-all",
-              headerOpacity > 0.7 
-                ? "text-xl opacity-100" 
-                : "text-sm opacity-0"
-            )}
-          >
-            Liked Songs
-          </h1>
-          
-          {likedSongs.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Button 
-                onClick={playAllSongs}
-                className={cn(
-                  "liquid-glass-primary rounded-full w-10 h-10 p-0 flex-shrink-0 shadow-lg transition-opacity",
-                  headerOpacity > 0.7 ? "opacity-100" : "opacity-0"
-                )}
-                disabled={likedSongs.length === 0}
-                title="Play"
-              >
-                <Play className="h-5 w-5 ml-0.5" />
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
+    <main className="h-full bg-background">
+      {/* Removed fixed header bar to avoid overlap with top mobile nav; back button added inline above */}
 
       {/* Pull to refresh indicator */}
       {refreshing && (
@@ -458,7 +391,7 @@ const LikedSongsPage = () => {
 
       {/* Scrollable content */}
       <ScrollArea 
-        className="h-[calc(100vh-5rem)] pb-20 no-scrollbar" 
+        className="h-full no-scrollbar" 
         ref={scrollRef}
         onScroll={handleScroll}
         onTouchStart={handleTouchStart}
@@ -468,8 +401,8 @@ const LikedSongsPage = () => {
         <div className={cn("pt-0", isMobile ? "px-0" : "px-4 sm:px-6")}>
           {/* Header with gradient background */}
           <div className={cn(
-            "relative z-0 py-12 mb-4 spotify-mobile-liked-header",
-            isMobile ? "px-4 pt-20" : "rounded-t-lg px-4 sm:px-6"
+            "relative z-0 py-4 mb-3 spotify-mobile-liked-header",
+            isMobile ? "px-4 pt-0" : "rounded-t-lg px-4 sm:px-6"
           )}>
             <div className={cn(
               "flex flex-col mb-6 gap-3",
@@ -477,19 +410,36 @@ const LikedSongsPage = () => {
             )}>
               {isMobile ? (
                 <>
-                  <div className="flex justify-between w-full mb-4">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-white/70 -ml-2 -mt-2 h-8 w-8"
-                      onClick={() => {/* Download functionality would go here */}}
-                    >
-                      <Download className="h-5 w-5" />
-                    </Button>
+                  {/* Search and Sort row */}
+                  <div className="w-full mb-3 flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <input
+                        value={filterQuery}
+                        onChange={(e) => setFilterQuery(e.target.value)}
+                        placeholder="Find in Liked Songs"
+                        className="w-full h-10 rounded-lg pl-10 pr-3 text-[15px] bg-card text-foreground placeholder:text-muted-foreground border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="h-10 px-4 rounded-lg bg-card text-foreground hover:bg-accent border border-border"
+                        >
+                          Sort
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44 bg-popover text-popover-foreground border border-border">
+                        <DropdownMenuItem onClick={() => handleSortChange('recent')}>Recent</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSortChange('title')}>Title</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSortChange('artist')}>Artist</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <div className="w-full mb-4">
-                    <h1 className="text-3xl font-bold mb-2 text-white">Liked Songs</h1>
-                    <p className="text-sm text-white/80">{likedSongs.length} songs</p>
+                  <div className="w-full mb-1">
+                    <h1 className="text-3xl font-bold mb-1 text-foreground">Liked Songs</h1>
+                    <p className="text-sm text-muted-foreground">{likedSongs.length} songs</p>
                   </div>
                 </>
               ) : (
@@ -498,10 +448,10 @@ const LikedSongsPage = () => {
                     <Heart className="text-white w-24 h-24" />
                   </div>
                   <div className="flex-1 min-w-0 text-center sm:text-left">
-                    <p className="text-xs uppercase font-medium mb-2 text-white/70">Playlist</p>
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 text-white">Liked Songs</h1>
+                    <p className="text-xs uppercase font-medium mb-2 text-muted-foreground">Playlist</p>
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 text-foreground">Liked Songs</h1>
                     <div className="flex-col sm:flex-row sm:items-center">
-                      <p className="text-white/70">
+                      <p className="text-muted-foreground">
                         {isLoading 
                           ? 'Loading songs...' 
                           : `${likedSongs.length} songs${isAuthenticated && syncedWithServer && !syncError ? ' · Synced' : ''}`
@@ -518,7 +468,7 @@ const LikedSongsPage = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="liquid-glass-button text-white/90 hover:text-white rounded-full text-xs px-6 py-1 h-9 border-none"
+                  className="rounded-full text-xs px-6 py-1 h-9 border border-border text-foreground hover:bg-accent"
                   onClick={smartShuffle}
                 >
                   <Shuffle className="h-3.5 w-3.5 mr-2" />
@@ -526,7 +476,7 @@ const LikedSongsPage = () => {
                 </Button>
                 <Button 
                   onClick={playAllSongs}
-                  className="liquid-glass-primary text-white rounded-full h-14 w-14 flex items-center justify-center shadow-lg transition-all"
+                  className="bg-green-500 hover:bg-green-400 text-black rounded-full h-14 w-14 flex items-center justify-center shadow-lg"
                 >
                   <Play className="h-7 w-7 ml-0.5" />
                 </Button>
@@ -580,8 +530,8 @@ const LikedSongsPage = () => {
           {isLoading ? (
             <SkeletonLoader />
           ) : likedSongs.length > 0 ? (
-            <div className={cn("pb-20", isMobile ? "pt-3 px-3" : "")}>
-              {likedSongs.map((song, index) => (
+            <div className={cn("pb-4", isMobile ? "pt-3 px-3" : "")}>
+              {visibleSongs.map((song, index) => (
                 <div 
                   key={song.id}
                   onClick={() => playSong(song, index)}
@@ -611,7 +561,7 @@ const LikedSongsPage = () => {
                       {/* Title and artist column */}
                       <div className="flex items-center min-w-0">
                         <div className={cn(
-                          "flex-shrink-0 liquid-glass-album overflow-hidden mr-3",
+                          "flex-shrink-0 overflow-hidden mr-3 rounded-md shadow",
                           isMobile ? "w-12 h-12" : "w-10 h-10"
                         )}>
                           {song.imageUrl ? (
@@ -635,10 +585,10 @@ const LikedSongsPage = () => {
                         </div>
                         
                         <div className="min-w-0 pr-2">
-                          <p className={`font-medium truncate ${isSongPlaying(song) ? 'text-green-500' : 'text-white'}`}>
+                          <p className={`font-medium truncate ${isSongPlaying(song) ? 'text-green-500' : 'text-foreground'}`}>
                             {song.title}
                           </p>
-                          <p className="text-sm text-zinc-400 truncate">{song.artist}</p>
+                          <p className="text-sm text-muted-foreground truncate">{song.artist}</p>
                         </div>
                       </div>
                       
@@ -662,7 +612,7 @@ const LikedSongsPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="liquid-glass-button text-red-500 hover:text-red-400 h-8 w-8"
+                            className="h-8 w-8 text-red-500 hover:text-red-600 dark:hover:text-red-400"
                             onClick={(e) => {
                               e.stopPropagation();
                               unlikeSong(song.id);
@@ -679,7 +629,7 @@ const LikedSongsPage = () => {
                               variant="ghost"
                               size="icon"
                               className={cn(
-                                "liquid-glass-button text-zinc-400 hover:text-white",
+                                "text-muted-foreground hover:text-foreground",
                                 isMobile ? "h-8 w-8" : "h-8 w-8"
                               )}
                               onClick={(e) => e.stopPropagation()}

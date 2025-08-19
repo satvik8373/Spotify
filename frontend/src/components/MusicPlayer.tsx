@@ -270,7 +270,7 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white rounded-full"
                 onClick={() => toggleShuffle()}
                 title="Shuffle"
               >
@@ -282,7 +282,7 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white rounded-full"
                 onClick={playPrevious}
                 title="Previous"
                 disabled={queue.length <= 1}
@@ -294,7 +294,7 @@ const MusicPlayer = () => {
                 variant="default"
                 size="icon"
                 onClick={togglePlay}
-                className="liquid-glass-primary h-8 w-8 md:h-10 md:w-10 text-white hover:scale-105 transition"
+                className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-green-500 hover:bg-green-400 text-black transition"
                 title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? (
@@ -307,7 +307,7 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white rounded-full"
                 onClick={() => playNext()}
                 title="Next"
                 disabled={queue.length <= 1}
@@ -318,7 +318,7 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="liquid-glass-button h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white rounded-full"
                 onClick={handleToggleRepeat}
                 title="Repeat"
               >
@@ -351,7 +351,7 @@ const MusicPlayer = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="liquid-glass-button h-8 w-8 text-zinc-400 hover:text-white"
+              className="h-8 w-8 text-zinc-400 hover:text-white rounded-full"
               onClick={handleToggleMute}
               title={isMuted ? 'Unmute' : 'Mute'}
             >
