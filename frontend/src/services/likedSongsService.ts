@@ -345,12 +345,12 @@ const queueSyncWithServer = () => {
  */
 export const syncWithServer = async (songs: Song[]): Promise<Song[]> => {
   if (!auth.currentUser) {
-    console.log("Not logged in, skipping server sync");
+    // Not logged in, skip server sync silently
     return songs;
   }
   
   const userId = auth.currentUser.uid;
-  console.log("Syncing liked songs with Firestore...");
+  // console.debug("Syncing liked songs with Firestore...");
 
   try {
     // Get songs from Firestore
@@ -456,7 +456,7 @@ export const syncWithServer = async (songs: Song[]): Promise<Song[]> => {
     // Update last sync timestamp
     localStorage.setItem(LAST_SYNC_TIMESTAMP, Date.now().toString());
     
-    console.log(`Synced ${songsToAdd.length} songs to Firestore, ${songsToAddLocally.length} songs from Firestore`);
+    // console.debug(`Synced ${songsToAdd.length} songs to Firestore, ${songsToAddLocally.length} songs from Firestore`);
     
     // Return the merged songs
     return mergedSongs;

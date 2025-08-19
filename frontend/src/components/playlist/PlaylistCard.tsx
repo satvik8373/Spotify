@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Playlist } from '../../types';
 import { usePlayerStore } from '../../stores/usePlayerStore';
-import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { useState } from 'react';
 import { EditPlaylistDialog } from './EditPlaylistDialog';
 import { toast } from 'sonner';
@@ -9,7 +8,6 @@ import { cn } from '@/lib/utils';
 
 interface PlaylistCardProps {
   playlist: Playlist;
-  isOwner?: boolean;
   size?: 'small' | 'medium' | 'large';
   showDescription?: boolean;
   className?: string;
@@ -17,14 +15,12 @@ interface PlaylistCardProps {
 
 export function PlaylistCard({ 
   playlist, 
-  isOwner = false,
   size = 'medium',
   showDescription = true,
   className
 }: PlaylistCardProps) {
   const navigate = useNavigate();
-  const { playAlbum, isPlaying, currentSong } = usePlayerStore();
-  const { deletePlaylist } = usePlaylistStore();
+  const { isPlaying, currentSong } = usePlayerStore();
   const [showEditDialog, setShowEditDialog] = useState(false);
 
   const isCurrentPlaylist = isPlaying && 
@@ -35,8 +31,7 @@ export function PlaylistCard({
       toast.error('This playlist has no songs');
       return;
     }
-    playAlbum(playlist.songs, 0); // Play the playlist
-    navigate(`/playlist/${playlist._id}`); // Optionally navigate
+    navigate(`/playlist/${playlist._id}`);
   };
 
   const sizeStyles = {

@@ -1676,7 +1676,7 @@ const AudioPlayer = () => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // Page is now hidden (background)
-        console.log("Page hidden, ensuring background playback");
+        // console.log("Page hidden, ensuring background playback");
         
         // Double check media session availability
         if (isMediaSessionSupported()) {
@@ -1736,11 +1736,11 @@ const AudioPlayer = () => {
         }
       } else {
         // Page is visible again
-        console.log("Page visible, checking playback state");
+        // console.log("Page visible, checking playback state");
         
         // If we're supposed to be playing but audio is paused, restart it
         if (isPlaying && audioRef.current?.paused && !audioRef.current?.ended) {
-          console.log("Restarting paused audio after visibility change");
+          // console.log("Restarting paused audio after visibility change");
           audioRef.current.play().catch(() => {});
         }
         
@@ -1763,10 +1763,10 @@ const AudioPlayer = () => {
         try {
           // Request a screen wake lock to improve background playback
           wakeLock = await (navigator as any).wakeLock.request('screen');
-          console.log('Wake lock acquired for improved playback');
+          // console.log('Wake lock acquired for improved playback');
           
           wakeLock.addEventListener('release', () => {
-            console.log('Wake lock released');
+            // console.log('Wake lock released');
             // Try to reacquire if we're still playing
             if (isPlaying) {
               requestWakeLock();
