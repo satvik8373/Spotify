@@ -2130,8 +2130,16 @@ const AudioPlayer = () => {
                 value={[currentTime]}
                 max={duration || 100}
                 step={1}
-                className="cursor-pointer"
+                className="group cursor-pointer"
                 onValueChange={handleSeek}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onPointerUp={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               />
             </div>
             <div className="flex justify-between mt-1 mb-6">
