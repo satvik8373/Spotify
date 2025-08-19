@@ -95,12 +95,12 @@ export function PlaylistCard({
 
         {/* Playlist Info */}
         <div className="flex-1 flex flex-col pt-2 pb-4">
-          <h3 className={cn("font-bold text-white truncate", styles.title)}>
+          <h3 className={cn("font-bold text-foreground truncate", styles.title)}>
             {playlist.name}
           </h3>
 
           {showDescription && (
-            <p className={cn("text-zinc-400", styles.description)}>
+            <p className={cn("text-muted-foreground", styles.description)}>
               {playlist.description || (
                 <>
                   By {playlist.createdBy?.fullName || 'Unknown'}

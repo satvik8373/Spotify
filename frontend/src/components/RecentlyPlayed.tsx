@@ -109,7 +109,7 @@ export function RecentlyPlayed() {
         {recentItems.length > 0 && (
           <button 
             onClick={() => navigate('/history')}
-            className="text-sm text-zinc-400 hover:text-white transition-colors"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             See all
           </button>
@@ -120,7 +120,7 @@ export function RecentlyPlayed() {
         {recentItems.map(item => (
           <div
             key={item.id}
-            className="group relative overflow-hidden rounded-md bg-zinc-800/50 cursor-pointer transition-all duration-200 hover:bg-zinc-700/60"
+            className="group relative overflow-hidden rounded-md bg-muted/50 cursor-pointer transition-all duration-200 hover:bg-muted/60"
             onClick={() => handleItemClick(item)}
             onMouseEnter={() => setHoveredItemId(item.id)}
             onMouseLeave={() => setHoveredItemId(null)}
@@ -140,7 +140,7 @@ export function RecentlyPlayed() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <Music className="h-10 w-10 text-zinc-700" />
+                    <Music className="h-10 w-10 text-muted-foreground" />
                   </div>
                 )}
                 <button
@@ -160,14 +160,14 @@ export function RecentlyPlayed() {
               </div>
               <div className="min-h-[40px] flex flex-col justify-between">
                 <h3 
-                  className="font-medium text-white text-xs leading-tight line-clamp-2" 
+                  className="font-medium text-foreground text-xs leading-tight line-clamp-2" 
                   title={item.title}
                 >
                   {item.title}
                 </h3>
                 <div className="flex items-center justify-between mt-1">
-                  <p className="text-[10px] text-zinc-400 capitalize leading-none">{item.type}</p>
-                  <p className="text-[10px] text-zinc-500 flex items-center gap-0.5 leading-none">
+                  <p className="text-[10px] text-muted-foreground capitalize leading-none">{item.type}</p>
+                  <p className="text-[10px] text-muted-foreground/70 flex items-center gap-0.5 leading-none">
                     <Clock className="h-2.5 w-2.5" />
                     {getTimeAgo(item.date)}
                   </p>

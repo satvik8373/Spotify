@@ -41,7 +41,7 @@ const MainLayout = () => {
   }, []);
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col overflow-hidden max-w-full">
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden max-w-full">
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block">
         <Header />
@@ -74,11 +74,11 @@ const MainLayout = () => {
           <LeftSidebar />
         </ResizablePanel>
 
-        {!isMobile && <ResizableHandle className="w-1 bg-zinc-800/50 rounded-lg transition-colors hover:bg-green-900/50" />}
+        {!isMobile && <ResizableHandle className="w-1 bg-border rounded-lg transition-colors hover:bg-primary/20" />}
 
         {/* Main content - full width on mobile */}
         <ResizablePanel defaultSize={isMobile ? 100 : 80} className="overflow-hidden flex flex-col max-w-full">
-          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-black mobile-scroll-fix pb-safe">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden mobile-scroll-fix pb-safe">
             <Outlet />
           </div>
         </ResizablePanel>

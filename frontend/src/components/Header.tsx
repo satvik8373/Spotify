@@ -10,6 +10,7 @@ import SearchSuggestions from '@/components/SearchSuggestions';
 import { useAuth } from '../contexts/AuthContext';
 import { signOut } from '@/services/hybridAuthService';
 import { debounce } from 'lodash';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -134,7 +135,7 @@ const Header = ({ className }: HeaderProps) => {
   };
 
   return (
-    <header className={`bg-black/95 py-4 px-6 z-50 sticky top-0 ${className}`}>
+    <header className={`bg-background/95 py-4 px-6 z-50 sticky top-0 border-b border-border ${className}`}>
       <div className="max-w-[1800px] mx-auto flex items-center justify-between">
         {/* Logo and Brand */}
         <Link to={user ? "/home" : "/"} className="flex items-center gap-3 hover:opacity-90 transition-opacity min-w-[200px]">
@@ -145,8 +146,8 @@ const Header = ({ className }: HeaderProps) => {
                 d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.669 11.538a.498.498 0 0 1-.686.165c-1.879-1.147-4.243-1.407-7.028-.77a.499.499 0 0 1-.222-.973c3.048-.696 5.662-.397 7.77.892a.5.5 0 0 1 .166.686zm.979-2.178a.624.624 0 0 1-.858.205c-2.15-1.321-5.428-1.704-7.972-.932a.625.625 0 0 1-.362-1.194c2.905-.881 6.517-.454 8.986 1.063a.624.624 0 0 1 .206.858zm.084-2.268C10.154 5.56 5.9 5.419 3.438 6.166a.748.748 0 1 1-.434-1.432c2.825-.857 7.523-.692 10.492 1.07a.747.747 0 1 1-.764 1.288z"
               />
             </svg>
-            <span className="text-white font-bold text-2xl ml-3 tracking-tight">
-              Spotify <span className="text-zinc-400 font-normal">x</span> Mavrix
+            <span className="text-foreground font-bold text-2xl ml-3 tracking-tight">
+              Spotify <span className="text-muted-foreground font-normal">x</span> Mavrix
             </span>
           </div>
         </Link>
@@ -170,13 +171,13 @@ const Header = ({ className }: HeaderProps) => {
                   setShowSearchSuggestions(true);
                 }
               }}
-              className="w-full rounded-full bg-zinc-800 text-white pl-12 pr-12 h-12 focus:outline-none focus:ring-2 focus:ring-white/20 border-none placeholder:text-zinc-400 hover:bg-zinc-700/80 transition-colors"
+              className="w-full rounded-full bg-muted text-foreground pl-12 pr-12 h-12 focus:outline-none focus:ring-2 focus:ring-primary/20 border-none placeholder:text-muted-foreground hover:bg-muted/80 transition-colors"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={clearSearch}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <XCircle size={20} />
               </button>
@@ -190,36 +191,37 @@ const Header = ({ className }: HeaderProps) => {
           />
         </form>
 
-        {/* User Profile */}
-        <div className="min-w-[200px] flex justify-end">
+        {/* User Profile and Theme Toggle */}
+        <div className="min-w-[200px] flex justify-end items-center gap-2">
+          <ThemeToggle />
           {!authLoading && (
             user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
-                    className="rounded-full bg-zinc-800 hover:bg-zinc-700 text-white border-none flex items-center gap-2 py-1.5 px-2"
+                    className="rounded-full bg-muted hover:bg-muted/80 text-foreground border-none flex items-center gap-2 py-1.5 px-2"
                   >
-                    <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center overflow-hidden">
+                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
                       {user.picture ? (
                         <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
                       ) : (
-                        <User className="h-5 w-5 text-zinc-300" />
+                        <User className="h-5 w-5 text-muted-foreground" />
                       )}
                     </div>
                     <span className="text-sm font-medium truncate max-w-[100px]">{user.name || 'User'}</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="min-w-[200px] bg-zinc-800 border-zinc-700">
-                  <DropdownMenuSeparator className="bg-zinc-700" />
+                <DropdownMenuContent className="min-w-[200px]">
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    className="hover:bg-zinc-700 cursor-pointer text-white" 
+                    className="cursor-pointer" 
                     onClick={() => navigate('/account')}
                   >
                     <User className="h-4 w-4 mr-2" />
                     Profile
                   </DropdownMenuItem>
                   <DropdownMenuItem 
-                    className="hover:bg-zinc-700 cursor-pointer text-red-400" 
+                    className="cursor-pointer text-destructive" 
                     onClick={handleLogout}
                   >
                     <LogOut className="h-4 w-4 mr-2" />
@@ -229,7 +231,7 @@ const Header = ({ className }: HeaderProps) => {
               </DropdownMenu>
             ) : (
               <Button 
-                className="bg-white hover:bg-white/90 text-black font-medium px-8"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8"
                 onClick={() => navigate('/login')}
               >
                 Log in

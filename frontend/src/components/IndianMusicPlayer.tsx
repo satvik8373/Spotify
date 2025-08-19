@@ -357,7 +357,7 @@ const IndianMusicPlayer = () => {
       className="relative rounded-md overflow-hidden hover:bg-white/5 transition-colors p-4 group flex flex-col"
     >
       <div 
-        className="relative aspect-square w-full overflow-hidden rounded-md mb-4 bg-zinc-900"
+                    className="relative aspect-square w-full overflow-hidden rounded-md mb-4 bg-muted"
         onClick={() => playSong(song)}
       >
         {song.image ? (
@@ -417,7 +417,7 @@ const IndianMusicPlayer = () => {
       >
         {song.title}
       </h3>
-      <p className="text-xs text-zinc-400 truncate">{song.artist || 'Unknown Artist'}</p>
+                      <p className="text-xs text-muted-foreground truncate">{song.artist || 'Unknown Artist'}</p>
     </div>
   );
 
@@ -427,7 +427,7 @@ const IndianMusicPlayer = () => {
       className="grid grid-cols-[auto_1fr_auto] gap-4 p-2 hover:bg-white/5 rounded-md group cursor-pointer"
       onClick={() => playSong(song)}
     >
-      <div className="w-10 h-10 rounded-md bg-zinc-800 overflow-hidden flex-shrink-0">
+                      <div className="w-10 h-10 rounded-md bg-muted overflow-hidden flex-shrink-0">
         {song.image ? (
           <img 
             src={song.image} 
@@ -451,7 +451,7 @@ const IndianMusicPlayer = () => {
         <h3 className="text-sm font-medium truncate text-white">
           {song.title}
         </h3>
-        <p className="text-xs text-zinc-400 truncate">
+                        <p className="text-xs text-muted-foreground truncate">
           {song.artist || 'Unknown Artist'}
         </p>
       </div>
@@ -477,14 +477,14 @@ const IndianMusicPlayer = () => {
         <Button
           variant="ghost"
           size="icon"
-          className={`size-8 text-zinc-400 opacity-0 group-hover:opacity-100 ${likedSongIds.has(song.id) ? '!opacity-100 text-green-500' : ''}`}
+                          className={`size-8 text-muted-foreground opacity-0 group-hover:opacity-100 ${likedSongIds.has(song.id) ? '!opacity-100 text-green-500' : ''}`}
           onClick={(e) => toggleLikeSong(song, e)}
           title={likedSongIds.has(song.id) ? 'Remove from liked songs' : 'Add to liked songs'}
         >
           <Heart className={likedSongIds.has(song.id) ? 'fill-current' : ''} size={18} />
         </Button>
         
-        <div className="w-16 text-right text-xs text-zinc-500">
+                        <div className="w-16 text-right text-xs text-muted-foreground">
           {song.duration ? formatTime(parseInt(song.duration)) : ''}
         </div>
       </div>
@@ -517,7 +517,7 @@ const IndianMusicPlayer = () => {
         </div>
         
         <div className="flex flex-col items-center justify-center mb-6">
-          <div className="w-56 h-56 rounded-lg overflow-hidden bg-zinc-800 mb-4 shadow-xl">
+                      <div className="w-56 h-56 rounded-lg overflow-hidden bg-muted mb-4 shadow-xl">
             {selectedSong.image ? (
               <img 
                 src={selectedSong.image} 
@@ -537,12 +537,12 @@ const IndianMusicPlayer = () => {
             )}
           </div>
           <h3 className="text-xl font-bold text-center">{selectedSong.title}</h3>
-          <p className="text-zinc-400 text-center">{selectedSong.artist || 'Unknown Artist'}</p>
+          <p className="text-muted-foreground text-center">{selectedSong.artist || 'Unknown Artist'}</p>
           {selectedSong.album && (
-            <p className="text-zinc-500 text-sm text-center">{selectedSong.album}</p>
+            <p className="text-muted-foreground/70 text-sm text-center">{selectedSong.album}</p>
           )}
           {selectedSong.year && (
-            <p className="text-zinc-600 text-xs text-center">{selectedSong.year}</p>
+            <p className="text-muted-foreground/50 text-xs text-center">{selectedSong.year}</p>
           )}
         </div>
         
@@ -583,19 +583,19 @@ const IndianMusicPlayer = () => {
           </Button>
         </div>
         
-        <div className="bg-zinc-800/50 rounded-xl p-4 mb-4">
+                    <div className="bg-muted/50 rounded-xl p-4 mb-4">
           <h4 className="text-sm font-medium mb-2 flex items-center">
             <Music className="h-4 w-4 mr-2" />
             Audio Information
           </h4>
           <div className="grid grid-cols-2 gap-y-2 text-sm">
-            <div className="text-zinc-400">Duration</div>
+            <div className="text-muted-foreground">Duration</div>
             <div>{selectedSong.duration ? formatTime(parseInt(selectedSong.duration)) : 'Unknown'}</div>
             {selectedSong.url && (
               <>
-                <div className="text-zinc-400">Format</div>
+                <div className="text-muted-foreground">Format</div>
                 <div>MP4 Audio</div>
-                <div className="text-zinc-400">Quality</div>
+                <div className="text-muted-foreground">Quality</div>
                 <div>High (320kbps)</div>
               </>
             )}
@@ -628,19 +628,19 @@ const IndianMusicPlayer = () => {
   // Login dialog
   const LoginDialog = () => (
     <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
-      <DialogContent className="bg-zinc-800 border-zinc-700 max-w-md">
+      <DialogContent className="max-w-md">
         <div className="flex flex-col items-center py-6">
-          <div className="size-16 bg-green-500 rounded-full flex items-center justify-center mb-4">
-            <Music className="size-8 text-black" />
+          <div className="size-16 bg-primary rounded-full flex items-center justify-center mb-4">
+            <Music className="size-8 text-primary-foreground" />
           </div>
           
           <h2 className="text-xl font-bold mb-2">Sign in to continue</h2>
-          <p className="text-zinc-400 text-center mb-6">
+          <p className="text-muted-foreground text-center mb-6">
             Sign in to like songs, create playlists, and access all features.
           </p>
           
           <Button
-            className="w-full mb-4 bg-white text-black hover:bg-gray-200 font-medium flex items-center justify-center gap-2"
+            className="w-full mb-4 bg-primary text-primary-foreground hover:bg-primary/90 font-medium flex items-center justify-center gap-2"
             onClick={() => setShowLoginDialog(false)}
           >
             Cancel
@@ -694,7 +694,7 @@ const IndianMusicPlayer = () => {
       {/* Loading State */}
       {isIndianMusicLoading && (
         <div className="py-6 flex justify-center">
-          <Loader className="size-6 animate-spin text-zinc-500" />
+                          <Loader className="size-6 animate-spin text-muted-foreground" />
         </div>
       )}
       
@@ -719,7 +719,7 @@ const IndianMusicPlayer = () => {
       {bollywoodSongs.length > 0 && (
         <div className="mb-6 px-1">
           <SectionHeader title="Bollywood Hits" />
-          <div className="space-y-0.5 rounded-lg overflow-hidden bg-zinc-800/30">
+          <div className="space-y-0.5 rounded-lg overflow-hidden bg-muted/30">
             {bollywoodSongs.slice(0, visibleCounts.bollywood).map(song => renderSongRow(song))}
           </div>
           {bollywoodSongs.length > visibleCounts.bollywood && (
@@ -736,7 +736,7 @@ const IndianMusicPlayer = () => {
       {hollywoodSongs.length > 0 && (
         <div className="mb-6 px-1">
           <SectionHeader title="International Hits" />
-          <div className="space-y-0.5 rounded-lg overflow-hidden bg-zinc-800/30">
+          <div className="space-y-0.5 rounded-lg overflow-hidden bg-muted/30">
             {hollywoodSongs.slice(0, visibleCounts.hollywood).map(song => renderSongRow(song))}
           </div>
           {hollywoodSongs.length > visibleCounts.hollywood && (

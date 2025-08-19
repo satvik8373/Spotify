@@ -38,19 +38,19 @@ export const LeftSidebar = () => {
   };
 
   return (
-    <div className="hidden md:flex flex-col h-full bg-zinc-900 w-full overflow-hidden">
+    <div className="hidden md:flex flex-col h-full bg-background w-full overflow-hidden border-r border-border">
       {/* Header */}
       <div className="p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-white">Your Library</h1>
+        <h1 className="text-2xl font-bold text-foreground">Your Library</h1>
         <div className="flex gap-2">
           <button 
             className="liquid-glass-button p-2"
             onClick={() => setShowCreateDialog(true)}
           >
-            <Plus size={20} className="text-zinc-400 hover:text-white" />
+            <Plus size={20} className="text-muted-foreground hover:text-foreground" />
           </button>
           <button className="liquid-glass-button p-2">
-            <ArrowUpRight size={20} className="text-zinc-400 hover:text-white" />
+            <ArrowUpRight size={20} className="text-muted-foreground hover:text-foreground" />
           </button>
         </div>
       </div>
@@ -64,8 +64,8 @@ export const LeftSidebar = () => {
             className={cn(
               'px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap',
               activeTab === tab
-                ? 'liquid-glass bg-zinc-800/50 text-white'
-                : 'text-zinc-400 hover:text-white'
+                ? 'liquid-glass bg-muted text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
             )}
           >
             {tab}
@@ -76,9 +76,9 @@ export const LeftSidebar = () => {
       {/* Search and View Options */}
       <div className="p-2 flex justify-between items-center mt-1">
         <button className="liquid-glass-button p-2">
-          <Search size={20} className="text-zinc-400 hover:text-white" />
+          <Search size={20} className="text-muted-foreground hover:text-foreground" />
         </button>
-        <button className="flex items-center gap-2 text-zinc-400 hover:text-white text-sm font-medium">
+        <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm font-medium">
           <span>Recents</span>
           <List size={20} />
         </button>
@@ -90,11 +90,11 @@ export const LeftSidebar = () => {
           {/* Spotify Section */}
           {spotify.isAuthenticated && (
             <div className="mb-4">
-              <h3 className="text-sm text-zinc-400 px-2 mb-2">Spotify</h3>
+              <h3 className="text-sm text-muted-foreground px-2 mb-2">Spotify</h3>
               <Link
                 to="/spotify/songs"
                 className={cn(
-                  'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
+                  'flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50',
                   isActive('/spotify/songs') ? 'liquid-glass' : ''
                 )}
               >
@@ -102,8 +102,8 @@ export const LeftSidebar = () => {
                   <Music2 size={20} className="text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white truncate">Spotify Songs</p>
-                  <p className="text-sm text-zinc-400 truncate">
+                  <p className="font-semibold text-foreground truncate">Spotify Songs</p>
+                  <p className="text-sm text-muted-foreground truncate">
                     Songs from your Spotify account
                   </p>
                 </div>
@@ -111,7 +111,7 @@ export const LeftSidebar = () => {
               <Link
                 to="/spotify/playlists"
                 className={cn(
-                  'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
+                  'flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50',
                   isActive('/spotify/playlists') ? 'liquid-glass' : ''
                 )}
               >
@@ -119,8 +119,8 @@ export const LeftSidebar = () => {
                   <ListMusic size={20} className="text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white truncate">Spotify Playlists</p>
-                  <p className="text-sm text-zinc-400 truncate">
+                  <p className="font-semibold text-foreground truncate">Spotify Playlists</p>
+                  <p className="text-sm text-muted-foreground truncate">
                     Playlists from your Spotify account
                   </p>
                 </div>
@@ -132,7 +132,7 @@ export const LeftSidebar = () => {
           <Link
             to="/liked-songs"
             className={cn(
-              'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
+              'flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50',
               isActive('/liked-songs') ? 'liquid-glass' : ''
             )}
           >
@@ -140,8 +140,8 @@ export const LeftSidebar = () => {
               <Heart size={20} className="text-white" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-white truncate">Liked Songs</p>
-              <p className="text-sm text-zinc-400 truncate">
+              <p className="font-semibold text-foreground truncate">Liked Songs</p>
+              <p className="text-sm text-muted-foreground truncate">
                 Playlist • {userPlaylists.length || '246'} songs
               </p>
             </div>
@@ -154,7 +154,7 @@ export const LeftSidebar = () => {
                 key={playlist._id}
                 to={`/playlist/${playlist._id}`}
                 className={cn(
-                  'flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50',
+                  'flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50',
                   isActive(`/playlist/${playlist._id}`) ? 'liquid-glass' : ''
                 )}
               >
@@ -166,14 +166,14 @@ export const LeftSidebar = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                    <LayoutGrid size={20} className="text-zinc-400" />
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                    <LayoutGrid size={20} className="text-muted-foreground" />
                     </div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white truncate">{playlist.name}</p>
-                  <p className="text-sm text-zinc-400 truncate">
+                  <p className="font-semibold text-foreground truncate">{playlist.name}</p>
+                  <p className="text-sm text-muted-foreground truncate">
                     Playlist • {user?.name || 'Your playlist'}
                   </p>
                 </div>
@@ -182,18 +182,18 @@ export const LeftSidebar = () => {
           ) : (
             <>
               {/* Sample Playlists */}
-              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50">
+              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
                 <div className="liquid-glass-album w-12 h-12 bg-gradient-to-br from-green-500 to-blue-500 rounded-md flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white truncate">Trending Hindi Songs 2025</p>
-                  <p className="text-sm text-zinc-400 truncate">Playlist • Feel Magical Vibes</p>
+                  <p className="font-semibold text-foreground truncate">Trending Hindi Songs 2025</p>
+                  <p className="text-sm text-muted-foreground truncate">Playlist • Feel Magical Vibes</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50">
+              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
                 <div className="liquid-glass-album w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-md flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white truncate">Trending Now India</p>
-                  <p className="text-sm text-zinc-400 truncate">Playlist • Spotify</p>
+                  <p className="font-semibold text-foreground truncate">Trending Now India</p>
+                  <p className="text-sm text-muted-foreground truncate">Playlist • Spotify</p>
                 </div>
               </div>
             </>

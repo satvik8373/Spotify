@@ -9,6 +9,7 @@ import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import SongDetailsView from '@/components/SongDetailsView';
 import { signOut } from '@/services/hybridAuthService';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
+import { MobileThemeToggle } from '@/components/MobileThemeToggle';
 
 /**
  * Mobile Navigation with Profile Menu and Lockscreen Controls
@@ -298,35 +299,36 @@ const MobileNav = () => {
       />
       
       {/* Mobile Header - Spotify style */}
-      <div className="fixed top-0 left-0 right-0 z-30 bg-zinc-900 md:hidden">
-        <div className="flex items-center justify-end px-4 py-3">
+      <div className="fixed top-0 left-0 right-0 z-30 bg-background border-b border-border md:hidden">
+        <div className="flex items-center justify-end gap-2 px-4 py-3">
+          <MobileThemeToggle />
           {isAuthenticated ? (
             <div className="relative">
               <button 
                 onClick={handleProfileClick}
-                className="h-7 w-7 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden"
+                className="h-7 w-7 rounded-full bg-muted flex items-center justify-center overflow-hidden"
               >
                 {user?.picture ? (
                   <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
                 ) : (
-                  <User className="h-3.5 w-3.5 text-zinc-300" />
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
                 )}
               </button>
               
               {/* Profile Menu */}
               {showProfileMenu && (
-                <div className="absolute right-0 top-full mt-1 w-36 bg-zinc-800 rounded-md shadow-lg overflow-hidden z-50">
+                <div className="absolute right-0 top-full mt-1 w-36 bg-popover rounded-md shadow-lg overflow-hidden z-50 border border-border">
                   <div className="py-1">
                     <Link 
                       to="/account" 
-                      className="block px-4 py-2 text-sm text-white hover:bg-zinc-700"
+                      className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
                       onClick={() => setShowProfileMenu(false)}
                     >
                       Profile
                     </Link>
                     <button 
                       onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-700 flex items-center"
+                      className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center"
                     >
                       <LogOut className="h-3.5 w-3.5 mr-2" />
                       Sign out
@@ -338,9 +340,9 @@ const MobileNav = () => {
           ) : (
             <button 
               onClick={handleLogin}
-              className="h-7 w-7 rounded-full bg-zinc-800 flex items-center justify-center"
+              className="h-7 w-7 rounded-full bg-muted flex items-center justify-center"
             >
-              <LogIn className="h-3.5 w-3.5 text-white" />
+              <LogIn className="h-3.5 w-3.5 text-foreground" />
             </button>
           )}
         </div>
@@ -483,7 +485,7 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-16 bg-zinc-900">
+        <div className="grid grid-cols-4 h-16 bg-background">
           {navItems.map(item => (
             <Link
               key={item.path}
@@ -491,27 +493,27 @@ const MobileNav = () => {
               className={cn(
                 'flex flex-col items-center justify-center py-1 transition-colors',
                 isActive(item.path) 
-                  ? 'text-white'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <div className={cn(
-                'flex items-center justify-center h-8 w-8 mb-1 rounded-full transition-all',
-                isActive(item.path) 
-                  ? 'bg-gradient-to-br from-green-400 to-green-600 shadow-lg shadow-green-500/20 nav-icon-active' 
-                  : 'bg-zinc-800/80 hover:bg-zinc-700'
-              )}>
-                <item.icon className={cn(
-                  'h-4 w-4', 
-                  isActive(item.path) ? 'text-white' : 'text-zinc-400'
-                )} />
-              </div>
-              <span className={cn(
-                "text-[11px] font-medium tracking-tight transition-all",
-                isActive(item.path) 
-                  ? "text-white drop-shadow-md" 
-                  : "text-zinc-500"
-              )}>{item.label}</span>
+                              <div className={cn(
+                  'flex items-center justify-center h-8 w-8 mb-1 rounded-full transition-all',
+                  isActive(item.path) 
+                    ? 'bg-gradient-to-br from-green-400 to-green-600 shadow-lg shadow-green-500/20 nav-icon-active' 
+                    : 'bg-muted/80 hover:bg-muted'
+                )}>
+                  <item.icon className={cn(
+                    'h-4 w-4', 
+                    isActive(item.path) ? 'text-white' : 'text-muted-foreground'
+                  )} />
+                </div>
+                              <span className={cn(
+                  "text-[11px] font-medium tracking-tight transition-all",
+                  isActive(item.path) 
+                    ? "text-foreground drop-shadow-md" 
+                    : "text-muted-foreground"
+                )}>{item.label}</span>
             </Link>
           ))}
         </div>

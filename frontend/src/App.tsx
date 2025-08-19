@@ -21,14 +21,15 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
 import { SpotifyProvider } from './contexts/SpotifyContext';
+import { ThemeProvider } from './components/ThemeProvider';
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
-	<div className="min-h-screen flex flex-col items-center justify-center bg-zinc-900 p-4">
+	<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
 		<div className="text-center max-w-md">
-			<h1 className="text-9xl font-bold text-green-500 mb-6">404</h1>
-			<h2 className="text-2xl font-semibold mb-4">Page Not Found</h2>
-			<p className="text-zinc-400 mb-8">
+			<h1 className="text-9xl font-bold text-primary mb-6">404</h1>
+			<h2 className="text-2xl font-semibold mb-4 text-foreground">Page Not Found</h2>
+			<p className="text-muted-foreground mb-8">
 				The page you're looking for doesn't exist or has been moved.
 			</p>
 		</div>
@@ -37,10 +38,10 @@ const NotFoundFallback = () => (
 
 // Error page for when something goes wrong
 const ErrorFallback = () => (
-	<div className="min-h-screen flex flex-col items-center justify-center bg-zinc-900 p-4">
+	<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
 		<div className="text-center max-w-md">
-			<h1 className="text-4xl font-bold mb-4">Something went wrong</h1>
-			<p className="text-zinc-400 mb-8">
+			<h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
+			<p className="text-muted-foreground mb-8">
 				We're sorry, but there was an error loading this page. Please try refreshing.
 			</p>
 		</div>
@@ -68,8 +69,8 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
     
     // Otherwise show loading indicator
     return (
-      <div className="flex items-center justify-center h-screen bg-zinc-900">
-        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-green-500"></div>
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -100,8 +101,8 @@ const LandingRedirector = () => {
   // Still loading, but no cached auth - show loading indicator
   if (loading && !hasCachedAuth) {
     return (
-      <div className="flex items-center justify-center h-screen bg-zinc-900">
-        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-green-500"></div>
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -249,7 +250,9 @@ function App() {
 	return (
 		<AuthProvider>
 			<SpotifyProvider>
-				<AppContent />
+				<ThemeProvider>
+					<AppContent />
+				</ThemeProvider>
 			</SpotifyProvider>
 		</AuthProvider>
 	);

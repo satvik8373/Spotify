@@ -127,7 +127,7 @@ const netflixRowStyles = `
 		font-weight: 800;
 		opacity: 0.9;
 		text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
-		-webkit-text-stroke: 2px #fff;
+		-webkit-text-stroke: 2px hsl(var(--foreground));
 		color: transparent;
 		z-index: 2;
 		line-height: 1;
@@ -409,7 +409,7 @@ const HomePage = () => {
   }, []);
 
   return (
-    <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-zinc-900 to-black">
+    <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
         <div className="pt-3 pb-6 max-w-full overflow-x-hidden">
           {/* Offline banner */}
@@ -424,7 +424,7 @@ const HomePage = () => {
           {/* Offline placeholder */}
           {!isOnline && (
             <div className="px-2 sm:px-4 mb-4">
-              <div className="flex items-center gap-2 text-zinc-300">
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <WifiOff className="h-4 w-4 text-yellow-400" />
                 <span className="text-xs sm:text-sm">No internet connection</span>
               </div>
@@ -443,9 +443,9 @@ const HomePage = () => {
                   <div
                     key={item._id || item.id}
                     onClick={() => handlePlaylistClick(item)}
-                    className="group relative h-[50px] rounded-md overflow-hidden transition-all duration-300 hover:bg-zinc-800/80 cursor-pointer"
+                    className="group relative h-[50px] rounded-md overflow-hidden transition-all duration-300 hover:bg-muted/80 cursor-pointer"
                   >
-                    <div className="absolute inset-0 bg-zinc-800/60" />
+                    <div className="absolute inset-0 bg-muted/60" />
                     <div className="relative flex items-center h-full">
                       <div className="w-[50px] h-full flex-shrink-0">
                         {item.image || item.imageUrl ? (
@@ -490,7 +490,7 @@ const HomePage = () => {
                   <h2 className="text-base font-bold tracking-tight">Public Playlists</h2>
                   <Button
                     variant="ghost"
-                    className="text-zinc-400 hover:text-white text-[10px] sm:text-xs h-7"
+                    className="text-muted-foreground hover:text-foreground text-[10px] sm:text-xs h-7"
                     onClick={() => navigate('/library')}
                   >
                     See all
@@ -558,19 +558,19 @@ const HomePage = () => {
                                 }}
                               />
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
-                                <Music2 className="h-8 w-8 text-zinc-500" />
+                              <div className="w-full h-full bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center">
+                                <Music2 className="h-8 w-8 text-muted-foreground" />
                               </div>
                             )}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                             <div className="absolute bottom-0 left-0 w-full p-2">
                               <h3 className="text-xs font-medium line-clamp-1">{playlist.name}</h3>
                               <div className="flex items-center gap-1 mt-0.5">
-                                <div className="flex items-center gap-0.5 text-[8px] text-zinc-300">
+                                <div className="flex items-center gap-0.5 text-[8px] text-muted-foreground">
                                   <ThumbsUp className="h-2.5 w-2.5" />
                                   <span>{playlist.metrics.likes}</span>
                                 </div>
-                                <div className="flex items-center gap-0.5 text-[8px] text-zinc-300 ml-2">
+                                <div className="flex items-center gap-0.5 text-[8px] text-muted-foreground ml-2">
                                   <Share2 className="h-2.5 w-2.5" />
                                   <span>{playlist.metrics.shares}</span>
                                 </div>
@@ -639,7 +639,7 @@ const HomePage = () => {
                   <h2 className="text-base font-bold tracking-tight">Featured Playlists</h2>
                   <Button
                     variant="ghost"
-                    className="text-zinc-400 hover:text-white text-[10px] sm:text-xs h-7"
+                    className="text-muted-foreground hover:text-foreground text-[10px] sm:text-xs h-7"
                     onClick={() => navigate('/library')}
                   >
                     See all
@@ -668,7 +668,7 @@ const HomePage = () => {
                 {indianTrendingSongs.slice(0, 6).map((song, index) => (
                   <div
                     key={song.id || index}
-                    className="group flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800/50 cursor-pointer transition-colors"
+                    className="group flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer transition-colors"
                     onClick={() => {
                       const songToPlay = useMusicStore.getState().convertIndianSongToAppSong(song);
                       setCurrentSong(songToPlay);
@@ -713,7 +713,7 @@ const HomePage = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium leading-tight truncate">{song.title}</p>
-                      <p className="text-[10px] text-zinc-400 truncate">
+                      <p className="text-[10px] text-muted-foreground truncate">
                         {song.artist || 'Unknown Artist'}
                       </p>
                     </div>
@@ -727,11 +727,11 @@ const HomePage = () => {
 
           {isOnline && hasTrending && (
           <div className="mb-5">
-            <div className="px-2 sm:px-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
+                            <div className="px-2 sm:px-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
               {indianTrendingSongs.slice(0, 6).map(song => (
                 <div
                   key={song.id}
-                  className="flex flex-col rounded-md overflow-hidden cursor-pointer group transition-all duration-300 bg-zinc-800/30 hover:bg-zinc-800/70"
+                  className="flex flex-col rounded-md overflow-hidden cursor-pointer group transition-all duration-300 bg-muted/30 hover:bg-muted/70"
                   onClick={() => {
                     // Convert IndianSong to Song format (only if valid data exists)
                     if (!song.id || !song.title) return;
@@ -765,7 +765,7 @@ const HomePage = () => {
                   </div>
                   <div className="p-1.5">
                     <h3 className="text-xs font-medium truncate leading-tight">{song.title}</h3>
-                    <p className="text-[10px] text-zinc-400 truncate">
+                    <p className="text-[10px] text-muted-foreground truncate">
                       {song.artist || 'Unknown Artist'}
                     </p>
                   </div>
@@ -785,36 +785,34 @@ const HomePage = () => {
 
       {/* Create Playlist Dialog */}
       <Dialog open={showCreatePlaylistDialog} onOpenChange={setShowCreatePlaylistDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-xl">Create a new playlist</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogDescription>
               Give your playlist a name and description. You can add songs later.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="playlist-name" className="text-white">
+              <Label htmlFor="playlist-name">
                 Name
               </Label>
               <Input
                 id="playlist-name"
                 value={newPlaylistName}
                 onChange={e => setNewPlaylistName(e.target.value)}
-                className="bg-zinc-800 border-zinc-700 focus-visible:ring-green-500"
                 placeholder="My Awesome Playlist"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="playlist-description" className="text-white">
+              <Label htmlFor="playlist-description">
                 Description (optional)
               </Label>
               <Textarea
                 id="playlist-description"
                 value={newPlaylistDesc}
                 onChange={e => setNewPlaylistDesc(e.target.value)}
-                className="bg-zinc-800 border-zinc-700 focus-visible:ring-green-500 resize-none"
                 placeholder="A collection of my favorite songs"
                 rows={3}
               />
@@ -825,13 +823,12 @@ const HomePage = () => {
             <Button
               variant="outline"
               onClick={() => setShowCreatePlaylistDialog(false)}
-              className="border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreatePlaylist}
-              className="bg-green-500 hover:bg-green-600 text-black font-medium"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
               disabled={isCreating || !newPlaylistName.trim()}
             >
               {isCreating ? 'Creating...' : 'Create Playlist'}

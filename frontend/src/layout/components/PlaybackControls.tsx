@@ -218,7 +218,7 @@ export const PlaybackControls = () => {
 			{/* Desktop Player */}
 			<footer 
 				ref={playerRef}
-				className="h-[90px] border-t border-zinc-800/50 px-4 hidden sm:block transition-opacity duration-300 playback-controls-glass"
+				className="h-[90px] border-t border-border px-4 hidden sm:block transition-opacity duration-300 playback-controls-glass"
 				style={{ 
 					opacity: isTransitioning ? 0.8 : 1,
 					background: albumColors.isLight
@@ -241,17 +241,17 @@ export const PlaybackControls = () => {
 									/>
 								</div>
 								<div className="flex-1 min-w-0 cursor-pointer" onClick={() => setShowSongDetails(true)}>
-									<div className="font-medium truncate text-sm text-white hover:underline">
+									<div className="font-medium truncate text-sm text-foreground hover:underline">
 										{currentSong.title}
 									</div>
-									<div className="text-xs text-zinc-400 truncate hover:underline">
+									<div className="text-xs text-muted-foreground truncate hover:underline">
 										{currentSong.artist}
 									</div>
 								</div>
 								<Button
 									size="icon"
 									variant="ghost"
-									className={`hover:text-white ${isLiked ? 'text-green-500' : 'text-zinc-400'}`}
+									className={`hover:text-foreground ${isLiked ? 'text-green-500' : 'text-muted-foreground'}`}
 									onClick={(e) => handleLikeToggle(e)}
 								>
 									<Heart className="h-4 w-4" fill={isLiked ? 'currentColor' : 'none'} />
@@ -266,7 +266,7 @@ export const PlaybackControls = () => {
 							<Button
 								size="icon"
 								variant="ghost"
-								className={cn('hover:text-white h-8 w-8', isShuffled ? 'text-green-500' : 'text-zinc-400')}
+								className={cn('hover:text-foreground h-8 w-8', isShuffled ? 'text-green-500' : 'text-muted-foreground')}
 								onClick={toggleShuffle}
 							>
 								<Shuffle className="h-4 w-4" />
@@ -275,7 +275,7 @@ export const PlaybackControls = () => {
 							<Button
 								size="icon"
 								variant="ghost"
-								className="hover:text-white text-zinc-400 h-8 w-8"
+								className="hover:text-foreground text-muted-foreground h-8 w-8"
 								onClick={playPrevious}
 								disabled={!currentSong}
 							>
@@ -284,7 +284,7 @@ export const PlaybackControls = () => {
 
 							<Button
 								size="icon"
-								className="bg-white hover:bg-white/90 text-black rounded-full h-8 w-8 flex items-center justify-center transition-transform hover:scale-105"
+								className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-8 w-8 flex items-center justify-center transition-transform hover:scale-105"
 								onClick={togglePlay}
 								disabled={!currentSong}
 							>
@@ -297,7 +297,7 @@ export const PlaybackControls = () => {
 							<Button
 								size="icon"
 								variant="ghost"
-								className="hover:text-white text-zinc-400 h-8 w-8"
+								className="hover:text-foreground text-muted-foreground h-8 w-8"
 								onClick={playNext}
 								disabled={!currentSong}
 							>
@@ -307,7 +307,7 @@ export const PlaybackControls = () => {
 							<Button
 								size="icon"
 								variant="ghost"
-								className={cn('hover:text-white h-8 w-8', isRepeating ? 'text-green-500' : 'text-zinc-400')}
+								className={cn('hover:text-foreground h-8 w-8', isRepeating ? 'text-green-500' : 'text-muted-foreground')}
 								onClick={toggleRepeat}
 							>
 								<Repeat className="h-4 w-4" />
@@ -315,7 +315,7 @@ export const PlaybackControls = () => {
 						</div>
 
 						<div className="flex items-center gap-2 w-full">
-							<div className="text-[11px] text-zinc-400 w-[35px] text-right">{formatTime(currentTime)}</div>
+							<div className="text-[11px] text-muted-foreground w-[35px] text-right">{formatTime(currentTime)}</div>
 							<div className="w-full relative group">
 								<Slider
 									value={[currentTime]}
@@ -334,20 +334,20 @@ export const PlaybackControls = () => {
 									/>
 								</div>
 							</div>
-							<div className="text-[11px] text-zinc-400 w-[35px]">{formatTime(duration)}</div>
+							<div className="text-[11px] text-muted-foreground w-[35px]">{formatTime(duration)}</div>
 						</div>
 					</div>
 					
 					{/* volume controls */}
 					<div className="flex items-center gap-4 min-w-[180px] w-[30%] justify-end">
 						<div className="flex items-center gap-2">
-							<Button size="icon" variant="ghost" className="hover:text-white text-zinc-400 h-8 w-8">
+							<Button size="icon" variant="ghost" className="hover:text-foreground text-muted-foreground h-8 w-8">
 								<Mic2 className="h-4 w-4" />
 							</Button>
-							<Button size="icon" variant="ghost" className="hover:text-white text-zinc-400 h-8 w-8">
+							<Button size="icon" variant="ghost" className="hover:text-foreground text-muted-foreground h-8 w-8">
 								<ListMusic className="h-4 w-4" />
 							</Button>
-							<Button size="icon" variant="ghost" className="hover:text-white text-zinc-400 h-8 w-8">
+							<Button size="icon" variant="ghost" className="hover:text-foreground text-muted-foreground h-8 w-8">
 								<Laptop2 className="h-4 w-4" />
 							</Button>
 						</div>
@@ -361,7 +361,7 @@ export const PlaybackControls = () => {
 							<Button 
 								size="icon" 
 								variant="ghost" 
-								className="hover:text-white text-zinc-400 h-8 w-8"
+								className="hover:text-foreground text-muted-foreground h-8 w-8"
 								onClick={() => setVolume(volume === 0 ? 75 : 0)}
 							>
 								{getVolumeIcon()}
@@ -391,7 +391,7 @@ export const PlaybackControls = () => {
 
 			{/* Mobile Player */}
 			<div 
-				className="fixed bottom-14 left-0 right-0 bg-gradient-to-b from-zinc-900 to-black border-t border-zinc-800/50 h-16 backdrop-blur-md z-40 sm:hidden transition-all duration-300"
+				className="fixed bottom-14 left-0 right-0 bg-gradient-to-b from-background to-background/95 border-t border-border h-16 backdrop-blur-md z-40 sm:hidden transition-all duration-300"
 				style={{ opacity: isTransitioning ? 0.8 : 1 }}
 				onClick={() => setShowSongDetails(true)}
 			>
@@ -404,7 +404,7 @@ export const PlaybackControls = () => {
 									<img
 										src={currentSong.imageUrl}
 										alt={currentSong.title}
-										className="w-full h-full object-cover bg-zinc-800"
+										className="w-full h-full object-cover bg-muted"
 										onError={(e) => {
 											(e.target as HTMLImageElement).src = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
 										}}
@@ -414,7 +414,7 @@ export const PlaybackControls = () => {
 								{/* Song info */}
 								<div className="truncate min-w-0 flex-1">
 									<h4 className="text-xs font-medium truncate">{currentSong.title || "Unknown Title"}</h4>
-									<p className="text-[10px] text-zinc-400 truncate">{currentSong.artist || "Unknown Artist"}</p>
+									<p className="text-[10px] text-muted-foreground truncate">{currentSong.artist || "Unknown Artist"}</p>
 								</div>
 							</>
 						)}
@@ -425,7 +425,7 @@ export const PlaybackControls = () => {
 						<Button
 							size="icon"
 							variant="ghost"
-							className="h-9 w-9 text-white p-0"
+							className="h-9 w-9 text-foreground p-0"
 							onClick={(e) => {
 								e.stopPropagation();
 								playPrevious();
@@ -436,7 +436,7 @@ export const PlaybackControls = () => {
 
 						<Button
 							size="icon"
-							className="h-8 w-8 rounded-full bg-white text-black flex items-center justify-center p-0"
+							className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center p-0"
 							onClick={(e) => {
 								e.stopPropagation();
 								togglePlay();
@@ -452,7 +452,7 @@ export const PlaybackControls = () => {
 						<Button
 							size="icon"
 							variant="ghost"
-							className="h-9 w-9 text-white p-0"
+							className="h-9 w-9 text-foreground p-0"
 							onClick={(e) => {
 								e.stopPropagation();
 								playNext();
@@ -464,9 +464,9 @@ export const PlaybackControls = () => {
 				</div>
 				
 				{/* Progress bar for mobile */}
-				<div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
+				<div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/20">
 					<div 
-						className="h-full bg-green-500" 
+						className="h-full bg-primary" 
 						style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
 					/>
 				</div>
