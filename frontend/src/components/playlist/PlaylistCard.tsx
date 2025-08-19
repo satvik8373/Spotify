@@ -38,19 +38,19 @@ export function PlaylistCard({
     small: {
       container: "w-full max-w-[170px]",
       imageWrapper: "aspect-square shadow-md",
-      title: "text-sm font-medium mt-2",
+      title: "text-[13px] font-medium mt-2 leading-snug line-clamp-2",
       description: "text-xs mt-1 line-clamp-1",
     },
     medium: {
       container: "w-full max-w-[200px]",
       imageWrapper: "aspect-square shadow-md",
-      title: "text-base font-medium mt-3",
+      title: "text-sm font-semibold mt-3 leading-snug line-clamp-2",
       description: "text-xs mt-1 line-clamp-2",
     },
     large: {
       container: "w-full max-w-[250px]",
       imageWrapper: "aspect-square shadow-md", 
-      title: "text-lg mt-3 font-bold",
+      title: "text-base mt-3 font-bold leading-snug line-clamp-2",
       description: "text-sm mt-2 line-clamp-2",
     }
   };
@@ -90,7 +90,7 @@ export function PlaylistCard({
 
         {/* Playlist Info */}
         <div className="flex-1 flex flex-col pt-2 pb-4">
-          <h3 className={cn("font-bold text-foreground truncate", styles.title)}>
+          <h3 className={cn("font-bold text-foreground", styles.title)}>
             {playlist.name}
           </h3>
 

@@ -443,11 +443,11 @@ const HomePage = () => {
                   <div
                     key={item._id || item.id}
                     onClick={() => handlePlaylistClick(item)}
-                    className="group relative h-[50px] rounded-md overflow-hidden transition-all duration-300 hover:bg-muted/80 cursor-pointer"
+                    className="group relative h-[55px] rounded-md overflow-hidden transition-all duration-300 hover:bg-muted/90 dark:hover:bg-muted/70 cursor-pointer border border-border/60"
                   >
-                    <div className="absolute inset-0 bg-muted/60" />
+                    <div className="absolute inset-0 bg-muted/95 dark:bg-muted/80 scale-110" />
                     <div className="relative flex items-center h-full">
-                      <div className="w-[50px] h-full flex-shrink-0">
+                      <div className="w-[55px] h-full flex-shrink-0">
                         {item.image || item.imageUrl ? (
                           <img
                             src={item.image || item.imageUrl}
@@ -462,7 +462,7 @@ const HomePage = () => {
                         )}
                       </div>
                       <div className="flex-1 min-w-0 px-2.5">
-                        <h3 className="font-medium text-xs leading-tight truncate">
+                        <h3 className="font-medium text-[11px] leading-snug line-clamp-2">
                           {item.title || item.name}
                         </h3>
                       </div>
@@ -506,7 +506,6 @@ const HomePage = () => {
                       >
                         <PlaylistCard
                           playlist={playlist}
-                          isOwner={isAuthenticated && userId === playlist.createdBy.clerkId}
                         />
                       </div>
                     ))}
@@ -653,7 +652,6 @@ const HomePage = () => {
                     >
                       <PlaylistCard
                         playlist={playlist}
-                        isOwner={isAuthenticated && userId === playlist.createdBy.clerkId}
                       />
                     </div>
                   ))}
@@ -668,7 +666,7 @@ const HomePage = () => {
                 {indianTrendingSongs.slice(0, 6).map((song, index) => (
                   <div
                     key={song.id || index}
-                    className="group flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer transition-colors"
+                    className="group flex items-center gap-2 p-1.5 rounded hover:bg-muted/70 dark:hover:bg-muted/50 cursor-pointer transition-colors"
                     onClick={() => {
                       const songToPlay = useMusicStore.getState().convertIndianSongToAppSong(song);
                       setCurrentSong(songToPlay);
@@ -731,7 +729,7 @@ const HomePage = () => {
               {indianTrendingSongs.slice(0, 6).map(song => (
                 <div
                   key={song.id}
-                  className="flex flex-col rounded-md overflow-hidden cursor-pointer group transition-all duration-300 bg-muted/30 hover:bg-muted/70"
+                  className="flex flex-col rounded-md overflow-hidden cursor-pointer group transition-all duration-300 bg-muted/50 dark:bg-muted/30 hover:bg-muted/80 dark:hover:bg-muted/50 border border-border/60"
                   onClick={() => {
                     // Convert IndianSong to Song format (only if valid data exists)
                     if (!song.id || !song.title) return;
@@ -764,7 +762,7 @@ const HomePage = () => {
                     </div>
                   </div>
                   <div className="p-1.5">
-                    <h3 className="text-xs font-medium truncate leading-tight">{song.title}</h3>
+                    <h3 className="text-[11px] font-medium leading-snug line-clamp-2">{song.title}</h3>
                     <p className="text-[10px] text-muted-foreground truncate">
                       {song.artist || 'Unknown Artist'}
                     </p>

@@ -405,12 +405,12 @@ const IndianMusicPlayer = () => {
         </div>
       </div>
       <h3 
-        className="text-sm font-medium truncate cursor-pointer text-foreground"
+        className="text-[13px] font-medium leading-snug line-clamp-2 cursor-pointer text-foreground"
         onClick={() => playSong(song)}
       >
         {song.title}
       </h3>
-      <p className="text-xs text-muted-foreground truncate">{song.artist || 'Unknown Artist'}</p>
+      <p className="text-[11px] text-muted-foreground truncate">{song.artist || 'Unknown Artist'}</p>
     </div>
   );
 
@@ -441,10 +441,10 @@ const IndianMusicPlayer = () => {
       </div>
       
       <div className="min-w-0 flex flex-col justify-center">
-        <h3 className="text-sm font-medium truncate text-foreground">
+        <h3 className="text-[13px] font-medium leading-snug line-clamp-2 text-foreground">
           {song.title}
         </h3>
-        <p className="text-xs text-muted-foreground truncate">
+        <p className="text-[11px] text-muted-foreground truncate">
           {song.artist || 'Unknown Artist'}
         </p>
       </div>

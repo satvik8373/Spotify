@@ -21,8 +21,6 @@ const PlaybackControls = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
-  const [isScrubbing, setIsScrubbing] = useState(false);
-  const [scrubTime, setScrubTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   // Effect to get audio element reference
@@ -51,19 +49,10 @@ const PlaybackControls = () => {
   // Handle seeking
   const handleSeek = (value: number[]) => {
     const newTime = value[0];
-    setScrubTime(newTime);
     if (audioRef.current) {
       audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
     }
-  };
-
-  const commitSeek = (value: number[]) => {
-    const newTime = value[0];
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-    }
-    setCurrentTime(newTime);
-    setIsScrubbing(false);
   };
   
   // Toggle mute
@@ -150,23 +139,12 @@ const PlaybackControls = () => {
       <div className="w-full px-2 pb-1">
         <div className="relative py-1">
         <Slider
-          value={[isScrubbing ? scrubTime : currentTime]}
+          value={[currentTime]}
           max={duration}
           step={1}
-          onValueChange={(v) => {
-            if (!isScrubbing) setIsScrubbing(true);
-            handleSeek(v);
-          }}
-          onValueCommit={commitSeek}
-          onPointerUp={() => setIsScrubbing(false)}
-          onPointerDown={() => {
-            setIsScrubbing(true);
-            setScrubTime(currentTime || 0);
-          }}
+          onValueChange={handleSeek}
           className="cursor-pointer"
         />
-          {/* Starting green dot like Spotify */}
-          <div className="pointer-events-none absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-[#1ED760]" />
           <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
         </div>
         <div className="flex justify-between text-xs text-muted-foreground mt-1">

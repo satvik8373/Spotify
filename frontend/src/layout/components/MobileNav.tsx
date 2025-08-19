@@ -331,7 +331,7 @@ const MobileNav = () => {
             <div className="flex items-center justify-between px-3 py-2">
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
-                  <div className="relative">
+                  <div className="relative flex items-center gap-2 min-w-0">
                     <button 
                       onClick={handleProfileClick}
                       className="h-6 w-6 rounded-full bg-muted flex items-center justify-center overflow-hidden"
@@ -343,6 +343,9 @@ const MobileNav = () => {
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
                     </button>
+                    <span className="text-[11px] font-medium text-foreground truncate max-w-[120px]">
+                      {user?.name || 'User'}
+                    </span>
                     {showProfileMenu && (
                       <div className="absolute right-0 top-full mt-1 w-36 bg-popover rounded-md shadow-lg overflow-hidden z-50 border border-border">
                         <div className="py-1">
@@ -403,7 +406,7 @@ const MobileNav = () => {
             <div className="flex items-center justify-between px-3 py-2">
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
-                  <div className="relative">
+                  <div className="relative flex items-center gap-2 min-w-0">
                     <button 
                       onClick={handleProfileClick}
                       className="h-6 w-6 rounded-full bg-muted flex items-center justify-center overflow-hidden"
@@ -415,6 +418,9 @@ const MobileNav = () => {
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
                     </button>
+                    <span className="text-[11px] font-medium text-foreground truncate max-w-[120px]">
+                      {user?.name || 'User'}
+                    </span>
                     {showProfileMenu && (
                       <div className="absolute right-0 top-full mt-1 w-36 bg-popover rounded-md shadow-lg overflow-hidden z-50 border border-border">
                         <div className="py-1">
@@ -453,7 +459,7 @@ const MobileNav = () => {
             <div className="flex items-center justify-between px-3 py-2">
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
-                  <div className="relative">
+                  <div className="relative flex items-center gap-2 min-w-0">
                     <button 
                       onClick={handleProfileClick}
                       className="h-6 w-6 rounded-full bg-muted flex items-center justify-center overflow-hidden"
@@ -465,6 +471,9 @@ const MobileNav = () => {
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
                     </button>
+                    <span className="text-[11px] font-medium text-foreground truncate max-w-[120px]">
+                      {user?.name || 'User'}
+                    </span>
                     {showProfileMenu && (
                       <div className="absolute right-0 top-full mt-1 w-36 bg-popover rounded-md shadow-lg overflow-hidden z-50 border border-border">
                         <div className="py-1">
