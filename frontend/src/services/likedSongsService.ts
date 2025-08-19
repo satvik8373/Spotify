@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import axiosInstance from "@/lib/axios";
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, serverTimestamp, updateDoc, increment } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, serverTimestamp, updateDoc, increment, orderBy } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { updateUserStats } from "./userService";
 
@@ -566,7 +566,7 @@ export const syncLikedSongsOnLogin = async (): Promise<void> => {
     
     // Sync with server regardless of local state
     console.log("Performing initial sync after login...");
-    const serverSongs = await syncWithServer(parsedLocalSongs);
+    await syncWithServer(parsedLocalSongs);
     
     // Mark as synced
     localStorage.setItem(LAST_SYNC_TIMESTAMP, Date.now().toString());
@@ -579,34 +579,41 @@ export const syncLikedSongsOnLogin = async (): Promise<void> => {
 
 // Get all liked songs for current user
 export const getLikedSongs = async (): Promise<LikedSong[]> => {
+  if (!auth.currentUser) {
+    return [];
+  }
+
+  const userId = auth.currentUser.uid;
+  const likedSongsRef = collection(db, "likedSongs");
+
+  // Try ordered query first; if index missing, fall back to unordered
   try {
-    if (!auth.currentUser) {
+    const orderedQ = query(likedSongsRef, where("userId", "==", userId), orderBy("likedAt", "desc"));
+    const snapshot = await getDocs(orderedQ);
+    const likedSongs: LikedSong[] = [];
+    snapshot.forEach((d) => {
+      likedSongs.push({ id: d.id, ...d.data() } as LikedSong);
+    });
+    return likedSongs;
+  } catch (orderedErr) {
+    try {
+      // Fallback without orderBy
+      const unorderedQ = query(likedSongsRef, where("userId", "==", userId));
+      const snapshot = await getDocs(unorderedQ);
+      const likedSongs: LikedSong[] = [];
+      snapshot.forEach((d) => {
+        likedSongs.push({ id: d.id, ...d.data() } as LikedSong);
+      });
+      // Sort client-side by likedAt
+      return likedSongs.sort((a, b) => {
+        const dateA = (a.likedAt?.toDate ? a.likedAt.toDate() : new Date(a.likedAt || 0)) as Date;
+        const dateB = (b.likedAt?.toDate ? b.likedAt.toDate() : new Date(b.likedAt || 0)) as Date;
+        return dateB.getTime() - dateA.getTime();
+      });
+    } catch (fallbackErr) {
+      console.error("Error getting liked songs:", fallbackErr);
       return [];
     }
-    
-    const userId = auth.currentUser.uid;
-    const likedSongsRef = collection(db, "likedSongs");
-    const q = query(likedSongsRef, where("userId", "==", userId));
-    
-    const querySnapshot = await getDocs(q);
-    const likedSongs: LikedSong[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      likedSongs.push({
-        id: doc.id,
-        ...doc.data()
-      } as LikedSong);
-    });
-    
-    // Sort by most recently liked
-    return likedSongs.sort((a, b) => {
-      const dateA = a.likedAt?.toDate ? a.likedAt.toDate() : new Date(a.likedAt);
-      const dateB = b.likedAt?.toDate ? b.likedAt.toDate() : new Date(b.likedAt);
-      return dateB.getTime() - dateA.getTime();
-    });
-  } catch (error) {
-    console.error("Error getting liked songs:", error);
-    return [];
   }
 };
 

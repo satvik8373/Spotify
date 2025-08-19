@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader, Play, Pause, Heart, RefreshCcw, ChevronDown, Clock, Music, X, Share2, Download, MoreHorizontal, ArrowLeft, Volume2 } from "lucide-react";
+import { Loader, Play, Pause, Heart, RefreshCcw, Music, X, Share2, Download, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useMusicStore } from "@/stores/useMusicStore";
 import { useAuth } from "../contexts/AuthContext";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { loadLikedSongs, addLikedSong, removeLikedSong } from "@/services/likedSongsService";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -27,10 +27,7 @@ interface Song extends BaseSong {
   _id?: string;
 }
 
-interface AppSong extends BaseSong {
-  duration: number;
-  audioUrl: string;
-}
+// AppSong interface not used directly here
 
 interface VisibleCounts {
   trending: number;
@@ -46,12 +43,10 @@ interface MusicStoreState {
 
 const IndianMusicPlayer = () => {
   // State
-  const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(0);
+  // Local playback UI timing not used in this list view
   const [likedSongIds, setLikedSongIds] = useState<Set<string>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const [showSongDetails, setShowSongDetails] = useState<boolean>(false);
   const [showLoginDialog, setShowLoginDialog] = useState<boolean>(false);
   const [animationBars, setAnimationBars] = useState<number[]>([]);
 
@@ -71,8 +66,6 @@ const IndianMusicPlayer = () => {
     indianSearchResults,
     bollywoodSongs,
     hollywoodSongs, 
-    officialTrendingSongs,
-    hindiSongs,
     isIndianMusicLoading,
     fetchIndianTrendingSongs,
     fetchBollywoodSongs,
@@ -85,7 +78,7 @@ const IndianMusicPlayer = () => {
 
   const { isAuthenticated, user } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   // Effects
   useEffect(() => {
@@ -354,7 +347,7 @@ const IndianMusicPlayer = () => {
   const renderSongCard = (song: Song) => (
     <div 
       key={song.id}
-      className="relative rounded-md overflow-hidden hover:bg-white/5 transition-colors p-4 group flex flex-col"
+      className="relative rounded-md overflow-hidden hover:bg-accent transition-colors p-4 group flex flex-col"
     >
       <div 
                     className="relative aspect-square w-full overflow-hidden rounded-md mb-4 bg-muted"
@@ -412,19 +405,19 @@ const IndianMusicPlayer = () => {
         </div>
       </div>
       <h3 
-        className="text-sm font-medium truncate cursor-pointer"
+        className="text-sm font-medium truncate cursor-pointer text-foreground"
         onClick={() => playSong(song)}
       >
         {song.title}
       </h3>
-                      <p className="text-xs text-muted-foreground truncate">{song.artist || 'Unknown Artist'}</p>
+      <p className="text-xs text-muted-foreground truncate">{song.artist || 'Unknown Artist'}</p>
     </div>
   );
 
   const renderSongRow = (song: Song) => (
     <div 
       key={song.id}
-      className="grid grid-cols-[auto_1fr_auto] gap-4 p-2 hover:bg-white/5 rounded-md group cursor-pointer"
+      className="grid grid-cols-[auto_1fr_auto] gap-4 p-2 hover:bg-accent rounded-md group cursor-pointer"
       onClick={() => playSong(song)}
     >
                       <div className="w-10 h-10 rounded-md bg-muted overflow-hidden flex-shrink-0">
@@ -448,10 +441,10 @@ const IndianMusicPlayer = () => {
       </div>
       
       <div className="min-w-0 flex flex-col justify-center">
-        <h3 className="text-sm font-medium truncate text-white">
+        <h3 className="text-sm font-medium truncate text-foreground">
           {song.title}
         </h3>
-                        <p className="text-xs text-muted-foreground truncate">
+        <p className="text-xs text-muted-foreground truncate">
           {song.artist || 'Unknown Artist'}
         </p>
       </div>
@@ -501,7 +494,7 @@ const IndianMusicPlayer = () => {
             variant="ghost" 
             size="icon" 
             className="rounded-full"
-            onClick={() => setShowSongDetails(false)}
+            onClick={() => setSelectedSong(null)}
           >
             <ArrowLeft />
           </Button>
@@ -510,7 +503,7 @@ const IndianMusicPlayer = () => {
             variant="ghost" 
             size="icon" 
             className="rounded-full"
-            onClick={() => setShowSongDetails(false)}
+            onClick={() => setSelectedSong(null)}
           >
             <X />
           </Button>
@@ -694,7 +687,7 @@ const IndianMusicPlayer = () => {
       {/* Loading State */}
       {isIndianMusicLoading && (
         <div className="py-6 flex justify-center">
-                          <Loader className="size-6 animate-spin text-muted-foreground" />
+          <Loader className="size-6 animate-spin text-muted-foreground" />
         </div>
       )}
       

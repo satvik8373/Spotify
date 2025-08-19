@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Song } from '../types';
-import { toast } from 'sonner';
 import * as likedSongsFirestoreService from '@/services/likedSongsService';
 import { useAuthStore } from './useAuthStore';
 
@@ -40,7 +39,7 @@ const localLikedSongsService = {
     }
 
     // Add the song
-    songs.push(song);
+    songs.unshift(song);
     localStorage.setItem('likedSongs', JSON.stringify(songs));
   },
 
@@ -90,7 +89,17 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Try Firestore first if user is authenticated
           if (isAuthenticated) {
             try {
-              const firebaseSongs = likedSongsFirestoreService.loadLikedSongs();
+              // Fetch from Firestore sorted by most recent first
+              const firebaseLiked = await likedSongsFirestoreService.getLikedSongs();
+              const firebaseSongs = firebaseLiked.map(ls => ({
+                id: ls.songId || ls.id,
+                title: ls.title,
+                artist: ls.artist,
+                imageUrl: ls.imageUrl,
+                audioUrl: ls.audioUrl,
+                duration: ls.duration || 0,
+                album: ls.albumName || ''
+              }));
               songs = firebaseSongs.map(convertToLocalSong);
             } catch (firebaseError) {
               console.warn('Failed to load from Firebase, falling back to local storage', firebaseError);
@@ -104,10 +113,9 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           
           // Build songIds set for efficient lookups
           const songIds = new Set<string>();
-          songs.forEach(song => {
-            if (song._id) {
-              songIds.add(song._id);
-            }
+          songs.forEach((song: any) => {
+            const possibleIds = [song._id, song.id].filter(Boolean) as string[];
+            possibleIds.forEach((sid) => songIds.add(sid));
           });
 
           // Only update state if songs actually changed
@@ -147,9 +155,12 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           set({ isSaving: true });
           
           // Optimistically update local state immediately for better UX
-          const updatedSongs = [...get().likedSongs, song];
+          const updatedSongs = [song, ...get().likedSongs];
           const updatedSongIds = new Set(get().likedSongIds);
+          // Add both canonical and alternative IDs for global UI consistency
           updatedSongIds.add(songId);
+          const altId = (song as any).id;
+          if (altId) updatedSongIds.add(altId);
           
           // Update local state before Firestore to make UI response instant
           set({ 
@@ -198,6 +209,18 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           const updatedSongs = get().likedSongs.filter(song => song._id !== songId);
           const updatedSongIds = new Set(get().likedSongIds);
           updatedSongIds.delete(songId);
+          // Also remove any alternate id representation present in the set
+          const altIdsToRemove: string[] = [];
+          get().likedSongs.forEach((s: any) => {
+            const alt = s.id || s._id;
+            if (alt && alt !== songId && updatedSongIds.has(alt)) {
+              // if this song was removed and alt id matches, remove it
+              if (!updatedSongs.some(us => (us as any)._id === alt || (us as any).id === alt)) {
+                altIdsToRemove.push(alt);
+              }
+            }
+          });
+          altIdsToRemove.forEach(id => updatedSongIds.delete(id));
           
           // Update local state before Firestore to make UI response instant
           set({ 
