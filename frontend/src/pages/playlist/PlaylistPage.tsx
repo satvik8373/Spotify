@@ -938,10 +938,10 @@ export function PlaylistPage() {
           {currentPlaylist.songs.length > 0 ? (
             <div className="mt-4">
               {/* Spotify-style header row */}
-              <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_3fr_minmax(120px,1fr)] border-b border-border text-sm text-muted-foreground py-2 px-4 mb-2">
+              <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_2fr_minmax(120px,1fr)] border-b border-border text-sm text-muted-foreground py-2 px-4 mb-2">
                 <div className="flex items-center justify-center">#</div>
                 <div>Title</div>
-                <div className="hidden md:block">Album</div>
+                <div className="hidden md:block">Date added</div>
                 <div className="flex justify-end pr-8">
                   <Clock className="h-4 w-4" />
                 </div>
@@ -956,7 +956,7 @@ export function PlaylistPage() {
                 <div
                   key={song._id}
                   className={cn(
-                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_3fr_minmax(120px,1fr)] items-center py-2 px-4 mx-[-16px] rounded-md group',
+                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)] items-center py-2 px-4 mx-[-16px] rounded-md group',
                       'hover:bg-white/10 transition-colors duration-200',
                       isCurrentSong && 'bg-white/10',
                       !song.audioUrl && 'opacity-60'
@@ -1012,10 +1012,12 @@ export function PlaylistPage() {
                     </div>
                   </div>
                     
-                    {/* Album info (placeholder) */}
+                    {/* Date added (desktop only) */}
                     <div className="text-muted-foreground text-sm truncate hidden md:block">
-                      {/* Empty for now, would show album name */}
-                  </div>
+                      {song.createdAt
+                        ? new Date(song.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                        : '—'}
+                    </div>
                     
                     {/* Duration and actions */}
                     <div className="flex items-center justify-end gap-2 sm:gap-4 text-muted-foreground">

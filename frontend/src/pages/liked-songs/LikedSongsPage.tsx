@@ -500,12 +500,12 @@ const LikedSongsPage = () => {
                 </Button>
               </div>
               <div className="hidden md:flex items-center gap-2">
-                ARTIST
+                DATE ADDED
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className={`h-6 w-6 ${sortMethod === 'artist' ? 'text-green-500' : 'text-zinc-400'}`}
-                  onClick={() => handleSortChange('artist')}
+                  className={`h-6 w-6 ${sortMethod === 'recent' ? 'text-green-500' : 'text-zinc-400'}`}
+                  onClick={() => handleSortChange('recent')}
                 >
                   <ArrowDownUp className="h-3 w-3" />
                 </Button>
@@ -592,10 +592,15 @@ const LikedSongsPage = () => {
                         </div>
                       </div>
                       
-                      {/* Artist column - desktop only */}
+                      {/* Date added column - desktop only */}
                       {!isMobile && (
-                        <div className="hidden md:flex items-center text-zinc-400 text-sm desktop-artist-column">
-                          <span className="truncate">{song.artist}</span>
+                        <div className="hidden md:flex items-center text-zinc-400 text-sm desktop-date-column">
+                          <span className="truncate">
+                            {song.dateAdded 
+                              ? new Date(song.dateAdded).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                              : new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                            }
+                          </span>
                         </div>
                       )}
                       
