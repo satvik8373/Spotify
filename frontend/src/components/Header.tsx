@@ -147,7 +147,7 @@ const Header = ({ className }: HeaderProps) => {
               />
             </svg>
             <span className="text-foreground font-bold text-2xl ml-3 tracking-tight">
-              mavrixfy
+              MAVRIXFY
             </span>
           </div>
         </Link>
@@ -215,7 +215,7 @@ const Header = ({ className }: HeaderProps) => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     className="cursor-pointer" 
-                    onClick={() => navigate('/account')}
+                    onClick={() => navigate('/profile')}
                   >
                     <User className="h-4 w-4 mr-2" />
                     Profile

@@ -7,6 +7,7 @@ import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
 import { Toaster } from 'react-hot-toast';
 import AlbumPage from './pages/album/AlbumPage';
 import { PlaylistPage } from './pages/playlist/PlaylistPage';
+import ProfilePage from './pages/ProfilePage';
 // import SharedSongPage from './pages/SharedSongPage';
 import { useState, useEffect } from "react";
 import SplashScreen from './components/SplashScreen';
@@ -153,6 +154,10 @@ const router = createBrowserRouter(
 				{
 					path: '/search',
 					element: <AuthGate><SearchPage /></AuthGate>
+				},
+				{
+					path: '/profile',
+					element: <AuthGate><ProfilePage /></AuthGate>
 				},
 				{
 					path: '/playlist/:id',

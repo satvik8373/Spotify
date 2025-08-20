@@ -201,10 +201,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     touchStartX.current = e.touches[0].clientX;
     setSwipingDirection('none');
     
-    // If touch starting on progress bar, don't prevent default to allow seeking
-    if (source !== 'progressBar') {
-      e.preventDefault();
-    }
+    // Removed preventDefault to avoid passive event listener error
   };
   
   // Handle touch move for swipe detection

@@ -331,7 +331,7 @@ const MobileNav = () => {
             <div className="flex items-center justify-between px-3 py-2">
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
-                  <div className="relative flex items-center gap-2 min-w-0">
+                  <div className="relative">
                     <button 
                       onClick={handleProfileClick}
                       className="h-6 w-6 rounded-full bg-muted flex items-center justify-center overflow-hidden"
@@ -343,14 +343,11 @@ const MobileNav = () => {
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
                     </button>
-                    <span className="text-[11px] font-medium text-foreground truncate max-w-[120px]">
-                      {user?.name || 'User'}
-                    </span>
                     {showProfileMenu && (
                       <div className="absolute right-0 top-full mt-1 w-36 bg-popover rounded-md shadow-lg overflow-hidden z-50 border border-border">
                         <div className="py-1">
                           <Link 
-                            to="/account" 
+                            to="/profile" 
                             className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
                             onClick={() => setShowProfileMenu(false)}
                           >
@@ -406,7 +403,7 @@ const MobileNav = () => {
             <div className="flex items-center justify-between px-3 py-2">
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
-                  <div className="relative flex items-center gap-2 min-w-0">
+                  <div className="relative">
                     <button 
                       onClick={handleProfileClick}
                       className="h-6 w-6 rounded-full bg-muted flex items-center justify-center overflow-hidden"
@@ -418,14 +415,11 @@ const MobileNav = () => {
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
                     </button>
-                    <span className="text-[11px] font-medium text-foreground truncate max-w-[120px]">
-                      {user?.name || 'User'}
-                    </span>
                     {showProfileMenu && (
                       <div className="absolute right-0 top-full mt-1 w-36 bg-popover rounded-md shadow-lg overflow-hidden z-50 border border-border">
                         <div className="py-1">
                           <Link 
-                            to="/account" 
+                            to="/profile" 
                             className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
                             onClick={() => setShowProfileMenu(false)}
                           >
@@ -459,7 +453,7 @@ const MobileNav = () => {
             <div className="flex items-center justify-between px-3 py-2">
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
-                  <div className="relative flex items-center gap-2 min-w-0">
+                  <div className="relative">
                     <button 
                       onClick={handleProfileClick}
                       className="h-6 w-6 rounded-full bg-muted flex items-center justify-center overflow-hidden"
@@ -471,14 +465,11 @@ const MobileNav = () => {
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
                     </button>
-                    <span className="text-[11px] font-medium text-foreground truncate max-w-[120px]">
-                      {user?.name || 'User'}
-                    </span>
                     {showProfileMenu && (
                       <div className="absolute right-0 top-full mt-1 w-36 bg-popover rounded-md shadow-lg overflow-hidden z-50 border border-border">
                         <div className="py-1">
                           <Link 
-                            to="/account" 
+                            to="/profile" 
                             className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
                             onClick={() => setShowProfileMenu(false)}
                           >
@@ -534,8 +525,8 @@ const MobileNav = () => {
             className="flex flex-col justify-between transition-colors duration-500"
             style={{
               backgroundColor: albumColors.isLight
-                ? `${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.12)')}`
-                : `${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.12)')}`,
+                ? `${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.85)')}`
+                : `${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.85)')}`,
               color: albumColors.isLight ? '#000' : '#fff'
             }}
           >
@@ -555,7 +546,7 @@ const MobileNav = () => {
                   <p 
                     className={cn(
                       "text-sm font-medium truncate",
-                      albumColors.isLight ? "text-black" : "text-white"
+                      "text-black"
                     )}
                   >
                     {currentSong.title}
@@ -563,7 +554,7 @@ const MobileNav = () => {
                   <p 
                     className={cn(
                       "text-xs truncate",
-                      albumColors.isLight ? "text-black/60" : "text-zinc-400"
+                      "text-black/70"
                     )}
                   >
                     {currentSong.artist}
@@ -575,8 +566,8 @@ const MobileNav = () => {
                   onClick={handleLikeToggle}
                   className={cn(
                     "mr-2 h-8 w-8 flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
-                    albumColors.isLight ? "bg-black/10 hover:bg-black/20" : "bg-white/10 hover:bg-white/20",
-                    songLiked ? "text-green-500" : albumColors.isLight ? "text-black/60" : "text-zinc-300"
+                    "bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30",
+                    songLiked ? "text-green-500" : "text-foreground"
                   )}
                 >
                   <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
@@ -588,7 +579,9 @@ const MobileNav = () => {
                   }}
                   className={cn(
                     "h-9 w-9 flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
-                    isPlaying ? (albumColors.isLight ? "bg-black/10 hover:bg-black/20 text-black" : "bg-white/10 hover:bg-white/20 text-white") : "bg-green-500 hover:bg-green-400 text-black"
+                    isPlaying 
+                      ? "bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 text-foreground" 
+                      : "bg-green-500 hover:bg-green-400 text-black"
                   )}
                 >
                   {isPlaying ? (
@@ -615,8 +608,8 @@ const MobileNav = () => {
                 className="h-[3px] w-full relative transition-colors duration-500"
                 style={{
                   backgroundColor: albumColors.isLight 
-                    ? 'rgba(0, 0, 0, 0.2)' 
-                    : 'rgba(255, 255, 255, 0.2)'
+                    ? 'rgba(0, 0, 0, 0.4)' 
+                    : 'rgba(255, 255, 255, 0.4)'
                 }}
               >
                 <div 
@@ -638,7 +631,7 @@ const MobileNav = () => {
                 <div 
                   className={cn(
                     "flex justify-between px-3 py-1 text-[10px]",
-                    albumColors.isLight ? "text-black/60" : "text-white/60"
+                    albumColors.isLight ? "text-black/80" : "text-white/80"
                   )}
                 >
                   <span>{formatTime(currentTime || 0)}</span>
