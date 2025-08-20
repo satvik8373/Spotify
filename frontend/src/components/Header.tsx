@@ -211,7 +211,7 @@ const Header = ({ className }: HeaderProps) => {
                     <span className="text-sm font-medium truncate max-w-[100px]">{user.name || 'User'}</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="min-w-[200px]">
+                <DropdownMenuContent className="min-w-[200px]" align="end" sideOffset={8}>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     className="cursor-pointer" 

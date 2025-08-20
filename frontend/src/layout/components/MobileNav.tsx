@@ -272,6 +272,34 @@ const MobileNav = () => {
     setShowProfileMenu(prev => !prev);
   };
 
+  // Calculate dropdown position to stay within viewport
+  const getDropdownPosition = () => {
+    if (typeof window === 'undefined') return 'right-0';
+    
+    // Check if we're near the right edge of the screen
+    const viewportWidth = window.innerWidth;
+    const dropdownWidth = 144; // w-36 = 144px
+    
+    // If we're within 160px of the right edge, position dropdown to the left
+    if (viewportWidth < 400) {
+      return 'left-0';
+    }
+    
+    return 'right-0';
+  };
+
+  // Get dropdown container styles
+  const getDropdownStyles = () => {
+    const position = getDropdownPosition();
+    return {
+      className: `absolute top-full mt-1 w-36 bg-popover/95 backdrop-blur-sm rounded-md shadow-xl overflow-hidden z-50 border border-border ${position}`,
+      style: {
+        minWidth: '144px',
+        maxWidth: '200px',
+      }
+    };
+  };
+
   // Handle seeking when user taps on progress bar
   const handleSeek = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -344,18 +372,21 @@ const MobileNav = () => {
                       )}
                     </button>
                     {showProfileMenu && (
-                      <div className="absolute right-0 top-full mt-1 w-36 bg-popover rounded-md shadow-lg overflow-hidden z-50 border border-border">
+                      <div 
+                        className={getDropdownStyles().className}
+                        style={getDropdownStyles().style}
+                      >
                         <div className="py-1">
                           <Link 
                             to="/profile" 
-                            className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
+                            className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                             onClick={() => setShowProfileMenu(false)}
                           >
                             Profile
                           </Link>
                           <button 
                             onClick={handleLogout}
-                            className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center"
+                            className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
                           >
                             <LogOut className="h-3.5 w-3.5 mr-2" />
                             Sign out
@@ -416,18 +447,21 @@ const MobileNav = () => {
                       )}
                     </button>
                     {showProfileMenu && (
-                      <div className="absolute right-0 top-full mt-1 w-36 bg-popover rounded-md shadow-lg overflow-hidden z-50 border border-border">
+                      <div 
+                        className={getDropdownStyles().className}
+                        style={getDropdownStyles().style}
+                      >
                         <div className="py-1">
                           <Link 
                             to="/profile" 
-                            className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
+                            className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                             onClick={() => setShowProfileMenu(false)}
                           >
                             Profile
                           </Link>
                           <button 
                             onClick={handleLogout}
-                            className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center"
+                            className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
                           >
                             <LogOut className="h-3.5 w-3.5 mr-2" />
                             Sign out
@@ -466,18 +500,21 @@ const MobileNav = () => {
                       )}
                     </button>
                     {showProfileMenu && (
-                      <div className="absolute right-0 top-full mt-1 w-36 bg-popover rounded-md shadow-lg overflow-hidden z-50 border border-border">
+                      <div 
+                        className={getDropdownStyles().className}
+                        style={getDropdownStyles().style}
+                      >
                         <div className="py-1">
                           <Link 
                             to="/profile" 
-                            className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
+                            className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                             onClick={() => setShowProfileMenu(false)}
                           >
                             Profile
                           </Link>
                           <button 
                             onClick={handleLogout}
-                            className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center"
+                            className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
                           >
                             <LogOut className="h-3.5 w-3.5 mr-2" />
                             Sign out
