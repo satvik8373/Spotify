@@ -27,8 +27,13 @@
 		
 		<title>Mavrixfy</title>
 		
-		<!-- Spotify Web Playback SDK -->
-		<script src="https://sdk.scdn.co/spotify-player.js"></script>
+		<!-- Performance hints -->
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://sdk.scdn.co" crossorigin>
+		
+		<!-- Spotify Web Playback SDK: defer to avoid render-blocking -->
+		<script src="https://sdk.scdn.co/spotify-player.js" defer></script>
 		<script>
 			window.onSpotifyWebPlaybackSDKReady = () => {
 				// The Spotify SDK is ready, this empty function just prevents the error

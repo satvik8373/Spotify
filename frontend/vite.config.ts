@@ -52,6 +52,11 @@ export default defineConfig(({ mode }) => {
 			outDir: "dist",
 			assetsDir: "assets",
 			sourcemap: false,
+			minify: 'esbuild',
+			cssCodeSplit: true,
+			modulePreload: { polyfill: true },
+			target: 'es2018',
+			commonjsOptions: { transformMixedEsModules: true },
 			rollupOptions: {
 				output: {
 					manualChunks: {
@@ -71,6 +76,9 @@ export default defineConfig(({ mode }) => {
 			'process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET': JSON.stringify(cloudinaryPreset),
 			'process.env.REACT_APP_CLOUDINARY_API_KEY': JSON.stringify(cloudinaryKey),
 			'process.env.REACT_APP_CLOUDINARY_API_SECRET': JSON.stringify(cloudinarySecret)
+		},
+		esbuild: {
+			drop: ['console', 'debugger']
 		}
 	}
 });

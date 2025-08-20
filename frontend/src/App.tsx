@@ -1,23 +1,23 @@
 import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom';
-import MainLayout from './layout/MainLayout';
-import HomePage from './pages/home/HomePage';
-import SearchPage from './pages/search/SearchPage';
-import LibraryPage from './pages/LibraryPage';
-import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
+import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
-import AlbumPage from './pages/album/AlbumPage';
-import { PlaylistPage } from './pages/playlist/PlaylistPage';
-import ProfilePage from './pages/ProfilePage';
+const MainLayout = lazy(() => import('./layout/MainLayout'));
+const HomePage = lazy(() => import('./pages/home/HomePage'));
+const SearchPage = lazy(() => import('./pages/search/SearchPage'));
+const LibraryPage = lazy(() => import('./pages/LibraryPage'));
+const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
+const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
+const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.PlaylistPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 // import SharedSongPage from './pages/SharedSongPage';
-import { useState, useEffect } from "react";
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 // @ts-ignore
-import ApiDebugPage from './pages/debug/ApiDebugPage.jsx';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ResetPassword from './pages/ResetPassword';
-import Welcome from './pages/Welcome';
+const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Welcome = lazy(() => import('./pages/Welcome'));
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
@@ -132,7 +132,7 @@ const router = createBrowserRouter(
 			element: <ResetPassword />
 		},
 		{
-			element: <MainLayout />,
+			element: <MainLayout />, 
 			errorElement: <ErrorFallback />,
 			children: [
 				{
@@ -222,10 +222,12 @@ function AppContent() {
 	// Always show main app content, login will be handled in the header
 	return (
 		<>
-			<RouterProvider 
-				router={router} 
-				future={{ v7_startTransition: true }} 
-			/>
+			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div></div>}>
+				<RouterProvider 
+					router={router} 
+					future={{ v7_startTransition: true }} 
+				/>
+			</Suspense>
 			<Toaster />
 			<PWAInstallPrompt />
 			<AndroidPWAHelper />

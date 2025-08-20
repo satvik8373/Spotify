@@ -366,7 +366,7 @@ const MobileNav = () => {
                       aria-label="Profile"
                     >
                       {user?.picture ? (
-                        <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
+                        <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
                       ) : (
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
@@ -441,7 +441,7 @@ const MobileNav = () => {
                       aria-label="Profile"
                     >
                       {user?.picture ? (
-                        <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
+                        <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
                       ) : (
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
@@ -494,7 +494,7 @@ const MobileNav = () => {
                       aria-label="Profile"
                     >
                       {user?.picture ? (
-                        <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
+                        <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
                       ) : (
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
@@ -577,6 +577,10 @@ const MobileNav = () => {
                     src={currentSong.imageUrl} 
                     alt={currentSong.title} 
                     className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    width="40"
+                    height="40"
                   />
                 </div>
                 <div className="min-w-0 flex-1">
