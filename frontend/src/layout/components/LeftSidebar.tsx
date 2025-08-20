@@ -12,22 +12,23 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
-import { usePlaylistStore } from '../../stores/usePlaylistStore';
+import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../../components/playlist/CreatePlaylistDialog';
 import { useSpotify } from '../../contexts/SpotifyContext';
 
 export const LeftSidebar = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const spotify = useSpotify();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const { userPlaylists, fetchUserPlaylists } = usePlaylistStore();
+  const { userPlaylists, fetchUserPlaylists, publicPlaylists, fetchPublicPlaylists } = usePlaylistStore();
   const location = useLocation();
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserPlaylists();
     }
-  }, [isAuthenticated, fetchUserPlaylists]);
+    fetchPublicPlaylists();
+  }, [isAuthenticated, fetchUserPlaylists, fetchPublicPlaylists]);
 
   const isActive = (path: string) => {
     return location.pathname.startsWith(path);
@@ -125,9 +126,8 @@ export const LeftSidebar = () => {
             </div>
           </Link>
 
-          {/* User Playlists */}
-          {isAuthenticated ? (
-            userPlaylists.map((playlist) => (
+          {/* Public Playlists (show for all users) */}
+          {publicPlaylists.map((playlist: any) => (
               <Link
                 key={playlist._id}
                 to={`/playlist/${playlist._id}`}
@@ -151,31 +151,10 @@ export const LeftSidebar = () => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-foreground truncate">{playlist.name}</p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    Playlist • {user?.name || 'Your playlist'}
-                  </p>
+                  <p className="text-sm text-muted-foreground truncate">Public playlist</p>
                 </div>
               </Link>
-            ))
-          ) : (
-            <>
-              {/* Sample Playlists */}
-              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-blue-500 rounded-md flex-shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-foreground truncate">Trending Hindi Songs 2025</p>
-                  <p className="text-sm text-muted-foreground truncate">Playlist • Feel Magical Vibes</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-md flex-shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-foreground truncate">Trending Now India</p>
-                  <p className="text-sm text-muted-foreground truncate">Playlist • Spotify</p>
-                </div>
-              </div>
-            </>
-          )}
+          ))}
         </div>
       </div>
 

@@ -8,7 +8,9 @@ import axios from "axios";
 // Remove unused ImportMetaEnv interface to avoid warnings
 
 // Get API URL from environment variables or fallback to default
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/^http:\/\//, 'https://');
+const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const isLocalhost = /^(http(s)?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(RAW_API_URL);
+const API_URL = isLocalhost ? RAW_API_URL : RAW_API_URL.replace(/^http:\/\//, 'https://');
 console.log('API base URL:', API_URL);
 
 // Create and configure axios instance

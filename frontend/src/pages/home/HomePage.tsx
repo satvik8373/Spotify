@@ -151,7 +151,6 @@ const netflixRowStyles = `
 const HomePage = () => {
   const {
     featuredPlaylists,
-    userPlaylists,
     publicPlaylists,
     fetchFeaturedPlaylists,
     fetchUserPlaylists,
@@ -202,62 +201,32 @@ const HomePage = () => {
     }
   }, []);
 
-  // Load top playlists
+  // Load top playlists (always use public playlists for all users)
   useEffect(() => {
-    // For authenticated users, use their playlists
-    if (isAuthenticated && userPlaylists.length > 0) {
-      try {
-        const saved = localStorage.getItem('playlist_metrics') || '{}';
-        const metrics = JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem('playlist_metrics') || '{}';
+      const metrics = JSON.parse(saved);
 
-        const top = userPlaylists
-          .map((playlist, index) => ({
-            _id: playlist._id,
-            name: playlist.name,
-            imageUrl: playlist.imageUrl,
-            lastPlayed: Date.now(),
-            metrics: metrics[playlist._id] || { clicks: 0, likes: 0, shares: 0 },
-            rank: index + 1,
-            isLiked: false,
-          }))
-          .sort((a, b) => b.metrics.clicks - a.metrics.clicks)
-          .slice(0, 10)
-          .map((playlist, index) => ({ ...playlist, rank: index + 1 }));
+      const source = publicPlaylists.filter(p => p.isPublic !== false);
+      const top = source
+        .map((playlist, index) => ({
+          _id: playlist._id,
+          name: playlist.name,
+          imageUrl: playlist.imageUrl,
+          lastPlayed: Date.now(),
+          metrics: metrics[playlist._id] || { clicks: 0, likes: 0, shares: 0 },
+          rank: index + 1,
+          isLiked: false,
+        }))
+        .sort((a, b) => b.metrics.clicks - a.metrics.clicks)
+        .slice(0, 10)
+        .map((playlist, index) => ({ ...playlist, rank: index + 1 }));
 
-        setTopPlaylists(top);
-      } catch (error) {
-        console.error('Error loading top playlists:', error);
-      }
+      setTopPlaylists(top);
+    } catch (error) {
+      console.error('Error loading top playlists:', error);
     }
-    // For non-authenticated users, use featured playlists or create dummy ones
-    else {
-      // If we have featured playlists, use those without fake metrics
-      if (featuredPlaylists.length > 0) {
-        const top = featuredPlaylists
-          .map((playlist, index) => ({
-            _id: playlist._id,
-            name: playlist.name,
-            imageUrl: playlist.imageUrl,
-            lastPlayed: Date.now(),
-            metrics: {
-              clicks: 0,
-              likes: 0,
-              shares: 0,
-            },
-            rank: index + 1,
-            isLiked: false,
-          }))
-          .slice(0, 10)
-          .map((playlist, index) => ({ ...playlist, rank: index + 1 }));
-
-        setTopPlaylists(top);
-      }
-      // If no featured playlists, don't show any demo data
-      else {
-        setTopPlaylists([]);
-      }
-    }
-  }, [userPlaylists, isAuthenticated, featuredPlaylists]);
+  }, [publicPlaylists]);
 
   // Function to add a playlist to recent
   const addToRecentPlaylists = (playlist: any) => {
@@ -283,7 +252,7 @@ const HomePage = () => {
     }
   };
 
-  // Function to get displayed items (only real user data, no demo content)
+  // Function to get displayed items (prefer recent; fallback to public playlists)
   const getDisplayedItems = () => {
     const items = [];
 
@@ -299,13 +268,14 @@ const HomePage = () => {
       );
     }
 
-    // If we don't have enough recent playlists, add some user playlists
-    if (items.length < 6 && isAuthenticated && userPlaylists.length > 0) {
+    // If we don't have enough recent playlists, add public playlists
+    if (items.length < 6 && publicPlaylists.length > 0) {
       const remainingSlots = 6 - items.length;
-      const additionalPlaylists = userPlaylists
+      const additional = publicPlaylists
         .filter(p => !recentPlaylists.some(rp => rp._id === p._id))
-        .slice(0, remainingSlots);
-      items.push(...additionalPlaylists);
+        .slice(0, remainingSlots)
+        .map(p => ({ _id: p._id, name: p.name, imageUrl: p.imageUrl, path: `/playlist/${p._id}` }));
+      items.push(...additional);
     }
 
     return items.slice(0, 6);
