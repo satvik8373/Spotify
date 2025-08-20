@@ -1,16 +1,14 @@
 /// <reference types="vite/client" />
 
 import axios from "axios";
-import { auth } from "./firebase";
+// Avoid importing Firebase eagerly to keep initial bundle small
+// We'll lazy-import inside the interceptor
 
 // Type declaration for ImportMetaEnv to include VITE environment variables
-interface ImportMetaEnv {
-	VITE_API_URL?: string;
-	MODE: string;
-}
+// Remove unused ImportMetaEnv interface to avoid warnings
 
 // Get API URL from environment variables or fallback to default
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/^http:\/\//, 'https://');
 console.log('API base URL:', API_URL);
 
 // Create and configure axios instance
@@ -35,14 +33,15 @@ export const setAuthToken = (token: string | null) => {
 // Add request interceptor
 axiosInstance.interceptors.request.use(
 	async (config) => {
-		// Get token from Firebase for each request
-		if (auth.currentUser) {
-			try {
+		// Get token from Firebase for each request (lazy import to avoid eager Firebase load)
+		try {
+			const { auth } = await import('./firebase');
+			if (auth.currentUser) {
 				const token = await auth.currentUser.getIdToken(true);
 				config.headers.Authorization = `Bearer ${token}`;
-			} catch (error) {
-				console.error('Error getting Firebase ID token:', error);
 			}
+		} catch (error) {
+			// Ignore token retrieval errors silently
 		}
 		return config;
 	},

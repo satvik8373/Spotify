@@ -4,6 +4,7 @@
 		<meta charset="UTF-8" />
 		<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
 		<link rel="icon" type="image/png" sizes="192x192" href="/spotify-icons/spotify-icon-192.png" />
+		<link rel="icon" type="image/svg+xml" href="/spotify-icons/spotify-logo-green.svg" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0" />
 		<meta name="description" content="Mavrixfy - A premium music experience with real-time features" />
 		<meta name="theme-color" content="#1DB954" />
@@ -31,9 +32,33 @@
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://sdk.scdn.co" crossorigin>
+		<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+		<link rel="preconnect" href="https://firebase.googleapis.com" crossorigin>
+		<link rel="preconnect" href="https://spotify-8fefc.firebaseapp.com" crossorigin>
 		
-		<!-- Spotify Web Playback SDK: defer to avoid render-blocking -->
-		<script src="https://sdk.scdn.co/spotify-player.js" defer></script>
+		<!-- Spotify Web Playback SDK: load after idle to avoid affecting FCP/LCP -->
+		<script>
+			(function(){
+				function loadSpotifySDK(){
+					var s=document.createElement('script');
+					s.src='https://sdk.scdn.co/spotify-player.js';
+					s.async=true; s.defer=true; s.crossOrigin='anonymous';
+					document.head.appendChild(s);
+				}
+				if ('requestIdleCallback' in window) {
+					window.requestIdleCallback(loadSpotifySDK);
+				} else {
+					setTimeout(loadSpotifySDK, 3000);
+				}
+				window.onSpotifyWebPlaybackSDKReady = function(){
+					window.SpotifyPlayerReady = true;
+				};
+			})();
+		</script>
+		
+		<!-- Defer non-critical PWA CSS to reduce render-blocking -->
+		<link rel="preload" href="/pwa-icon-fix.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+		<noscript><link rel="stylesheet" href="/pwa-icon-fix.css"></noscript>
 		<script>
 			window.onSpotifyWebPlaybackSDKReady = () => {
 				// The Spotify SDK is ready, this empty function just prevents the error

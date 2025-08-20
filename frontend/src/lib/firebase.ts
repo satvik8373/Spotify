@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, User, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
-import { getAnalytics } from "firebase/analytics";
+import { getAnalytics, isSupported as isAnalyticsSupported } from "firebase/analytics";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -52,9 +52,24 @@ if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_USE_EMULATOR
 }
 
 // Initialize Analytics only in browser environment
-let analytics = null;
+let analytics: any = null;
 if (typeof window !== 'undefined') {
-  analytics = getAnalytics(app);
+  // Lazy-initialize Analytics to avoid blocking LCP
+  isAnalyticsSupported().then((supported) => {
+    if (supported && 'requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(() => {
+        try {
+          analytics = getAnalytics(app);
+        } catch {}
+      });
+    } else if (supported) {
+      setTimeout(() => {
+        try {
+          analytics = getAnalytics(app);
+        } catch {}
+      }, 2000);
+    }
+  }).catch(() => {});
 }
 export { analytics };
 

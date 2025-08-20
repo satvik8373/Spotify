@@ -2229,7 +2229,7 @@ const AudioPlayer = () => {
       
       <audio
         ref={audioRef}
-        src={currentSong?.audioUrl}
+        src={currentSong?.audioUrl ? currentSong.audioUrl.replace(/^http:\/\//, 'https://') : undefined}
         autoPlay={isPlaying}
         onTimeUpdate={(e) => {
           updateAudioMetadata();

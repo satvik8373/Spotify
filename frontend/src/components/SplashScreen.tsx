@@ -12,9 +12,9 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
     return () => clearTimeout(timer);
   }, [onComplete]);
 
-  // Prefer app public icon; gracefully fallback to another bundled icon
-  const primaryIcon = '/icon.spotify.png';
-  const fallbackIcon = '/spotify-icons/spotify-logo-green.png';
+  // Prefer lightweight SVG to reduce LCP; fallback to small PNG
+  const primaryIcon = '/spotify-icons/spotify-logo-green.svg';
+  const fallbackIcon = '/spotify-icons/spotify-icon-192.png';
 
   return (
     <AnimatePresence>
@@ -39,6 +39,10 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
             initial={{ scale: 0.94, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
+            loading="eager"
+            decoding="async"
+            width={56}
+            height={56}
           />
           <motion.div
             className="mt-2 text-xl font-semibold tracking-tight text-white"

@@ -366,7 +366,7 @@ const MobileNav = () => {
                       aria-label="Profile"
                     >
                       {user?.picture ? (
-                        <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
+                        <img src={(user.picture || '').replace(/^http:\/\//, 'https://')} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
                       ) : (
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
@@ -441,7 +441,7 @@ const MobileNav = () => {
                       aria-label="Profile"
                     >
                       {user?.picture ? (
-                        <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
+                        <img src={(user.picture || '').replace(/^http:\/\//, 'https://')} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
                       ) : (
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
@@ -494,7 +494,7 @@ const MobileNav = () => {
                       aria-label="Profile"
                     >
                       {user?.picture ? (
-                        <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
+                        <img src={(user.picture || '').replace(/^http:\/\//, 'https://')} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
                       ) : (
                         <User className="h-3 w-3 text-muted-foreground" />
                       )}
@@ -574,7 +574,7 @@ const MobileNav = () => {
               >
                 <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md shadow">
                   <img 
-                    src={currentSong.imageUrl} 
+                    src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')} 
                     alt={currentSong.title} 
                     className="w-full h-full object-cover"
                     loading="lazy"
