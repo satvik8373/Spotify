@@ -132,6 +132,16 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Don't clear existing songs on error, just keep what we have
         } finally {
           set({ isLoading: false });
+          // Broadcast that liked songs are loaded/updated so all hearts can refresh
+          try {
+            document.dispatchEvent(new CustomEvent('likedSongsUpdated', {
+              detail: {
+                source: 'useLikedSongsStore.loadLikedSongs',
+                timestamp: Date.now(),
+                count: get().likedSongs.length
+              }
+            }));
+          } catch {}
         }
       },
 
@@ -291,6 +301,30 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
     }
   )
 );
+
+// Hydrate likedSongIds from persisted storage immediately so hearts render filled on refresh
+try {
+  const persistedRaw = localStorage.getItem('liked-songs-storage');
+  if (persistedRaw) {
+    const persisted = JSON.parse(persistedRaw);
+    const songs: any[] = persisted?.state?.likedSongs || [];
+    const rebuiltIds = new Set<string>();
+    songs.forEach((song: any) => {
+      const primaryId = song?._id || song?.id;
+      if (primaryId) rebuiltIds.add(primaryId);
+      const altId = primaryId === song?._id ? song?.id : song?._id;
+      if (altId) rebuiltIds.add(altId);
+    });
+    useLikedSongsStore.setState({ likedSongs: songs, likedSongIds: rebuiltIds });
+    document.dispatchEvent(new CustomEvent('likedSongsUpdated', {
+      detail: {
+        source: 'useLikedSongsStore.initialHydration',
+        timestamp: Date.now(),
+        count: songs.length
+      }
+    }));
+  }
+} catch {}
 
 // Initialize the store by loading liked songs
 // This must be done outside of any component to ensure it's only called once

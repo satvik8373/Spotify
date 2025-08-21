@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Heart, Music, Play, Clock, MoreHorizontal, ArrowDownUp, Calendar, Shuffle, Search } from 'lucide-react';
+import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Calendar, Shuffle, Search } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { loadLikedSongs, removeLikedSong, syncWithServer } from '@/services/likedSongsService';
+import { loadLikedSongs, syncWithServer } from '@/services/likedSongsService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Song } from '@/types';
 import { toast } from 'sonner';
@@ -55,6 +56,7 @@ const LikedSongsPage = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const { currentSong, isPlaying, togglePlay } = usePlayerStore();
+  const { removeLikedSong: removeFromStore } = useLikedSongsStore();
   const { isAuthenticated } = useAuthStore();
 
   // Load liked songs on mount
@@ -73,47 +75,7 @@ const LikedSongsPage = () => {
     };
   }, [isAuthenticated]);
 
-  // Ensure player has proper queue setup when this page is active
-  useEffect(() => {
-    // This effect runs when component mounts and ensures proper queue setup
-    const setupQueueOnFocus = () => {
-      const playerStore = usePlayerStore.getState();
-      // If we have songs but queue is empty or very small, set it up
-      if (likedSongs.length > 0 && (playerStore.queue.length === 0 || playerStore.queue.length < likedSongs.length / 2)) {
-        const playerSongs = likedSongs.map(adaptToPlayerSong);
-         
-        // If there's a current song playing, try to find its index
-        let startIndex = 0;
-        if (playerStore.currentSong) {
-          const currentId = (playerStore.currentSong as any).id || playerStore.currentSong._id;
-          const matchingIndex = likedSongs.findIndex(song => song.id === currentId);
-          if (matchingIndex >= 0) {
-            startIndex = matchingIndex;
-          }
-        }
-         
-        // Use playAlbum with correct index to ensure queue is set up
-        playerStore.playAlbum(playerSongs, startIndex);
-         
-        // If already playing, make sure it stays playing
-        if (playerStore.isPlaying) {
-          setTimeout(() => {
-            playerStore.setIsPlaying(true);
-          }, 50);
-        }
-      }
-    };
-    
-    // Run on mount
-    setupQueueOnFocus();
-    
-    // Also run when window gets focus
-    window.addEventListener('focus', setupQueueOnFocus);
-    
-    return () => {
-      window.removeEventListener('focus', setupQueueOnFocus);
-    };
-  }, [likedSongs]);
+  // Intentionally avoid setting up or changing the player queue on mount/focus to prevent auto-play
   
   // Load and set liked songs
   const loadAndSetLikedSongs = async () => {
@@ -238,23 +200,27 @@ const LikedSongsPage = () => {
     }
   };
 
-  // Handle playing a specific song - remove debugPlayerState() call
-  const playSong = (song: any, index: number) => {
-    const playerSongs = likedSongs.map(adaptToPlayerSong);
-    
+  // Handle playing a specific song from current view (respects filtering)
+  const playSong = (song: any, _index: number) => {
+    // Build the source list based on current filter state so queue matches the visible list
+    const sourceSongs = (filterQuery && filterQuery.trim()) ? visibleSongs : likedSongs;
+    // Find accurate index by id to avoid mismatch when filtering/sorting
+    const targetIndex = Math.max(0, sourceSongs.findIndex((s: any) => ((s as any).id || (s as any)._id) === song.id));
+    const playerSongs = sourceSongs.map(adaptToPlayerSong);
+
     if (currentSong && currentSong._id === song.id) {
       togglePlay();
-    } else {
-      // Use playAlbum directly with the specific index
-      usePlayerStore.getState().playAlbum(playerSongs, index);
-      
-      // Force play state immediately to true regardless of autoplay setting
-      setTimeout(() => {
-        const store = usePlayerStore.getState();
-        store.setIsPlaying(true);
-        store.setUserInteracted(); // Ensure user is marked as interacted
-      }, 100);
+      return;
     }
+
+    usePlayerStore.getState().playAlbum(playerSongs, targetIndex >= 0 ? targetIndex : 0);
+
+    // Force play state immediately to true regardless of autoplay setting
+    setTimeout(() => {
+      const store = usePlayerStore.getState();
+      store.setIsPlaying(true);
+      store.setUserInteracted();
+    }, 100);
   };
 
   // Check if a song is currently playing
@@ -263,33 +229,12 @@ const LikedSongsPage = () => {
   };
 
   // Unlike a song
-  const unlikeSong = (id: string) => {
-    // Call the service to remove the song from liked songs
-    removeLikedSong(id);
-    
-    // Update local state immediately for instant UI feedback
-    setLikedSongs(prev => prev.filter(song => song.id !== id));
-    
-    // Dispatch detailed events for better listener handling
-    document.dispatchEvent(new CustomEvent('likedSongsUpdated', { 
-      detail: {
-        songId: id,
-        isLiked: false,
-        timestamp: Date.now(),
-        source: 'LikedSongsPage'
-      }
-    }));
-    
-    document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
-      detail: {
-        songId: id,
-        isLiked: false,
-        timestamp: Date.now(),
-        source: 'LikedSongsPage'
-      }
-    }));
-    
-    toast.success('Removed from Liked Songs');
+  const unlikeSong = async (id: string) => {
+    try {
+      await removeFromStore(id);
+      setLikedSongs(prev => prev.filter(song => song.id !== id));
+      toast.success('Removed from Liked Songs');
+    } catch {}
   };
 
   // Removed header opacity tracking
@@ -479,6 +424,30 @@ const LikedSongsPage = () => {
                   className="bg-green-500 hover:bg-green-400 text-black rounded-full h-14 w-14 flex items-center justify-center shadow-lg"
                 >
                   <Play className="h-7 w-7 ml-0.5" />
+                </Button>
+              </div>
+            )}
+
+            {likedSongs.length > 0 && !isMobile && (
+              <div className="flex items-center gap-3 mt-2 w-full justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full text-xs px-6 py-1 h-9 border border-border text-foreground hover:bg-accent"
+                  onClick={smartShuffle}
+                >
+                  <Shuffle className="h-3.5 w-3.5 mr-2" />
+                  <span className="font-normal">Shuffle</span>
+                </Button>
+                <Button 
+                  onClick={playAllSongs}
+                  className="bg-green-500 hover:bg-green-400 text-black rounded-full h-12 w-12 flex items-center justify-center shadow-lg"
+                >
+                  {isPlaying ? (
+                    <Pause className="h-5 w-5" />
+                  ) : (
+                    <Play className="h-5 w-5 ml-0.5" />
+                  )}
                 </Button>
               </div>
             )}

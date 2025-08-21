@@ -648,34 +648,35 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             </Button>
           </div>
 
-          {/* Progress Bar */}
+          {/* Progress Bar - Spotify mobile style */}
           <div className="mt-6">
-            <div 
+            <div
               ref={progressBarRef}
-              className="h-1 w-full bg-white/20 rounded-full overflow-hidden relative"
+              className="relative w-full group/progress"
+              role="slider"
+              aria-label="Seek position"
+              aria-valuemin={0}
+              aria-valuemax={isNaN(duration) ? 0 : duration}
+              aria-valuenow={isNaN(currentTime) ? 0 : currentTime}
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const offsetX = e.clientX - rect.left;
-                const percentage = offsetX / rect.width;
+                const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
                 const newTime = percentage * duration;
                 handleSeek([newTime]);
               }}
               onTouchStart={(e) => {
                 e.stopPropagation();
-                // Mark this as progress bar touch to prevent song change
                 handleTouchStart(e, 'progressBar');
-                
                 const rect = e.currentTarget.getBoundingClientRect();
                 const touch = e.touches[0];
                 if (!touch) return;
-                
                 const offsetX = touch.clientX - rect.left;
                 const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
                 const newTime = percentage * duration;
                 handleSeek([newTime]);
               }}
               onTouchMove={(e) => {
-                // Allow dragging on mobile across the bar
                 const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
                 const touch = e.touches[0];
                 if (!touch) return;
@@ -685,61 +686,58 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 handleSeek([newTime]);
               }}
             >
-              <div 
-                className="h-full bg-[#1ed760] rounded-full"
-                style={{ width: `${progress}%` }}
-              ></div>
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 bg-white rounded-full shadow-md ring-2 ring-[#1ed760] cursor-pointer" 
+              {/* Expanded hit area for easier touch interaction */}
+              <div className="absolute left-0 right-0 -top-3 -bottom-3" />
+              {/* Track */}
+              <div className="h-[3px] w-full bg-white/25 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#1ed760] rounded-full"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              {/* Knob */}
+              <div
+                className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-white shadow-md ring-2 ring-[#1ed760] transition-transform duration-150 ease-out group-hover/progress:scale-100 scale-95"
                 style={{ left: `calc(${progress}% - 6px)` }}
                 onMouseDown={(e) => {
                   e.stopPropagation();
-                  
-                  // Drag handling logic
+                  const containerEl = e.currentTarget.parentElement as HTMLDivElement | null;
                   const handleMouseMove = (moveEvent: MouseEvent) => {
-                    const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                    const rect = containerEl?.getBoundingClientRect();
                     if (!rect) return;
-                    
-                    const offsetX = moveEvent.clientX - rect.left;
-                    const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+                    const offsetX = Math.max(0, Math.min(rect.width, moveEvent.clientX - rect.left));
+                    const percentage = offsetX / rect.width;
                     const newTime = percentage * duration;
                     handleSeek([newTime]);
                   };
-                  
                   const handleMouseUp = () => {
                     document.removeEventListener('mousemove', handleMouseMove);
                     document.removeEventListener('mouseup', handleMouseUp);
                   };
-                  
                   document.addEventListener('mousemove', handleMouseMove);
                   document.addEventListener('mouseup', handleMouseUp);
                 }}
                 onTouchStart={(e) => {
                   e.stopPropagation();
-                  
-                  // Touch handling logic
+                  const containerEl = e.currentTarget.parentElement as HTMLDivElement | null;
                   const handleTouchMove = (touchEvent: TouchEvent) => {
-                    touchEvent.preventDefault();
-                    
-                    const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                    if (!rect || !touchEvent.touches[0]) return;
-                    
+                    if (touchEvent.cancelable) touchEvent.preventDefault();
+                    const rect = containerEl?.getBoundingClientRect();
+                    if (!rect || touchEvent.touches.length === 0) return;
                     const touch = touchEvent.touches[0];
-                    const offsetX = touch.clientX - rect.left;
-                    const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+                    const offsetX = Math.max(0, Math.min(rect.width, touch.clientX - rect.left));
+                    const percentage = offsetX / rect.width;
                     const newTime = percentage * duration;
                     handleSeek([newTime]);
                   };
-                  
                   const handleTouchEnd = () => {
-                    document.removeEventListener('touchmove', handleTouchMove);
-                    document.removeEventListener('touchend', handleTouchEnd);
+                    document.removeEventListener('touchmove', handleTouchMove as any);
+                    document.removeEventListener('touchend', handleTouchEnd as any);
                   };
-                  
-                  document.addEventListener('touchmove', handleTouchMove, { passive: false });
-                  document.addEventListener('touchend', handleTouchEnd);
+                  document.addEventListener('touchmove', handleTouchMove as any, { passive: false });
+                  document.addEventListener('touchend', handleTouchEnd as any);
                 }}
-              ></div>
+              />
             </div>
             <div className="flex justify-between mt-2">
               <span className="text-xs text-white/60">{formatTime(currentTime)}</span>
