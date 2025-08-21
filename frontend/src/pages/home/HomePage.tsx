@@ -269,8 +269,8 @@ const HomePage = () => {
     }
 
     // If we don't have enough recent playlists, add public playlists
-    if (items.length < 6 && publicPlaylists.length > 0) {
-      const remainingSlots = 6 - items.length;
+    if (items.length < 8 && publicPlaylists.length > 0) {
+      const remainingSlots = 8 - items.length;
       const additional = publicPlaylists
         .filter(p => !recentPlaylists.some(rp => rp._id === p._id))
         .slice(0, remainingSlots)
@@ -278,7 +278,7 @@ const HomePage = () => {
       items.push(...additional);
     }
 
-    return items.slice(0, 6);
+    return items.slice(0, 8);
   };
 
   // Handle playlist click (only for real playlists, no demo data)
@@ -379,7 +379,7 @@ const HomePage = () => {
   }, []);
 
   return (
-    <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95">
+    <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414]">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
         <div className="pt-3 pb-6 max-w-full overflow-x-hidden">
           {/* Offline banner */}
@@ -404,11 +404,9 @@ const HomePage = () => {
           {/* Recently played section - render only when data exists and online */}
           {isOnline && getDisplayedItems().length > 0 && (
           <div className="px-2 sm:px-4 mt-1">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-base font-bold tracking-tight">Recently played</h2>
-            </div>
+            
             <div className="mb-5">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 gap-1.5">
                 {getDisplayedItems().map((item: any) => (
                   <div
                     key={item._id || item.id}
@@ -436,14 +434,7 @@ const HomePage = () => {
                           {item.title || item.name}
                         </h3>
                       </div>
-                      <div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-1 group-hover:translate-y-0">
-                        <Button
-                          size="icon"
-                          className="rounded-full bg-green-500 hover:bg-green-400 hover:scale-105 text-black h-7 w-7 shadow-md"
-                        >
-                          <PlayCircle className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                      
                     </div>
                   </div>
                 ))}

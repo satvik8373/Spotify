@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+    import { useEffect, useState } from 'react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Outlet, useLocation } from 'react-router-dom';
 import LeftSidebar from './components/LeftSidebar';
@@ -42,7 +42,7 @@ const MainLayout = () => {
   }, []);
 
   // Route-aware measurements for mobile header/nav/mini-player spacing
-  const MOBILE_HEADER_PX = 46;
+  const MOBILE_HEADER_PX = 40;
   const MOBILE_NAV_PX = 14;
   const MINI_PLAYER_PX = 47;
   const isMobileHeaderRoute = isMobile && (

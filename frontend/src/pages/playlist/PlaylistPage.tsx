@@ -393,6 +393,7 @@ export function PlaylistPage() {
         const updatedLikes = likedPlaylists.filter((playlistId: string) => playlistId !== id);
         localStorage.setItem('liked_playlists', JSON.stringify(updatedLikes));
         setIsLiked(false);
+        try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch {}
       } else {
         // Like - only increment if not previously liked
         if (!likedPlaylists.includes(id)) {
@@ -400,6 +401,7 @@ export function PlaylistPage() {
           localStorage.setItem('liked_playlists', JSON.stringify(likedPlaylists));
           setIsLiked(true);
           updateMetrics('likes');
+          try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch {}
         }
       }
     } catch (error) {

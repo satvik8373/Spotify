@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, PlusCircle } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -185,15 +185,7 @@ const MobileNav = () => {
     isSearchRoute
   ) && isAtTop;
 
-  // Trigger create playlist dialog on Library page
-  const openCreatePlaylistFromHeader = () => {
-    if (!isLibraryRoute) {
-      navigate('/library');
-      setTimeout(() => document.dispatchEvent(new Event('openCreatePlaylistDialog')), 120);
-      return;
-    }
-    document.dispatchEvent(new Event('openCreatePlaylistDialog'));
-  };
+
 
   // Handle user login
   const handleLogin = () => {
@@ -354,7 +346,7 @@ const MobileNav = () => {
       
       {/* Mobile Header - Spotify style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
-        <div className="fixed top-0 left-0 right-0 z-30 bg-background md:hidden">
+        <div className="fixed top-0 left-0 right-0 z-30 bg-background dark:bg-[#191414] md:hidden">
           {isLibraryRoute ? (
             <div className="flex items-center justify-between px-3 py-2">
               <div className="flex items-center gap-2">
@@ -407,27 +399,6 @@ const MobileNav = () => {
                 <h2 className="text-base font-semibold text-foreground">Your Library</h2>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => document.dispatchEvent(new Event('toggleLibraryViewMode'))}
-                  className="h-6 w-6 rounded-full bg-muted flex items-center justify-center"
-                  aria-label="Toggle grid/list"
-                >
-                  <Library className="h-3.5 w-3.5 text-foreground" />
-                </button>
-                <button
-                  onClick={() => navigate('/search')}
-                  className="h-6 w-6 rounded-full bg-muted flex items-center justify-center"
-                  aria-label="Search"
-                >
-                  <Search className="h-3.5 w-3.5 text-foreground" />
-                </button>
-                <button
-                  onClick={openCreatePlaylistFromHeader}
-                  className="h-6 w-6 rounded-full bg-muted flex items-center justify-center"
-                  aria-label="Create playlist"
-                >
-                  <PlusCircle className="h-3.5 w-3.5 text-foreground" />
-                </button>
               </div>
             </div>
           ) : isSearchRoute ? (
@@ -542,11 +513,11 @@ const MobileNav = () => {
       )}
 
       {/* Bottom Navigation */}
-      <div
-        className={cn(
-          "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background",
-          hasActiveSong ? "player-active" : ""
-        )}
+              <div
+          className={cn(
+            "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414]",
+            hasActiveSong ? "player-active" : ""
+          )}
         style={{
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
           ...(hasActiveSong && {
@@ -683,7 +654,7 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-16 bg-background">
+        <div className="grid grid-cols-4 h-16 bg-background dark:bg-[#191414]">
           {navItems.map(item => (
             <Link
               key={item.path}

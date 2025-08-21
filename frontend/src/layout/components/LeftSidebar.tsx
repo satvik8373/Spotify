@@ -7,20 +7,19 @@ import {
   List,
   LayoutGrid,
   Plus,
-  Music2,
-  ListMusic
+  Folder,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../../components/playlist/CreatePlaylistDialog';
-import { useSpotify } from '../../contexts/SpotifyContext';
+// Removed Spotify section per request
 
 export const LeftSidebar = () => {
   const { isAuthenticated } = useAuth();
-  const spotify = useSpotify();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const { userPlaylists, fetchUserPlaylists, publicPlaylists, fetchPublicPlaylists } = usePlaylistStore();
+  const { userPlaylists, fetchUserPlaylists, fetchPublicPlaylists } = usePlaylistStore();
   const location = useLocation();
 
   useEffect(() => {
@@ -41,82 +40,42 @@ export const LeftSidebar = () => {
         <h1 className="text-2xl font-bold text-foreground">Your Library</h1>
         <div className="flex gap-2">
           <button 
-            className="p-2 rounded-full hover:bg-accent"
+            className="p-2 rounded-full hover:bg-accent transition-colors"
             onClick={() => setShowCreateDialog(true)}
           >
             <Plus size={20} className="text-muted-foreground hover:text-foreground" />
           </button>
-          <button className="p-2 rounded-full hover:bg-accent">
+          <button className="p-2 rounded-full hover:bg-accent transition-colors">
             <ArrowUpRight size={20} className="text-muted-foreground hover:text-foreground" />
           </button>
         </div>
       </div>
 
       {/* Search and View Options */}
-      <div className="p-2 flex justify-between items-center mt-1">
-        <button className="p-2 rounded-full hover:bg-accent">
-          <Search size={20} className="text-muted-foreground hover:text-foreground" />
+      <div className="px-4 flex justify-between items-center mt-2">
+        <button className="p-2 rounded-full hover:bg-accent transition-colors">
+          <Search size={18} className="text-muted-foreground hover:text-foreground" />
         </button>
-        <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm font-medium">
+        <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm font-medium px-2 py-1 rounded-md hover:bg-accent transition-colors">
           <span>Recents</span>
-          <List size={20} />
+          <List size={16} />
         </button>
       </div>
 
       {/* Playlists */}
-      <div className="flex-1 overflow-y-auto px-2 min-h-0 pb-4">
-        <div className="space-y-2 py-2">
-          {/* Spotify Section */}
-          {spotify.isAuthenticated && (
-            <div className="mb-4">
-              <h3 className="text-sm text-muted-foreground px-2 mb-2">Spotify</h3>
-              <Link
-                to="/spotify/songs"
-                className={cn(
-                  'flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50',
-                  isActive('/spotify/songs') ? 'bg-muted' : ''
-                )}
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-md flex items-center justify-center">
-                  <Music2 size={20} className="text-white" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-foreground truncate">Spotify Songs</p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    Songs from your Spotify account
-                  </p>
-                </div>
-              </Link>
-              <Link
-                to="/spotify/playlists"
-                className={cn(
-                  'flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50',
-                  isActive('/spotify/playlists') ? 'bg-muted' : ''
-                )}
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-md flex items-center justify-center">
-                  <ListMusic size={20} className="text-white" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-foreground truncate">Spotify Playlists</p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    Playlists from your Spotify account
-                  </p>
-                </div>
-              </Link>
-            </div>
-          )}
+      <div className="flex-1 overflow-y-auto min-h-0 pb-4 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/40">
+        <div className="space-y-1 py-2">
 
           {/* Liked Songs */}
           <Link
             to="/liked-songs"
             className={cn(
-              'flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50',
+              'flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted/50 transition-colors',
               isActive('/liked-songs') ? 'bg-muted' : ''
             )}
           >
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-white rounded-md flex items-center justify-center">
-              <Heart size={20} className="text-white" />
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-green-500 rounded-md flex items-center justify-center flex-shrink-0">
+              <Heart size={20} className="text-white" fill="white" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-foreground truncate">Liked Songs</p>
@@ -126,35 +85,46 @@ export const LeftSidebar = () => {
             </div>
           </Link>
 
-          {/* Public Playlists (show for all users) */}
-          {publicPlaylists.map((playlist: any) => (
-              <Link
-                key={playlist._id}
-                to={`/playlist/${playlist._id}`}
-                className={cn(
-                  'flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50',
-                  isActive(`/playlist/${playlist._id}`) ? 'bg-muted' : ''
-                )}
-              >
-                <div className="w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {playlist.imageUrl ? (
-                    <img
-                      src={playlist.imageUrl}
-                      alt={playlist.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-muted flex items-center justify-center">
-                      <LayoutGrid size={20} className="text-muted-foreground" />
-                    </div>
+          {/* Favourite Playlists (from local likes) */}
+          <FavouritePlaylists />
+
+          {/* Only Favourites (liked playlists) and Liked Songs are shown */}
+
+          {/* Your Playlists */}
+          {isAuthenticated && userPlaylists.length > 0 && (
+            <div className="mt-2">
+              <h3 className="text-sm text-muted-foreground px-4 mb-2 font-medium">Your Playlists</h3>
+              {userPlaylists.map((playlist: any) => (
+                <Link
+                  key={`own-${playlist._id}`}
+                  to={`/playlist/${playlist._id}`}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted/50 transition-colors group',
+                    isActive(`/playlist/${playlist._id}`) ? 'bg-muted' : ''
                   )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-foreground truncate">{playlist.name}</p>
-                  <p className="text-sm text-muted-foreground truncate">Public playlist</p>
-                </div>
-              </Link>
-          ))}
+                >
+                  <div className="w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {playlist.imageUrl ? (
+                      <img
+                        src={playlist.imageUrl}
+                        alt={playlist.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <LayoutGrid size={20} className="text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-foreground truncate">{playlist.name}</p>
+                    <p className="text-sm text-muted-foreground truncate">Created by you</p>
+                  </div>
+                  <ChevronRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -164,3 +134,50 @@ export const LeftSidebar = () => {
 };
 
 export default LeftSidebar;
+
+function FavouritePlaylists() {
+  let likedIds: string[] = [];
+  try {
+    likedIds = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
+  } catch {}
+
+  const { playlists } = usePlaylistStore();
+  const location = useLocation();
+  const isActive = (path: string) => location.pathname.startsWith(path);
+  const favs = playlists.filter(p => likedIds.includes(p._id)).slice(0, 6);
+  if (favs.length === 0) return null;
+
+  return (
+    <div className="mt-2">
+      <h3 className="text-sm text-muted-foreground px-4 mb-2 font-medium">Favourites</h3>
+      {favs.map((playlist) => (
+        <Link
+          key={`fav-${playlist._id}`}
+          to={`/playlist/${playlist._id}`}
+          className={cn(
+            'flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted/50 transition-colors',
+            isActive(`/playlist/${playlist._id}`) ? 'bg-muted' : ''
+          )}
+        >
+          <div className="w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {playlist.imageUrl ? (
+              <img
+                src={playlist.imageUrl}
+                alt={playlist.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-muted flex items-center justify-center">
+                <LayoutGrid size={20} className="text-muted-foreground" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-foreground truncate">{playlist.name}</p>
+            <p className="text-sm text-muted-foreground truncate">Favourite</p>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
