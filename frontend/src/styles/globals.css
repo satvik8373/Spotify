@@ -1,7 +1,7 @@
 /* Theme CSS Variables */
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 70%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
@@ -29,25 +29,42 @@
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 142.1 70.6% 45.3%;
-    --primary-foreground: 144.9 80.4% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    /* Spotify dark: #191414 */
+    --background: 0 0% 8%;
+    --foreground: 0 0% 100%;
+
+    /* Cards/popovers match background subtly */
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Spotify Green #1DB954 ~ hsl(141 73% 42%) */
+    --primary: 141 73% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary/muted surfaces slightly lighter than bg */
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 12%;
+    /* Secondary text ~ #B3B3B3 */
+    --muted-foreground: 0 0% 70%;
+
+    /* Accent uses Spotify Green as well for active chips/buttons */
+    --accent: 141 73% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive/border/input tuned for dark surfaces */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 142.1 76.2% 36.3%;
+    /* Border ~ #2A2A2A */
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+
+    /* Focus ring follows primary */
+    --ring: 141 73% 42%;
+
+    /* Charts can remain as defaults or be tuned later */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -179,7 +196,7 @@
 
 .liquid-glass-button:active {
   transform: scale(0.94);
-} 
+}
 
 /* Song title container in player */
 .song-title-container {

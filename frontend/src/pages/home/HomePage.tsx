@@ -379,9 +379,9 @@ const HomePage = () => {
   }, []);
 
   return (
-    <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414]">
+    <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] ">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
-        <div className="pt-3 pb-6 max-w-full overflow-x-hidden">
+        <div className="pt-3 pb-6 max-w-full overflow-x-hidden px-[6px]">
           {/* Offline banner */}
           {!isOnline && (
             <div className="px-2 sm:px-4 mb-3">
@@ -411,11 +411,11 @@ const HomePage = () => {
                   <div
                     key={item._id || item.id}
                     onClick={() => handlePlaylistClick(item)}
-                    className="group relative h-[55px] rounded-md overflow-hidden transition-all duration-300 hover:bg-muted/90 dark:hover:bg-muted/70 cursor-pointer border border-border/60"
+                    className="group relative h-[55px] rounded overflow-hidden transition-all duration-300 cursor-pointer border border-border/60"
                   >
-                    <div className="absolute inset-0 bg-muted/95 dark:bg-muted/80 scale-110" />
+                    <div className="absolute inset-0 bg-muted/95 dark:bg-[#292929] scale-110" />
                     <div className="relative flex items-center h-full">
-                      <div className="w-[55px] h-full flex-shrink-0">
+                      <div className="w-[55px] h-full flex-shrink-0 rounded overflow-hidden">
                         {item.image || item.imageUrl ? (
                           <img
                             src={item.image || item.imageUrl}
@@ -424,7 +424,7 @@ const HomePage = () => {
                             loading="lazy"
                           />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-purple-500 to-purple-900 flex items-center justify-center">
+                          <div className="w-full h-full bg-gradient-to-br from-purple-500 to-purple-900 flex items-center justify-center rounded">
                             <Music2 className="h-4 w-4 text-white" />
                           </div>
                         )}

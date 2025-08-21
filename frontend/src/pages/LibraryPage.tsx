@@ -145,48 +145,15 @@ const LibraryPage = () => {
 
 
   return (
-    <main className="h-full bg-background text-foreground overflow-hidden">
+    <main className="h-full overflow-hidden px-[6px] bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] text-foreground">
       <div className="h-full flex flex-col">
-        {/* Library header with filters */}
-        <div className="px-4 sm:px-6 pt-6 pb-4 flex flex-col space-y-4 bg-background border-b border-border sticky top-0 z-10">
-          {/* Sort row */}
-          <div className="flex justify-between items-center px-2">  
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setViewMode(prev => (prev === 'grid' ? 'list' : 'grid'))}
-                className="h-8 w-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
-                aria-label="Toggle grid/list"
-              >
-                <LayoutGrid className="h-4 w-4 text-foreground" />
-              </button>
-              <button
-                onClick={() => navigate('/search')}
-                className="h-8 w-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
-                aria-label="Search"
-              >
-                <Search className="h-4 w-4 text-foreground" />
-              </button>
-              <button
-                onClick={() => setShowCreateDialog(true)}
-                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 text-sm font-medium transition-colors"
-                aria-label="Create playlist"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Create</span>
-              </button>
-            </div>
-          </div>
-          
-
-        </div>
-        
         {/* Library content */}
         <div 
           ref={scrollAreaRef}
-          className="flex-1 bg-background pb-24 overflow-y-auto"
+          className="flex-1 pb-24 overflow-y-auto"
           onScroll={handleScroll}
         >
-          <div className="p-2 sm:p-4">
+          <div className="p-2 sm:p-4 pt-4">
           {isLibraryLoading || loading ? (
             <div className="flex items-center justify-center h-64">
               <Loader className="h-8 w-8 animate-spin text-primary" />
@@ -223,6 +190,34 @@ const LibraryPage = () => {
               </div>
             ) : (
               <div>
+                {/* Tools - shown first, compact size */}
+                <div className="mb-3 px-2 sm:px-4">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setViewMode(prev => (prev === 'grid' ? 'list' : 'grid'))}
+                      className="h-7 w-7 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
+                      aria-label="Toggle grid/list"
+                    >
+                      <LayoutGrid className="h-3.5 w-3.5 text-foreground" />
+                    </button>
+                    <button
+                      onClick={() => navigate('/search')}
+                      className="h-7 w-7 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
+                      aria-label="Search"
+                    >
+                      <Search className="h-3.5 w-3.5 text-foreground" />
+                    </button>
+                    <button
+                      onClick={() => setShowCreateDialog(true)}
+                      className="bg-green-500 hover:bg-green-600 text-white px-2.5 py-1 rounded-full flex items-center gap-1.5 text-xs font-medium transition-colors"
+                      aria-label="Create playlist"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Create</span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Liked Songs Card - Always at top */}
                 <div className="mb-4">
                   <div 

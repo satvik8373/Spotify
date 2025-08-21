@@ -378,7 +378,7 @@ const LikedSongsPage = () => {
   );
 
   return (
-    <main className="h-full bg-background">
+    <main className="h-full bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414]">
       {/* Removed fixed header bar to avoid overlap with top mobile nav; back button added inline above */}
 
       {/* Pull to refresh indicator */}
