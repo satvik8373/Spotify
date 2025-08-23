@@ -275,12 +275,11 @@ const LikedSongsPage = () => {
               return dateB - dateA; // Most recent first
             });
             
-            // Filter to only show new/unscanned tracks
-            const newTracks = filterOnlyNewSpotifyTracks(sortedTracks);
+            // Show all tracks from Spotify, let backend handle filtering
+            setSpotifyTracks(sortedTracks);
+            const totalCount = sortedTracks.length;
             
-            setSpotifyTracks(newTracks);
-            const newCount = newTracks.length;
-            if (newCount > 0) {
+            if (totalCount > 0) {
               setShowPermissionModal(true);
             } else {
               setUpToDate(true);
@@ -586,14 +585,19 @@ const LikedSongsPage = () => {
     setSyncError(null); // Clear previous errors
     
     try {
+      console.log('🔄 Starting enhanced sync for user:', user.id);
+      
       // First, trigger manual sync
       const result = await triggerManualSync(user.id);
+      console.log('✅ Backend sync result:', result);
       
       // Then, force refresh synced songs
       await loadSyncedSongs();
+      console.log('✅ Synced songs refreshed');
       
       // Update sync status
       await loadSyncStatus();
+      console.log('✅ Sync status updated');
       
       toast.success(`Sync completed! ${result.added} new songs, ${result.updated} updated, ${result.removed} removed`);
     } catch (error: any) {
