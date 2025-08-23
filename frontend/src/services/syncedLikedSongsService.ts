@@ -3,14 +3,10 @@ import axios from '../lib/axios';
 // Get synced liked songs from backend
 export const getSyncedLikedSongs = async (userId: string) => {
   try {
-    console.log('🔄 Fetching synced liked songs for user:', userId);
     const response = await axios.get(`/api/spotify/liked-songs/${userId}`);
-    console.log('✅ Synced liked songs response:', response.data);
     return response.data;
-  } catch (error: any) {
-    console.error('❌ Error fetching synced liked songs:', error);
-    console.error('❌ Error response:', error.response?.data);
-    console.error('❌ Error status:', error.response?.status);
+  } catch (error) {
+    console.error('Error fetching synced liked songs:', error);
     throw error;
   }
 };
@@ -18,14 +14,10 @@ export const getSyncedLikedSongs = async (userId: string) => {
 // Get sync status
 export const getSyncStatus = async (userId: string) => {
   try {
-    console.log('🔄 Fetching sync status for user:', userId);
     const response = await axios.get(`/api/spotify/sync-status/${userId}`);
-    console.log('✅ Sync status response:', response.data);
     return response.data;
-  } catch (error: any) {
-    console.error('❌ Error fetching sync status:', error);
-    console.error('❌ Error response:', error.response?.data);
-    console.error('❌ Error status:', error.response?.status);
+  } catch (error) {
+    console.error('Error fetching sync status:', error);
     throw error;
   }
 };
@@ -33,17 +25,10 @@ export const getSyncStatus = async (userId: string) => {
 // Manual sync trigger
 export const triggerManualSync = async (userId: string) => {
   try {
-    console.log('🔄 Triggering manual sync for user:', userId);
-    console.log('🔗 API URL:', import.meta.env.VITE_API_URL);
-    
     const response = await axios.post('/api/spotify/sync', { userId });
-    console.log('✅ Manual sync response:', response.data);
     return response.data;
-  } catch (error: any) {
-    console.error('❌ Error triggering manual sync:', error);
-    console.error('❌ Error response:', error.response?.data);
-    console.error('❌ Error status:', error.response?.status);
-    console.error('❌ Error message:', error.message);
+  } catch (error) {
+    console.error('Error triggering manual sync:', error);
     throw error;
   }
 };

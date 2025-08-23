@@ -200,8 +200,18 @@ const LikedSongsPage = () => {
       // Format status for display
       const formattedStatus = formatSyncStatus(status);
       setUpToDate(formattedStatus.status === 'synced');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading sync status:', error);
+      
+      // Check for Firebase quota limit errors
+      if (error.message?.includes('quota') || 
+          error.message?.includes('limit') || 
+          error.message?.includes('exceeded') ||
+          error.response?.data?.error?.includes('quota') ||
+          error.response?.status === 429) {
+        
+        setSyncError('Firebase quota limit reached. Please try again tomorrow or upgrade your plan.');
+      }
     }
   };
 
@@ -568,6 +578,8 @@ const LikedSongsPage = () => {
     if (!user?.id) return;
     
     setSyncingSpotify(true);
+    setSyncError(null); // Clear previous errors
+    
     try {
       // First, trigger manual sync
       const result = await triggerManualSync(user.id);
@@ -579,9 +591,22 @@ const LikedSongsPage = () => {
       await loadSyncStatus();
       
       toast.success(`Sync completed! ${result.added} new songs, ${result.updated} updated, ${result.removed} removed`);
-    } catch (error) {
-      toast.error('Sync failed. Please try again.');
+    } catch (error: any) {
       console.error('Enhanced sync error:', error);
+      
+      // Check for Firebase quota limit errors
+      if (error.message?.includes('quota') || 
+          error.message?.includes('limit') || 
+          error.message?.includes('exceeded') ||
+          error.response?.data?.error?.includes('quota') ||
+          error.response?.status === 429) {
+        
+        setSyncError('Firebase quota limit reached. Please try again tomorrow or upgrade your plan.');
+        toast.error('Firebase quota limit reached. Please try again tomorrow.');
+      } else {
+        setSyncError('Sync failed. Please try again.');
+        toast.error('Sync failed. Please try again.');
+      }
     } finally {
       setSyncingSpotify(false);
     }
@@ -788,51 +813,6 @@ const LikedSongsPage = () => {
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3">
                       <Button
-                        disabled={syncingSpotify}
-                        onClick={async () => {
-                          setSyncingSpotify(true);
-                          try {
-                            const tracks = await fetchAllSpotifySavedTracks();
-                            
-                            // Sort tracks by addedAt date (most recent first) to match Spotify app order
-                            const sortedTracks = tracks.sort((a: any, b: any) => {
-                              const dateA = new Date(a.addedAt).getTime();
-                              const dateB = new Date(b.addedAt).getTime();
-                              return dateB - dateA; // Most recent first
-                            });
-                            
-                            // Filter to only show new/unscanned tracks
-                            const newTracks = filterOnlyNewSpotifyTracks(sortedTracks);
-                            
-                            setSpotifyTracks(newTracks);
-                            const newCount = newTracks.length;
-                            if (newCount === 0) {
-                              setUpToDate(true);
-                              toast.success('Already up to date');
-                            } else {
-                              setShowPermissionModal(true);
-                            }
-                          } catch {
-                            toast.error('Sync failed');
-                          } finally {
-                            setSyncingSpotify(false);
-                          }
-                        }}
-                        className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
-                      >
-                        {syncingSpotify ? (
-                          <>
-                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                            Syncing...
-                          </>
-                        ) : (
-                          <>
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                            Sync Spotify
-                          </>
-                        )}
-                      </Button>
-                      <Button
                         variant="outline"
                         size="default"
                         onClick={handleEnhancedSync}
@@ -842,6 +822,19 @@ const LikedSongsPage = () => {
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Sync Now
                       </Button>
+                      
+                      {/* Firebase Quota Limit Warning */}
+                      {syncError && syncError.includes('quota') && (
+                        <div className="bg-red-900/20 border border-red-500/50 p-4 rounded-lg">
+                          <div className="flex items-center gap-2 text-red-400">
+                            <X className="w-4 h-4" />
+                            <span className="font-medium">Firebase Quota Limit Reached</span>
+                          </div>
+                          <p className="text-sm text-red-300 mt-2">
+                            You've reached your Firebase daily limit. Please try again tomorrow or upgrade your plan.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -892,19 +885,46 @@ const LikedSongsPage = () => {
                     <Shuffle className="h-4 w-4 mr-2" />
                     <span className="font-medium">Shuffle</span>
                   </Button>
+                  
+                  <div className="relative">
+                    <Button 
+                      onClick={playAllSongs}
+                      className="bg-green-500 hover:bg-green-400 text-black rounded-full h-14 w-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                    >
+                      <Play className="h-7 w-7 ml-0.5" />
+                    </Button>
+                  </div>
                 </div>
+                
+              </div>
+            )}
+
+            {likedSongs.length > 0 && !isMobile && (
+              <div className="flex items-center gap-3 mt-2 w-full justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full text-sm px-6 py-2 h-10 border border-border text-foreground hover:bg-accent hover:border-primary transition-all duration-200 font-medium"
+                  onClick={smartShuffle}
+                >
+                  <Shuffle className="h-4 w-4 mr-2" />
+                  <span className="font-medium">Shuffle</span>
+                </Button>
                 
                 <div className="relative">
                   <Button 
                     onClick={playAllSongs}
-                    className="bg-green-500 hover:bg-green-400 text-black rounded-full h-14 w-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                    className="bg-green-500 hover:bg-green-400 text-black rounded-full h-12 w-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                   >
-                    <Play className="h-7 w-7 ml-0.5" />
+                    {isPlaying ? (
+                      <Pause className="h-5 w-5" />
+                    ) : (
+                      <Play className="h-5 w-5 ml-0.5" />
+                    )}
                   </Button>
                 </div>
               </div>
             )}
-
           </div>
           
           {/* Table Header - show only on desktop */}
