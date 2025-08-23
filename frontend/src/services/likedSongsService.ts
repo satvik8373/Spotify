@@ -3,6 +3,46 @@ import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, serv
 import { db } from "@/lib/firebase";
 import { updateUserStats } from "./userService";
 
+// Cache for liked songs to reduce Firestore reads
+const likedSongsCache = new Map<string, { songs: any[], timestamp: number, userId: string }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Check if cache is valid
+const isCacheValid = (userId: string): boolean => {
+  const cached = likedSongsCache.get(userId);
+  if (!cached) return false;
+  
+  const now = Date.now();
+  const isExpired = now - cached.timestamp > CACHE_DURATION;
+  const isSameUser = cached.userId === userId;
+  
+  return !isExpired && isSameUser;
+};
+
+// Get cached liked songs
+const getCachedLikedSongs = (userId: string): any[] | null => {
+  if (!isCacheValid(userId)) {
+    likedSongsCache.delete(userId);
+    return null;
+  }
+  
+  return likedSongsCache.get(userId)?.songs || null;
+};
+
+// Set cached liked songs
+const setCachedLikedSongs = (userId: string, songs: any[]): void => {
+  likedSongsCache.set(userId, {
+    songs,
+    timestamp: Date.now(),
+    userId
+  });
+};
+
+// Clear cache for a user
+const clearCache = (userId: string): void => {
+  likedSongsCache.delete(userId);
+};
+
 // Type for song objects
 export interface Song {
   id: string;
@@ -138,6 +178,14 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
   }
 
   try {
+    // Check cache first to reduce Firestore reads
+    const cachedSongs = getCachedLikedSongs(userId);
+    if (cachedSongs) {
+      console.log(`Using cached liked songs for user: ${userId}`);
+      return cachedSongs;
+    }
+
+    console.log(`Loading liked songs from Firestore for user: ${userId}`);
     const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
     const q = query(
       likedSongsRef, 
@@ -161,7 +209,9 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
       });
     });
     
-    console.log(`Loaded ${songs.length} liked songs from Firestore`);
+    // Cache the results to reduce future Firestore reads
+    setCachedLikedSongs(userId, songs);
+    console.log(`Loaded ${songs.length} liked songs from Firestore and cached`);
     return songs;
     
   } catch (error) {
@@ -202,6 +252,9 @@ export const addLikedSong = async (song: Song): Promise<void> => {
     await setDoc(likedSongRef, likedSongData);
     console.log('Added song to liked songs in Firestore');
     
+    // Clear cache since data has changed
+    clearCache(userId);
+    
     // Update user stats
     await updateUserStats({ likedSongsCount: 1 });
     
@@ -233,6 +286,9 @@ export const removeLikedSong = async (songId: string): Promise<void> => {
     if (songDoc.exists()) {
       await deleteDoc(likedSongRef);
       console.log('Removed song from liked songs in Firestore');
+      
+      // Clear cache since data has changed
+      clearCache(userId);
       
       // Update user stats
       await updateUserStats({ likedSongsCount: -1 });

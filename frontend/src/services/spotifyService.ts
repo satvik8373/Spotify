@@ -30,12 +30,10 @@ const SCOPES = [
   'playlist-modify-public',
 ];
 
-// Token storage keys
-const ACCESS_TOKEN_KEY = 'spotify_access_token';
-const REFRESH_TOKEN_KEY = 'spotify_refresh_token';
-const TOKEN_EXPIRY_KEY = 'spotify_token_expiry';
+// Import the configured axios instance for backend calls
+import axiosInstance from '../lib/axios';
 
-// Axios instance for Spotify API calls
+// Create a separate axios instance for Spotify API calls
 const spotifyApi = axios.create({
   baseURL: SPOTIFY_API_URL,
   headers: {
@@ -43,24 +41,29 @@ const spotifyApi = axios.create({
   },
 });
 
-// Intercept requests to add access token
+// Token storage keys
+const ACCESS_TOKEN_KEY = 'spotify_access_token';
+const REFRESH_TOKEN_KEY = 'spotify_refresh_token';
+const TOKEN_EXPIRY_KEY = 'spotify_token_expiry';
+
+// Intercept requests to add access token for Spotify API calls
 spotifyApi.interceptors.request.use(
-  async (config) => {
+  async (config: any) => {
     const token = await getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error: any) => Promise.reject(error)
 );
 
-// Intercept responses to handle auth errors
+// Intercept responses to handle auth errors for Spotify API calls
 spotifyApi.interceptors.response.use(
-  (response) => {
+  (response: any) => {
     return response;
   },
-  (error) => {
+  (error: any) => {
     // If we get a 403, the token is invalid - clear it
     if (error.response?.status === 403) {
       console.log('Spotify API returned 403 - clearing invalid tokens');
@@ -109,7 +112,9 @@ export const handleCallback = async (code: string, userId?: string): Promise<boo
   try {
     // Use backend route to exchange code for tokens (safer)
     console.log('🔄 Attempting backend token exchange...');
-    const response = await axios.post('/api/spotify/callback', {
+    console.log('🔗 Using axios instance with baseURL:', axiosInstance.defaults.baseURL);
+    
+    const response = await axiosInstance.post('/api/spotify/callback', {
       code,
       redirect_uri: REDIRECT_URI,
       userId
@@ -178,14 +183,276 @@ export const handleCallback = async (code: string, userId?: string): Promise<boo
     }
   } catch (fallbackError: any) {
     console.error('❌ Fallback token exchange also failed:');
-    console.error('Fallback error response:', fallbackError.response?.data);
-    console.error('Fallback error status:', fallbackError.response?.status);
-    console.error('Fallback error message:', fallbackError.message);
+    console.error('Fallback error:', fallbackError.message);
+    throw new Error('Both backend and direct Spotify token exchange failed');
   }
   
-  console.error('❌ All authentication methods failed');
-  console.log('=== Authentication Failed ===');
   return false;
+};
+
+// Refresh access token using refresh token
+export const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  
+  if (refreshToken) {
+    try {
+      const response = await axios.post(
+        SPOTIFY_TOKEN_URL,
+        new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET,
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      if (response.data && response.data.access_token) {
+        const { access_token, expires_in } = response.data;
+        const expiry = Date.now() + expires_in * 1000;
+        
+        localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
+        localStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toString());
+        
+        return access_token;
+      }
+    } catch (error) {
+      console.error('Error refreshing access token:', error);
+      logout();
+    }
+  }
+  
+  return null;
+};
+
+// Get current user profile
+export const getCurrentUser = async () => {
+  try {
+    const response = await spotifyApi.get('/me');
+    return response.data;
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    throw error;
+  }
+};
+
+// Search for tracks
+export const searchTracks = async (query: string, limit = 20) => {
+  try {
+    const response = await spotifyApi.get('/search', {
+      params: {
+        q: query,
+        type: 'track',
+        limit,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error searching tracks:', error);
+    throw error;
+  }
+};
+
+// Get track details
+export const getTrack = async (trackId: string) => {
+  try {
+    const response = await spotifyApi.get(`/tracks/${trackId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting track:', error);
+    throw error;
+  }
+};
+
+// Get track recommendations
+export const getRecommendations = async (seed_tracks: string[], limit = 20) => {
+  try {
+    const response = await spotifyApi.get('/recommendations', {
+      params: {
+        seed_tracks: seed_tracks.join(','),
+        limit,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error getting recommendations:', error);
+    throw error;
+  }
+};
+
+// Get user playlists
+export const getUserPlaylists = async (limit = 20, offset = 0) => {
+  try {
+    const response = await spotifyApi.get('/me/playlists', {
+      params: {
+        limit,
+        offset,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error getting user playlists:', error);
+    throw error;
+  }
+};
+
+// Get playlist details
+export const getPlaylist = async (playlistId: string) => {
+  try {
+    const response = await spotifyApi.get(`/playlists/${playlistId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting playlist:', error);
+    throw error;
+  }
+};
+
+// Create new playlist
+export const createPlaylist = async (userId: string, name: string, description = '', isPublic = true) => {
+  try {
+    const response = await spotifyApi.post(`/users/${userId}/playlists`, {
+      name,
+      description,
+      public: isPublic,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error creating playlist:', error);
+    throw error;
+  }
+};
+
+// Add tracks to playlist
+export const addTracksToPlaylist = async (playlistId: string, uris: string[]) => {
+  try {
+    const response = await spotifyApi.post(`/playlists/${playlistId}/tracks`, {
+      uris,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding tracks to playlist:', error);
+    throw error;
+  }
+};
+
+// Get saved tracks
+export const getSavedTracks = async (limit = 20, offset = 0) => {
+  try {
+    const response = await spotifyApi.get('/me/tracks', {
+      params: {
+        limit,
+        offset,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error getting saved tracks:', error);
+    throw error;
+  }
+};
+
+// Save track
+export const saveTrack = async (trackId: string) => {
+  try {
+    await spotifyApi.put('/me/tracks', {
+      ids: [trackId],
+    });
+  } catch (error) {
+    console.error('Error saving track:', error);
+    throw error;
+  }
+};
+
+// Remove track
+export const removeTrack = async (trackId: string) => {
+  try {
+    await spotifyApi.delete('/me/tracks', {
+      params: {
+        ids: trackId,
+      },
+    });
+  } catch (error) {
+    console.error('Error removing track:', error);
+    throw error;
+  }
+};
+
+// Get album details
+export const getAlbum = async (albumId: string) => {
+  try {
+    const response = await spotifyApi.get(`/albums/${albumId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting album:', error);
+    throw error;
+  }
+};
+
+// Get artist details
+export const getArtist = async (artistId: string) => {
+  try {
+    const response = await spotifyApi.get(`/artists/${artistId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting artist:', error);
+    throw error;
+  }
+};
+
+// Get artist top tracks
+export const getArtistTopTracks = async (artistId: string, market = 'US') => {
+  try {
+    const response = await spotifyApi.get(`/artists/${artistId}/top-tracks`, {
+      params: {
+        market,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error getting artist top tracks:', error);
+    throw error;
+  }
+};
+
+// Transfer playback to device
+export const transferPlayback = async (deviceId: string) => {
+  try {
+    await spotifyApi.put('/me/player', {
+      device_ids: [deviceId],
+      play: true,
+    });
+  } catch (error) {
+    console.error('Error transferring playback:', error);
+    throw error;
+  }
+};
+
+// Get player state
+export const getPlayerState = async () => {
+  try {
+    const response = await spotifyApi.get('/me/player');
+    return response.status === 204 ? null : response.data;
+  } catch (error) {
+    console.error('Error getting player state:', error);
+    throw error;
+  }
+};
+
+// Play track
+export const playTrack = async (trackUri: string, deviceId?: string) => {
+  try {
+    const params = deviceId ? { device_id: deviceId } : {};
+    await spotifyApi.put('/me/player/play', {
+      uris: [trackUri],
+    }, { params });
+  } catch (error) {
+    console.error('Error playing track:', error);
+    throw error;
+  }
 };
 
 export const logout = (): void => {
@@ -234,7 +501,7 @@ const getAccessToken = async (): Promise<string | null> => {
   // If token expired but we have refresh token, try to refresh
   if (refreshToken) {
     try {
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         SPOTIFY_TOKEN_URL,
         new URLSearchParams({
           grant_type: 'refresh_token',
@@ -265,226 +532,6 @@ const getAccessToken = async (): Promise<string | null> => {
   }
   
   return null;
-};
-
-// User related API calls
-export const getCurrentUser = async () => {
-  try {
-    const response = await spotifyApi.get('/me');
-    return response.data;
-  } catch (error) {
-    console.error('Error getting user profile:', error);
-    throw error;
-  }
-};
-
-// Track related API calls
-export const searchTracks = async (query: string, limit = 20) => {
-  try {
-    const response = await spotifyApi.get('/search', {
-      params: {
-        q: query,
-        type: 'track',
-        limit,
-      },
-    });
-    return response.data.tracks.items;
-  } catch (error) {
-    console.error('Error searching tracks:', error);
-    throw error;
-  }
-};
-
-export const getTrack = async (trackId: string) => {
-  try {
-    const response = await spotifyApi.get(`/tracks/${trackId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error getting track ${trackId}:`, error);
-    throw error;
-  }
-};
-
-export const getRecommendations = async (seed_tracks: string[], limit = 20) => {
-  try {
-    const response = await spotifyApi.get('/recommendations', {
-      params: {
-        seed_tracks: seed_tracks.join(','),
-        limit,
-      },
-    });
-    return response.data.tracks;
-  } catch (error) {
-    console.error('Error getting recommendations:', error);
-    throw error;
-  }
-};
-
-// Playlist related API calls
-export const getUserPlaylists = async (limit = 20, offset = 0) => {
-  try {
-    const response = await spotifyApi.get('/me/playlists', {
-      params: {
-        limit,
-        offset,
-      },
-    });
-    return response.data.items;
-  } catch (error) {
-    console.error('Error getting user playlists:', error);
-    throw error;
-  }
-};
-
-export const getPlaylist = async (playlistId: string) => {
-  try {
-    const response = await spotifyApi.get(`/playlists/${playlistId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error getting playlist ${playlistId}:`, error);
-    throw error;
-  }
-};
-
-export const createPlaylist = async (userId: string, name: string, description = '', isPublic = true) => {
-  try {
-    const response = await spotifyApi.post(`/users/${userId}/playlists`, {
-      name,
-      description,
-      public: isPublic,
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error creating playlist:', error);
-    throw error;
-  }
-};
-
-export const addTracksToPlaylist = async (playlistId: string, uris: string[]) => {
-  try {
-    const response = await spotifyApi.post(`/playlists/${playlistId}/tracks`, {
-      uris,
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error adding tracks to playlist ${playlistId}:`, error);
-    throw error;
-  }
-};
-
-// Library related API calls
-export const getSavedTracks = async (limit = 20, offset = 0) => {
-  try {
-    const response = await spotifyApi.get('/me/tracks', {
-      params: {
-        limit,
-        offset,
-      },
-    });
-    return response.data.items;
-  } catch (error) {
-    console.error('Error getting saved tracks:', error);
-    throw error;
-  }
-};
-
-export const saveTrack = async (trackId: string) => {
-  try {
-    await spotifyApi.put('/me/tracks', {
-      ids: [trackId],
-    });
-    return true;
-  } catch (error) {
-    console.error(`Error saving track ${trackId}:`, error);
-    throw error;
-  }
-};
-
-export const removeTrack = async (trackId: string) => {
-  try {
-    await spotifyApi.delete('/me/tracks', {
-      params: {
-        ids: trackId,
-      },
-    });
-    return true;
-  } catch (error) {
-    console.error(`Error removing track ${trackId}:`, error);
-    throw error;
-  }
-};
-
-// Albums related API calls
-export const getAlbum = async (albumId: string) => {
-  try {
-    const response = await spotifyApi.get(`/albums/${albumId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error getting album ${albumId}:`, error);
-    throw error;
-  }
-};
-
-// Artist related API calls
-export const getArtist = async (artistId: string) => {
-  try {
-    const response = await spotifyApi.get(`/artists/${artistId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error getting artist ${artistId}:`, error);
-    throw error;
-  }
-};
-
-export const getArtistTopTracks = async (artistId: string, market = 'US') => {
-  try {
-    const response = await spotifyApi.get(`/artists/${artistId}/top-tracks`, {
-      params: {
-        market,
-      },
-    });
-    return response.data.tracks;
-  } catch (error) {
-    console.error(`Error getting top tracks for artist ${artistId}:`, error);
-    throw error;
-  }
-};
-
-// Player related API calls
-export const transferPlayback = async (deviceId: string) => {
-  try {
-    await spotifyApi.put('/me/player', {
-      device_ids: [deviceId],
-      play: true,
-    });
-    return true;
-  } catch (error) {
-    console.error('Error transferring playback:', error);
-    throw error;
-  }
-};
-
-export const getPlayerState = async () => {
-  try {
-    const response = await spotifyApi.get('/me/player');
-    return response.status === 204 ? null : response.data;
-  } catch (error) {
-    console.error('Error getting player state:', error);
-    throw error;
-  }
-};
-
-export const playTrack = async (trackUri: string, deviceId?: string) => {
-  try {
-    const params = deviceId ? { device_id: deviceId } : {};
-    await spotifyApi.put('/me/player/play', {
-      uris: [trackUri],
-    }, { params });
-    return true;
-  } catch (error) {
-    console.error('Error playing track:', error);
-    throw error;
-  }
 };
 
 // Debug function to check token state
