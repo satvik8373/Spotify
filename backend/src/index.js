@@ -46,6 +46,8 @@ const corsOptions = {
         'http://localhost:3000',
         'http://localhost:5173',
         'https://1d3c38b2f441.ngrok-free.app',
+        'https://mavrixfilms.live',
+        'https://www.mavrixfilms.live',
         process.env.FRONTEND_URL || '',
       ].filter(Boolean);
 
@@ -57,9 +59,10 @@ const corsOptions = {
       try { hostname = new URL(origin).hostname; } catch {}
 
       const isNgrok = hostname.endsWith('.ngrok-free.app') || hostname.endsWith('.ngrok.io');
-      const isAllowed = defaultAllowed.includes(origin) || isNgrok;
+      const isMavrixfilms = hostname === 'mavrixfilms.live' || hostname === 'www.mavrixfilms.live';
+      const isAllowed = defaultAllowed.includes(origin) || isNgrok || isMavrixfilms;
 
-      console.log('CORS check:', { origin, hostname, isNgrok, isAllowed, defaultAllowed });
+      console.log('CORS check:', { origin, hostname, isNgrok, isMavrixfilms, isAllowed, defaultAllowed });
       return callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
     } catch (e) {
       // Fallback: deny if anything goes wrong

@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { Song } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService, deleteAllLikedSongs, migrateLikedSongsStructure } from '@/services/syncedLikedSongsService';
+import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService } from '@/services/syncedLikedSongsService';
 import SpotifySyncPermissionModal from '@/components/SpotifySyncPermissionModal';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
@@ -587,83 +587,6 @@ const LikedSongsPage = () => {
     }
   };
 
-  // Handle deleting all liked songs
-  const handleDeleteAllSongs = async () => {
-    if (!user?.id) return;
-    
-    // Show confirmation dialog
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ALL ${likedSongs.length} liked songs?\n\n` +
-      `This action will:\n` +
-      `• Remove all songs from your Spotify liked songs\n` +
-      `• Delete all data from Firestore database\n` +
-      `• Clear your local liked songs\n\n` +
-      `This action cannot be undone!`
-    );
-    
-    if (!confirmed) return;
-    
-    try {
-      setSyncingSpotify(true);
-      
-      // Call backend to delete all songs
-      const result = await deleteAllLikedSongs(user.id);
-      
-      if (result.success) {
-        // Clear local state
-        setLikedSongs([]);
-        setSyncedSongs([]);
-        setSpotifyTracks([]);
-        setUpToDate(false);
-        
-        // Update sync status
-        await loadSyncStatus();
-        
-        toast.success(`Successfully deleted ${result.deletedCount} liked songs`);
-      }
-    } catch (error) {
-      console.error('Error deleting all liked songs:', error);
-      toast.error('Failed to delete all liked songs. Please try again.');
-    } finally {
-      setSyncingSpotify(false);
-    }
-  };
-
-  // Handle migration to new structure
-  const handleMigration = async () => {
-    if (!user?.id) return;
-    
-    const confirmed = window.confirm(
-      `Migrate your liked songs to the new database structure?\n\n` +
-      `This will:\n` +
-      `• Move your data to a cleaner structure\n` +
-      `• Improve performance and data organization\n` +
-      `• Keep all your existing data\n\n` +
-      `This is a safe operation that can be run multiple times.`
-    );
-    
-    if (!confirmed) return;
-    
-    try {
-      setSyncingSpotify(true);
-      
-      const result = await migrateLikedSongsStructure(user.id);
-      
-      if (result.success) {
-        toast.success(`Migration completed! ${result.migratedCount} songs migrated.`);
-        
-        // Refresh data after migration
-        await loadSyncedSongs();
-        await loadSyncStatus();
-      }
-    } catch (error) {
-      console.error('Migration error:', error);
-      toast.error('Migration failed. Please try again.');
-    } finally {
-      setSyncingSpotify(false);
-    }
-  };
-
   // Removed header opacity tracking
   const handleScroll = useCallback(() => {
     // no-op
@@ -912,35 +835,12 @@ const LikedSongsPage = () => {
                       <Button
                         variant="outline"
                         size="default"
-                        onClick={handleDisconnect}
-                        className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
-                      >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Disconnect
-                      </Button>
-                      
-                      {/* Migration Button */}
-                      <Button
-                        variant="outline"
-                        size="default"
-                        onClick={handleMigration}
+                        onClick={handleEnhancedSync}
                         disabled={syncingSpotify}
-                        className="border-blue-500/50 text-blue-500 hover:bg-blue-500/10 hover:border-blue-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
+                        className="border-green-500/50 text-green-500 hover:bg-green-500/10 hover:border-green-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
                       >
                         <RefreshCw className="w-4 h-4 mr-2" />
-                        Migrate Data
-                      </Button>
-                      
-                      {/* Delete All Songs Button */}
-                      <Button
-                        variant="outline"
-                        size="default"
-                        onClick={handleDeleteAllSongs}
-                        disabled={syncingSpotify || likedSongs.length === 0}
-                        className="border-red-600/50 text-red-600 hover:bg-red-600/10 hover:border-red-600 font-medium px-6 py-2 rounded-lg transition-all duration-200"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Delete All Songs
+                        Sync Now
                       </Button>
                     </div>
                   </div>
@@ -992,20 +892,6 @@ const LikedSongsPage = () => {
                     <Shuffle className="h-4 w-4 mr-2" />
                     <span className="font-medium">Shuffle</span>
                   </Button>
-                  
-                  {/* Delete All Button for Mobile */}
-                  {isAuthenticated && isSpotifyAuthenticated() && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDeleteAllSongs}
-                      disabled={syncingSpotify}
-                      className="rounded-full text-sm px-4 py-2 h-10 border border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 transition-all duration-200 font-medium"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      <span className="font-medium">Clear All</span>
-                    </Button>
-                  )}
                 </div>
                 
                 <div className="relative">
@@ -1019,46 +905,6 @@ const LikedSongsPage = () => {
               </div>
             )}
 
-            {likedSongs.length > 0 && !isMobile && (
-              <div className="flex items-center gap-3 mt-2 w-full justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full text-sm px-6 py-2 h-10 border border-border text-foreground hover:bg-accent hover:border-primary transition-all duration-200 font-medium"
-                  onClick={smartShuffle}
-                >
-                  <Shuffle className="h-4 w-4 mr-2" />
-                  <span className="font-medium">Shuffle</span>
-                </Button>
-                
-                {/* Delete All Button for Desktop */}
-                {isAuthenticated && isSpotifyAuthenticated() && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDeleteAllSongs}
-                    disabled={syncingSpotify}
-                    className="rounded-full text-sm px-4 py-2 h-10 border border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 transition-all duration-200 font-medium"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    <span className="font-medium">Delete All Songs</span>
-                  </Button>
-                )}
-                
-                <div className="relative">
-                  <Button 
-                    onClick={playAllSongs}
-                    className="bg-green-500 hover:bg-green-400 text-black rounded-full h-12 w-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-                  >
-                    {isPlaying ? (
-                      <Pause className="h-5 w-5" />
-                    ) : (
-                      <Play className="h-5 w-5 ml-0.5" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
           
           {/* Table Header - show only on desktop */}
