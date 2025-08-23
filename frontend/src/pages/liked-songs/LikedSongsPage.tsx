@@ -444,12 +444,9 @@ const LikedSongsPage = () => {
   // Get formatted sync status text
   const getSyncStatusText = () => {
     if (!syncStatus) return 'Not connected';
-    
-    // Check if quota limit is reached
     if (syncError && syncError.includes('quota')) {
-      return 'Quota limit reached - sync disabled';
+      return 'Limit reached - try tomorrow';
     }
-    
     const formatted = formatSyncStatus(syncStatus);
     return formatted.text;
   };
@@ -502,7 +499,7 @@ const LikedSongsPage = () => {
   };
 
   // Handle playing a specific song from current view (respects filtering)
-  const playSong = (song: any, _index: number) => {
+  const playSong = (song: any, index: number) => {
     // Build the source list based on current filter state so queue matches the visible list
     const sourceSongs = (filterQuery && filterQuery.trim()) ? visibleSongs : likedSongs;
     // Find accurate index by id to avoid mismatch when filtering/sorting
@@ -520,8 +517,23 @@ const LikedSongsPage = () => {
     setTimeout(() => {
       const store = usePlayerStore.getState();
       store.setIsPlaying(true);
-      store.setUserInteracted();
+      store.setUserInteracted(); // Ensure user is marked as interacted
     }, 100);
+  };
+
+  // Enhanced song click handler with touch conflict prevention
+  const handleSongClick = (e: React.MouseEvent | React.TouchEvent, song: any, index: number) => {
+    // Prevent click if we were just swiping
+    if (isSwiping || swipeDiff > 20) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    // Check if this is a quick tap (not a swipe)
+    if (touchStartTime && Date.now() - touchStartTime < 200) {
+      playSong(song, index);
+    }
   };
 
   // Check if a song is currently playing
@@ -628,13 +640,14 @@ const LikedSongsPage = () => {
 
   // Add touch handlers for pull-to-refresh
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (scrollRef.current?.scrollTop === 0) {
+    // Only handle pull-to-refresh if we're at the top and not swiping
+    if (scrollRef.current?.scrollTop === 0 && !isSwiping && swipeDiff === 0) {
       setTouchStartY(e.touches[0].clientY);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartY !== null && scrollRef.current?.scrollTop === 0) {
+    if (touchStartY !== null && scrollRef.current?.scrollTop === 0 && !isSwiping) {
       const touchDiff = e.touches[0].clientY - touchStartY;
       if (touchDiff > 70 && !refreshing) {
         setRefreshing(true);
@@ -658,6 +671,110 @@ const LikedSongsPage = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Swipe handlers for mobile dropdown menu
+  const [swipeStartY, setSwipeStartY] = useState<number | null>(null);
+  const [swipeDiff, setSwipeDiff] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const [touchStartTime, setTouchStartTime] = useState<number | null>(null);
+
+  const handleSwipeStart = (e: React.TouchEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    setSwipeStartY(e.touches[0].clientY);
+    setTouchStartTime(Date.now());
+    setIsSwiping(true);
+  };
+
+  const handleSwipeMove = (e: React.TouchEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    
+    if (swipeStartY !== null && touchStartTime !== null) {
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - swipeStartY;
+      const touchDuration = Date.now() - touchStartTime;
+      
+      // Only allow downward swipes (positive diff) and after a brief delay
+      if (diff > 0 && touchDuration > 50) {
+        setSwipeDiff(diff);
+        
+        // Add swiping class to dropdown for visual feedback
+        const dropdown = document.querySelector('[data-radix-popper-content-wrapper]');
+        if (dropdown) {
+          dropdown.classList.add('swiping');
+          
+          // Add swiping class to handle for visual feedback
+          const handle = dropdown.querySelector('.swipe-handle');
+          if (handle) {
+            handle.classList.add('swiping');
+          }
+          
+          // Calculate swipe progress (0 to 1)
+          const progress = Math.min(diff / 150, 1); // 150px = full swipe
+          
+          // Apply visual feedback based on swipe progress
+          if (progress > 0.3) {
+            dropdown.classList.add('swipe-warning');
+          }
+        }
+      }
+    }
+  };
+
+  const handleSwipeEnd = (e: React.TouchEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    
+    if (swipeStartY !== null && touchStartTime !== null) {
+      const currentY = e.changedTouches[0].clientY;
+      const diff = currentY - swipeStartY;
+      const touchDuration = Date.now() - touchStartTime;
+      const threshold = 100; // Minimum distance for swipe to close
+      const minDuration = 100; // Minimum touch duration to be considered a swipe
+
+      // Only process as swipe if it was long enough and moved enough
+      if (diff > threshold && touchDuration > minDuration) {
+        // Swiped down enough to close - find and close the dropdown
+        const dropdown = document.querySelector('[data-radix-popper-content-wrapper]');
+        if (dropdown) {
+          dropdown.classList.add('swipe-closing');
+          
+          // Close the dropdown after animation
+          setTimeout(() => {
+            // Find the dropdown trigger and close it
+            const trigger = document.querySelector('[data-state="open"]');
+            if (trigger) {
+              (trigger as HTMLElement).click();
+            }
+          }, 300);
+        }
+      } else {
+        // Reset position - animate back to original position
+        const dropdown = document.querySelector('[data-radix-popper-content-wrapper]');
+        if (dropdown) {
+          // Remove all swipe-related classes
+          dropdown.classList.remove('swiping', 'swipe-warning');
+          
+          // Remove swiping class from handle
+          const handle = dropdown.querySelector('.swipe-handle');
+          if (handle) {
+            handle.classList.remove('swiping');
+          }
+          
+          // Add a brief reset animation
+          (dropdown as HTMLElement).style.transition = 'transform 0.2s ease';
+          setTimeout(() => {
+            if (dropdown) {
+              (dropdown as HTMLElement).style.transition = '';
+            }
+          }, 200);
+        }
+      }
+      
+      setSwipeStartY(null);
+      setSwipeDiff(0);
+      setIsSwiping(false);
+      setTouchStartTime(null);
+    }
+  };
 
   // Empty state component when no liked songs
   const EmptyState = () => (
@@ -708,6 +825,8 @@ const LikedSongsPage = () => {
       ))}
     </div>
   );
+
+
 
   return (
     <main className="h-full bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414]">
@@ -795,34 +914,14 @@ const LikedSongsPage = () => {
               )}
             </div>
 
-            {/* Firebase Quota Limit Banner - Show prominently at top when limit is reached */}
+            {/* Firebase Quota Limit Banner - Simplified */}
             {syncError && syncError.includes('quota') && (
-              <div className="w-full bg-gradient-to-r from-red-900/30 to-red-800/30 border-2 border-red-500/50 p-6 rounded-xl mb-6 backdrop-blur-sm">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                    <X className="w-6 h-6 text-red-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-xl font-bold text-red-400 mb-2">🚨 Firebase Quota Limit Reached</h2>
-                    <p className="text-red-300 mb-3">
-                      You've reached your Firebase daily limit. <strong>Sync and other operations are temporarily disabled.</strong>
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div className="bg-red-900/20 p-3 rounded-lg border border-red-500/30">
-                        <h3 className="font-semibold text-red-400 mb-2">🕐 Solution 1: Wait Until Tomorrow</h3>
-                        <p className="text-red-300">Firebase quotas reset daily. You can sync again tomorrow.</p>
-                      </div>
-                      <div className="bg-red-900/20 p-3 rounded-lg border border-red-500/30">
-                        <h3 className="font-semibold text-red-400 mb-2">💳 Solution 2: Upgrade Plan</h3>
-                        <p className="text-red-300">Upgrade to Firebase Blaze Plan ($5-15/month) for unlimited usage.</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 p-3 bg-red-900/20 rounded-lg border border-red-500/30">
-                      <p className="text-red-300 text-sm">
-                        <strong>Current Status:</strong> Sync disabled, viewing only. Your liked songs are still visible but cannot be updated.
-                      </p>
-                    </div>
-                  </div>
+              <div className="w-full bg-red-900/20 border border-red-500/50 p-4 rounded-lg mb-4 text-center">
+                <div className="text-red-400 font-medium">
+                  🚨 Firebase Quota Limit Reached
+                </div>
+                <div className="text-red-300 text-sm mt-1">
+                  Please try again tomorrow - limit reached
                 </div>
               </div>
             )}
@@ -873,18 +972,25 @@ const LikedSongsPage = () => {
                       
                       {/* Sync Button - Disabled when quota limit is reached */}
                       <Button
-                        variant="outline"
                         size="default"
                         onClick={handleEnhancedSync}
-                        disabled={syncingSpotify || (syncError && syncError.includes('quota'))}
+                        disabled={syncingSpotify || (!!syncError && syncError.includes('quota'))}
                         className={`font-medium px-6 py-2 rounded-lg transition-all duration-200 ${
                           syncError && syncError.includes('quota')
-                            ? 'border-red-500/50 text-red-500 cursor-not-allowed opacity-50'
-                            : 'border-green-500/50 text-green-500 hover:bg-green-500/10 hover:border-green-500'
+                            ? 'bg-gray-500 cursor-not-allowed'
+                            : 'bg-green-500 hover:bg-green-400 text-black'
                         }`}
                       >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        {syncError && syncError.includes('quota') ? 'Sync Disabled' : 'Sync Now'}
+                        {syncingSpotify ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Syncing...
+                          </div>
+                        ) : syncError && syncError.includes('quota') ? (
+                          'Limit Reached'
+                        ) : (
+                          'Sync Now'
+                        )}
                       </Button>
                       
                       {/* Disconnect Button - Always visible when connected */}
@@ -1039,18 +1145,9 @@ const LikedSongsPage = () => {
             <div className={cn("pb-8", isMobile ? "pt-3 px-3" : "")}>
               {/* Quota Limit Message - Show above song list when limit is reached */}
               {syncError && syncError.includes('quota') && (
-                <div className="bg-red-900/20 border border-red-500/50 p-4 rounded-lg mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-red-500/20 rounded-full flex items-center justify-center">
-                      <X className="w-4 h-4 text-red-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-red-400">Firebase Quota Limit Active</h3>
-                      <p className="text-sm text-red-300">
-                        Your liked songs are visible but sync operations are disabled. 
-                        Quota resets daily, or upgrade your Firebase plan.
-                      </p>
-                    </div>
+                <div className="bg-red-900/20 border border-red-500/50 p-3 rounded-lg mb-4 text-center">
+                  <div className="text-red-300 text-sm">
+                    Limit reached - try again tomorrow
                   </div>
                 </div>
               )}
@@ -1058,7 +1155,7 @@ const LikedSongsPage = () => {
               {visibleSongs.map((song, index) => (
                 <div 
                   key={song.id}
-                  onClick={() => playSong(song, index)}
+                  onClick={(e) => handleSongClick(e, song, index)}
                   className="cursor-pointer"
                 >
                   <TouchRipple 
@@ -1161,33 +1258,180 @@ const LikedSongsPage = () => {
                                 "text-muted-foreground hover:text-foreground",
                                 isMobile ? "h-8 w-8" : "h-8 w-8"
                               )}
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Prevent opening if we were just swiping
+                                if (isSwiping || swipeDiff > 20) {
+                                  e.preventDefault();
+                                  return;
+                                }
+                              }}
+                              onTouchStart={(e) => {
+                                // Prevent touch conflicts with swipe gestures
+                                if (isSwiping) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  return;
+                                }
+                              }}
                             >
                               <MoreHorizontal className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              unlikeSong(song.id);
-                            }}>
-                              Remove from Liked Songs
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              if (navigator.clipboard) {
-                                navigator.clipboard.writeText(`${song.title} by ${song.artist}`);
-                                toast.success('Copied to clipboard');
-                              }
-                            }}>
-                              Copy song info
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              playSong(song, index);
-                            }}>
-                              {isSongPlaying(song) ? 'Pause' : 'Play'}
-                            </DropdownMenuItem>
+                          <DropdownMenuContent 
+                            align="end" 
+                            className={cn(
+                              isMobile 
+                                ? "w-full max-w-sm mx-4 mb-4 rounded-t-xl rounded-b-none border-t-4 border-t-green-500 shadow-2xl" 
+                                : "w-56"
+                            )}
+                            side={isMobile ? "bottom" : "right"}
+                            sideOffset={isMobile ? 0 : 8}
+                          >
+                            {/* Mobile: Show song info at top like in the image */}
+                            {isMobile && (
+                              <>
+                                <div className="p-4 bg-zinc-800/50 border-b border-zinc-700">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
+                                      {song.imageUrl ? (
+                                        <img 
+                                          src={song.imageUrl} 
+                                          alt={song.title} 
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-blue-400 flex items-center justify-center">
+                                          <Music className="h-6 w-6 text-white" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-medium text-white truncate">{song.title}</p>
+                                      <p className="text-sm text-zinc-300 truncate">{song.artist}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                {/* Swipe handle for mobile */}
+                                <div 
+                                  className="swipe-handle h-6 w-full flex items-center justify-center cursor-grab active:cursor-grabbing"
+                                  onTouchStart={(e) => handleSwipeStart(e)}
+                                  onTouchMove={(e) => handleSwipeMove(e)}
+                                  onTouchEnd={(e) => handleSwipeEnd(e)}
+                                >
+                                  <div className="h-1 w-16 bg-zinc-600 rounded-full"></div>
+                                </div>
+                              </>
+                            )}
+                            
+                            <div className={cn("py-1", isMobile ? "px-0" : "")}>
+                              {/* Share option */}
+                              <DropdownMenuItem 
+                                className={cn(
+                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
+                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-accent"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (navigator.share) {
+                                    navigator.share({
+                                      title: song.title,
+                                      text: `${song.title} by ${song.artist}`,
+                                      url: window.location.href
+                                    });
+                                  } else if (navigator.clipboard) {
+                                    navigator.clipboard.writeText(`${song.title} by ${song.artist}`);
+                                    toast.success('Copied to clipboard');
+                                  }
+                                }}
+                              >
+                                <div className="w-5 h-5 flex items-center justify-center">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.3 3.3 0 000-.649l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                  </svg>
+                                </div>
+                                <span className="text-sm">Share</span>
+                              </DropdownMenuItem>
+
+                              {/* Add to playlist option */}
+                              <DropdownMenuItem 
+                                className={cn(
+                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
+                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-accent"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: Implement add to playlist functionality
+                                  toast.info('Add to playlist feature coming soon');
+                                }}
+                              >
+                                <div className="w-5 h-5 flex items-center justify-center">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                                <span className="text-sm">Add to playlist</span>
+                              </DropdownMenuItem>
+
+                              {/* Remove from liked songs option */}
+                              <DropdownMenuItem 
+                                className={cn(
+                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
+                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-accent"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  unlikeSong(song.id);
+                                }}
+                              >
+                                <div className="w-5 h-5 flex items-center justify-center">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                                <span className="text-sm">Remove from Liked Songs</span>
+                              </DropdownMenuItem>
+
+                              {/* Go to album option */}
+                              <DropdownMenuItem 
+                                className={cn(
+                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
+                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-accent"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: Implement go to album functionality
+                                  toast.info('Go to album feature coming soon');
+                                }}
+                              >
+                                <div className="w-5 h-5 flex items-center justify-center">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                </div>
+                                <span className="text-sm">Go to album</span>
+                              </DropdownMenuItem>
+
+                              {/* Go to artist option */}
+                              <DropdownMenuItem 
+                                className={cn(
+                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
+                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-accent"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: Implement go to artist functionality
+                                  toast.info('Go to artist feature coming soon');
+                                }}
+                              >
+                                <div className="w-5 h-5 flex items-center justify-center">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                                <span className="text-sm">Go to artist</span>
+                              </DropdownMenuItem>
+                            </div>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

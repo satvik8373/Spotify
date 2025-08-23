@@ -16,6 +16,7 @@ import { auth, db, storage } from "@/lib/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import axiosInstance from "@/lib/axios";
 import { Timestamp } from "firebase/firestore";
+import { logout as spotifyLogout } from "./spotifyService";
 
 // Remove the separate API_URL variable since we're using axiosInstance
 
@@ -284,6 +285,18 @@ export const signOut = async () => {
     // Reset auth store before Firebase signout for faster UI response
     useAuthStore.getState().reset();
     
+    // Sign out from Spotify first (clear tokens and sync data)
+    try {
+      spotifyLogout();
+      console.log('✅ Spotify account disconnected');
+      
+      // Reset Spotify context state
+      resetSpotifyContext();
+      console.log('✅ Spotify context reset');
+    } catch (error) {
+      console.warn('Spotify logout error:', error);
+    }
+    
     // Sign out from Firebase (can be slow sometimes)
     await firebaseSignOut(auth);
     
@@ -298,10 +311,17 @@ export const signOut = async () => {
     localStorage.removeItem('firebase:authUser:AIzaSyBWgv_mE8ZAnG2kUJSacCOUgkbo1RxxSpE:[DEFAULT]');
     localStorage.removeItem('auth-store');
     
+    // Clear Spotify-related localStorage items
+    localStorage.removeItem('spotify_access_token');
+    localStorage.removeItem('spotify_refresh_token');
+    localStorage.removeItem('spotify_token_expiry');
+    localStorage.removeItem('spotify-liked-songs-last-sync');
+    localStorage.removeItem('spotify_sync_prompt');
+    
     // Clear any potential Firebase auth related items
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.includes('firebase') || key.includes('auth'))) {
+      if (key && (key.includes('firebase') || key.includes('auth') || key.includes('spotify'))) {
         localStorage.removeItem(key);
       }
     }
@@ -309,7 +329,7 @@ export const signOut = async () => {
     // Also clear session storage
     for (let i = 0; i < sessionStorage.length; i++) {
       const key = sessionStorage.key(i);
-      if (key && (key.includes('firebase') || key.includes('auth'))) {
+      if (key && (key.includes('firebase') || key.includes('auth') || key.includes('spotify'))) {
         sessionStorage.removeItem(key);
       }
     }
@@ -598,5 +618,17 @@ export const refreshUserData = async (): Promise<UserProfile | null> => {
   } catch (error) {
     console.error("Error refreshing user data:", error);
     return null;
+  }
+}; 
+
+// Function to reset Spotify context state
+const resetSpotifyContext = () => {
+  try {
+    // Try to access the Spotify context and reset it
+    // This will be called from components that use the context
+    const event = new CustomEvent('spotify-context-reset');
+    window.dispatchEvent(event);
+  } catch (error) {
+    console.warn('Could not reset Spotify context:', error);
   }
 }; 
