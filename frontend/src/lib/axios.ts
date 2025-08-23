@@ -17,17 +17,24 @@ const isProduction = window.location.hostname === 'mavrixfilms.live' ||
                      window.location.hostname === 'www.mavrixfilms.live';
 
 // Use production API URL in production, localhost in development
+// Ensure no duplicate /api in the URL
 const FINAL_API_URL = isProduction 
-  ? (import.meta.env.VITE_API_URL || 'https://mavrixfilms.live/api')
+  ? (import.meta.env.VITE_API_URL || 'https://mavrixfilms.live')
   : "http://localhost:5000";
 
+// Remove trailing slash and ensure proper formatting
+const cleanApiUrl = FINAL_API_URL.replace(/\/$/, '');
+
 console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
-console.log('🔗 API base URL:', FINAL_API_URL);
+console.log('🔗 API base URL:', cleanApiUrl);
 console.log('📍 Current hostname:', window.location.hostname);
+console.log('🔧 RAW_API_URL:', RAW_API_URL);
+console.log('🔧 FINAL_API_URL:', FINAL_API_URL);
+console.log('🔧 Clean API URL:', cleanApiUrl);
 
 // Create and configure axios instance
 const axiosInstance = axios.create({
-	baseURL: FINAL_API_URL,
+	baseURL: cleanApiUrl,
 	timeout: 10000,
 	headers: {
 		"Content-Type": "application/json",

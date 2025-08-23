@@ -9,7 +9,7 @@ To make Spotify integration work in production on `mavrixfilms.live`, you need t
 Create a `.env.production` file in your frontend directory:
 
 ```bash
-# API Configuration (CRITICAL - Vercel Backend)
+# API Configuration (CRITICAL - Vercel Backend - NO trailing /api)
 VITE_API_URL=https://spotify-api-drab.vercel.app
 
 # Spotify Configuration
@@ -20,6 +20,8 @@ VITE_REDIRECT_URI=https://mavrixfilms.live/spotify-callback
 VITE_APP_ENV=production
 VITE_APP_URL=https://mavrixfilms.live
 ```
+
+**⚠️ IMPORTANT**: Do NOT add `/api` to the end of `VITE_API_URL`. The backend routes already include `/api`.
 
 ### Backend Environment Variables
 
@@ -93,6 +95,11 @@ CORS_ORIGIN=https://mavrixfilms.live,https://www.mavrixfilms.live
 - Check backend CORS configuration
 - Ensure `VITE_API_URL` is set correctly
 
+### Double /api in URLs (FIXED)
+- ✅ **SOLVED**: Fixed axios configuration to prevent duplicate `/api` paths
+- ✅ **SOLVED**: Ensure `VITE_API_URL=https://spotify-api-drab.vercel.app` (no trailing /api)
+- ✅ **SOLVED**: Backend routes already include `/api` prefix
+
 ### Localhost:5000 Errors (FIXED)
 - ✅ **SOLVED**: Set `VITE_API_URL=https://spotify-api-drab.vercel.app` in production
 - ✅ **SOLVED**: Updated axios configuration to detect production environment
@@ -107,7 +114,7 @@ CORS_ORIGIN=https://mavrixfilms.live,https://www.mavrixfilms.live
 ## 📱 Testing Checklist
 
 - [ ] Environment variables set in production
-- [ ] **VITE_API_URL=https://spotify-api-drab.vercel.app** (CRITICAL)
+- [ ] **VITE_API_URL=https://spotify-api-drab.vercel.app** (CRITICAL - no trailing /api)
 - [ ] Spotify dashboard redirect URI updated
 - [ ] Frontend deployed with new code
 - [ ] Backend deployed with environment variables
@@ -116,6 +123,7 @@ CORS_ORIGIN=https://mavrixfilms.live,https://www.mavrixfilms.live
 - [ ] Callback works and stores tokens
 - [ ] User can see connected status
 - [ ] No more localhost:5000 API calls
+- [ ] No more double /api in URLs
 - [ ] CORS errors resolved
 
 ## 🆘 Common Issues
@@ -125,9 +133,15 @@ CORS_ORIGIN=https://mavrixfilms.live,https://www.mavrixfilms.live
 3. **Environment variables not loaded**: Check deployment configuration
 4. **CORS errors**: Backend not accessible from frontend domain
 5. **Localhost API calls**: Set `VITE_API_URL=https://spotify-api-drab.vercel.app`
-6. **Mixed content**: Clear browser cache, check for hardcoded HTTP URLs
+6. **Double /api in URLs**: Ensure no trailing `/api` in `VITE_API_URL`
+7. **Mixed content**: Clear browser cache, check for hardcoded HTTP URLs
 
 ## 🚨 CRITICAL FIXES APPLIED
+
+### ✅ **Fixed Double /api Issue**
+- Updated axios configuration to prevent duplicate `/api` paths
+- Added URL cleaning to remove trailing slashes
+- Enhanced logging to debug API URL construction
 
 ### ✅ **Fixed localhost:5000 API calls**
 - Updated `frontend/src/lib/axios.ts` to detect production environment
@@ -149,6 +163,7 @@ If you're still having issues:
 1. Check browser console for error messages
 2. Verify all environment variables are set
 3. Confirm Spotify dashboard configuration
-4. **Ensure `VITE_API_URL=https://spotify-api-drab.vercel.app` is set**
+4. **Ensure `VITE_API_URL=https://spotify-api-drab.vercel.app` (no trailing /api)**
 5. Test with a simple redirect first
 6. Clear browser cache and reload
+7. Check for double `/api` in network requests
