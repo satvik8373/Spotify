@@ -11,11 +11,14 @@ import axios from "axios";
 const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const isLocalhost = /^(http(s)?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(RAW_API_URL);
 const API_URL = isLocalhost ? RAW_API_URL : RAW_API_URL.replace(/^http:\/\//, 'https://');
-console.log('API base URL:', API_URL);
+// Force localhost for development to avoid ngrok API routing issues
+const FORCE_LOCALHOST = true;
+const FINAL_API_URL = FORCE_LOCALHOST ? "http://localhost:5000" : API_URL;
+console.log('API base URL:', FINAL_API_URL);
 
 // Create and configure axios instance
 const axiosInstance = axios.create({
-	baseURL: API_URL,
+	baseURL: FINAL_API_URL,
 	timeout: 10000,
 	headers: {
 		"Content-Type": "application/json",

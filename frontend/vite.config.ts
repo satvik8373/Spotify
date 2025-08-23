@@ -25,6 +25,7 @@ export default defineConfig(({ mode }) => {
 		},
 		server: {
 			port: 3000,
+			allowedHosts: ['1d3c38b2f441.ngrok-free.app'],
 			hmr: {
 				overlay: false,
 			},

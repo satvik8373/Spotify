@@ -9,6 +9,7 @@ const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
 const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
 const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.PlaylistPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));
 // import SharedSongPage from './pages/SharedSongPage';
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -130,6 +131,10 @@ const router = createBrowserRouter(
 		{
 			path: '/reset-password',
 			element: <ResetPassword />
+		},
+		{
+			path: '/spotify-callback',
+			element: <SpotifyCallback />
 		},
 		{
 			element: <MainLayout />, 

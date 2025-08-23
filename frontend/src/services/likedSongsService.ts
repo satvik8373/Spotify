@@ -3,6 +3,8 @@ import axiosInstance from "@/lib/axios";
 import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, serverTimestamp, updateDoc, increment, orderBy } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { updateUserStats } from "./userService";
+// Removed Spotify imports - Mavrixfy operations should never affect Spotify
+// import { isAuthenticated as isSpotifyAuthenticated, saveTrack as spotifySaveTrack, removeTrack as spotifyRemoveTrack } from './spotifyService';
 
 // Keys for storage
 const ANONYMOUS_LIKED_SONGS_KEY = "spotify-clone-liked-songs";
@@ -667,6 +669,7 @@ export const addLikedSong = async (song: {
     
     // Also update local storage
     addLikedSongLocal(song);
+    // Removed Spotify integration - Mavrixfy operations should never affect Spotify
     
     return true;
   } catch (error) {
@@ -674,6 +677,7 @@ export const addLikedSong = async (song: {
     
     // Fall back to local storage if Firebase fails
     addLikedSongLocal(song);
+    // Removed Spotify integration - Mavrixfy operations should never affect Spotify
     
     return true; // Return true anyway since we saved to local storage
   }
@@ -709,12 +713,18 @@ export const removeLikedSong = async (songId: string): Promise<boolean> => {
     // Also update local storage
     removeLikedSongLocal(songId);
     
+    // Removed all Spotify integration - Mavrixfy operations should never affect Spotify
+    console.log(`Song ${songId} removed from Mavrixfy library only - Spotify not affected`);
+    
     return true;
   } catch (error) {
     console.error("Error removing song from liked songs:", error);
     
     // Fall back to local storage if Firebase fails
     removeLikedSongLocal(songId);
+    
+    // Removed all Spotify integration - Mavrixfy operations should never affect Spotify
+    console.log(`Song ${songId} removed from Mavrixfy local storage only - Spotify not affected`);
     
     return true; // Return true anyway since we removed from local storage
   }

@@ -1,14 +1,23 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Calendar, Shuffle, Search } from 'lucide-react';
+import { Heart, Music, Music2, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Calendar, Shuffle, Search, RefreshCw, LogOut } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { loadLikedSongs, syncWithServer } from '@/services/likedSongsService';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { loadLikedSongs, syncWithServer, removeLikedSong } from '@/services/likedSongsService';
+import SpotifyLogin from '@/components/SpotifyLogin';
+import { isAuthenticated as isSpotifyAuthenticated } from '@/services/spotifyService';
+import { fetchAllSpotifySavedTracks, syncSpotifyLikedSongsToMavrixfy, backgroundAutoSyncOnce, countNewSpotifyTracks, filterOnlyNewSpotifyTracks } from '@/services/spotifySync';
+import { logout as spotifyLogout, debugTokenState } from '@/services/spotifyService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Song } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { getSyncStatus, formatSyncStatus, triggerManualSync } from '@/services/syncedLikedSongsService';
+import SpotifySyncPermissionModal from '@/components/SpotifySyncPermissionModal';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,12 +61,21 @@ const LikedSongsPage = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sortMethod, setSortMethod] = useState<'recent' | 'title' | 'artist'>('recent');
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+  const [spotifyTracks, setSpotifyTracks] = useState<any[]>([]);
+  const [syncingSpotify, setSyncingSpotify] = useState(false);
+
+  const [upToDate, setUpToDate] = useState(false);
   const [filterQuery, setFilterQuery] = useState('');
+  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [syncedSongs, setSyncedSongs] = useState<any[]>([]);
+  const [spotifyAccountName, setSpotifyAccountName] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const { currentSong, isPlaying, togglePlay } = usePlayerStore();
   const { removeLikedSong: removeFromStore } = useLikedSongsStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   // Load liked songs on mount
   useEffect(() => {
@@ -74,6 +92,239 @@ const LikedSongsPage = () => {
       document.removeEventListener('likedSongsUpdated', handleLikedSongsUpdated);
     };
   }, [isAuthenticated]);
+
+  // Load sync status for authenticated users
+  useEffect(() => {
+    if (isAuthenticated && user?.id && isSpotifyAuthenticated()) {
+      loadSyncStatus();
+    }
+  }, [isAuthenticated, user?.id]);
+
+  // Load Spotify account name on mount
+  useEffect(() => {
+    const accountName = localStorage.getItem('spotify_account_name');
+    if (accountName) {
+      setSpotifyAccountName(accountName);
+    }
+  }, []);
+
+  // Check if a song was synced from Spotify
+  const isSongFromSpotify = async (songId: string): Promise<boolean> => {
+    if (!auth.currentUser) return false;
+    
+    try {
+      const spotifySongRef = doc(db, "users", auth.currentUser.uid, "spotifyLikedSongs", songId);
+      const spotifySongDoc = await getDoc(spotifySongRef);
+      return spotifySongDoc.exists();
+    } catch {
+      return false;
+    }
+  };
+
+  // Handle disconnect with confirmation
+  const handleDisconnect = () => {
+    setShowDisconnectModal(true);
+  };
+
+  // Confirm disconnect and optionally delete synced songs
+  const confirmDisconnect = async (deleteSyncedSongs: boolean) => {
+    try {
+      console.log('Starting disconnect process, deleteSyncedSongs:', deleteSyncedSongs);
+      
+      if (deleteSyncedSongs) {
+        // Delete synced Spotify songs from Mavrixfy library
+        const syncedSongIds = new Set<string>();
+        
+        // Get all synced song IDs
+        if (auth.currentUser) {
+          console.log('Current user:', auth.currentUser.uid);
+          const spotifySongsRef = collection(db, "users", auth.currentUser.uid, "spotifyLikedSongs");
+          const spotifySongsSnapshot = await getDocs(spotifySongsRef);
+          
+          console.log('Found synced songs:', spotifySongsSnapshot.size);
+          
+          spotifySongsSnapshot.forEach((doc: any) => {
+            syncedSongIds.add(doc.id);
+            console.log('Synced song ID:', doc.id);
+          });
+          
+          // Remove synced songs from liked songs
+          for (const songId of syncedSongIds) {
+            try {
+              await removeLikedSong(songId);
+              console.log(`Successfully removed synced song: ${songId}`);
+            } catch (error) {
+              console.warn(`Failed to remove synced song ${songId}:`, error);
+            }
+          }
+          
+          // Clear the spotifyLikedSongs collection
+          const batch = writeBatch(db);
+          spotifySongsSnapshot.forEach((doc: any) => {
+            batch.delete(doc.ref);
+          });
+          await batch.commit();
+          
+          console.log('Cleared spotifyLikedSongs collection');
+          toast.success(`Removed ${syncedSongIds.size} synced Spotify songs from your library`);
+        } else {
+          console.log('No current user found');
+        }
+      }
+      
+      // Disconnect from Spotify
+      spotifyLogout();
+      setUpToDate(false);
+      setShowDisconnectModal(false);
+      toast.success('Disconnected from Spotify');
+      
+      // Reload liked songs to reflect changes
+      await loadAndSetLikedSongs();
+      
+    } catch (error) {
+      console.error('Error during disconnect:', error);
+      toast.error('Failed to disconnect properly');
+    }
+  };
+
+  // Load sync status from backend
+  const loadSyncStatus = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const status = await getSyncStatus(user.id);
+      setSyncStatus(status);
+      
+      // Format status for display
+      const formattedStatus = formatSyncStatus(status);
+      setUpToDate(formattedStatus.status === 'synced');
+    } catch (error) {
+      console.error('Error loading sync status:', error);
+    }
+  };
+
+  // Handle selected songs from permission modal
+  const handleSelectedSongsSync = async (selectedTrackIds: string[]) => {
+    if (selectedTrackIds.length === 0) return;
+    
+    setSyncingSpotify(true);
+    try {
+      // Filter tracks to only include selected ones
+      const selectedTracks = spotifyTracks.filter(track => selectedTrackIds.includes(track.id));
+      
+      // Sort tracks by addedAt date (most recent first) to match Spotify app order
+      const sortedTracks = selectedTracks.sort((a, b) => {
+        const dateA = new Date(a.addedAt).getTime();
+        const dateB = new Date(b.addedAt).getTime();
+        return dateB - dateA; // Most recent first
+      });
+      
+      // Sync only the selected tracks in correct date order
+      const result = await syncSpotifyLikedSongsToMavrixfy(sortedTracks);
+      
+      if (result.syncedCount > 0) {
+        toast.success(`Successfully added ${result.syncedCount} songs to your library`);
+        
+
+        await loadAndSetLikedSongs();
+        setUpToDate(true);
+      } else {
+        toast.info('No new songs were added');
+      }
+    } catch (error) {
+      console.error('Error syncing selected songs:', error);
+      toast.error('Failed to sync selected songs');
+    } finally {
+      setSyncingSpotify(false);
+      setShowPermissionModal(false);
+    }
+  };
+
+
+
+  // After Spotify auth callback, show sync prompt
+  useEffect(() => {
+    try {
+      const shouldPrompt = sessionStorage.getItem('spotify_sync_prompt') === '1';
+      if (shouldPrompt) {
+        sessionStorage.removeItem('spotify_sync_prompt');
+        
+        // Auto-detect Spotify account and show user info
+        autoDetectSpotifyAccount();
+        
+        // Kick off prefetch to know how many tracks
+        setSyncingSpotify(true);
+        fetchAllSpotifySavedTracks()
+          .then((tracks) => {
+            // Sort tracks by addedAt date (most recent first) to match Spotify app order
+            const sortedTracks = tracks.sort((a: any, b: any) => {
+              const dateA = new Date(a.addedAt).getTime();
+              const dateB = new Date(b.addedAt).getTime();
+              return dateB - dateA; // Most recent first
+            });
+            
+            // Filter to only show new/unscanned tracks
+            const newTracks = filterOnlyNewSpotifyTracks(sortedTracks);
+            
+            setSpotifyTracks(newTracks);
+            const newCount = newTracks.length;
+            if (newCount > 0) {
+              setShowPermissionModal(true);
+            } else {
+              setUpToDate(true);
+            }
+          })
+          .catch((error) => {
+            console.error('Failed to fetch Spotify tracks:', error);
+            // Handle authentication failure gracefully
+            if (error.response?.status === 401 || error.response?.status === 403) {
+              toast.error('Spotify authentication failed. Please reconnect.');
+              // Clear invalid tokens
+              spotifyLogout();
+            } else {
+              setShowPermissionModal(true);
+            }
+          })
+          .finally(() => setSyncingSpotify(false));
+      }
+    } catch {}
+  }, []);
+
+  // Auto-detect Spotify account information
+  const autoDetectSpotifyAccount = async () => {
+    try {
+      // Get user profile from Spotify
+      const response = await fetch('https://api.spotify.com/v1/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('spotify_access_token')}`,
+        },
+      });
+      
+      if (response.ok) {
+        const userProfile = await response.json();
+        console.log('Connected to Spotify account:', userProfile.display_name || userProfile.id);
+        
+        // Store account info for display
+        const accountName = userProfile.display_name || userProfile.id;
+        localStorage.setItem('spotify_account_name', accountName);
+        localStorage.setItem('spotify_account_id', userProfile.id);
+        setSpotifyAccountName(accountName);
+        
+        toast.success(`Connected to Spotify: ${accountName}`);
+      } else {
+        console.warn('Failed to get Spotify profile:', response.status);
+      }
+    } catch (error) {
+      console.error('Error detecting Spotify account:', error);
+    }
+  };
+
+  // Lightweight background auto-sync
+  useEffect(() => {
+    // Debug token state on mount
+    debugTokenState();
+    backgroundAutoSyncOnce().catch(() => {});
+  }, []);
 
   // Intentionally avoid setting up or changing the player queue on mount/focus to prevent auto-play
   
@@ -151,7 +402,29 @@ const LikedSongsPage = () => {
     : likedSongs;
 
   // Manual sync function for retry button
-  // Removed unused manual sync helper
+  const handleManualSync = async () => {
+    if (!user?.id) return;
+    
+    setSyncingSpotify(true);
+    try {
+      const result = await triggerManualSync(user.id);
+      toast.success(`Sync completed! ${result.added} new songs, ${result.updated} updated, ${result.removed} removed`);
+      loadSyncStatus(); // Refresh status
+    } catch (error) {
+      toast.error('Sync failed. Please try again.');
+      console.error('Manual sync error:', error);
+    } finally {
+      setSyncingSpotify(false);
+    }
+  };
+
+  // Get formatted sync status text
+  const getSyncStatusText = () => {
+    if (!syncStatus) return 'Not connected';
+    
+    const formatted = formatSyncStatus(syncStatus);
+    return formatted.text;
+  };
 
   // Debug function to log player state
   // Removed unused debugPlayerState to reduce noise
@@ -282,9 +555,12 @@ const LikedSongsPage = () => {
         <Heart className="w-12 h-12 text-white" />
       </div>
       <h2 className="text-2xl font-bold mb-2">Songs you like will appear here</h2>
-      <p className="text-zinc-400 max-w-md mb-6">
-        Save songs by tapping the heart icon.
-      </p>
+      <p className="text-zinc-400 max-w-md mb-6">Save songs by tapping the heart icon.</p>
+      {!isSpotifyAuthenticated() && (
+        <div className="mb-4">
+          <SpotifyLogin variant="default" />
+        </div>
+      )}
       <Button 
         variant="outline" 
         className="bg-white/10 text-white hover:bg-white/20 border-0"
@@ -343,7 +619,7 @@ const LikedSongsPage = () => {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div className={cn("pt-0", isMobile ? "px-0" : "px-4 sm:px-6")}>
+        <div className={cn("pt-0 pb-20", isMobile ? "px-0" : "px-4 sm:px-6")}>
           {/* Header with gradient background */}
           <div className={cn(
             "relative z-0 py-4 mb-3 spotify-mobile-liked-header",
@@ -399,7 +675,7 @@ const LikedSongsPage = () => {
                       <p className="text-muted-foreground">
                         {isLoading 
                           ? 'Loading songs...' 
-                          : `${likedSongs.length} songs${isAuthenticated && syncedWithServer && !syncError ? ' · Synced' : ''}`
+                          : `${likedSongs.length} songs${isAuthenticated && isSpotifyAuthenticated() ? ` · ${getSyncStatusText()}` : ''}`
                         }
                       </p>
                     </div>
@@ -407,24 +683,144 @@ const LikedSongsPage = () => {
                 </>
               )}
             </div>
+
+            {/* Spotify sync buttons - moved to top with professional design */}
+            {(isSpotifyAuthenticated()) && (
+              <div className={cn("mb-6", isMobile ? "px-0" : "px-0")}> 
+                <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 backdrop-blur-sm rounded-xl border border-green-500/30 p-6 shadow-lg">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <Music2 className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg text-foreground">Spotify Integration</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {upToDate ? '✅ Library is up to date' : '🔄 New songs available to sync'}
+                          </p>
+                        </div>
+                      </div>
+                      {/* Show connected account info */}
+                      {spotifyAccountName && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-green-500 font-medium">Connected to: {spotifyAccountName}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        disabled={syncingSpotify}
+                        onClick={async () => {
+                          setSyncingSpotify(true);
+                          try {
+                            const tracks = await fetchAllSpotifySavedTracks();
+                            
+                            // Sort tracks by addedAt date (most recent first) to match Spotify app order
+                            const sortedTracks = tracks.sort((a: any, b: any) => {
+                              const dateA = new Date(a.addedAt).getTime();
+                              const dateB = new Date(b.addedAt).getTime();
+                              return dateB - dateA; // Most recent first
+                            });
+                            
+                            // Filter to only show new/unscanned tracks
+                            const newTracks = filterOnlyNewSpotifyTracks(sortedTracks);
+                            
+                            setSpotifyTracks(newTracks);
+                            const newCount = newTracks.length;
+                            if (newCount === 0) {
+                              setUpToDate(true);
+                              toast.success('Already up to date');
+                            } else {
+                              setShowPermissionModal(true);
+                            }
+                          } catch {
+                            toast.error('Sync failed');
+                          } finally {
+                            setSyncingSpotify(false);
+                          }
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
+                      >
+                        {syncingSpotify ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                            Syncing...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Sync Spotify
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="default"
+                        onClick={handleDisconnect}
+                        className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Disconnect
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Connect Spotify button - moved to top with professional design */}
+            {(!isSpotifyAuthenticated()) && (
+              <div className={cn("mb-6", isMobile ? "px-0" : "px-0")}> 
+                <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 backdrop-blur-sm rounded-xl border border-green-500/30 p-6 shadow-lg">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <Music2 className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg text-foreground">Connect Spotify</h3>
+                          <p className="text-sm text-muted-foreground">
+                            🎵 Sync your Spotify liked songs with Mavrixfy
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Import your favorite tracks and keep them synced
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <SpotifyLogin 
+                        variant="default" 
+                        className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {likedSongs.length > 0 && isMobile && (
               <div className="flex items-center justify-between">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-full text-xs px-6 py-1 h-9 border border-border text-foreground hover:bg-accent"
+                  className="rounded-full text-sm px-6 py-2 h-10 border border-border text-foreground hover:bg-accent hover:border-primary transition-all duration-200 font-medium"
                   onClick={smartShuffle}
                 >
-                  <Shuffle className="h-3.5 w-3.5 mr-2" />
-                  <span className="font-normal">Shuffle</span>
+                  <Shuffle className="h-4 w-4 mr-2" />
+                  <span className="font-medium">Shuffle</span>
                 </Button>
-                <Button 
-                  onClick={playAllSongs}
-                  className="bg-green-500 hover:bg-green-400 text-black rounded-full h-14 w-14 flex items-center justify-center shadow-lg"
-                >
-                  <Play className="h-7 w-7 ml-0.5" />
-                </Button>
+                <div className="relative">
+                  <Button 
+                    onClick={playAllSongs}
+                    className="bg-green-500 hover:bg-green-400 text-black rounded-full h-14 w-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                  >
+                    <Play className="h-7 w-7 ml-0.5" />
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -433,22 +829,24 @@ const LikedSongsPage = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-full text-xs px-6 py-1 h-9 border border-border text-foreground hover:bg-accent"
+                  className="rounded-full text-sm px-6 py-2 h-10 border border-border text-foreground hover:bg-accent hover:border-primary transition-all duration-200 font-medium"
                   onClick={smartShuffle}
                 >
-                  <Shuffle className="h-3.5 w-3.5 mr-2" />
-                  <span className="font-normal">Shuffle</span>
+                  <Shuffle className="h-4 w-4 mr-2" />
+                  <span className="font-medium">Shuffle</span>
                 </Button>
-                <Button 
-                  onClick={playAllSongs}
-                  className="bg-green-500 hover:bg-green-400 text-black rounded-full h-12 w-12 flex items-center justify-center shadow-lg"
-                >
-                  {isPlaying ? (
-                    <Pause className="h-5 w-5" />
-                  ) : (
-                    <Play className="h-5 w-5 ml-0.5" />
-                  )}
-                </Button>
+                <div className="relative">
+                  <Button 
+                    onClick={playAllSongs}
+                    className="bg-green-500 hover:bg-green-400 text-black rounded-full h-12 w-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                  >
+                    {isPlaying ? (
+                      <Pause className="h-5 w-5" />
+                    ) : (
+                      <Play className="h-5 w-5 ml-0.5" />
+                    )}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -499,7 +897,7 @@ const LikedSongsPage = () => {
           {isLoading ? (
             <SkeletonLoader />
           ) : likedSongs.length > 0 ? (
-            <div className={cn("pb-4", isMobile ? "pt-3 px-3" : "")}>
+            <div className={cn("pb-8", isMobile ? "pt-3 px-3" : "")}>
               {visibleSongs.map((song, index) => (
                 <div 
                   key={song.id}
@@ -650,8 +1048,60 @@ const LikedSongsPage = () => {
           ) : (
             <EmptyState />
           )}
+
         </div>
       </ScrollArea>
+
+      {/* Spotify Sync Permission Modal */}
+      <SpotifySyncPermissionModal
+        isOpen={showPermissionModal}
+        onClose={() => setShowPermissionModal(false)}
+        tracks={spotifyTracks}
+        onSync={handleSelectedSongsSync}
+        isLoading={syncingSpotify}
+      />
+
+      {/* Disconnect Confirmation Modal */}
+      <Dialog open={showDisconnectModal} onOpenChange={setShowDisconnectModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Music className="h-5 w-5 text-red-500" />
+              Disconnect from Spotify
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              You're about to disconnect from Spotify. Would you like to also remove all synced Spotify songs from your Mavrixfy library?
+            </p>
+            
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowDisconnectModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => confirmDisconnect(false)}
+                className="text-orange-600 hover:text-orange-700"
+              >
+                Disconnect Only
+              </Button>
+              <Button
+                onClick={() => confirmDisconnect(true)}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Disconnect & Delete Songs
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
     </main>
   );
 };

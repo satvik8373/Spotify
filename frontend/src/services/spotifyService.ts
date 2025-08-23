@@ -6,7 +6,15 @@ const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
-const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI;
+const REDIRECT_URI_ENV = import.meta.env.VITE_REDIRECT_URI;
+const REDIRECT_URI = (() => {
+  if (REDIRECT_URI_ENV && typeof REDIRECT_URI_ENV === 'string' && REDIRECT_URI_ENV.trim()) return REDIRECT_URI_ENV;
+  try {
+    return `${window.location.origin}/spotify-callback`;
+  } catch {
+    return '/spotify-callback';
+  }
+})();
 const SCOPES = [
   'user-read-private',
   'user-read-email',
@@ -47,6 +55,21 @@ spotifyApi.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Intercept responses to handle auth errors
+spotifyApi.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // If we get a 403, the token is invalid - clear it
+    if (error.response?.status === 403) {
+      console.log('Spotify API returned 403 - clearing invalid tokens');
+      logout();
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Authentication functions
 export const getLoginUrl = (): string => {
   return `${SPOTIFY_AUTH_URL}?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(
@@ -54,8 +77,52 @@ export const getLoginUrl = (): string => {
   )}&scope=${encodeURIComponent(SCOPES.join(' '))}&show_dialog=true`;
 };
 
-export const handleCallback = async (code: string): Promise<boolean> => {
+export const handleCallback = async (code: string, userId?: string): Promise<boolean> => {
+  console.log('=== Spotify Authentication Debug ===');
+  console.log('Handling Spotify callback with code:', code ? 'present' : 'missing');
+  console.log('Using REDIRECT_URI:', REDIRECT_URI);
+  console.log('User ID:', userId);
+  console.log('CLIENT_ID present:', !!CLIENT_ID);
+  console.log('CLIENT_SECRET present:', !!CLIENT_SECRET);
+  
   try {
+    // Use backend route to exchange code for tokens (safer)
+    console.log('🔄 Attempting backend token exchange...');
+    const response = await axios.post('/api/spotify/callback', {
+      code,
+      redirect_uri: REDIRECT_URI,
+      userId
+    });
+
+    console.log('✅ Backend response received:', response.data);
+    if (response.data && response.data.access_token) {
+      const { access_token, refresh_token, expires_in, synced } = response.data;
+      const expiry = Date.now() + expires_in * 1000;
+      
+      // Store tokens
+      localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
+      localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
+      localStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toString());
+      
+      console.log('✅ Backend tokens stored successfully');
+      console.log('✅ Initial sync completed:', synced);
+      console.log('=== Authentication Success ===');
+      return true;
+    } else {
+      console.log('❌ Backend response missing access_token, trying fallback...');
+      console.log('Backend response structure:', Object.keys(response.data || {}));
+    }
+  } catch (error: any) {
+    console.error('❌ Backend token exchange failed:');
+    console.error('Error response:', error.response?.data);
+    console.error('Error status:', error.response?.status);
+    console.error('Error message:', error.message);
+    console.log('🔄 Attempting direct Spotify token exchange as fallback...');
+  }
+  
+  // Fallback to direct Spotify call if backend fails
+  try {
+    console.log('🔄 Attempting direct Spotify token exchange...');
     const response = await axios.post(
       SPOTIFY_TOKEN_URL,
       new URLSearchParams({
@@ -72,28 +139,41 @@ export const handleCallback = async (code: string): Promise<boolean> => {
       }
     );
 
-    if (response.data) {
+    console.log('✅ Direct Spotify response received:', response.data);
+    if (response.data && response.data.access_token) {
       const { access_token, refresh_token, expires_in } = response.data;
       const expiry = Date.now() + expires_in * 1000;
       
-      // Store tokens
       localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
       localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toString());
       
+      console.log('✅ Direct tokens stored successfully');
+      console.log('=== Authentication Success (Fallback) ===');
       return true;
+    } else {
+      console.error('❌ Direct Spotify response missing access_token');
+      console.error('Response structure:', Object.keys(response.data || {}));
     }
-    return false;
-  } catch (error) {
-    console.error('Error getting access token:', error);
-    return false;
+  } catch (fallbackError: any) {
+    console.error('❌ Fallback token exchange also failed:');
+    console.error('Fallback error response:', fallbackError.response?.data);
+    console.error('Fallback error status:', fallbackError.response?.status);
+    console.error('Fallback error message:', fallbackError.message);
   }
+  
+  console.error('❌ All authentication methods failed');
+  console.log('=== Authentication Failed ===');
+  return false;
 };
 
 export const logout = (): void => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
+  // Clear any sync-related timestamps
+  localStorage.removeItem('spotify-liked-songs-last-sync');
+  localStorage.removeItem('spotify_sync_prompt');
 };
 
 export const isAuthenticated = (): boolean => {
@@ -104,7 +184,15 @@ export const isAuthenticated = (): boolean => {
     return false;
   }
   
-  return Date.now() < parseInt(expiry, 10);
+  const isValid = Date.now() < parseInt(expiry, 10);
+  
+  // If token is expired, clear it
+  if (!isValid) {
+    console.log('Token expired, clearing...');
+    logout();
+  }
+  
+  return isValid;
 };
 
 const getAccessToken = async (): Promise<string | null> => {
@@ -378,6 +466,63 @@ export const playTrack = async (trackUri: string, deviceId?: string) => {
   }
 };
 
+// Debug function to check token state
+export const debugTokenState = () => {
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  
+  console.log('Token state:', {
+    hasToken: !!token,
+    hasExpiry: !!expiry,
+    hasRefreshToken: !!refreshToken,
+    expiryTime: expiry ? new Date(parseInt(expiry, 10)).toISOString() : 'none',
+    isExpired: expiry ? Date.now() > parseInt(expiry, 10) : true,
+    tokenPreview: token ? `${token.substring(0, 10)}...` : 'none'
+  });
+};
+
+// Debug function to check authentication state
+export const debugAuthenticationState = (): void => {
+  console.log('=== Spotify Authentication State Debug ===');
+  
+  // Check environment variables
+  console.log('Environment Variables:');
+  console.log('- VITE_SPOTIFY_CLIENT_ID:', CLIENT_ID ? 'present' : 'missing');
+  console.log('- VITE_SPOTIFY_CLIENT_SECRET:', CLIENT_SECRET ? 'present' : 'missing');
+  console.log('- VITE_REDIRECT_URI:', REDIRECT_URI_ENV ? 'present' : 'missing');
+  console.log('- Computed REDIRECT_URI:', REDIRECT_URI);
+  
+  // Check stored tokens
+  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  const tokenExpiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+  
+  console.log('Stored Tokens:');
+  console.log('- Access Token:', accessToken ? 'present' : 'missing');
+  console.log('- Refresh Token:', refreshToken ? 'present' : 'missing');
+  console.log('- Token Expiry:', tokenExpiry ? 'present' : 'missing');
+  
+  if (tokenExpiry) {
+    const expiryDate = new Date(parseInt(tokenExpiry));
+    const now = new Date();
+    const isExpired = expiryDate <= now;
+    console.log('- Token Expiry Date:', expiryDate.toISOString());
+    console.log('- Current Time:', now.toISOString());
+    console.log('- Token Expired:', isExpired);
+  }
+  
+  // Check authentication status
+  const isAuth = isAuthenticated();
+  console.log('- Is Authenticated:', isAuth);
+  
+  // Check current URL
+  console.log('Current URL:', window.location.href);
+  console.log('Current Origin:', window.location.origin);
+  
+  console.log('=== End Debug ===');
+};
+
 export default {
   getLoginUrl,
   handleCallback,
@@ -400,4 +545,6 @@ export default {
   transferPlayback,
   getPlayerState,
   playTrack,
+  debugTokenState,
+  debugAuthenticationState,
 }; 

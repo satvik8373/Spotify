@@ -1,7 +1,7 @@
 import React from 'react';
-import { getLoginUrl } from '../services/spotifyService';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { Music2 } from 'lucide-react';
+import { getLoginUrl } from '@/services/spotifyService';
 
 interface SpotifyLoginProps {
   className?: string;
@@ -14,8 +14,13 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
   variant = 'default',
   size = 'default'
 }) => {
-  const handleLogin = () => {
-    window.location.href = getLoginUrl();
+  const handleLogin = async () => {
+    try {
+      const loginUrl = await getLoginUrl();
+      window.location.href = loginUrl;
+    } catch (error) {
+      console.error('Error getting Spotify login URL:', error);
+    }
   };
 
   return (
@@ -26,9 +31,9 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       size={size}
     >
       <Music2 className="h-4 w-4" />
-      <span>Connect with Spotify</span>
+      {size !== 'icon' && <span>Connect with Spotify</span>}
     </Button>
   );
 };
 
-export default SpotifyLogin; 
+export default SpotifyLogin;

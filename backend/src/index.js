@@ -40,10 +40,33 @@ initializeSocket(httpServer);
 
 // CORS configuration with proper credentials support
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL || 'https://mavrixfilms.live', 'http://localhost:3000'] 
-    : 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  origin: (origin, callback) => {
+    try {
+      const defaultAllowed = [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://1d3c38b2f441.ngrok-free.app',
+        process.env.FRONTEND_URL || '',
+      ].filter(Boolean);
+
+      // Allow non-browser requests (no Origin)
+      if (!origin) return callback(null, true);
+
+      // Parse hostname safely
+      let hostname = '';
+      try { hostname = new URL(origin).hostname; } catch {}
+
+      const isNgrok = hostname.endsWith('.ngrok-free.app') || hostname.endsWith('.ngrok.io');
+      const isAllowed = defaultAllowed.includes(origin) || isNgrok;
+
+      console.log('CORS check:', { origin, hostname, isNgrok, isAllowed, defaultAllowed });
+      return callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
+    } catch (e) {
+      // Fallback: deny if anything goes wrong
+      return callback(new Error('CORS error'), false);
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   credentials: true, // Allow cookies to be sent with requests
