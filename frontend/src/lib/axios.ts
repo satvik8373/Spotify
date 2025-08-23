@@ -11,10 +11,19 @@ import axios from "axios";
 const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const isLocalhost = /^(http(s)?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(RAW_API_URL);
 const API_URL = isLocalhost ? RAW_API_URL : RAW_API_URL.replace(/^http:\/\//, 'https://');
-// Force localhost for development to avoid ngrok API routing issues
-const FORCE_LOCALHOST = true;
-const FINAL_API_URL = FORCE_LOCALHOST ? "http://localhost:5000" : API_URL;
-console.log('API base URL:', FINAL_API_URL);
+
+// Determine if we're in production
+const isProduction = window.location.hostname === 'mavrixfilms.live' || 
+                     window.location.hostname === 'www.mavrixfilms.live';
+
+// Use production API URL in production, localhost in development
+const FINAL_API_URL = isProduction 
+  ? (import.meta.env.VITE_API_URL || 'https://mavrixfilms.live/api')
+  : "http://localhost:5000";
+
+console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
+console.log('🔗 API base URL:', FINAL_API_URL);
+console.log('📍 Current hostname:', window.location.hostname);
 
 // Create and configure axios instance
 const axiosInstance = axios.create({
