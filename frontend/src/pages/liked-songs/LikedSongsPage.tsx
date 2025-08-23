@@ -446,6 +446,11 @@ const LikedSongsPage = () => {
   const getSyncStatusText = () => {
     if (!syncStatus) return 'Not connected';
     
+    // Check if quota limit is reached
+    if (syncError && syncError.includes('quota')) {
+      return 'Quota limit reached - sync disabled';
+    }
+    
     const formatted = formatSyncStatus(syncStatus);
     return formatted.text;
   };
@@ -786,6 +791,38 @@ const LikedSongsPage = () => {
               )}
             </div>
 
+            {/* Firebase Quota Limit Banner - Show prominently at top when limit is reached */}
+            {syncError && syncError.includes('quota') && (
+              <div className="w-full bg-gradient-to-r from-red-900/30 to-red-800/30 border-2 border-red-500/50 p-6 rounded-xl mb-6 backdrop-blur-sm">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <X className="w-6 h-6 text-red-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-xl font-bold text-red-400 mb-2">🚨 Firebase Quota Limit Reached</h2>
+                    <p className="text-red-300 mb-3">
+                      You've reached your Firebase daily limit. <strong>Sync and other operations are temporarily disabled.</strong>
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="bg-red-900/20 p-3 rounded-lg border border-red-500/30">
+                        <h3 className="font-semibold text-red-400 mb-2">🕐 Solution 1: Wait Until Tomorrow</h3>
+                        <p className="text-red-300">Firebase quotas reset daily. You can sync again tomorrow.</p>
+                      </div>
+                      <div className="bg-red-900/20 p-3 rounded-lg border border-red-500/30">
+                        <h3 className="font-semibold text-red-400 mb-2">💳 Solution 2: Upgrade Plan</h3>
+                        <p className="text-red-300">Upgrade to Firebase Blaze Plan ($5-15/month) for unlimited usage.</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-red-900/20 rounded-lg border border-red-500/30">
+                      <p className="text-red-300 text-sm">
+                        <strong>Current Status:</strong> Sync disabled, viewing only. Your liked songs are still visible but cannot be updated.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Spotify sync buttons - moved to top with professional design */}
             {(isSpotifyAuthenticated()) && (
               <div className={cn("mb-6", isMobile ? "px-0" : "px-0")}> 
@@ -812,29 +849,51 @@ const LikedSongsPage = () => {
                       )}
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3">
+                      {/* Firebase Quota Limit Warning - Show prominently when limit is reached */}
+                      {syncError && syncError.includes('quota') && (
+                        <div className="w-full bg-red-900/20 border border-red-500/50 p-4 rounded-lg mb-3">
+                          <div className="flex items-center gap-2 text-red-400 mb-2">
+                            <X className="w-5 h-5" />
+                            <span className="font-semibold text-lg">🚨 Firebase Quota Limit Reached</span>
+                          </div>
+                          <p className="text-sm text-red-300 mb-3">
+                            You've reached your Firebase daily limit. Sync and other operations are temporarily disabled.
+                          </p>
+                          <div className="text-xs text-red-400">
+                            <p>• <strong>Solution 1:</strong> Wait until tomorrow (quota resets daily)</p>
+                            <p>• <strong>Solution 2:</strong> Upgrade to Firebase Blaze Plan ($5-15/month)</p>
+                            <p>• <strong>Current Status:</strong> Sync disabled, viewing only</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Sync Button - Disabled when quota limit is reached */}
                       <Button
                         variant="outline"
                         size="default"
                         onClick={handleEnhancedSync}
-                        disabled={syncingSpotify}
-                        className="border-green-500/50 text-green-500 hover:bg-green-500/10 hover:border-green-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
+                        disabled={syncingSpotify || (syncError && syncError.includes('quota'))}
+                        className={`font-medium px-6 py-2 rounded-lg transition-all duration-200 ${
+                          syncError && syncError.includes('quota')
+                            ? 'border-red-500/50 text-red-500 cursor-not-allowed opacity-50'
+                            : 'border-green-500/50 text-green-500 hover:bg-green-500/10 hover:border-green-500'
+                        }`}
                       >
                         <RefreshCw className="w-4 h-4 mr-2" />
-                        Sync Now
+                        {syncError && syncError.includes('quota') ? 'Sync Disabled' : 'Sync Now'}
                       </Button>
                       
-                      {/* Firebase Quota Limit Warning */}
-                      {syncError && syncError.includes('quota') && (
-                        <div className="bg-red-900/20 border border-red-500/50 p-4 rounded-lg">
-                          <div className="flex items-center gap-2 text-red-400">
-                            <X className="w-4 h-4" />
-                            <span className="font-medium">Firebase Quota Limit Reached</span>
-                          </div>
-                          <p className="text-sm text-red-300 mt-2">
-                            You've reached your Firebase daily limit. Please try again tomorrow or upgrade your plan.
-                          </p>
-                        </div>
-                      )}
+                      {/* Disconnect Button - Always visible when connected */}
+                      <Button
+                        variant="outline"
+                        size="default"
+                        onClick={handleDisconnect}
+                        disabled={syncingSpotify}
+                        className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Disconnect
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -974,6 +1033,24 @@ const LikedSongsPage = () => {
             <SkeletonLoader />
           ) : likedSongs.length > 0 ? (
             <div className={cn("pb-8", isMobile ? "pt-3 px-3" : "")}>
+              {/* Quota Limit Message - Show above song list when limit is reached */}
+              {syncError && syncError.includes('quota') && (
+                <div className="bg-red-900/20 border border-red-500/50 p-4 rounded-lg mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-red-500/20 rounded-full flex items-center justify-center">
+                      <X className="w-4 h-4 text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-red-400">Firebase Quota Limit Active</h3>
+                      <p className="text-sm text-red-300">
+                        Your liked songs are visible but sync operations are disabled. 
+                        Quota resets daily, or upgrade your Firebase plan.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {visibleSongs.map((song, index) => (
                 <div 
                   key={song.id}
