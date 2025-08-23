@@ -10,7 +10,6 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { migrateAnonymousLikedSongs } from "@/services/likedSongsService";
 
 // Sign in with email and password
 export const login = async (email: string, password: string) => {
@@ -29,8 +28,8 @@ export const login = async (email: string, password: string) => {
       userData?.imageUrl || user.photoURL || undefined
     );
     
-    // Migrate any liked songs from anonymous user
-    migrateAnonymousLikedSongs(user.uid);
+    // Note: Liked songs are now automatically managed via Firestore
+    // No manual migration needed when user logs in
     
     return user;
   } catch (error: any) {

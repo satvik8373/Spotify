@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as spotifyService from "../services/spotify.service.js";
 import { storeSpotifyTokens, getSpotifyTokens } from '../services/spotifyTokenService.js';
-import { syncSpotifyLikedSongs, getSyncedLikedSongs, getSyncStatus } from '../services/spotifySyncService.js';
+import { syncSpotifyLikedSongs, getSyncedLikedSongs, getSyncStatus, migrateLikedSongsStructure } from '../services/spotifySyncService.js';
 import admin from '../config/firebase.js';
 import axios from 'axios';
 
@@ -352,8 +352,8 @@ router.delete("/liked-songs/:userId", async (req, res) => {
   try {
     console.log("🔄 Deleting all liked songs for user:", userId);
     
-    // Get user's liked songs from Firestore
-    const likedSongsRef = admin.firestore().collection('users').doc(userId).collection('spotifyLikedSongs');
+    // Get user's liked songs from Firestore (new nested structure)
+    const likedSongsRef = admin.firestore().collection('users').doc(userId).collection('likedSongs');
     const likedSongsSnapshot = await likedSongsRef.get();
     
     if (likedSongsSnapshot.empty) {
@@ -404,7 +404,7 @@ router.delete("/liked-songs/:userId", async (req, res) => {
       // Continue with Firestore deletion even if Spotify fails
     }
     
-    // Delete all documents from Firestore
+    // Delete all documents from Firestore (new nested structure)
     console.log("🔄 Deleting songs from Firestore...");
     const batch = admin.firestore().batch();
     likedSongsSnapshot.forEach(doc => {
@@ -435,6 +435,40 @@ router.delete("/liked-songs/:userId", async (req, res) => {
     console.error("❌ Error deleting all liked songs:", error);
     res.status(500).json({ 
       message: "Failed to delete all liked songs",
+      error: error.message
+    });
+  }
+});
+
+// Route to migrate liked songs from old structure to new structure
+router.post("/migrate/:userId", async (req, res) => {
+  const { userId } = req.params;
+  
+  console.log("=== Migration Debug ===");
+  console.log("User ID:", userId);
+  
+  if (!userId) {
+    console.error("❌ Missing user ID");
+    return res.status(400).json({ 
+      message: "User ID is required",
+      error: "MISSING_USER_ID"
+    });
+  }
+  
+  try {
+    console.log("🔄 Starting migration for user:", userId);
+    const result = await migrateLikedSongsStructure(userId);
+    
+    res.json({
+      success: true,
+      message: result.message,
+      migratedCount: result.migrated
+    });
+    
+  } catch (error) {
+    console.error("❌ Migration failed:", error);
+    res.status(500).json({ 
+      message: "Migration failed",
       error: error.message
     });
   }

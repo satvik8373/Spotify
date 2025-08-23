@@ -17,8 +17,8 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.auth.uid == userId;
       allow update, delete: if isOwner(userId);
       
-      // Spotify Liked Songs subcollection
-      match /spotifyLikedSongs/{songId} {
+      // Liked Songs subcollection - each user has their own collection
+      match /likedSongs/{songId} {
         allow read, write, delete: if isAuthenticated() && isOwner(userId);
       }
       

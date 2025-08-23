@@ -1,7 +1,7 @@
 import { getSavedTracks, isAuthenticated as isSpotifyAuthenticated } from '@/services/spotifyService';
-import { addLikedSong as addFirestoreLikedSong, Song as FirestoreSong } from '@/services/likedSongsService';
+import { addLikedSong as addFirestoreLikedSong, Song as FirestoreSong, getLikedSongsCount } from '@/services/likedSongsService';
 import { auth, db } from '@/lib/firebase';
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 
 export interface SpotifySyncResult {
   fetchedCount: number;
@@ -62,28 +62,35 @@ export const fetchAllSpotifySavedTracks = async (): Promise<FirestoreSong[]> => 
   }
 };
 
-export const syncSpotifyLikedSongsToMavrixfy = async (tracks: FirestoreSong[]): Promise<SpotifySyncResult> => {
+// Get existing song IDs from Firestore
+const getExistingSongIds = async (): Promise<Set<string>> => {
   const existingIds = new Set<string>();
+  
+  try {
+    if (!auth.currentUser) return existingIds;
+    
+    const likedSongsRef = collection(db, 'users', auth.currentUser.uid, 'likedSongs');
+    const snapshot = await getDocs(likedSongsRef);
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.songId) {
+        existingIds.add(data.songId);
+      }
+    });
+  } catch (error) {
+    console.error('Error getting existing song IDs from Firestore:', error);
+  }
+  
+  return existingIds;
+};
+
+export const syncSpotifyLikedSongsToMavrixfy = async (tracks: FirestoreSong[]): Promise<SpotifySyncResult> => {
+  const existingIds = await getExistingSongIds();
   const fetchedCount = tracks.length;
   let syncedCount = 0;
 
-  // Build set from local storage to avoid duplicates quickly
-  try {
-    const localRaw = localStorage.getItem('liked-songs-storage');
-    if (localRaw) {
-      const parsed = JSON.parse(localRaw);
-      const songs: any[] = parsed?.state?.likedSongs || [];
-      songs.forEach((s: any) => {
-        const id = s?._id || s?.id;
-        if (id) existingIds.add(id);
-      });
-    }
-  } catch {}
-
-  // Add to global liked songs and also record provenance under users/{uid}/spotifyLikedSongs
-  const user = auth.currentUser;
-  const provenanceCol = user ? collection(db, 'users', user.uid, 'spotifyLikedSongs') : null;
-
+  // Add to global liked songs
   for (const track of tracks) {
     const id = track.id;
     if (!id || existingIds.has(id)) continue;
@@ -92,24 +99,13 @@ export const syncSpotifyLikedSongsToMavrixfy = async (tracks: FirestoreSong[]): 
       id: track.id,
       title: track.title,
       artist: track.artist,
-      albumName: track.album || '',
+      album: track.album || '',
       imageUrl: track.imageUrl || '',
       audioUrl: track.audioUrl || '',
       duration: track.duration || 0,
     });
     syncedCount += 1;
     existingIds.add(id);
-
-    if (provenanceCol) {
-      try {
-        const docRef = doc(provenanceCol, id);
-        await setDoc(docRef, {
-          trackId: id,
-          // Store Spotify's original addedAt if available; fallback to server time
-          addedAt: (track as any)?.addedAt ? new Date((track as any).addedAt) : serverTimestamp(),
-        }, { merge: true });
-      } catch {}
-    }
   }
 
   try {
@@ -119,40 +115,20 @@ export const syncSpotifyLikedSongsToMavrixfy = async (tracks: FirestoreSong[]): 
   return { fetchedCount, syncedCount };
 };
 
-export const countNewSpotifyTracks = (tracks: FirestoreSong[]): number => {
-  const existingIds = new Set<string>();
-  try {
-    const localRaw = localStorage.getItem('liked-songs-storage');
-    if (localRaw) {
-      const parsed = JSON.parse(localRaw);
-      const songs: any[] = parsed?.state?.likedSongs || [];
-      songs.forEach((s: any) => {
-        const id = s?._id || s?.id;
-        if (id) existingIds.add(id);
-      });
-    }
-  } catch {}
+export const countNewSpotifyTracks = async (tracks: FirestoreSong[]): Promise<number> => {
+  const existingIds = await getExistingSongIds();
   let newCount = 0;
+  
   for (const t of tracks) {
     if (t?.id && !existingIds.has(t.id)) newCount += 1;
   }
+  
   return newCount;
 };
 
 // Filter only new/unscanned Spotify tracks that aren't already in Mavrixfy
-export const filterOnlyNewSpotifyTracks = (tracks: FirestoreSong[]): FirestoreSong[] => {
-  const existingIds = new Set<string>();
-  try {
-    const localRaw = localStorage.getItem('liked-songs-storage');
-    if (localRaw) {
-      const parsed = JSON.parse(localRaw);
-      const songs: any[] = parsed?.state?.likedSongs || [];
-      songs.forEach((s: any) => {
-        const id = s?._id || s?.id;
-        if (id) existingIds.add(id);
-      });
-    }
-  } catch {}
+export const filterOnlyNewSpotifyTracks = async (tracks: FirestoreSong[]): Promise<FirestoreSong[]> => {
+  const existingIds = await getExistingSongIds();
   
   return tracks.filter(track => track?.id && !existingIds.has(track.id));
 };

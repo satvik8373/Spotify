@@ -151,3 +151,14 @@ export const deleteAllLikedSongs = async (userId: string) => {
     throw error;
   }
 };
+
+// Migrate liked songs from old structure to new structure
+export const migrateLikedSongsStructure = async (userId: string) => {
+  try {
+    const response = await axios.post(`/api/spotify/migrate/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error migrating liked songs structure:', error);
+    throw error;
+  }
+};

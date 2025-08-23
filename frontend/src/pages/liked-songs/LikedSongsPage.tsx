@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { Song } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService, deleteAllLikedSongs } from '@/services/syncedLikedSongsService';
+import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService, deleteAllLikedSongs, migrateLikedSongsStructure } from '@/services/syncedLikedSongsService';
 import SpotifySyncPermissionModal from '@/components/SpotifySyncPermissionModal';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
@@ -629,6 +629,41 @@ const LikedSongsPage = () => {
     }
   };
 
+  // Handle migration to new structure
+  const handleMigration = async () => {
+    if (!user?.id) return;
+    
+    const confirmed = window.confirm(
+      `Migrate your liked songs to the new database structure?\n\n` +
+      `This will:\n` +
+      `• Move your data to a cleaner structure\n` +
+      `• Improve performance and data organization\n` +
+      `• Keep all your existing data\n\n` +
+      `This is a safe operation that can be run multiple times.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      setSyncingSpotify(true);
+      
+      const result = await migrateLikedSongsStructure(user.id);
+      
+      if (result.success) {
+        toast.success(`Migration completed! ${result.migratedCount} songs migrated.`);
+        
+        // Refresh data after migration
+        await loadSyncedSongs();
+        await loadSyncStatus();
+      }
+    } catch (error) {
+      console.error('Migration error:', error);
+      toast.error('Migration failed. Please try again.');
+    } finally {
+      setSyncingSpotify(false);
+    }
+  };
+
   // Removed header opacity tracking
   const handleScroll = useCallback(() => {
     // no-op
@@ -882,6 +917,18 @@ const LikedSongsPage = () => {
                       >
                         <LogOut className="w-4 h-4 mr-2" />
                         Disconnect
+                      </Button>
+                      
+                      {/* Migration Button */}
+                      <Button
+                        variant="outline"
+                        size="default"
+                        onClick={handleMigration}
+                        disabled={syncingSpotify}
+                        className="border-blue-500/50 text-blue-500 hover:bg-blue-500/10 hover:border-blue-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Migrate Data
                       </Button>
                       
                       {/* Delete All Songs Button */}

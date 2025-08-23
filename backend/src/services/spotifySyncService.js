@@ -76,8 +76,8 @@ export const syncSpotifyLikedSongs = async (userId) => {
     // Fetch current liked songs from Spotify
     const spotifyLikedSongs = await fetchSpotifyLikedSongs(userId);
     
-    // Get existing liked songs from Firestore
-    const existingRef = db.collection('users').doc(userId).collection('spotifyLikedSongs');
+    // Get existing liked songs from Firestore (new nested structure)
+    const existingRef = admin.firestore().collection('users').doc(userId).collection('likedSongs');
     const existingSnapshot = await existingRef.get();
     const existingSongs = new Map();
     
@@ -86,7 +86,7 @@ export const syncSpotifyLikedSongs = async (userId) => {
     });
 
     // Process new songs
-    const batch = db.batch();
+    const batch = admin.firestore().batch();
     let addedCount = 0;
     let updatedCount = 0;
     let removedCount = 0;
@@ -94,6 +94,8 @@ export const syncSpotifyLikedSongs = async (userId) => {
     // Add/update songs from Spotify
     for (const item of spotifyLikedSongs) {
       const trackData = mapSpotifyTrack(item);
+      // No need to add userId since it's now in the path
+      
       const trackRef = existingRef.doc(trackData.trackId);
       
       if (existingSongs.has(trackData.trackId)) {
@@ -123,7 +125,7 @@ export const syncSpotifyLikedSongs = async (userId) => {
     await batch.commit();
 
     // Update sync metadata
-    const syncMetadataRef = db.collection('users').doc(userId).collection('spotifySync').doc('metadata');
+    const syncMetadataRef = admin.firestore().collection('users').doc(userId).collection('spotifySync').doc('metadata');
     await syncMetadataRef.set({
       lastSyncAt: admin.firestore.FieldValue.serverTimestamp(),
       totalSongs: spotifyLikedSongs.length,
@@ -150,7 +152,7 @@ export const syncSpotifyLikedSongs = async (userId) => {
     console.error('Error syncing Spotify liked songs:', error);
     
     // Update sync metadata with error
-    const syncMetadataRef = db.collection('users').doc(userId).collection('spotifySync').doc('metadata');
+    const syncMetadataRef = admin.firestore().collection('users').doc(userId).collection('spotifySync').doc('metadata');
     await syncMetadataRef.set({
       lastSyncAt: admin.firestore.FieldValue.serverTimestamp(),
       syncStatus: 'failed',
@@ -184,8 +186,8 @@ export const handleSpotifyLikeUnlike = async (userId, trackId, action) => {
         }
       });
       
-      // Add to Firestore
-      const trackRef = db.collection('users').doc(userId).collection('spotifyLikedSongs').doc(trackId);
+      // Add to Firestore (new nested structure)
+      const trackRef = admin.firestore().collection('users').doc(userId).collection('likedSongs').doc(trackId);
       await trackRef.set({
         trackId,
         syncedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -203,13 +205,13 @@ export const handleSpotifyLikeUnlike = async (userId, trackId, action) => {
         }
       });
       
-      // Remove from Firestore
-      const trackRef = db.collection('users').doc(userId).collection('spotifyLikedSongs').doc(trackId);
+      // Remove from Firestore (new nested structure)
+      const trackRef = admin.firestore().collection('users').doc(userId).collection('likedSongs').doc(trackId);
       await trackRef.delete();
     }
     
     // Update sync metadata
-    const syncMetadataRef = db.collection('users').doc(userId).collection('spotifySync').doc('metadata');
+    const syncMetadataRef = admin.firestore().collection('users').doc(userId).collection('spotifySync').doc('metadata');
     await syncMetadataRef.set({
       lastSyncAt: admin.firestore.FieldValue.serverTimestamp(),
       lastAction: action,
@@ -224,7 +226,7 @@ export const handleSpotifyLikeUnlike = async (userId, trackId, action) => {
     console.error(`Error handling Spotify ${action}:`, error);
     
     // Update sync metadata with error
-    const syncMetadataRef = db.collection('users').doc(userId).collection('spotifySync').doc('metadata');
+    const syncMetadataRef = admin.firestore().collection('users').doc(userId).collection('spotifySync').doc('metadata');
     await syncMetadataRef.set({
       lastSyncAt: admin.firestore.FieldValue.serverTimestamp(),
       syncStatus: 'failed',
@@ -240,7 +242,7 @@ export const handleSpotifyLikeUnlike = async (userId, trackId, action) => {
 // Get user's synced liked songs from Firestore with real-time updates
 export const getSyncedLikedSongs = async (userId) => {
   try {
-    const songsRef = db.collection('users').doc(userId).collection('spotifyLikedSongs');
+    const songsRef = admin.firestore().collection('users').doc(userId).collection('likedSongs');
     const snapshot = await songsRef.orderBy('addedAt', 'desc').get();
     
     const songs = [];
@@ -261,7 +263,7 @@ export const getSyncedLikedSongs = async (userId) => {
 // Get sync status for a user
 export const getSyncStatus = async (userId) => {
   try {
-    const metadataRef = db.collection('users').doc(userId).collection('spotifySync').doc('metadata');
+    const metadataRef = admin.firestore().collection('users').doc(userId).collection('spotifySync').doc('metadata');
     const metadataDoc = await metadataRef.get();
     
     if (!metadataDoc.exists) {
@@ -288,5 +290,81 @@ export const getSyncStatus = async (userId) => {
       syncStatus: 'error',
       error: error.message
     };
+  }
+};
+
+// Migration function to move data from old structure to new structure
+export const migrateLikedSongsStructure = async (userId) => {
+  try {
+    console.log(`Starting migration for user: ${userId}`);
+    
+    // Get songs from old structure (global likedSongs collection)
+    const oldStructureRef = admin.firestore().collection('likedSongs');
+    const oldSnapshot = await oldStructureRef.where('userId', '==', userId).get();
+    
+    if (oldSnapshot.empty) {
+      console.log("✅ No data to migrate from global collection");
+      
+      // Check if user already has data in new structure
+      const newStructureRef = admin.firestore().collection('users').doc(userId).collection('likedSongs');
+      const newSnapshot = await newStructureRef.get();
+      
+      if (!newSnapshot.empty) {
+        console.log("✅ User already has data in new structure");
+        return { migrated: 0, message: "User already has data in new structure" };
+      }
+      
+      return { migrated: 0, message: "No data to migrate" };
+    }
+    
+    // Get songs from new structure to avoid duplicates
+    const newStructureRef = admin.firestore().collection('users').doc(userId).collection('likedSongs');
+    const newSnapshot = await newStructureRef.get();
+    const existingSongs = new Set();
+    newSnapshot.forEach(doc => {
+      existingSongs.add(doc.data().trackId);
+    });
+    
+    // Migrate songs to new structure
+    const batch = admin.firestore().batch();
+    let migratedCount = 0;
+    
+    oldSnapshot.forEach(doc => {
+      const songData = doc.data();
+      
+      // Skip if already exists in new structure
+      if (existingSongs.has(songData.trackId)) {
+        console.log(`Skipping duplicate: ${songData.trackId}`);
+        return;
+      }
+      
+      // Create in new structure (no need for userId field)
+      const newSongRef = newStructureRef.doc(songData.trackId);
+      batch.set(newSongRef, songData);
+      migratedCount++;
+    });
+    
+    // Commit the migration
+    if (migratedCount > 0) {
+      await batch.commit();
+      console.log(`✅ Migrated ${migratedCount} songs to new structure`);
+      
+      // Clean up old structure
+      const cleanupBatch = admin.firestore().batch();
+      oldSnapshot.forEach(doc => {
+        cleanupBatch.delete(doc.ref);
+      });
+      await cleanupBatch.commit();
+      console.log("✅ Cleaned up old structure");
+    }
+    
+    return {
+      migrated: migratedCount,
+      message: `Successfully migrated ${migratedCount} songs`
+    };
+    
+  } catch (error) {
+    console.error("❌ Migration failed:", error);
+    throw error;
   }
 };

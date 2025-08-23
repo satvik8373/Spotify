@@ -14,7 +14,6 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { migrateAnonymousLikedSongs } from "@/services/likedSongsService";
 import axiosInstance from "@/lib/axios";
 import { Timestamp } from "firebase/firestore";
 
@@ -167,7 +166,8 @@ export const login = async (email: string, password: string): Promise<UserProfil
       
       // Step 5: Handle Anonymous User Data Migration (if present)
       try {
-        await migrateAnonymousLikedSongs(firebaseUser.uid);
+        // This step is no longer needed as we are using Firestore exclusively
+        // await migrateAnonymousLikedSongs(firebaseUser.uid);
       } catch (error) {
         console.warn("Error migrating liked songs:", error);
         // Continue without failing the login
@@ -590,7 +590,8 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
         }
         
         // Migrate any liked songs from anonymous user
-        await migrateAnonymousLikedSongs(user.uid);
+        // This step is no longer needed as we are using Firestore exclusively
+        // await migrateAnonymousLikedSongs(user.uid);
       } catch (error) {
         console.error("Background operations failed, but user is authenticated:", error);
       }

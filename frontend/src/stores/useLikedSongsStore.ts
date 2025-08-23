@@ -90,16 +90,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           if (isAuthenticated) {
             try {
               // Fetch from Firestore sorted by most recent first
-              const firebaseLiked = await likedSongsFirestoreService.getLikedSongs();
-              const firebaseSongs = firebaseLiked.map(ls => ({
-                id: ls.songId || ls.id,
-                title: ls.title,
-                artist: ls.artist,
-                imageUrl: ls.imageUrl,
-                audioUrl: ls.audioUrl,
-                duration: ls.duration || 0,
-                album: ls.albumName || ''
-              }));
+              const firebaseSongs = await likedSongsFirestoreService.loadLikedSongs();
               songs = firebaseSongs.map(convertToLocalSong);
             } catch (firebaseError) {
               console.warn('Failed to load from Firebase, falling back to local storage', firebaseError);
@@ -191,7 +182,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
               imageUrl: song.imageUrl,
               audioUrl: song.audioUrl,
               duration: song.duration,
-              albumName: song.albumId || ''
+              album: song.albumId || ''
             }).catch(() => {
               // Error handled silently
             });
