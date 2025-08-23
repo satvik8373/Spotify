@@ -72,9 +72,30 @@ spotifyApi.interceptors.response.use(
 
 // Authentication functions
 export const getLoginUrl = (): string => {
-  return `${SPOTIFY_AUTH_URL}?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(
+  console.log('🔧 getLoginUrl called');
+  console.log('🔑 CLIENT_ID present:', !!CLIENT_ID);
+  console.log('🔑 CLIENT_SECRET present:', !!CLIENT_SECRET);
+  console.log('🔗 REDIRECT_URI_ENV:', REDIRECT_URI_ENV);
+  console.log('🔗 REDIRECT_URI (final):', REDIRECT_URI);
+  console.log('🌍 Current origin:', window.location.origin);
+  
+  // Check if required values are present
+  if (!CLIENT_ID) {
+    console.error('❌ CLIENT_ID is missing!');
+    throw new Error('Spotify CLIENT_ID is not configured');
+  }
+  
+  if (!REDIRECT_URI || REDIRECT_URI === 'undefined') {
+    console.error('❌ REDIRECT_URI is invalid!');
+    throw new Error('Invalid redirect URI configuration');
+  }
+  
+  const loginUrl = `${SPOTIFY_AUTH_URL}?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(
     REDIRECT_URI
   )}&scope=${encodeURIComponent(SCOPES.join(' '))}&show_dialog=true`;
+  
+  console.log('🔗 Generated login URL:', loginUrl);
+  return loginUrl;
 };
 
 export const handleCallback = async (code: string, userId?: string): Promise<boolean> => {
