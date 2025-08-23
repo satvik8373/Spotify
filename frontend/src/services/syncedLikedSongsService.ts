@@ -92,3 +92,62 @@ export const formatSyncStatus = (status: any) => {
     lastSync: status.lastSyncAt
   };
 };
+
+// Handle real-time like/unlike operations
+export const handleSpotifyLikeUnlike = async (userId: string, trackId: string, action: 'like' | 'unlike') => {
+  try {
+    const response = await axios.post('/api/spotify/like-unlike', {
+      userId,
+      trackId,
+      action
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error handling Spotify ${action}:`, error);
+    throw error;
+  }
+};
+
+// Force refresh synced songs from server
+export const forceRefreshSyncedSongs = async (userId: string) => {
+  try {
+    // Clear any cached data and fetch fresh from server
+    const response = await axios.get(`/api/spotify/liked-songs/${userId}?refresh=true`);
+    return response.data;
+  } catch (error) {
+    console.error('Error forcing refresh of synced songs:', error);
+    throw error;
+  }
+};
+
+// Get sync status with detailed information
+export const getDetailedSyncStatus = async (userId: string) => {
+  try {
+    const [syncStatus, songsCount] = await Promise.all([
+      getSyncStatus(userId),
+      getSyncedLikedSongs(userId).then(songs => songs.length)
+    ]);
+    
+    return {
+      ...syncStatus,
+      songsCount,
+      isUpToDate: syncStatus.syncStatus === 'completed',
+      lastSyncFormatted: syncStatus.lastSyncAt ? 
+        new Date(syncStatus.lastSyncAt).toLocaleString() : 'Never'
+    };
+  } catch (error) {
+    console.error('Error getting detailed sync status:', error);
+    throw error;
+  }
+};
+
+// Delete all liked songs for a user
+export const deleteAllLikedSongs = async (userId: string) => {
+  try {
+    const response = await axios.delete(`/api/spotify/liked-songs/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting all liked songs:', error);
+    throw error;
+  }
+};

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Heart, Music, Music2, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Calendar, Shuffle, Search, RefreshCw, LogOut } from 'lucide-react';
+import { Heart, Music, Music2, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Calendar, Shuffle, Search, RefreshCw, LogOut, X } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { Song } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { getSyncStatus, formatSyncStatus, triggerManualSync } from '@/services/syncedLikedSongsService';
+import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService, deleteAllLikedSongs } from '@/services/syncedLikedSongsService';
 import SpotifySyncPermissionModal from '@/components/SpotifySyncPermissionModal';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
@@ -97,6 +97,8 @@ const LikedSongsPage = () => {
   useEffect(() => {
     if (isAuthenticated && user?.id && isSpotifyAuthenticated()) {
       loadSyncStatus();
+      // Force refresh synced songs to ensure consistency
+      loadSyncedSongs();
     }
   }, [isAuthenticated, user?.id]);
 
@@ -328,44 +330,52 @@ const LikedSongsPage = () => {
 
   // Intentionally avoid setting up or changing the player queue on mount/focus to prevent auto-play
   
-  // Load and set liked songs
-  const loadAndSetLikedSongs = async () => {
-    setIsLoading(true);
-    setSyncError(null);
+  // Load synced songs from Firestore
+  const loadSyncedSongs = async () => {
+    if (!isAuthenticated || !user?.id) return;
     
     try {
-      // First load from local storage
-      const localSongs = loadLikedSongs();
-      const sortedSongs = sortSongs(localSongs, sortMethod);
-      setLikedSongs(sortedSongs);
+      const syncedData = await getSyncedLikedSongs(user.id);
+      setSyncedSongs(syncedData);
       
-      // Then sync with server if authenticated
-      if (isAuthenticated) {
-        try {
-          const serverSongs = await syncWithServer(localSongs);
-          const sortedServerSongs = sortSongs(serverSongs, sortMethod);
-          setLikedSongs(sortedServerSongs);
-          setSyncedWithServer(true);
-        } catch (syncErr) {
-          console.error('Error syncing with server:', syncErr);
-          setSyncError('Using local data - server sync unavailable');
-          // Still mark as synced to prevent continuous retries
-          setSyncedWithServer(true);
-          
-          // Show informational toast instead of error
-          toast.info('Using locally stored liked songs', {
-            description: 'Server synchronization is currently unavailable.'
-          });
-        }
+      // If we have synced songs, use them as the primary source
+      if (syncedData.length > 0) {
+        setLikedSongs(syncedData);
+        setUpToDate(true);
       }
     } catch (error) {
+      console.error('Error loading synced songs:', error);
+    }
+  };
+
+  // Enhanced load function that prioritizes synced data
+  const loadAndSetLikedSongs = async () => {
+    if (!isAuthenticated) {
+      // Load anonymous liked songs
+      const anonymousSongs = await loadLikedSongs();
+      setLikedSongs(anonymousSongs);
+      return;
+    }
+
+    try {
+      // First try to load synced songs from Firestore
+      if (isSpotifyAuthenticated() && user?.id) {
+        const syncedData = await getSyncedLikedSongs(user.id);
+        if (syncedData.length > 0) {
+          setLikedSongs(syncedData);
+          setUpToDate(true);
+          return;
+        }
+      }
+      
+      // Fallback to local storage if no synced data
+      const localSongs = await loadLikedSongs();
+      setLikedSongs(localSongs);
+    } catch (error) {
       console.error('Error loading liked songs:', error);
-      setSyncError('Failed to load liked songs');
-      toast.error('Failed to load liked songs', {
-        description: 'Please try again later.'
-      });
-    } finally {
-      setIsLoading(false);
+      // Fallback to local storage
+      const localSongs = await loadLikedSongs();
+      setLikedSongs(localSongs);
     }
   };
 
@@ -409,6 +419,10 @@ const LikedSongsPage = () => {
     try {
       const result = await triggerManualSync(user.id);
       toast.success(`Sync completed! ${result.added} new songs, ${result.updated} updated, ${result.removed} removed`);
+      
+      // Enhanced sync to ensure data consistency
+      await handleEnhancedSync();
+      
       loadSyncStatus(); // Refresh status
     } catch (error) {
       toast.error('Sync failed. Please try again.');
@@ -508,6 +522,111 @@ const LikedSongsPage = () => {
       setLikedSongs(prev => prev.filter(song => song.id !== id));
       toast.success('Removed from Liked Songs');
     } catch {}
+  };
+
+  // Handle real-time like/unlike operations
+  const handleSpotifyLikeUnlike = async (trackId: string, action: 'like' | 'unlike') => {
+    if (!user?.id || !isSpotifyAuthenticated()) {
+      toast.error('Please connect your Spotify account first');
+      return;
+    }
+
+    try {
+      setSyncingSpotify(true);
+      
+      // Call the backend to handle the operation
+      const result = await handleSpotifyLikeUnlikeService(user.id, trackId, action);
+      
+      if (result && result.success) {
+        // Update local state immediately for better UX
+        if (action === 'like') {
+          // Find the song in spotifyTracks and add it to likedSongs
+          const trackToAdd = spotifyTracks.find(track => track.id === trackId);
+          if (trackToAdd) {
+            setLikedSongs(prev => [trackToAdd, ...prev]);
+          }
+        } else {
+          // Remove from likedSongs
+          setLikedSongs(prev => prev.filter(song => song.id !== trackId));
+        }
+        
+        // Refresh synced data to ensure consistency
+        await loadSyncedSongs();
+        
+        toast.success(`Track ${action}d successfully`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing track:`, error);
+      toast.error(`Failed to ${action} track. Please try again.`);
+    } finally {
+      setSyncingSpotify(false);
+    }
+  };
+
+  // Enhanced sync function that ensures data consistency
+  const handleEnhancedSync = async () => {
+    if (!user?.id) return;
+    
+    setSyncingSpotify(true);
+    try {
+      // First, trigger manual sync
+      const result = await triggerManualSync(user.id);
+      
+      // Then, force refresh synced songs
+      await loadSyncedSongs();
+      
+      // Update sync status
+      await loadSyncStatus();
+      
+      toast.success(`Sync completed! ${result.added} new songs, ${result.updated} updated, ${result.removed} removed`);
+    } catch (error) {
+      toast.error('Sync failed. Please try again.');
+      console.error('Enhanced sync error:', error);
+    } finally {
+      setSyncingSpotify(false);
+    }
+  };
+
+  // Handle deleting all liked songs
+  const handleDeleteAllSongs = async () => {
+    if (!user?.id) return;
+    
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ALL ${likedSongs.length} liked songs?\n\n` +
+      `This action will:\n` +
+      `• Remove all songs from your Spotify liked songs\n` +
+      `• Delete all data from Firestore database\n` +
+      `• Clear your local liked songs\n\n` +
+      `This action cannot be undone!`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      setSyncingSpotify(true);
+      
+      // Call backend to delete all songs
+      const result = await deleteAllLikedSongs(user.id);
+      
+      if (result.success) {
+        // Clear local state
+        setLikedSongs([]);
+        setSyncedSongs([]);
+        setSpotifyTracks([]);
+        setUpToDate(false);
+        
+        // Update sync status
+        await loadSyncStatus();
+        
+        toast.success(`Successfully deleted ${result.deletedCount} liked songs`);
+      }
+    } catch (error) {
+      console.error('Error deleting all liked songs:', error);
+      toast.error('Failed to delete all liked songs. Please try again.');
+    } finally {
+      setSyncingSpotify(false);
+    }
   };
 
   // Removed header opacity tracking
@@ -764,6 +883,18 @@ const LikedSongsPage = () => {
                         <LogOut className="w-4 h-4 mr-2" />
                         Disconnect
                       </Button>
+                      
+                      {/* Delete All Songs Button */}
+                      <Button
+                        variant="outline"
+                        size="default"
+                        onClick={handleDeleteAllSongs}
+                        disabled={syncingSpotify || likedSongs.length === 0}
+                        className="border-red-600/50 text-red-600 hover:bg-red-600/10 hover:border-red-600 font-medium px-6 py-2 rounded-lg transition-all duration-200"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Delete All Songs
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -804,15 +935,32 @@ const LikedSongsPage = () => {
             
             {likedSongs.length > 0 && isMobile && (
               <div className="flex items-center justify-between">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full text-sm px-6 py-2 h-10 border border-border text-foreground hover:bg-accent hover:border-primary transition-all duration-200 font-medium"
-                  onClick={smartShuffle}
-                >
-                  <Shuffle className="h-4 w-4 mr-2" />
-                  <span className="font-medium">Shuffle</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full text-sm px-6 py-2 h-10 border border-border text-foreground hover:bg-accent hover:border-primary transition-all duration-200 font-medium"
+                    onClick={smartShuffle}
+                  >
+                    <Shuffle className="h-4 w-4 mr-2" />
+                    <span className="font-medium">Shuffle</span>
+                  </Button>
+                  
+                  {/* Delete All Button for Mobile */}
+                  {isAuthenticated && isSpotifyAuthenticated() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeleteAllSongs}
+                      disabled={syncingSpotify}
+                      className="rounded-full text-sm px-4 py-2 h-10 border border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 transition-all duration-200 font-medium"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      <span className="font-medium">Clear All</span>
+                    </Button>
+                  )}
+                </div>
+                
                 <div className="relative">
                   <Button 
                     onClick={playAllSongs}
@@ -835,6 +983,21 @@ const LikedSongsPage = () => {
                   <Shuffle className="h-4 w-4 mr-2" />
                   <span className="font-medium">Shuffle</span>
                 </Button>
+                
+                {/* Delete All Button for Desktop */}
+                {isAuthenticated && isSpotifyAuthenticated() && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDeleteAllSongs}
+                    disabled={syncingSpotify}
+                    className="rounded-full text-sm px-4 py-2 h-10 border border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 transition-all duration-200 font-medium"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    <span className="font-medium">Delete All Songs</span>
+                  </Button>
+                )}
+                
                 <div className="relative">
                   <Button 
                     onClick={playAllSongs}

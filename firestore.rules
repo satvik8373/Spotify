@@ -16,6 +16,16 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.auth.uid == userId;
       allow update, delete: if isOwner(userId);
+      
+      // Spotify Liked Songs subcollection
+      match /spotifyLikedSongs/{songId} {
+        allow read, write, delete: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // Spotify Sync metadata subcollection
+      match /spotifySync/{docId} {
+        allow read, write, delete: if isAuthenticated() && isOwner(userId);
+      }
     }
     
     // Songs collection

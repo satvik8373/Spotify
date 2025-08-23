@@ -161,7 +161,83 @@ export const syncSpotifyLikedSongs = async (userId) => {
   }
 };
 
-// Get user's synced liked songs from Firestore
+// Handle real-time like/unlike operations
+export const handleSpotifyLikeUnlike = async (userId, trackId, action) => {
+  try {
+    console.log(`Handling Spotify ${action} for user: ${userId}, track: ${trackId}`);
+    
+    const tokens = await getSpotifyTokens(userId);
+    if (!tokens) {
+      throw new Error('No valid Spotify tokens found');
+    }
+
+    const axios = (await import('axios')).default;
+    
+    if (action === 'like') {
+      // Add track to Spotify liked songs
+      await axios.put(`https://api.spotify.com/v1/me/tracks`, {
+        ids: [trackId]
+      }, {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // Add to Firestore
+      const trackRef = db.collection('users').doc(userId).collection('spotifyLikedSongs').doc(trackId);
+      await trackRef.set({
+        trackId,
+        syncedAt: admin.firestore.FieldValue.serverTimestamp(),
+        action: 'liked',
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+    } else if (action === 'unlike') {
+      // Remove track from Spotify liked songs
+      await axios.delete(`https://api.spotify.com/v1/me/tracks`, {
+        data: { ids: [trackId] },
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // Remove from Firestore
+      const trackRef = db.collection('users').doc(userId).collection('spotifyLikedSongs').doc(trackId);
+      await trackRef.delete();
+    }
+    
+    // Update sync metadata
+    const syncMetadataRef = db.collection('users').doc(userId).collection('spotifySync').doc('metadata');
+    await syncMetadataRef.set({
+      lastSyncAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastAction: action,
+      lastTrackId: trackId,
+      syncStatus: 'completed'
+    }, { merge: true });
+    
+    console.log(`Spotify ${action} completed for user: ${userId}, track: ${trackId}`);
+    return { success: true, action, trackId };
+    
+  } catch (error) {
+    console.error(`Error handling Spotify ${action}:`, error);
+    
+    // Update sync metadata with error
+    const syncMetadataRef = db.collection('users').doc(userId).collection('spotifySync').doc('metadata');
+    await syncMetadataRef.set({
+      lastSyncAt: admin.firestore.FieldValue.serverTimestamp(),
+      syncStatus: 'failed',
+      lastAction: action,
+      lastTrackId: trackId,
+      error: error.message
+    }, { merge: true });
+    
+    throw error;
+  }
+};
+
+// Get user's synced liked songs from Firestore with real-time updates
 export const getSyncedLikedSongs = async (userId) => {
   try {
     const songsRef = db.collection('users').doc(userId).collection('spotifyLikedSongs');

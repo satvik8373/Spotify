@@ -1,7 +1,9 @@
 import { Router } from "express";
 import * as spotifyService from "../services/spotify.service.js";
-import { storeSpotifyTokens } from '../services/spotifyTokenService.js';
+import { storeSpotifyTokens, getSpotifyTokens } from '../services/spotifyTokenService.js';
 import { syncSpotifyLikedSongs, getSyncedLikedSongs, getSyncStatus } from '../services/spotifySyncService.js';
+import admin from '../config/firebase.js';
+import axios from 'axios';
 
 // Spotify API configuration
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
@@ -287,6 +289,154 @@ router.get("/search", async (req, res) => {
   } catch (error) {
     console.error("Error searching Spotify:", error);
     res.status(500).json({ message: "Failed to search Spotify" });
+  }
+});
+
+// Route to handle real-time like/unlike operations
+router.post("/like-unlike", async (req, res) => {
+  const { userId, trackId, action } = req.body;
+  
+  console.log("=== Spotify Like/Unlike Debug ===");
+  console.log("Request received:", { userId, trackId, action });
+  
+  if (!userId || !trackId || !action) {
+    console.error("❌ Missing required parameters");
+    return res.status(400).json({ 
+      message: "User ID, track ID, and action are required",
+      error: "MISSING_PARAMETERS"
+    });
+  }
+  
+  if (!['like', 'unlike'].includes(action)) {
+    console.error("❌ Invalid action");
+    return res.status(400).json({ 
+      message: "Action must be 'like' or 'unlike'",
+      error: "INVALID_ACTION"
+    });
+  }
+  
+  try {
+    console.log(`🔄 Processing ${action} for track: ${trackId}`);
+    const result = await handleSpotifyLikeUnlike(userId, trackId, action);
+    console.log(`✅ ${action} completed successfully`);
+    
+    res.json({
+      success: true,
+      message: `Track ${action}d successfully`,
+      data: result
+    });
+  } catch (error) {
+    console.error(`❌ Error processing ${action}:`, error);
+    res.status(500).json({ 
+      message: `Failed to ${action} track`,
+      error: error.message
+    });
+  }
+});
+
+// Route to delete all liked songs for a user
+router.delete("/liked-songs/:userId", async (req, res) => {
+  const { userId } = req.params;
+  
+  console.log("=== Delete All Liked Songs Debug ===");
+  console.log("User ID:", userId);
+  
+  if (!userId) {
+    console.error("❌ Missing user ID");
+    return res.status(400).json({ 
+      message: "User ID is required",
+      error: "MISSING_USER_ID"
+    });
+  }
+  
+  try {
+    console.log("🔄 Deleting all liked songs for user:", userId);
+    
+    // Get user's liked songs from Firestore
+    const likedSongsRef = admin.firestore().collection('users').doc(userId).collection('spotifyLikedSongs');
+    const likedSongsSnapshot = await likedSongsRef.get();
+    
+    if (likedSongsSnapshot.empty) {
+      console.log("✅ No liked songs found to delete");
+      return res.json({
+        success: true,
+        message: "No liked songs found to delete",
+        deletedCount: 0
+      });
+    }
+    
+    // Get all track IDs to remove from Spotify
+    const trackIds = [];
+    likedSongsSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.trackId) {
+        trackIds.push(data.trackId);
+      }
+    });
+    
+    console.log(`Found ${trackIds.length} liked songs to delete`);
+    
+    // Remove from Spotify if user has valid tokens
+    try {
+      const tokens = await getSpotifyTokens(userId);
+      if (tokens && tokens.access_token) {
+        console.log("🔄 Removing songs from Spotify...");
+        
+        // Spotify API allows removing up to 50 tracks at once
+        const batchSize = 50;
+        for (let i = 0; i < trackIds.length; i += batchSize) {
+          const batch = trackIds.slice(i, i + batchSize);
+          
+          await axios.delete('https://api.spotify.com/v1/me/tracks', {
+            data: { ids: batch },
+            headers: {
+              'Authorization': `Bearer ${tokens.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          console.log(`Removed batch ${Math.floor(i / batchSize) + 1} from Spotify`);
+        }
+        console.log("✅ All songs removed from Spotify");
+      }
+    } catch (spotifyError) {
+      console.warn("⚠️ Warning: Could not remove songs from Spotify:", spotifyError.message);
+      // Continue with Firestore deletion even if Spotify fails
+    }
+    
+    // Delete all documents from Firestore
+    console.log("🔄 Deleting songs from Firestore...");
+    const batch = admin.firestore().batch();
+    likedSongsSnapshot.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+    console.log("✅ All songs deleted from Firestore");
+    
+    // Update sync metadata
+    const syncMetadataRef = admin.firestore().collection('users').doc(userId).collection('spotifySync').doc('metadata');
+    await syncMetadataRef.set({
+      lastSyncAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastAction: 'delete_all',
+      syncStatus: 'completed',
+      totalSongs: 0,
+      deletedCount: trackIds.length
+    }, { merge: true });
+    
+    console.log("✅ Sync metadata updated");
+    
+    res.json({
+      success: true,
+      message: `Successfully deleted ${trackIds.length} liked songs`,
+      deletedCount: trackIds.length
+    });
+    
+  } catch (error) {
+    console.error("❌ Error deleting all liked songs:", error);
+    res.status(500).json({ 
+      message: "Failed to delete all liked songs",
+      error: error.message
+    });
   }
 });
 
