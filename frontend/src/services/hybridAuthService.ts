@@ -17,7 +17,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import axiosInstance from "@/lib/axios";
 import { Timestamp } from "firebase/firestore";
 
-const API_URL = import.meta.env.VITE_API_URL || '';
+// Remove the separate API_URL variable since we're using axiosInstance
 
 /**
  * Hybrid authentication service that works with both Firebase and the backend API
@@ -244,26 +244,19 @@ export const register = async (email: string, password: string, fullName: string
     };
     
     // Synchronize with backend if it's available
-    if (API_URL) {
+    if (axiosInstance) { // Use axiosInstance directly
       try {
         // Get Firebase ID token
         const idToken = await user.getIdToken();
         
         // Call backend API to create user
-        const response = await fetch(`${API_URL}/api/auth/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({
-            email,
-            fullName,
-            uid: user.uid
-          })
+        const response = await axiosInstance.post('/api/auth/register', {
+          email,
+          fullName,
+          uid: user.uid
         });
         
-        if (!response.ok) {
+        if (response.status !== 200) {
           console.warn('Failed to register user with backend, but Firebase registration successful');
         }
       } catch (error) {
@@ -295,14 +288,8 @@ export const signOut = async () => {
     await firebaseSignOut(auth);
     
     // Sign out from backend if it's available (do in background)
-    if (API_URL && userId) {
-      fetch(`${API_URL}/api/auth/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ uid: userId })
-      }).catch(error => {
+    if (axiosInstance && userId) { // Use axiosInstance directly
+      axiosInstance.post('/api/auth/logout', { uid: userId }).catch(error => {
         console.warn('Backend logout error:', error);
       });
     }
@@ -373,26 +360,19 @@ export const updateUserProfile = async (user: User, data: {
     }, { merge: true });
     
     // Synchronize with backend if it's available
-    if (API_URL) {
+    if (axiosInstance) { // Use axiosInstance directly
       try {
         // Get Firebase ID token
         const idToken = await user.getIdToken();
         
         // Call backend API to update user
-        const response = await fetch(`${API_URL}/api/auth/update-profile`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({
-            uid: user.uid,
-            fullName: data.fullName || user.displayName,
-            imageUrl: imageUrl
-          })
+        const response = await axiosInstance.post('/api/auth/update-profile', {
+          uid: user.uid,
+          fullName: data.fullName || user.displayName,
+          imageUrl: imageUrl
         });
         
-        if (!response.ok) {
+        if (response.status !== 200) {
           console.warn('Failed to update profile with backend, but Firebase update successful');
         }
       } catch (error) {
@@ -419,18 +399,12 @@ export const resetPassword = async (email: string) => {
     await sendPasswordResetEmail(auth, email);
     
     // Notify backend if it's available
-    if (API_URL) {
+    if (axiosInstance) { // Use axiosInstance directly
       try {
-        const response = await fetch(`${API_URL}/api/auth/reset-password-request`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email })
-        });
+        const response = await axiosInstance.post('/api/auth/reset-password-request', { email });
         
-        if (!response.ok) {
-          console.warn('Failed to notify backend about password reset, but Firebase reset successful');
+        if (response.status !== 200) {
+          console.warn('Failed to send reset password request to backend');
         }
       } catch (error) {
         console.warn('Backend password reset notification failed, but Firebase reset successful:', error);
@@ -456,23 +430,16 @@ export const checkAdminStatus = async (uid: string) => {
     }
     
     // If not in Firestore, check backend
-    if (API_URL) {
+    if (axiosInstance) { // Use axiosInstance directly
       try {
         // Get Firebase ID token
         const idToken = await auth.currentUser?.getIdToken();
         
         // Call backend API to check admin status
-        const response = await fetch(`${API_URL}/api/auth/check-admin`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({ uid })
-        });
+        const response = await axiosInstance.post('/api/auth/check-admin', { uid });
         
-        if (response.ok) {
-          const data = await response.json();
+        if (response.status === 200) {
+          const data = response.data;
           return data.isAdmin === true;
         }
       } catch (error) {
@@ -564,24 +531,17 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
         }
         
         // Synchronize with backend if available (non-blocking)
-        if (API_URL) {
+        if (axiosInstance) { // Use axiosInstance directly
           try {
             // Call backend API to sync user
-            const response = await fetch(`${API_URL}/api/auth/sync`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`
-              },
-              body: JSON.stringify({
-                email: user.email,
-                uid: user.uid,
-                displayName: user.displayName,
-                photoURL: user.photoURL
-              })
+            const response = await axiosInstance.post('/api/auth/sync', {
+              email: user.email,
+              uid: user.uid,
+              displayName: user.displayName,
+              photoURL: user.photoURL
             });
             
-            if (!response.ok) {
+            if (response.status !== 200) {
               console.warn('Failed to sync Google user with backend, but Firebase auth successful');
             }
           } catch (error) {

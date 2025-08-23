@@ -1,9 +1,9 @@
-import axios from '../lib/axios';
+import axiosInstance from '../lib/axios';
 
 // Get synced liked songs from backend
 export const getSyncedLikedSongs = async (userId: string) => {
   try {
-    const response = await axios.get(`/api/spotify/liked-songs/${userId}`);
+    const response = await axiosInstance.get(`/api/spotify/liked-songs/${userId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching synced liked songs:', error);
@@ -14,7 +14,7 @@ export const getSyncedLikedSongs = async (userId: string) => {
 // Get sync status
 export const getSyncStatus = async (userId: string) => {
   try {
-    const response = await axios.get(`/api/spotify/sync-status/${userId}`);
+    const response = await axiosInstance.get(`/api/spotify/sync-status/${userId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching sync status:', error);
@@ -25,7 +25,7 @@ export const getSyncStatus = async (userId: string) => {
 // Manual sync trigger
 export const triggerManualSync = async (userId: string) => {
   try {
-    const response = await axios.post('/api/spotify/sync', { userId });
+    const response = await axiosInstance.post('/api/spotify/sync', { userId });
     return response.data;
   } catch (error) {
     console.error('Error triggering manual sync:', error);
@@ -96,7 +96,7 @@ export const formatSyncStatus = (status: any) => {
 // Handle real-time like/unlike operations
 export const handleSpotifyLikeUnlike = async (userId: string, trackId: string, action: 'like' | 'unlike') => {
   try {
-    const response = await axios.post('/api/spotify/like-unlike', {
+    const response = await axiosInstance.post('/api/spotify/like-unlike', {
       userId,
       trackId,
       action
@@ -112,7 +112,7 @@ export const handleSpotifyLikeUnlike = async (userId: string, trackId: string, a
 export const forceRefreshSyncedSongs = async (userId: string) => {
   try {
     // Clear any cached data and fetch fresh from server
-    const response = await axios.get(`/api/spotify/liked-songs/${userId}?refresh=true`);
+    const response = await axiosInstance.get(`/api/spotify/liked-songs/${userId}?refresh=true`);
     return response.data;
   } catch (error) {
     console.error('Error forcing refresh of synced songs:', error);
@@ -144,7 +144,7 @@ export const getDetailedSyncStatus = async (userId: string) => {
 // Delete all liked songs for a user
 export const deleteAllLikedSongs = async (userId: string) => {
   try {
-    const response = await axios.delete(`/api/spotify/liked-songs/${userId}`);
+    const response = await axiosInstance.delete(`/api/spotify/liked-songs/${userId}`);
     return response.data;
   } catch (error) {
     console.error('Error deleting all liked songs:', error);
@@ -155,7 +155,7 @@ export const deleteAllLikedSongs = async (userId: string) => {
 // Migrate liked songs from old structure to new structure
 export const migrateLikedSongsStructure = async (userId: string) => {
   try {
-    const response = await axios.post(`/api/spotify/migrate/${userId}`);
+    const response = await axiosInstance.post(`/api/spotify/migrate/${userId}`);
     return response.data;
   } catch (error) {
     console.error('Error migrating liked songs structure:', error);
