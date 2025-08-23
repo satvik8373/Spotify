@@ -1282,8 +1282,8 @@ const LikedSongsPage = () => {
                             align="end" 
                             className={cn(
                               isMobile 
-                                ? "w-full max-w-sm mx-4 mb-4 rounded-t-xl rounded-b-none border-t-4 border-t-green-500 shadow-2xl" 
-                                : "w-56"
+                                ? "w-full max-w-sm mx-4 mb-4 rounded-t-xl rounded-b-none border-t-4 border-t-green-500 shadow-2xl bg-zinc-900/95 backdrop-blur-sm" 
+                                : "w-56 bg-zinc-900/95 backdrop-blur-sm border border-zinc-700"
                             )}
                             side={isMobile ? "bottom" : "right"}
                             sideOffset={isMobile ? 0 : 8}
@@ -1328,8 +1328,8 @@ const LikedSongsPage = () => {
                               {/* Share option */}
                               <DropdownMenuItem 
                                 className={cn(
-                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
-                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-accent"
+                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors text-zinc-200 hover:text-white",
+                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-zinc-800/50"
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1345,7 +1345,7 @@ const LikedSongsPage = () => {
                                   }
                                 }}
                               >
-                                <div className="w-5 h-5 flex items-center justify-center">
+                                <div className="w-5 h-5 flex items-center justify-center text-zinc-400">
                                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.3 3.3 0 000-.649l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                                   </svg>
@@ -1356,8 +1356,8 @@ const LikedSongsPage = () => {
                               {/* Add to playlist option */}
                               <DropdownMenuItem 
                                 className={cn(
-                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
-                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-accent"
+                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors text-zinc-200 hover:text-white",
+                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-zinc-800/50"
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1365,7 +1365,7 @@ const LikedSongsPage = () => {
                                   toast.info('Add to playlist feature coming soon');
                                 }}
                               >
-                                <div className="w-5 h-5 flex items-center justify-center">
+                                <div className="w-5 h-5 flex items-center justify-center text-zinc-400">
                                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                                   </svg>
@@ -1376,15 +1376,15 @@ const LikedSongsPage = () => {
                               {/* Remove from liked songs option */}
                               <DropdownMenuItem 
                                 className={cn(
-                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
-                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-accent"
+                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors text-zinc-200 hover:text-white",
+                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-zinc-800/50"
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   unlikeSong(song.id);
                                 }}
                               >
-                                <div className="w-5 h-5 flex items-center justify-center">
+                                <div className="w-5 h-5 flex items-center justify-center text-zinc-400">
                                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                                   </svg>
@@ -1395,8 +1395,8 @@ const LikedSongsPage = () => {
                               {/* Go to album option */}
                               <DropdownMenuItem 
                                 className={cn(
-                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
-                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-accent"
+                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors text-zinc-200 hover:text-white",
+                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-zinc-800/50"
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1404,7 +1404,7 @@ const LikedSongsPage = () => {
                                   toast.info('Go to album feature coming soon');
                                 }}
                               >
-                                <div className="w-5 h-5 flex items-center justify-center">
+                                <div className="w-5 h-5 flex items-center justify-center text-zinc-400">
                                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                   </svg>
@@ -1415,8 +1415,8 @@ const LikedSongsPage = () => {
                               {/* Go to artist option */}
                               <DropdownMenuItem 
                                 className={cn(
-                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
-                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-accent"
+                                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors text-zinc-200 hover:text-white",
+                                  isMobile ? "hover:bg-zinc-700/50" : "hover:bg-zinc-800/50"
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1424,7 +1424,7 @@ const LikedSongsPage = () => {
                                   toast.info('Go to artist feature coming soon');
                                 }}
                               >
-                                <div className="w-5 h-5 flex items-center justify-center">
+                                <div className="w-5 h-5 flex items-center justify-center text-zinc-400">
                                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                                   </svg>

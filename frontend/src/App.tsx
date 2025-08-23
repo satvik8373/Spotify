@@ -21,6 +21,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Welcome = lazy(() => import('./pages/Welcome'));
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
+import VersionUpdateNotification from './components/VersionUpdateNotification';
 import { useLocation } from 'react-router-dom';
 import { SpotifyProvider } from './contexts/SpotifyContext';
 import { ThemeProvider } from './components/ThemeProvider';
@@ -236,6 +237,7 @@ function AppContent() {
 			<Toaster />
 			<PWAInstallPrompt />
 			<AndroidPWAHelper />
+			<VersionUpdateNotification />
 		</>
 	);
 }

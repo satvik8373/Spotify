@@ -30,6 +30,7 @@ import uploadRoutes from "./routes/upload.route.js";
 import apiTestRoutes from "./routes/api-test.route.js";
 import likedSongRoutes from "./routes/likedSong.route.js";
 import cloudinaryRoutes from "./routes/cloudinary.route.js";
+import versionRoutes from "./routes/version.route.js";
 
 const __dirname = path.resolve();
 const app = express();
@@ -166,6 +167,7 @@ app.use("/api/playlists", playlistRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/liked-songs", likedSongRoutes);
 app.use("/api/cloudinary", cloudinaryRoutes);
+app.use("/api/version", versionRoutes);
 
 // Special route to handle Spotify callback directly
 app.get('/spotify-callback', (req, res) => {

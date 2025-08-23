@@ -558,7 +558,7 @@ const MobileNav = () => {
                   <p 
                     className={cn(
                       "text-sm font-medium truncate",
-                      albumColors.isLight ? "text-black" : "text-white"
+                      "text-white"
                     )}
                   >
                     {currentSong.title}
@@ -566,7 +566,7 @@ const MobileNav = () => {
                   <p 
                     className={cn(
                       "text-xs truncate",
-                      albumColors.isLight ? "text-black/70" : "text-white/70"
+                      "text-white/80"
                     )}
                   >
                     {currentSong.artist}
@@ -578,8 +578,8 @@ const MobileNav = () => {
                   onClick={handleLikeToggle}
                   className={cn(
                     "mr-2 h-8 w-8 flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
-                    "bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30",
-                    songLiked ? "text-green-500" : (albumColors.isLight ? "text-black/80" : "text-white/80")
+                    "bg-black/20 hover:bg-black/30",
+                    songLiked ? "text-green-500" : "text-white/80"
                   )}
                 >
                   <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
@@ -592,7 +592,7 @@ const MobileNav = () => {
                   className={cn(
                     "h-9 w-9 flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
                     isPlaying 
-                      ? `bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 ${albumColors.isLight ? 'text-black/80' : 'text-white/80'}` 
+                      ? "bg-black/20 hover:bg-black/30 text-white/80" 
                       : "bg-green-500 hover:bg-green-400 text-black"
                   )}
                 >
@@ -643,7 +643,7 @@ const MobileNav = () => {
                 <div 
                   className={cn(
                     "flex justify-between px-3 py-1 text-[10px]",
-                    albumColors.isLight ? "text-black/80" : "text-white/80"
+                    "text-white/80"
                   )}
                 >
                   <span>{formatTime(currentTime || 0)}</span>
