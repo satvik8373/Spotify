@@ -17,20 +17,21 @@ const isProduction = window.location.hostname === 'mavrixfilms.live' ||
                      window.location.hostname === 'www.mavrixfilms.live';
 
 // Use production API URL in production, localhost in development
-// Ensure no duplicate /api in the URL
 const FINAL_API_URL = isProduction 
   ? (import.meta.env.VITE_API_URL || 'https://mavrixfilms.live')
   : "http://localhost:5000";
 
-// Remove trailing slash and ensure proper formatting
-const cleanApiUrl = FINAL_API_URL.replace(/\/$/, '');
+// Normalize base URL: remove trailing slash and trailing /api to avoid double /api when using path "/api/..."
+let cleanApiUrl = FINAL_API_URL.trim();
+cleanApiUrl = cleanApiUrl.replace(/\/+$/, ''); // strip trailing slashes
+cleanApiUrl = cleanApiUrl.replace(/\/(api)$/, ''); // strip trailing /api if present
 
 console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
 console.log('🔗 API base URL:', cleanApiUrl);
 console.log('📍 Current hostname:', window.location.hostname);
 console.log('🔧 RAW_API_URL:', RAW_API_URL);
 console.log('🔧 FINAL_API_URL:', FINAL_API_URL);
-console.log('🔧 Clean API URL:', cleanApiUrl);
+console.log('🔧 Normalized API URL:', cleanApiUrl);
 
 // Create and configure axios instance
 const axiosInstance = axios.create({
