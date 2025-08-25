@@ -4,33 +4,25 @@ import axios from "axios";
 // Avoid importing Firebase eagerly to keep initial bundle small
 // We'll lazy-import inside the interceptor
 
-// Type declaration for ImportMetaEnv to include VITE environment variables
-// Remove unused ImportMetaEnv interface to avoid warnings
-
 // Get API URL from environment variables or fallback to default
-const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const isLocalhost = /^(http(s)?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(RAW_API_URL);
-const API_URL = isLocalhost ? RAW_API_URL : RAW_API_URL.replace(/^http:\/\//, 'https://');
+const RAW_API_URL = import.meta.env.VITE_API_URL || "";
 
 // Determine if we're in production
 const isProduction = window.location.hostname === 'mavrixfilms.live' || 
                      window.location.hostname === 'www.mavrixfilms.live';
 
-// Use production API URL in production, localhost in development
-const FINAL_API_URL = isProduction 
-  ? (import.meta.env.VITE_API_URL || 'https://mavrixfilms.live')
-  : "http://localhost:5000";
+// Prefer explicit VITE_API_URL; otherwise fallback by environment
+const FINAL_API_URL = RAW_API_URL
+  ? RAW_API_URL
+  : (isProduction ? 'https://mavrixfilms.live' : 'http://localhost:5000');
 
-// Normalize base URL: remove trailing slashes only (keep /api if present)
-let cleanApiUrl = FINAL_API_URL.trim();
-cleanApiUrl = cleanApiUrl.replace(/\/+$/, '');
+// Remove trailing slash and ensure proper formatting
+const cleanApiUrl = FINAL_API_URL.replace(/\/$/, '');
 
 console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
+console.log('🔧 RAW_API_URL:', RAW_API_URL || '(not set)');
 console.log('🔗 API base URL:', cleanApiUrl);
 console.log('📍 Current hostname:', window.location.hostname);
-console.log('🔧 RAW_API_URL:', RAW_API_URL);
-console.log('🔧 FINAL_API_URL:', FINAL_API_URL);
-console.log('🔧 Normalized API URL:', cleanApiUrl);
 
 // Create and configure axios instance
 const axiosInstance = axios.create({

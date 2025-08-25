@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { Song } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService } from '@/services/syncedLikedSongsService';
+import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService, deleteAllLikedSongs, migrateLikedSongsStructure } from '@/services/syncedLikedSongsService';
 import SpotifySyncPermissionModal from '@/components/SpotifySyncPermissionModal';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
@@ -200,18 +200,8 @@ const LikedSongsPage = () => {
       // Format status for display
       const formattedStatus = formatSyncStatus(status);
       setUpToDate(formattedStatus.status === 'synced');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading sync status:', error);
-      
-      // Check for Firebase quota limit errors
-      if (error.message?.includes('quota') || 
-          error.message?.includes('limit') || 
-          error.message?.includes('exceeded') ||
-          error.response?.data?.error?.includes('quota') ||
-          error.response?.status === 429) {
-        
-        setSyncError('Firebase quota limit reached. Please try again tomorrow or upgrade your plan.');
-      }
     }
   };
 
@@ -578,8 +568,6 @@ const LikedSongsPage = () => {
     if (!user?.id) return;
     
     setSyncingSpotify(true);
-    setSyncError(null); // Clear previous errors
-    
     try {
       // First, trigger manual sync
       const result = await triggerManualSync(user.id);
@@ -591,22 +579,86 @@ const LikedSongsPage = () => {
       await loadSyncStatus();
       
       toast.success(`Sync completed! ${result.added} new songs, ${result.updated} updated, ${result.removed} removed`);
-    } catch (error: any) {
+    } catch (error) {
+      toast.error('Sync failed. Please try again.');
       console.error('Enhanced sync error:', error);
+    } finally {
+      setSyncingSpotify(false);
+    }
+  };
+
+  // Handle deleting all liked songs
+  const handleDeleteAllSongs = async () => {
+    if (!user?.id) return;
+    
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ALL ${likedSongs.length} liked songs?\n\n` +
+      `This action will:\n` +
+      `• Remove all songs from your Spotify liked songs\n` +
+      `• Delete all data from Firestore database\n` +
+      `• Clear your local liked songs\n\n` +
+      `This action cannot be undone!`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      setSyncingSpotify(true);
       
-      // Check for Firebase quota limit errors
-      if (error.message?.includes('quota') || 
-          error.message?.includes('limit') || 
-          error.message?.includes('exceeded') ||
-          error.response?.data?.error?.includes('quota') ||
-          error.response?.status === 429) {
+      // Call backend to delete all songs
+      const result = await deleteAllLikedSongs(user.id);
+      
+      if (result.success) {
+        // Clear local state
+        setLikedSongs([]);
+        setSyncedSongs([]);
+        setSpotifyTracks([]);
+        setUpToDate(false);
         
-        setSyncError('Firebase quota limit reached. Please try again tomorrow or upgrade your plan.');
-        toast.error('Firebase quota limit reached. Please try again tomorrow.');
-      } else {
-        setSyncError('Sync failed. Please try again.');
-        toast.error('Sync failed. Please try again.');
+        // Update sync status
+        await loadSyncStatus();
+        
+        toast.success(`Successfully deleted ${result.deletedCount} liked songs`);
       }
+    } catch (error) {
+      console.error('Error deleting all liked songs:', error);
+      toast.error('Failed to delete all liked songs. Please try again.');
+    } finally {
+      setSyncingSpotify(false);
+    }
+  };
+
+  // Handle migration to new structure
+  const handleMigration = async () => {
+    if (!user?.id) return;
+    
+    const confirmed = window.confirm(
+      `Migrate your liked songs to the new database structure?\n\n` +
+      `This will:\n` +
+      `• Move your data to a cleaner structure\n` +
+      `• Improve performance and data organization\n` +
+      `• Keep all your existing data\n\n` +
+      `This is a safe operation that can be run multiple times.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      setSyncingSpotify(true);
+      
+      const result = await migrateLikedSongsStructure(user.id);
+      
+      if (result.success) {
+        toast.success(`Migration completed! ${result.migratedCount} songs migrated.`);
+        
+        // Refresh data after migration
+        await loadSyncedSongs();
+        await loadSyncStatus();
+      }
+    } catch (error) {
+      console.error('Migration error:', error);
+      toast.error('Migration failed. Please try again.');
     } finally {
       setSyncingSpotify(false);
     }
@@ -813,28 +865,83 @@ const LikedSongsPage = () => {
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3">
                       <Button
+                        disabled={syncingSpotify}
+                        onClick={async () => {
+                          setSyncingSpotify(true);
+                          try {
+                            const tracks = await fetchAllSpotifySavedTracks();
+                            
+                            // Sort tracks by addedAt date (most recent first) to match Spotify app order
+                            const sortedTracks = tracks.sort((a: any, b: any) => {
+                              const dateA = new Date(a.addedAt).getTime();
+                              const dateB = new Date(b.addedAt).getTime();
+                              return dateB - dateA; // Most recent first
+                            });
+                            
+                            // Filter to only show new/unscanned tracks
+                            const newTracks = filterOnlyNewSpotifyTracks(sortedTracks);
+                            
+                            setSpotifyTracks(newTracks);
+                            const newCount = newTracks.length;
+                            if (newCount === 0) {
+                              setUpToDate(true);
+                              toast.success('Already up to date');
+                            } else {
+                              setShowPermissionModal(true);
+                            }
+                          } catch {
+                            toast.error('Sync failed');
+                          } finally {
+                            setSyncingSpotify(false);
+                          }
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
+                      >
+                        {syncingSpotify ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                            Syncing...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Sync Spotify
+                          </>
+                        )}
+                      </Button>
+                      <Button
                         variant="outline"
                         size="default"
-                        onClick={handleEnhancedSync}
-                        disabled={syncingSpotify}
-                        className="border-green-500/50 text-green-500 hover:bg-green-500/10 hover:border-green-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
+                        onClick={handleDisconnect}
+                        className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
                       >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Sync Now
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Disconnect
                       </Button>
                       
-                      {/* Firebase Quota Limit Warning */}
-                      {syncError && syncError.includes('quota') && (
-                        <div className="bg-red-900/20 border border-red-500/50 p-4 rounded-lg">
-                          <div className="flex items-center gap-2 text-red-400">
-                            <X className="w-4 h-4" />
-                            <span className="font-medium">Firebase Quota Limit Reached</span>
-                          </div>
-                          <p className="text-sm text-red-300 mt-2">
-                            You've reached your Firebase daily limit. Please try again tomorrow or upgrade your plan.
-                          </p>
-                        </div>
-                      )}
+                      {/* Migration Button */}
+                      <Button
+                        variant="outline"
+                        size="default"
+                        onClick={handleMigration}
+                        disabled={syncingSpotify}
+                        className="border-blue-500/50 text-blue-500 hover:bg-blue-500/10 hover:border-blue-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Migrate Data
+                      </Button>
+                      
+                      {/* Delete All Songs Button */}
+                      <Button
+                        variant="outline"
+                        size="default"
+                        onClick={handleDeleteAllSongs}
+                        disabled={syncingSpotify || likedSongs.length === 0}
+                        className="border-red-600/50 text-red-600 hover:bg-red-600/10 hover:border-red-600 font-medium px-6 py-2 rounded-lg transition-all duration-200"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Delete All Songs
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -886,16 +993,29 @@ const LikedSongsPage = () => {
                     <span className="font-medium">Shuffle</span>
                   </Button>
                   
-                  <div className="relative">
-                    <Button 
-                      onClick={playAllSongs}
-                      className="bg-green-500 hover:bg-green-400 text-black rounded-full h-14 w-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                  {/* Delete All Button for Mobile */}
+                  {isAuthenticated && isSpotifyAuthenticated() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeleteAllSongs}
+                      disabled={syncingSpotify}
+                      className="rounded-full text-sm px-4 py-2 h-10 border border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 transition-all duration-200 font-medium"
                     >
-                      <Play className="h-7 w-7 ml-0.5" />
+                      <X className="h-4 w-4 mr-1" />
+                      <span className="font-medium">Clear All</span>
                     </Button>
-                  </div>
+                  )}
                 </div>
                 
+                <div className="relative">
+                  <Button 
+                    onClick={playAllSongs}
+                    className="bg-green-500 hover:bg-green-400 text-black rounded-full h-14 w-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                  >
+                    <Play className="h-7 w-7 ml-0.5" />
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -910,6 +1030,20 @@ const LikedSongsPage = () => {
                   <Shuffle className="h-4 w-4 mr-2" />
                   <span className="font-medium">Shuffle</span>
                 </Button>
+                
+                {/* Delete All Button for Desktop */}
+                {isAuthenticated && isSpotifyAuthenticated() && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDeleteAllSongs}
+                    disabled={syncingSpotify}
+                    className="rounded-full text-sm px-4 py-2 h-10 border border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 transition-all duration-200 font-medium"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    <span className="font-medium">Delete All Songs</span>
+                  </Button>
+                )}
                 
                 <div className="relative">
                   <Button 

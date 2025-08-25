@@ -3,33 +3,9 @@ import { getSpotifyTokens } from './spotifyTokenService.js';
 
 const db = admin.firestore();
 
-// Cache for sync operations to prevent excessive API calls
-const syncCache = new Map();
-const SYNC_COOLDOWN = 5 * 60 * 1000; // 5 minutes
-
-// Check if user can sync (rate limiting)
-const canSync = (userId) => {
-  const lastSync = syncCache.get(userId);
-  if (!lastSync) return true;
-  
-  const timeSinceLastSync = Date.now() - lastSync;
-  return timeSinceLastSync > SYNC_COOLDOWN;
-};
-
-// Update sync cache
-const updateSyncCache = (userId) => {
-  syncCache.set(userId, Date.now());
-};
-
 // Fetch all liked songs from Spotify
 export const fetchSpotifyLikedSongs = async (userId) => {
   try {
-    // Check if we can sync (rate limiting)
-    if (!canSync(userId)) {
-      console.log(`Rate limit hit for user: ${userId}, skipping sync`);
-      throw new Error('Rate limit: Please wait before syncing again');
-    }
-
     const tokens = await getSpotifyTokens(userId);
     if (!tokens) {
       throw new Error('No valid Spotify tokens found');
@@ -97,9 +73,6 @@ export const syncSpotifyLikedSongs = async (userId) => {
   try {
     console.log(`Starting Spotify sync for user: ${userId}`);
     
-    // Update sync cache to prevent rapid re-syncs
-    updateSyncCache(userId);
-    
     // Fetch current liked songs from Spotify
     const spotifyLikedSongs = await fetchSpotifyLikedSongs(userId);
     
@@ -112,58 +85,44 @@ export const syncSpotifyLikedSongs = async (userId) => {
       existingSongs.set(doc.id, doc.data());
     });
 
-    // Process songs in smaller batches to avoid quota issues
-    const BATCH_SIZE = 250; // Firestore batch limit is 500, use 250 for safety
+    // Process new songs
+    const batch = admin.firestore().batch();
     let addedCount = 0;
     let updatedCount = 0;
     let removedCount = 0;
 
-    // Process additions and updates
-    for (let i = 0; i < spotifyLikedSongs.length; i += BATCH_SIZE) {
-      const batch = admin.firestore().batch();
-      const batchSongs = spotifyLikedSongs.slice(i, i + BATCH_SIZE);
+    // Add/update songs from Spotify
+    for (const item of spotifyLikedSongs) {
+      const trackData = mapSpotifyTrack(item);
+      // No need to add userId since it's now in the path
       
-      for (const item of batchSongs) {
-        const trackData = mapSpotifyTrack(item);
-        const trackRef = existingRef.doc(trackData.trackId);
-        
-        if (existingSongs.has(trackData.trackId)) {
-          // Update existing song
-          batch.update(trackRef, {
-            ...trackData,
-            syncedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-          updatedCount++;
-        } else {
-          // Add new song
-          batch.set(trackRef, trackData);
-          addedCount++;
-        }
-        
-        // Remove from existing songs map
-        existingSongs.delete(trackData.trackId);
+      const trackRef = existingRef.doc(trackData.trackId);
+      
+      if (existingSongs.has(trackData.trackId)) {
+        // Update existing song
+        batch.update(trackRef, {
+          ...trackData,
+          syncedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        updatedCount++;
+      } else {
+        // Add new song
+        batch.set(trackRef, trackData);
+        addedCount++;
       }
       
-      // Commit this batch
-      await batch.commit();
-      console.log(`Committed batch ${Math.floor(i / BATCH_SIZE) + 1} for user: ${userId}`);
+      // Remove from existing songs map
+      existingSongs.delete(trackData.trackId);
     }
 
-    // Process deletions in batches
-    const songsToDelete = Array.from(existingSongs.keys());
-    for (let i = 0; i < songsToDelete.length; i += BATCH_SIZE) {
-      const batch = admin.firestore().batch();
-      const batchDeletions = songsToDelete.slice(i, i + BATCH_SIZE);
-      
-      for (const trackId of batchDeletions) {
-        batch.delete(existingRef.doc(trackId));
-        removedCount++;
-      }
-      
-      // Commit this batch
-      await batch.commit();
-      console.log(`Committed deletion batch ${Math.floor(i / BATCH_SIZE) + 1} for user: ${userId}`);
+    // Remove songs that are no longer liked
+    for (const [trackId, songData] of existingSongs) {
+      batch.delete(existingRef.doc(trackId));
+      removedCount++;
     }
+
+    // Commit the batch
+    await batch.commit();
 
     // Update sync metadata
     const syncMetadataRef = admin.firestore().collection('users').doc(userId).collection('spotifySync').doc('metadata');
@@ -173,20 +132,14 @@ export const syncSpotifyLikedSongs = async (userId) => {
       addedCount,
       updatedCount,
       removedCount,
-      syncStatus: 'completed',
-      quotaUsed: {
-        reads: 1, // 1 read for existing songs
-        writes: Math.ceil((addedCount + updatedCount) / BATCH_SIZE),
-        deletes: Math.ceil(removedCount / BATCH_SIZE)
-      }
+      syncStatus: 'completed'
     });
 
     console.log(`Spotify sync completed for user: ${userId}`, {
       total: spotifyLikedSongs.length,
       added: addedCount,
       updated: updatedCount,
-      removed: removedCount,
-      batches: Math.ceil(spotifyLikedSongs.length / BATCH_SIZE)
+      removed: removedCount
     });
 
     return {

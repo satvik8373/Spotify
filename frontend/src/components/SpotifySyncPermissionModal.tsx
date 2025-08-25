@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -33,17 +33,26 @@ const SpotifySyncPermissionModal: React.FC<SpotifySyncPermissionModalProps> = ({
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(true);
 
+  // Defensive: ensure we always work with an array
+  const safeTracks: SpotifyTrack[] = useMemo(() => (Array.isArray(tracks) ? tracks : []), [tracks]);
+
   // Initialize with all tracks selected by default
   useEffect(() => {
-    if (tracks.length > 0) {
-      setSelectedTracks(new Set(tracks.map(track => track.id)));
+    // Build a stable key from ids to avoid infinite loops when parent recreates array
+    const ids = safeTracks.map(t => t.id).join('|');
+    if (safeTracks.length > 0) {
+      setSelectedTracks(new Set(safeTracks.map(track => track.id)));
       setSelectAll(true);
+    } else {
+      setSelectedTracks(new Set());
+      setSelectAll(false);
     }
-  }, [tracks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeTracks.length]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedTracks(new Set(tracks.map(track => track.id)));
+      setSelectedTracks(new Set(safeTracks.map(track => track.id)));
       setSelectAll(true);
     } else {
       setSelectedTracks(new Set());
@@ -59,7 +68,7 @@ const SpotifySyncPermissionModal: React.FC<SpotifySyncPermissionModalProps> = ({
       newSelected.delete(trackId);
     }
     setSelectedTracks(newSelected);
-    setSelectAll(newSelected.size === tracks.length);
+    setSelectAll(newSelected.size === safeTracks.length);
   };
 
   const handleSync = () => {
@@ -93,7 +102,7 @@ const SpotifySyncPermissionModal: React.FC<SpotifySyncPermissionModalProps> = ({
             <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 bg-muted border">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                {tracks.length} new
+                {safeTracks.length} new
               </span>
               <span className="hidden sm:inline">•</span>
               <span className="hidden sm:inline">{selectedTracks.size} selected</span>
@@ -107,7 +116,7 @@ const SpotifySyncPermissionModal: React.FC<SpotifySyncPermissionModalProps> = ({
           <div className="px-4 pt-2 pb-2 flex-shrink-0">
             <div className="flex items-center justify-between gap-2 p-2">
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-foreground">Found {tracks.length} new songs from Spotify</p>
+                <p className="font-medium text-sm text-foreground">Found {safeTracks.length} new songs from Spotify</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Select which new songs to add to Mavrixfy</p>
               </div>
               <div className="flex items-center space-x-2 flex-shrink-0">
@@ -127,7 +136,8 @@ const SpotifySyncPermissionModal: React.FC<SpotifySyncPermissionModalProps> = ({
           {/* Tracks List - Scrollable */}
           <div className="flex-1 min-h-0 overflow-y-auto px-4">
             <div className="space-y-0.5 py-1">
-              {tracks
+              {safeTracks
+                .slice()
                 .sort((a, b) => {
                   const dateA = new Date(a.addedAt).getTime();
                   const dateB = new Date(b.addedAt).getTime();
@@ -206,7 +216,7 @@ const SpotifySyncPermissionModal: React.FC<SpotifySyncPermissionModalProps> = ({
           <div className="px-4 pt-2 pb-4 flex-shrink-0 bg-background border-t">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="text-xs sm:text-sm text-muted-foreground">
-                {selectedTracks.size} of {tracks.length} new songs selected
+                {selectedTracks.size} of {safeTracks.length} new songs selected
               </div>
               <div className="flex gap-2">
                 <Button 
