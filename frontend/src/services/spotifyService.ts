@@ -114,7 +114,8 @@ export const handleCallback = async (code: string, userId?: string): Promise<boo
     console.log('🔄 Attempting backend token exchange...');
     console.log('🔗 Using axios instance with baseURL:', axiosInstance.defaults.baseURL);
     
-    const response = await axiosInstance.post('/api/spotify/callback', {
+    // IMPORTANT: baseURL may already include "/api"; so call path without the "/api" prefix
+    const response = await axiosInstance.post('/spotify/callback', {
       code,
       redirect_uri: REDIRECT_URI,
       userId
