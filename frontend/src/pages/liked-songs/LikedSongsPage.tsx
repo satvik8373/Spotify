@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo, startTransition } from 'react';
 import { Heart, Music, Music2, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Calendar, Shuffle, Search, RefreshCw, LogOut, X } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -77,13 +77,29 @@ const LikedSongsPage = () => {
   const { removeLikedSong: removeFromStore } = useLikedSongsStore();
   const { isAuthenticated, user } = useAuthStore();
 
-  // Load liked songs on mount
+  // Prevent duplicate first-loads
+  const didMountRef = useRef(false);
+
+  // Load liked songs on mount (fast paint from session cache, then refresh in background)
   useEffect(() => {
-    loadAndSetLikedSongs();
+    if (didMountRef.current) return;
+    didMountRef.current = true;
+
+    try {
+      const cachedRaw = sessionStorage.getItem('liked_songs_cache_v1');
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw) as { t: number; songs: any[] };
+        if (Array.isArray(cached.songs) && cached.songs.length > 0) {
+          startTransition(() => setLikedSongs(cached.songs));
+        }
+      }
+    } catch {}
+
+    parallelLoad();
 
     // Subscribe to liked songs updates
     const handleLikedSongsUpdated = () => {
-      loadAndSetLikedSongs();
+      parallelLoad();
     };
 
     document.addEventListener('likedSongsUpdated', handleLikedSongsUpdated);
@@ -93,14 +109,36 @@ const LikedSongsPage = () => {
     };
   }, [isAuthenticated]);
 
-  // Load sync status for authenticated users
-  useEffect(() => {
-    if (isAuthenticated && user?.id && isSpotifyAuthenticated()) {
-      loadSyncStatus();
-      // Force refresh synced songs to ensure consistency
-      loadSyncedSongs();
+  // Single parallel loader for status + songs
+  const parallelLoad = async () => {
+    if (!isAuthenticated) {
+      const anonymousSongs = await loadLikedSongs();
+      startTransition(() => setLikedSongs(anonymousSongs));
+      return;
     }
-  }, [isAuthenticated, user?.id]);
+    if (!user?.id) return;
+    try {
+      setIsLoading(true);
+      const [status, songs] = await Promise.all([
+        isSpotifyAuthenticated() ? getSyncStatus(user.id) : Promise.resolve(null),
+        isSpotifyAuthenticated() ? getSyncedLikedSongs(user.id) : loadLikedSongs(),
+      ]);
+
+      if (status) setSyncStatus(status);
+      const pick = Array.isArray(songs) && songs.length > 0 ? songs : await loadLikedSongs();
+      startTransition(() => {
+        setLikedSongs(pick);
+        setUpToDate(formatSyncStatus(status || { syncStatus: 'never', hasSynced: false })?.status === 'synced');
+      });
+      try { sessionStorage.setItem('liked_songs_cache_v1', JSON.stringify({ t: Date.now(), songs: pick })); } catch {}
+    } catch (e) {
+      // Fallback to local if anything fails
+      const local = await loadLikedSongs();
+      startTransition(() => setLikedSongs(local));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Load Spotify account name on mount
   useEffect(() => {
@@ -257,7 +295,7 @@ const LikedSongsPage = () => {
         // Kick off prefetch to know how many tracks
         setSyncingSpotify(true);
         fetchAllSpotifySavedTracks()
-          .then((tracks) => {
+          .then(async (tracks) => {
             // Sort tracks by addedAt date (most recent first) to match Spotify app order
             const sortedTracks = tracks.sort((a: any, b: any) => {
               const dateA = new Date(a.addedAt).getTime();
@@ -266,7 +304,7 @@ const LikedSongsPage = () => {
             });
             
             // Filter to only show new/unscanned tracks
-            const newTracks = filterOnlyNewSpotifyTracks(sortedTracks);
+            const newTracks = await filterOnlyNewSpotifyTracks(sortedTracks);
             
             setSpotifyTracks(newTracks);
             const newCount = newTracks.length;
@@ -405,11 +443,11 @@ const LikedSongsPage = () => {
   };
 
   // Filtered view for display
-  const visibleSongs = filterQuery.trim()
-    ? likedSongs.filter((s) =>
-        `${s.title} ${s.artist}`.toLowerCase().includes(filterQuery.toLowerCase())
-      )
-    : likedSongs;
+  const visibleSongs = useMemo(() => {
+    const q = filterQuery.trim().toLowerCase();
+    if (!q) return likedSongs;
+    return likedSongs.filter((s) => `${s.title} ${s.artist}`.toLowerCase().includes(q));
+  }, [likedSongs, filterQuery]);
 
   // Manual sync function for retry button
   const handleManualSync = async () => {
@@ -879,7 +917,7 @@ const LikedSongsPage = () => {
                             });
                             
                             // Filter to only show new/unscanned tracks
-                            const newTracks = filterOnlyNewSpotifyTracks(sortedTracks);
+                            const newTracks = await filterOnlyNewSpotifyTracks(sortedTracks);
                             
                             setSpotifyTracks(newTracks);
                             const newCount = newTracks.length;

@@ -224,7 +224,7 @@ export const removeLikedSong = async (songId: string): Promise<void> => {
     console.warn('User not authenticated, cannot remove from Firestore');
     return;
   }
-
+  
   try {
     const likedSongRef = doc(collection(db, 'users', userId, 'likedSongs'), songId);
     
@@ -258,7 +258,7 @@ export const isSongLiked = async (songId: string): Promise<boolean> => {
   if (!isAuthenticated || !userId) {
     return false;
   }
-
+  
   try {
     const likedSongRef = doc(collection(db, 'users', userId, 'likedSongs'), songId);
     const songDoc = await getDoc(likedSongRef);
