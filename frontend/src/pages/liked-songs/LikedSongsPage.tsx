@@ -85,17 +85,76 @@ const LikedSongsPage = () => {
     if (didMountRef.current) return;
     didMountRef.current = true;
 
+    // Check Spotify auth status immediately
+    const checkSpotifyAuth = () => {
+      const accessToken = localStorage.getItem('spotify_access_token');
+      const refreshToken = localStorage.getItem('spotify_refresh_token');
+      const expiresAt = localStorage.getItem('spotify_expires_at');
+      
+      if (accessToken && refreshToken && expiresAt) {
+        const now = Date.now();
+        const expiresTime = parseInt(expiresAt);
+        
+        if (now < expiresTime) {
+          // Token is still valid, restore auth state
+          console.log('Spotify token valid, restoring auth state');
+          return true;
+        } else if (refreshToken) {
+          // Token expired but we have refresh token, attempt refresh
+          console.log('Spotify token expired, attempting refresh');
+          // This will be handled by the background auto-sync
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Check auth first
+    const isAuthValid = checkSpotifyAuth();
+
     try {
       const cachedRaw = sessionStorage.getItem('liked_songs_cache_v1');
       if (cachedRaw) {
-        const cached = JSON.parse(cachedRaw) as { t: number; songs: any[] };
-        if (Array.isArray(cached.songs) && cached.songs.length > 0) {
-          startTransition(() => setLikedSongs(cached.songs));
+        const cached = JSON.parse(cachedRaw) as { t: number; songs: any[]; userId?: string; hasSpotifyAuth?: boolean };
+        
+        // Validate cache: check if it's for the same user and auth state
+        const isValidCache = Array.isArray(cached.songs) && 
+                           cached.songs.length > 0 && 
+                           cached.userId === user?.id &&
+                           cached.hasSpotifyAuth === isSpotifyAuthValid;
+        
+        if (isValidCache) {
+          const cacheAge = Date.now() - cached.t;
+          // Use cache if it's less than 10 minutes old
+          if (cacheAge < 10 * 60 * 1000) {
+            console.log('Using cached data, age:', Math.round(cacheAge / 1000), 'seconds');
+            startTransition(() => setLikedSongs(cached.songs));
+            
+            // Load fresh data in background if cache is older than 2 minutes
+            if (cacheAge > 2 * 60 * 1000) {
+              setTimeout(() => parallelLoad(), 500);
+            }
+            return;
+          } else {
+            console.log('Cache expired, age:', Math.round(cacheAge / 1000), 'seconds');
+          }
         }
       }
-    } catch {}
+    } catch (error) {
+      console.log('Cache validation failed:', error);
+      // Clear invalid cache
+      try { sessionStorage.removeItem('liked_songs_cache_v1'); } catch {}
+    }
 
-    parallelLoad();
+    // Load data immediately if auth is valid, otherwise wait for auth
+    if (isAuthValid) {
+      parallelLoad();
+    } else {
+      // Still load anonymous songs if no auth
+      loadLikedSongs().then(songs => {
+        startTransition(() => setLikedSongs(songs));
+      });
+    }
 
     // Subscribe to liked songs updates
     const handleLikedSongsUpdated = () => {
@@ -117,21 +176,38 @@ const LikedSongsPage = () => {
       return;
     }
     if (!user?.id) return;
+    
     try {
       setIsLoading(true);
+      
+      // Check if we have valid Spotify auth before making API calls
+      const hasValidSpotifyAuth = isSpotifyAuthenticated();
+      
       const [status, songs] = await Promise.all([
-        isSpotifyAuthenticated() ? getSyncStatus(user.id) : Promise.resolve(null),
-        isSpotifyAuthenticated() ? getSyncedLikedSongs(user.id) : loadLikedSongs(),
+        hasValidSpotifyAuth ? getSyncStatus(user.id) : Promise.resolve(null),
+        hasValidSpotifyAuth ? getSyncedLikedSongs(user.id) : loadLikedSongs(),
       ]);
 
       if (status) setSyncStatus(status);
       const pick = Array.isArray(songs) && songs.length > 0 ? songs : await loadLikedSongs();
+      
       startTransition(() => {
         setLikedSongs(pick);
         setUpToDate(formatSyncStatus(status || { syncStatus: 'never', hasSynced: false })?.status === 'synced');
       });
-      try { sessionStorage.setItem('liked_songs_cache_v1', JSON.stringify({ t: Date.now(), songs: pick })); } catch {}
+      
+      // Cache the results for instant loading on next visit
+      try { 
+        sessionStorage.setItem('liked_songs_cache_v1', JSON.stringify({ 
+          t: Date.now(), 
+          songs: pick,
+          userId: user.id,
+          hasSpotifyAuth: hasValidSpotifyAuth
+        })); 
+      } catch {}
+      
     } catch (e) {
+      console.error('Error in parallelLoad:', e);
       // Fallback to local if anything fails
       const local = await loadLikedSongs();
       startTransition(() => setLikedSongs(local));
@@ -139,6 +215,26 @@ const LikedSongsPage = () => {
       setIsLoading(false);
     }
   };
+
+  // Enhanced Spotify auth check that considers token validity
+  const isSpotifyAuthenticatedEnhanced = useCallback(() => {
+    const accessToken = localStorage.getItem('spotify_access_token');
+    const refreshToken = localStorage.getItem('spotify_refresh_token');
+    const expiresAt = localStorage.getItem('spotify_expires_at');
+    
+    if (!accessToken || !refreshToken || !expiresAt) {
+      return false;
+    }
+    
+    const now = Date.now();
+    const expiresTime = parseInt(expiresAt);
+    
+    // Token is valid if it hasn't expired or if we have a refresh token
+    return now < expiresTime || !!refreshToken;
+  }, []);
+
+  // Use enhanced auth check
+  const isSpotifyAuthValid = isSpotifyAuthenticatedEnhanced();
 
   // Load Spotify account name on mount
   useEffect(() => {
@@ -189,7 +285,7 @@ const LikedSongsPage = () => {
           });
           
           // Remove synced songs from liked songs
-          for (const songId of syncedSongIds) {
+          for (const songId of Array.from(syncedSongIds)) {
             try {
               await removeLikedSong(songId);
               console.log(`Successfully removed synced song: ${songId}`);
@@ -363,8 +459,87 @@ const LikedSongsPage = () => {
   useEffect(() => {
     // Debug token state on mount
     debugTokenState();
+    
+    // Background token refresh check
+    const checkAndRefreshToken = async () => {
+      const accessToken = localStorage.getItem('spotify_access_token');
+      const refreshToken = localStorage.getItem('spotify_refresh_token');
+      const expiresAt = localStorage.getItem('spotify_expires_at');
+      
+      if (accessToken && refreshToken && expiresAt) {
+        const now = Date.now();
+        const expiresTime = parseInt(expiresAt);
+        
+        // If token expires in next 5 minutes, refresh it
+        if (expiresTime - now < 5 * 60 * 1000) {
+          console.log('Token expiring soon, refreshing...');
+          try {
+            // This will be handled by the background auto-sync
+            await backgroundAutoSyncOnce();
+          } catch (error) {
+            console.log('Background token refresh failed:', error);
+          }
+        }
+      }
+    };
+    
+    // Check token immediately
+    checkAndRefreshToken();
+    
+    // Set up periodic token check (every 10 minutes)
+    const tokenCheckInterval = setInterval(checkAndRefreshToken, 10 * 60 * 1000);
+    
+    // Run background auto-sync once
     backgroundAutoSyncOnce().catch(() => {});
+    
+    return () => {
+      clearInterval(tokenCheckInterval);
+    };
   }, []);
+
+  // Preload data when component becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isAuthenticated && user?.id && isSpotifyAuthValid) {
+        // Component became visible, refresh data if needed
+        const cachedRaw = sessionStorage.getItem('liked_songs_cache_v1');
+        if (cachedRaw) {
+          try {
+            const cached = JSON.parse(cachedRaw);
+            const cacheAge = Date.now() - cached.t;
+            // If cache is older than 5 minutes, refresh
+            if (cacheAge > 5 * 60 * 1000) {
+              console.log('Cache expired, refreshing data...');
+              parallelLoad();
+            }
+          } catch {}
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isAuthenticated, user?.id, isSpotifyAuthValid]);
+
+  // Optimize loading by pre-warming Firestore connection
+  useEffect(() => {
+    if (isAuthenticated && user?.id && isSpotifyAuthValid) {
+      // Pre-warm Firestore connection by making a lightweight query
+      const prewarmConnection = async () => {
+        try {
+          // Just check if we can access the user document
+          const userDoc = doc(db, 'users', user.id);
+          await getDoc(userDoc);
+        } catch (error) {
+          console.log('Pre-warm connection failed:', error);
+        }
+      };
+      
+      // Delay pre-warming to avoid blocking initial render
+      const timer = setTimeout(prewarmConnection, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, user?.id, isSpotifyAuthValid]);
 
   // Intentionally avoid setting up or changing the player queue on mount/focus to prevent auto-play
   
@@ -397,7 +572,7 @@ const LikedSongsPage = () => {
 
     try {
       // First try to load synced songs from Firestore
-      if (isSpotifyAuthenticated() && user?.id) {
+      if (isSpotifyAuthValid && user?.id) {
         const syncedData = await getSyncedLikedSongs(user.id);
         if (syncedData.length > 0) {
           setLikedSongs(syncedData);
@@ -564,7 +739,7 @@ const LikedSongsPage = () => {
 
   // Handle real-time like/unlike operations
   const handleSpotifyLikeUnlike = async (trackId: string, action: 'like' | 'unlike') => {
-    if (!user?.id || !isSpotifyAuthenticated()) {
+    if (!user?.id || !isSpotifyAuthValid) {
       toast.error('Please connect your Spotify account first');
       return;
     }
@@ -748,7 +923,7 @@ const LikedSongsPage = () => {
       </div>
       <h2 className="text-2xl font-bold mb-2">Songs you like will appear here</h2>
       <p className="text-zinc-400 max-w-md mb-6">Save songs by tapping the heart icon.</p>
-      {!isSpotifyAuthenticated() && (
+      {!isSpotifyAuthValid && (
         <div className="mb-4">
           <SpotifyLogin variant="default" />
         </div>
@@ -867,7 +1042,7 @@ const LikedSongsPage = () => {
                       <p className="text-muted-foreground">
                         {isLoading 
                           ? 'Loading songs...' 
-                          : `${likedSongs.length} songs${isAuthenticated && isSpotifyAuthenticated() ? ` · ${getSyncStatusText()}` : ''}`
+                          : `${likedSongs.length} songs${isAuthenticated && isSpotifyAuthValid ? ` · ${getSyncStatusText()}` : ''}`
                         }
                       </p>
                     </div>
@@ -877,7 +1052,7 @@ const LikedSongsPage = () => {
             </div>
 
             {/* Spotify sync buttons - moved to top with professional design */}
-            {(isSpotifyAuthenticated()) && (
+            {(isSpotifyAuthValid) && (
               <div className={cn("mb-6", isMobile ? "px-0" : "px-0")}> 
                 <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 backdrop-blur-sm rounded-xl border border-green-500/30 p-6 shadow-lg">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -889,7 +1064,7 @@ const LikedSongsPage = () => {
                         <div>
                           <h3 className="font-semibold text-lg text-foreground">Spotify Integration</h3>
                           <p className="text-sm text-muted-foreground">
-                            {upToDate ? '✅ Library is up to date' : '🔄 New songs available to sync'}
+                            {isLoading ? '🔄 Loading...' : upToDate ? '✅ Library is up to date' : '🔄 New songs available to sync'}
                           </p>
                         </div>
                       </div>
@@ -898,6 +1073,12 @@ const LikedSongsPage = () => {
                         <div className="flex items-center gap-2 text-sm">
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                           <span className="text-green-500 font-medium">Connected to: {spotifyAccountName}</span>
+                        </div>
+                      )}
+                      {/* Show sync status if available */}
+                      {syncStatus && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Last sync: {syncStatus.lastSync ? new Date(syncStatus.lastSync).toLocaleString() : 'Never'}
                         </div>
                       )}
                     </div>
@@ -963,7 +1144,7 @@ const LikedSongsPage = () => {
             )}
 
             {/* Connect Spotify button - moved to top with professional design */}
-            {(!isSpotifyAuthenticated()) && (
+            {(!isSpotifyAuthValid) && (
               <div className={cn("mb-6", isMobile ? "px-0" : "px-0")}> 
                 <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 backdrop-blur-sm rounded-xl border border-green-500/30 p-6 shadow-lg">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -1247,6 +1428,18 @@ const LikedSongsPage = () => {
             </div>
           ) : (
             <EmptyState />
+          )}
+
+          {/* Show loading indicator at bottom if refreshing in background */}
+          {!isLoading && likedSongs.length > 0 && (
+            <div className="text-center py-4 text-sm text-muted-foreground">
+              {refreshing && (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                  Refreshing...
+                </div>
+              )}
+            </div>
           )}
 
         </div>
