@@ -21,10 +21,9 @@ const FINAL_API_URL = isProduction
   ? (import.meta.env.VITE_API_URL || 'https://mavrixfilms.live')
   : "http://localhost:5000";
 
-// Normalize base URL: remove trailing slash and trailing /api to avoid double /api when using path "/api/..."
+// Normalize base URL: remove trailing slashes only (keep /api if present)
 let cleanApiUrl = FINAL_API_URL.trim();
-cleanApiUrl = cleanApiUrl.replace(/\/+$/, ''); // strip trailing slashes
-cleanApiUrl = cleanApiUrl.replace(/\/(api)$/, ''); // strip trailing /api if present
+cleanApiUrl = cleanApiUrl.replace(/\/+$/, '');
 
 console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
 console.log('🔗 API base URL:', cleanApiUrl);
