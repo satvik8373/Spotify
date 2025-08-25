@@ -16,9 +16,8 @@ import { auth, db, storage } from "@/lib/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import axiosInstance from "@/lib/axios";
 import { Timestamp } from "firebase/firestore";
-import { logout as spotifyLogout } from "./spotifyService";
 
-// Remove the separate API_URL variable since we're using axiosInstance
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 /**
  * Hybrid authentication service that works with both Firebase and the backend API
@@ -245,19 +244,26 @@ export const register = async (email: string, password: string, fullName: string
     };
     
     // Synchronize with backend if it's available
-    if (axiosInstance) { // Use axiosInstance directly
+    if (API_URL) {
       try {
         // Get Firebase ID token
         const idToken = await user.getIdToken();
         
         // Call backend API to create user
-        const response = await axiosInstance.post('/api/auth/register', {
-          email,
-          fullName,
-          uid: user.uid
+        const response = await fetch(`${API_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            email,
+            fullName,
+            uid: user.uid
+          })
         });
         
-        if (response.status !== 200) {
+        if (!response.ok) {
           console.warn('Failed to register user with backend, but Firebase registration successful');
         }
       } catch (error) {
@@ -285,24 +291,18 @@ export const signOut = async () => {
     // Reset auth store before Firebase signout for faster UI response
     useAuthStore.getState().reset();
     
-    // Sign out from Spotify first (clear tokens and sync data)
-    try {
-      spotifyLogout();
-      console.log('✅ Spotify account disconnected');
-      
-      // Reset Spotify context state
-      resetSpotifyContext();
-      console.log('✅ Spotify context reset');
-    } catch (error) {
-      console.warn('Spotify logout error:', error);
-    }
-    
     // Sign out from Firebase (can be slow sometimes)
     await firebaseSignOut(auth);
     
     // Sign out from backend if it's available (do in background)
-    if (axiosInstance && userId) { // Use axiosInstance directly
-      axiosInstance.post('/api/auth/logout', { uid: userId }).catch(error => {
+    if (API_URL && userId) {
+      fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ uid: userId })
+      }).catch(error => {
         console.warn('Backend logout error:', error);
       });
     }
@@ -311,17 +311,10 @@ export const signOut = async () => {
     localStorage.removeItem('firebase:authUser:AIzaSyBWgv_mE8ZAnG2kUJSacCOUgkbo1RxxSpE:[DEFAULT]');
     localStorage.removeItem('auth-store');
     
-    // Clear Spotify-related localStorage items
-    localStorage.removeItem('spotify_access_token');
-    localStorage.removeItem('spotify_refresh_token');
-    localStorage.removeItem('spotify_token_expiry');
-    localStorage.removeItem('spotify-liked-songs-last-sync');
-    localStorage.removeItem('spotify_sync_prompt');
-    
     // Clear any potential Firebase auth related items
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.includes('firebase') || key.includes('auth') || key.includes('spotify'))) {
+      if (key && (key.includes('firebase') || key.includes('auth'))) {
         localStorage.removeItem(key);
       }
     }
@@ -329,7 +322,7 @@ export const signOut = async () => {
     // Also clear session storage
     for (let i = 0; i < sessionStorage.length; i++) {
       const key = sessionStorage.key(i);
-      if (key && (key.includes('firebase') || key.includes('auth') || key.includes('spotify'))) {
+      if (key && (key.includes('firebase') || key.includes('auth'))) {
         sessionStorage.removeItem(key);
       }
     }
@@ -380,19 +373,26 @@ export const updateUserProfile = async (user: User, data: {
     }, { merge: true });
     
     // Synchronize with backend if it's available
-    if (axiosInstance) { // Use axiosInstance directly
+    if (API_URL) {
       try {
         // Get Firebase ID token
         const idToken = await user.getIdToken();
         
         // Call backend API to update user
-        const response = await axiosInstance.post('/api/auth/update-profile', {
-          uid: user.uid,
-          fullName: data.fullName || user.displayName,
-          imageUrl: imageUrl
+        const response = await fetch(`${API_URL}/api/auth/update-profile`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            uid: user.uid,
+            fullName: data.fullName || user.displayName,
+            imageUrl: imageUrl
+          })
         });
         
-        if (response.status !== 200) {
+        if (!response.ok) {
           console.warn('Failed to update profile with backend, but Firebase update successful');
         }
       } catch (error) {
@@ -419,12 +419,18 @@ export const resetPassword = async (email: string) => {
     await sendPasswordResetEmail(auth, email);
     
     // Notify backend if it's available
-    if (axiosInstance) { // Use axiosInstance directly
+    if (API_URL) {
       try {
-        const response = await axiosInstance.post('/api/auth/reset-password-request', { email });
+        const response = await fetch(`${API_URL}/api/auth/reset-password-request`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email })
+        });
         
-        if (response.status !== 200) {
-          console.warn('Failed to send reset password request to backend');
+        if (!response.ok) {
+          console.warn('Failed to notify backend about password reset, but Firebase reset successful');
         }
       } catch (error) {
         console.warn('Backend password reset notification failed, but Firebase reset successful:', error);
@@ -450,16 +456,23 @@ export const checkAdminStatus = async (uid: string) => {
     }
     
     // If not in Firestore, check backend
-    if (axiosInstance) { // Use axiosInstance directly
+    if (API_URL) {
       try {
         // Get Firebase ID token
         const idToken = await auth.currentUser?.getIdToken();
         
         // Call backend API to check admin status
-        const response = await axiosInstance.post('/api/auth/check-admin', { uid });
+        const response = await fetch(`${API_URL}/api/auth/check-admin`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({ uid })
+        });
         
-        if (response.status === 200) {
-          const data = response.data;
+        if (response.ok) {
+          const data = await response.json();
           return data.isAdmin === true;
         }
       } catch (error) {
@@ -551,17 +564,24 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
         }
         
         // Synchronize with backend if available (non-blocking)
-        if (axiosInstance) { // Use axiosInstance directly
+        if (API_URL) {
           try {
             // Call backend API to sync user
-            const response = await axiosInstance.post('/api/auth/sync', {
-              email: user.email,
-              uid: user.uid,
-              displayName: user.displayName,
-              photoURL: user.photoURL
+            const response = await fetch(`${API_URL}/api/auth/sync`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+              },
+              body: JSON.stringify({
+                email: user.email,
+                uid: user.uid,
+                displayName: user.displayName,
+                photoURL: user.photoURL
+              })
             });
             
-            if (response.status !== 200) {
+            if (!response.ok) {
               console.warn('Failed to sync Google user with backend, but Firebase auth successful');
             }
           } catch (error) {
@@ -618,17 +638,5 @@ export const refreshUserData = async (): Promise<UserProfile | null> => {
   } catch (error) {
     console.error("Error refreshing user data:", error);
     return null;
-  }
-}; 
-
-// Function to reset Spotify context state
-const resetSpotifyContext = () => {
-  try {
-    // Try to access the Spotify context and reset it
-    // This will be called from components that use the context
-    const event = new CustomEvent('spotify-context-reset');
-    window.dispatchEvent(event);
-  } catch (error) {
-    console.warn('Could not reset Spotify context:', error);
   }
 }; 

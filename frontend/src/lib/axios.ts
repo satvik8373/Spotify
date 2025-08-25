@@ -19,7 +19,7 @@ const isProduction = window.location.hostname === 'mavrixfilms.live' ||
 // Use production API URL in production, localhost in development
 // Ensure no duplicate /api in the URL
 const FINAL_API_URL = isProduction 
-  ? 'https://spotify-api-drab.vercel.app'  // Hardcode production URL for now
+  ? (import.meta.env.VITE_API_URL || 'https://mavrixfilms.live')
   : "http://localhost:5000";
 
 // Remove trailing slash and ensure proper formatting
@@ -31,8 +31,6 @@ console.log('📍 Current hostname:', window.location.hostname);
 console.log('🔧 RAW_API_URL:', RAW_API_URL);
 console.log('🔧 FINAL_API_URL:', FINAL_API_URL);
 console.log('🔧 Clean API URL:', cleanApiUrl);
-console.log('🔧 VITE_API_URL env var:', import.meta.env.VITE_API_URL);
-console.log('🔧 Full request URL example:', `${cleanApiUrl}/api/spotify/sync-status/test`);
 
 // Create and configure axios instance
 const axiosInstance = axios.create({
@@ -56,9 +54,6 @@ export const setAuthToken = (token: string | null) => {
 // Add request interceptor
 axiosInstance.interceptors.request.use(
 	async (config) => {
-		// Log the full URL being requested
-		console.log('🚀 Making API request to:', `${config.baseURL}${config.url}`);
-		
 		// Get token from Firebase for each request (lazy import to avoid eager Firebase load)
 		try {
 			const { auth } = await import('./firebase');

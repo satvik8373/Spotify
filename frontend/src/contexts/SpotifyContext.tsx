@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-  import spotifyService, { isAuthenticated, logout } from '../services/spotifyService';
+import spotifyService, { isAuthenticated, logout } from '../services/spotifyService';
 
 interface SpotifyContextType {
   isAuthenticated: boolean;
@@ -8,11 +8,10 @@ interface SpotifyContextType {
   playlists: any[];
   savedTracks: any[];
   logout: () => void;
-  reset: () => void;
   fetchUserPlaylists: (limit?: number) => Promise<any[]>;
   fetchSavedTracks: (limit?: number) => Promise<any[]>;
   searchTracks: (query: string, limit?: number) => Promise<any[]>;
-  playTrack: (trackUri: string, deviceId?: string) => Promise<void>;
+  playTrack: (trackUri: string, deviceId?: string) => Promise<boolean>;
 }
 
 const SpotifyContext = createContext<SpotifyContextType | undefined>(undefined);
@@ -53,21 +52,6 @@ export const SpotifyProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
 
     checkAuthStatus();
-    
-    // Listen for reset events from logout
-    const handleReset = () => {
-      setAuthenticated(false);
-      setUser(null);
-      setPlaylists([]);
-      setSavedTracks([]);
-      setLoading(false);
-    };
-    
-    window.addEventListener('spotify-context-reset', handleReset);
-    
-    return () => {
-      window.removeEventListener('spotify-context-reset', handleReset);
-    };
   }, []);
 
   const handleLogout = () => {
@@ -111,9 +95,10 @@ export const SpotifyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const playTrack = async (trackUri: string, deviceId?: string) => {
     try {
-      await spotifyService.playTrack(trackUri, deviceId);
+      return await spotifyService.playTrack(trackUri, deviceId);
     } catch (error) {
       console.error('Error playing track:', error);
+      return false;
     }
   };
 
@@ -124,12 +109,6 @@ export const SpotifyProvider: React.FC<{ children: ReactNode }> = ({ children })
     playlists,
     savedTracks,
     logout: handleLogout,
-    reset: () => {
-      setAuthenticated(false);
-      setUser(null);
-      setPlaylists([]);
-      setSavedTracks([]);
-    },
     fetchUserPlaylists,
     fetchSavedTracks,
     searchTracks,

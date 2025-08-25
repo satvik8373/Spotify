@@ -396,7 +396,7 @@ const MobileNav = () => {
                     <LogIn className="h-3 w-3 text-foreground" />
                   </button>
                 )}
-                <h2 className="text-base font-semibold text-foreground dark:text-white">Your Library</h2>
+                <h2 className="text-base font-semibold text-foreground">Your Library</h2>
               </div>
               <div className="flex items-center gap-2">
               </div>
@@ -450,7 +450,7 @@ const MobileNav = () => {
                     <LogIn className="h-3 w-3 text-foreground" />
                   </button>
                 )}
-                <h2 className="text-base font-semibold text-foreground dark:text-white">Search</h2>
+                <h2 className="text-base font-semibold text-foreground">Search</h2>
               </div>
               <div className="flex items-center gap-2" />
             </div>
@@ -558,7 +558,7 @@ const MobileNav = () => {
                   <p 
                     className={cn(
                       "text-sm font-medium truncate",
-                      "text-white"
+                      "text-black"
                     )}
                   >
                     {currentSong.title}
@@ -566,7 +566,7 @@ const MobileNav = () => {
                   <p 
                     className={cn(
                       "text-xs truncate",
-                      "text-white/80"
+                      "text-black/70"
                     )}
                   >
                     {currentSong.artist}
@@ -578,8 +578,8 @@ const MobileNav = () => {
                   onClick={handleLikeToggle}
                   className={cn(
                     "mr-2 h-8 w-8 flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
-                    "bg-black/20 hover:bg-black/30",
-                    songLiked ? "text-green-500" : "text-white/80"
+                    "bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30",
+                    songLiked ? "text-green-500" : "text-foreground"
                   )}
                 >
                   <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
@@ -592,7 +592,7 @@ const MobileNav = () => {
                   className={cn(
                     "h-9 w-9 flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
                     isPlaying 
-                      ? "bg-black/20 hover:bg-black/30 text-white/80" 
+                      ? "bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 text-foreground" 
                       : "bg-green-500 hover:bg-green-400 text-black"
                   )}
                 >
@@ -643,7 +643,7 @@ const MobileNav = () => {
                 <div 
                   className={cn(
                     "flex justify-between px-3 py-1 text-[10px]",
-                    "text-white/80"
+                    albumColors.isLight ? "text-black/80" : "text-white/80"
                   )}
                 >
                   <span>{formatTime(currentTime || 0)}</span>
@@ -662,7 +662,7 @@ const MobileNav = () => {
               className={cn(
                 'flex flex-col items-center justify-center py-1 transition-colors',
                 isActive(item.path) 
-                  ? 'text-foreground dark:text-white'
+                  ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -675,7 +675,7 @@ const MobileNav = () => {
                               <span className={cn(
                   "text-[11px] font-medium tracking-tight",
                   isActive(item.path) 
-                    ? "text-foreground dark:text-white" 
+                    ? "text-foreground" 
                     : "text-muted-foreground"
                 )}>{item.label}</span>
             </Link>

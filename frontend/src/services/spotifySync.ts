@@ -90,27 +90,22 @@ export const syncSpotifyLikedSongsToMavrixfy = async (tracks: FirestoreSong[]): 
   const fetchedCount = tracks.length;
   let syncedCount = 0;
 
-  // Add to global liked songs - let backend handle duplicate detection
+  // Add to global liked songs
   for (const track of tracks) {
     const id = track.id;
-    if (!id) continue;
+    if (!id || existingIds.has(id)) continue;
 
-    // Always try to add, let backend handle existing songs
-    try {
-      await addFirestoreLikedSong({
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
-        album: track.album || '',
-        imageUrl: track.imageUrl || '',
-        audioUrl: track.audioUrl || '',
-        duration: track.duration || 0,
-      });
-      syncedCount += 1;
-    } catch (error) {
-      // If song already exists, backend will handle it
-      console.log(`Song ${track.id} may already exist, continuing...`);
-    }
+    await addFirestoreLikedSong({
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album || '',
+      imageUrl: track.imageUrl || '',
+      audioUrl: track.audioUrl || '',
+      duration: track.duration || 0,
+    });
+    syncedCount += 1;
+    existingIds.add(id);
   }
 
   try {
@@ -133,9 +128,9 @@ export const countNewSpotifyTracks = async (tracks: FirestoreSong[]): Promise<nu
 
 // Filter only new/unscanned Spotify tracks that aren't already in Mavrixfy
 export const filterOnlyNewSpotifyTracks = async (tracks: FirestoreSong[]): Promise<FirestoreSong[]> => {
-  // For now, return all tracks and let backend handle filtering
-  // This ensures newly added songs from Spotify are detected
-  return tracks.filter(track => track?.id);
+  const existingIds = await getExistingSongIds();
+  
+  return tracks.filter(track => track?.id && !existingIds.has(track.id));
 };
 
 export const shouldBackgroundSync = (minMinutes: number = 10): boolean => {
