@@ -956,30 +956,6 @@ const LikedSongsPage = () => {
                         <LogOut className="w-4 h-4 mr-2" />
                         Disconnect
                       </Button>
-                      
-                      {/* Migration Button */}
-                      <Button
-                        variant="outline"
-                        size="default"
-                        onClick={handleMigration}
-                        disabled={syncingSpotify}
-                        className="border-blue-500/50 text-blue-500 hover:bg-blue-500/10 hover:border-blue-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Migrate Data
-                      </Button>
-                      
-                      {/* Delete All Songs Button */}
-                      <Button
-                        variant="outline"
-                        size="default"
-                        onClick={handleDeleteAllSongs}
-                        disabled={syncingSpotify || likedSongs.length === 0}
-                        className="border-red-600/50 text-red-600 hover:bg-red-600/10 hover:border-red-600 font-medium px-6 py-2 rounded-lg transition-all duration-200"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Delete All Songs
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -1031,19 +1007,7 @@ const LikedSongsPage = () => {
                     <span className="font-medium">Shuffle</span>
                   </Button>
                   
-                  {/* Delete All Button for Mobile */}
-                  {isAuthenticated && isSpotifyAuthenticated() && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDeleteAllSongs}
-                      disabled={syncingSpotify}
-                      className="rounded-full text-sm px-4 py-2 h-10 border border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 transition-all duration-200 font-medium"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      <span className="font-medium">Clear All</span>
-                    </Button>
-                  )}
+                  {/* Removed Clear All button */}
                 </div>
                 
                 <div className="relative">
@@ -1069,19 +1033,7 @@ const LikedSongsPage = () => {
                   <span className="font-medium">Shuffle</span>
                 </Button>
                 
-                {/* Delete All Button for Desktop */}
-                {isAuthenticated && isSpotifyAuthenticated() && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDeleteAllSongs}
-                    disabled={syncingSpotify}
-                    className="rounded-full text-sm px-4 py-2 h-10 border border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 transition-all duration-200 font-medium"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    <span className="font-medium">Delete All Songs</span>
-                  </Button>
-                )}
+                {/* Removed Delete All Songs button */}
                 
                 <div className="relative">
                   <Button 
