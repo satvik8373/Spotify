@@ -112,10 +112,10 @@ export const handleCallback = async (code: string, userId?: string): Promise<boo
   try {
     // Use backend route to exchange code for tokens (safer)
     console.log('🔄 Attempting backend token exchange...');
-    console.log('🔗 Using axios instance with baseURL:', axiosInstance.defaults.baseURL);
+    console.log('🔗 Using absolute backend callback URL: https://spotify-api-drab.vercel.app/api/spotify/callback');
     
-    // IMPORTANT: baseURL may already include "/api"; so call path without the "/api" prefix
-    const response = await axiosInstance.post('/spotify/callback', {
+    // Use absolute URL as requested to avoid any baseURL ambiguity
+    const response = await axios.post('https://spotify-api-drab.vercel.app/api/spotify/callback', {
       code,
       redirect_uri: REDIRECT_URI,
       userId
