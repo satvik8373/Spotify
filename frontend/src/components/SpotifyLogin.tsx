@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Music2, AlertCircle } from 'lucide-react';
-import { getLoginUrl } from '@/services/spotifyService';
+import { Music2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { getLoginUrl, isAuthenticated as isSpotifyAuthenticated, logout as spotifyLogout } from '@/services/spotifyService';
 import { toast } from 'sonner';
 
 interface SpotifyLoginProps {
@@ -17,6 +17,30 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [isAuth, setIsAuth] = useState<boolean>(false);
+
+  // Sync auth state with storage and global events
+  useEffect(() => {
+    const updateAuth = () => setIsAuth(isSpotifyAuthenticated());
+
+    updateAuth();
+    const onAuthChanged = () => updateAuth();
+    const onStorage = () => updateAuth();
+    const onVisibility = () => { if (!document.hidden) updateAuth(); };
+
+    window.addEventListener('spotify_auth_changed', onAuthChanged);
+    window.addEventListener('storage', onStorage);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const interval = setInterval(updateAuth, 60000);
+
+    return () => {
+      window.removeEventListener('spotify_auth_changed', onAuthChanged);
+      window.removeEventListener('storage', onStorage);
+      document.removeEventListener('visibilitychange', onVisibility);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Check configuration on mount
   useEffect(() => {
@@ -49,7 +73,7 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       setIsLoading(true);
       console.log('🔄 Spotify login button clicked');
       
-      // Check if we're in production
+      // Check environment
       const isProduction = window.location.hostname === 'mavrixfilms.live' || 
                           window.location.hostname === 'www.mavrixfilms.live';
       console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
@@ -89,6 +113,23 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
     );
   }
 
+  // Connected state
+  if (isAuth) {
+    return (
+      <Button 
+        disabled
+        className={`bg-emerald-600/20 hover:bg-emerald-600/25 text-emerald-400 font-medium flex items-center gap-2 border border-emerald-600/40 ${className}`}
+        variant={variant}
+        size={size}
+        title="Connected to Spotify"
+      >
+        <CheckCircle2 className="h-4 w-4" />
+        {size !== 'icon' && <span>Connected to Spotify</span>}
+      </Button>
+    );
+  }
+
+  // Default login button
   return (
     <Button 
       onClick={handleLogin} 
