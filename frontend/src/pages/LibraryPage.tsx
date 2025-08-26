@@ -256,7 +256,7 @@ const LibraryPage = () => {
                           <div 
                             key={`sp-${pl.id}`}
                             className="flex items-center gap-3 p-3 hover:bg-accent rounded-md cursor-pointer group transition-colors"
-                            onClick={() => navigate('/spotify')}
+                            onClick={() => navigate(`/spotify/playlist/${pl.id}`)}
                           >
                             <img 
                               src={pl.images?.[0]?.url || '/default-playlist.jpg'} 
@@ -280,7 +280,7 @@ const LibraryPage = () => {
                           <div 
                             key={`sp-${pl.id}`}
                             className="bg-card border border-border rounded-lg p-4 hover:bg-accent transition-colors cursor-pointer group relative"
-                            onClick={() => navigate('/spotify')}
+                            onClick={() => navigate(`/spotify/playlist/${pl.id}`)}
                           >
                             <div className="aspect-square mb-4 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
                               <img 

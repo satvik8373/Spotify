@@ -10,6 +10,7 @@ const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
 const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.PlaylistPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));
+const SpotifyPlaylistPage = lazy(() => import('./pages/spotify/SpotifyPlaylistPage'));
 // import SharedSongPage from './pages/SharedSongPage';
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -167,6 +168,10 @@ const router = createBrowserRouter(
 				{
 					path: '/playlist/:id',
 					element: <AuthGate><PlaylistPage /></AuthGate>
+				},
+				{
+					path: '/spotify/playlist/:id',
+					element: <AuthGate><SpotifyPlaylistPage /></AuthGate>
 				},
 				{
 					path: '/debug/api',
