@@ -18,11 +18,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { usePlaylistStore } from '../stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../components/playlist/CreatePlaylistDialog';
-import { cn } from '@/lib/utils';
 import { useSpotify } from '../contexts/SpotifyContext';
 
 const LibraryPage = () => {
-  const { isAuthenticated, loading, user } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const [isLibraryLoading, setIsLibraryLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -223,6 +222,40 @@ const LibraryPage = () => {
                       <span>Create</span>
                     </button>
                   </div>
+                </div>
+
+                {/* Spotify Connection Status */}
+                <div className="mb-4 px-2 sm:px-4">
+                  {spotify.isAuthenticated ? (
+                    <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 rounded-lg border border-green-500/30 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="text-sm text-foreground">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          Connected to Spotify{spotify.user?.display_name ? ` • ${spotify.user.display_name}` : ''}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          className="h-8 px-3"
+                          variant="secondary"
+                          onClick={() => spotify.fetchUserPlaylists(50).catch(() => {})}
+                        >
+                          Refresh
+                        </Button>
+                        <Button
+                          className="h-8 px-3"
+                          variant="destructive"
+                          onClick={() => spotify.logout()}
+                        >
+                          Disconnect
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-muted/30 rounded-lg border border-border p-3 text-sm text-muted-foreground">
+                      Not connected to Spotify. Connect from the Spotify pages to see your playlists here.
+                    </div>
+                  )}
                 </div>
 
                 {/* Liked Songs Card - Always at top */}

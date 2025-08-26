@@ -10,6 +10,7 @@ interface SpotifyTrack {
   name: string;
   duration_ms: number;
   artists: { name: string }[];
+  albumImage?: string;
 }
 
 export default function SpotifyPlaylistPage() {
@@ -38,6 +39,7 @@ export default function SpotifyPlaylistPage() {
             name: t.name,
             duration_ms: t.duration_ms,
             artists: t.artists || [],
+            albumImage: t.album?.images?.[0]?.url,
           }));
         setTracks(mapped);
       } catch (e) {
@@ -125,6 +127,13 @@ export default function SpotifyPlaylistPage() {
                   >
                     {playingTrackId === t.id ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                   </button>
+                  {t.albumImage ? (
+                    <img src={t.albumImage} alt="cover" className="w-10 h-10 rounded object-cover" />
+                  ) : (
+                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                      <Music2 className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
                   <div className="truncate">{t.name}</div>
                 </div>
                 <div className="col-span-4 sm:col-span-4 truncate">
