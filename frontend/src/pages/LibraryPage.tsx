@@ -18,15 +18,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { usePlaylistStore } from '../stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../components/playlist/CreatePlaylistDialog';
-import { useSpotify } from '../contexts/SpotifyContext';
+import { cn } from '@/lib/utils';
 
 const LibraryPage = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const navigate = useNavigate();
   const [isLibraryLoading, setIsLibraryLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { userPlaylists, fetchUserPlaylists } = usePlaylistStore();
-  const spotify = useSpotify();
   
   // Scroll management
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -130,25 +129,50 @@ const LibraryPage = () => {
   // Load library data
   useEffect(() => {
     const loadData = async () => {
+      console.log('LibraryPage: loadData called, isAuthenticated:', isAuthenticated, 'user:', user?.id);
       if (isAuthenticated) {
         try {
+          console.log('LibraryPage: Calling fetchUserPlaylists');
           await fetchUserPlaylists();
+          console.log('LibraryPage: fetchUserPlaylists completed');
         } catch (error) {
           console.error('Error loading playlists', error);
         }
+      } else {
+        console.log('LibraryPage: User not authenticated, skipping playlist fetch');
       }
       setIsLibraryLoading(false);
     };
 
     loadData();
-  }, [isAuthenticated, fetchUserPlaylists]);
-
-  // Fetch Spotify playlists when connected
+  }, [isAuthenticated, fetchUserPlaylists, user]);
+  
+  // Debug logging
   useEffect(() => {
-    if (spotify.isAuthenticated) {
-      spotify.fetchUserPlaylists(50).catch(() => {});
-    }
-  }, [spotify.isAuthenticated]);
+    console.log('LibraryPage: Auth state changed:', { isAuthenticated, loading, user: user?.id });
+  }, [isAuthenticated, loading, user]);
+  
+  // Debug playlist store state
+  useEffect(() => {
+    console.log('LibraryPage: Playlist store state changed:', { 
+      userPlaylistsCount: userPlaylists.length,
+      userPlaylists: userPlaylists.map(p => ({ id: p._id, name: p.name }))
+    });
+  }, [userPlaylists]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('LibraryPage: Auth state changed:', { isAuthenticated, loading, user: user?.id });
+  }, [isAuthenticated, loading, user]);
+  
+  // Debug playlist store state
+  useEffect(() => {
+    console.log('LibraryPage: Playlist store state changed:', { 
+      userPlaylistsCount: userPlaylists.length,
+      userPlaylists: userPlaylists.map(p => ({ id: p._id, name: p.name }))
+    });
+  }, [userPlaylists]);
+
 
   return (
     <main className="h-full overflow-hidden px-[6px] bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] text-foreground">
@@ -224,40 +248,6 @@ const LibraryPage = () => {
                   </div>
                 </div>
 
-                {/* Spotify Connection Status */}
-                <div className="mb-4 px-2 sm:px-4">
-                  {spotify.isAuthenticated ? (
-                    <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 rounded-lg border border-green-500/30 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div className="text-sm text-foreground">
-                        <span className="inline-flex items-center gap-2">
-                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                          Connected to Spotify{spotify.user?.display_name ? ` • ${spotify.user.display_name}` : ''}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          className="h-8 px-3"
-                          variant="secondary"
-                          onClick={() => spotify.fetchUserPlaylists(50).catch(() => {})}
-                        >
-                          Refresh
-                        </Button>
-                        <Button
-                          className="h-8 px-3"
-                          variant="destructive"
-                          onClick={() => spotify.logout()}
-                        >
-                          Disconnect
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-muted/30 rounded-lg border border-border p-3 text-sm text-muted-foreground">
-                      Not connected to Spotify. Connect from the Spotify pages to see your playlists here.
-                    </div>
-                  )}
-                </div>
-
                 {/* Liked Songs Card - Always at top */}
                 <div className="mb-4">
                   <div 
@@ -275,65 +265,6 @@ const LibraryPage = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* Spotify Playlists Section */}
-                {spotify.isAuthenticated && spotify.playlists && spotify.playlists.length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-xs font-medium uppercase text-muted-foreground mb-2 px-2">
-                      Spotify Playlists
-                    </div>
-
-                    {viewMode === 'list' ? (
-                      <div className="space-y-1">
-                        {spotify.playlists.map((pl: any) => (
-                          <div 
-                            key={`sp-${pl.id}`}
-                            className="flex items-center gap-3 p-3 hover:bg-accent rounded-md cursor-pointer group transition-colors"
-                            onClick={() => navigate(`/spotify/playlist/${pl.id}`)}
-                          >
-                            <img 
-                              src={pl.images?.[0]?.url || '/default-playlist.jpg'} 
-                              alt={pl.name}
-                              className="w-12 h-12 object-cover rounded-md"
-                              loading="lazy"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-medium text-foreground truncate">{pl.name}</h3>
-                              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                <ListMusic className="h-3 w-3" />
-                                Spotify • {pl.tracks?.total || 0} tracks
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                        {spotify.playlists.map((pl: any) => (
-                          <div 
-                            key={`sp-${pl.id}`}
-                            className="bg-card border border-border rounded-lg p-4 hover:bg-accent transition-colors cursor-pointer group relative"
-                            onClick={() => navigate(`/spotify/playlist/${pl.id}`)}
-                          >
-                            <div className="aspect-square mb-4 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
-                              <img 
-                                src={pl.images?.[0]?.url || '/default-playlist.jpg'} 
-                                alt={pl.name}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                              />
-                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                            <h3 className="font-medium text-foreground truncate">{pl.name}</h3>
-                            <p className="text-sm text-muted-foreground truncate mt-1">
-                              Spotify • {pl.tracks?.total || 0} tracks
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* Favourite Playlists Section */}
                 <LikedPlaylistsSection />

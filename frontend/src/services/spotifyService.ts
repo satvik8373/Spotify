@@ -484,30 +484,7 @@ export const playTrack = async (trackUri: string, deviceId?: string) => {
     return true;
   } catch (error) {
     console.error('Error playing track:', error);
-    // Try to recover by transferring playback to an active device
-    try {
-      const devices = await getDevices();
-      const firstActive = devices.find((d: any) => d.is_active) || devices[0];
-      if (firstActive?.id) {
-        await transferPlayback(firstActive.id);
-        await spotifyApi.put('/me/player/play', { uris: [trackUri] }, { params: { device_id: firstActive.id } });
-        return true;
-      }
-    } catch (e) {
-      // ignore and rethrow original
-    }
     throw error;
-  }
-};
-
-// Devices API
-export const getDevices = async () => {
-  try {
-    const res = await spotifyApi.get('/me/player/devices');
-    return res.data?.devices || [];
-  } catch (error) {
-    console.error('Error getting devices:', error);
-    return [];
   }
 };
 
