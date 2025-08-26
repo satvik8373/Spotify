@@ -129,6 +129,9 @@ export const handleCallback = async (code: string, userId?: string): Promise<boo
       console.log('✅ Backend tokens stored successfully');
       console.log('✅ Initial sync completed:', synced);
       console.log('=== Authentication Success ===');
+      
+      // Notify app about auth change
+      try { window.dispatchEvent(new Event('spotify_auth_changed')); } catch {}
       return true;
     } else {
       console.log('❌ Backend response missing access_token, trying fallback...');
@@ -172,6 +175,9 @@ export const handleCallback = async (code: string, userId?: string): Promise<boo
       
       console.log('✅ Direct tokens stored successfully');
       console.log('=== Authentication Success (Fallback) ===');
+      
+      // Notify app about auth change
+      try { window.dispatchEvent(new Event('spotify_auth_changed')); } catch {}
       return true;
     } else {
       console.error('❌ Direct Spotify response missing access_token');
@@ -196,6 +202,9 @@ export const logout = (): void => {
   // Clear any sync-related timestamps
   localStorage.removeItem('spotify-liked-songs-last-sync');
   localStorage.removeItem('spotify_sync_prompt');
+  
+  // Notify app about auth change
+  try { window.dispatchEvent(new Event('spotify_auth_changed')); } catch {}
 };
 
 export const isAuthenticated = (): boolean => {

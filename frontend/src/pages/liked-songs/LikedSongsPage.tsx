@@ -121,7 +121,7 @@ const LikedSongsPage = () => {
         const isValidCache = Array.isArray(cached.songs) && 
                            cached.songs.length > 0 && 
                            cached.userId === user?.id &&
-                           cached.hasSpotifyAuth === isSpotifyAuthValid;
+                           cached.hasSpotifyAuth === isAuthValid;
         
         if (isValidCache) {
           const cacheAge = Date.now() - cached.t;
@@ -222,19 +222,45 @@ const LikedSongsPage = () => {
     const refreshToken = localStorage.getItem('spotify_refresh_token');
     const expiresAt = localStorage.getItem('spotify_expires_at');
     
-    if (!accessToken || !refreshToken || !expiresAt) {
+    if (!accessToken || !expiresAt) {
       return false;
     }
     
     const now = Date.now();
     const expiresTime = parseInt(expiresAt);
     
-    // Token is valid if it hasn't expired or if we have a refresh token
+    // Valid if not expired, or expired but we have a refresh token (will refresh lazily)
     return now < expiresTime || !!refreshToken;
   }, []);
 
-  // Use enhanced auth check
-  const isSpotifyAuthValid = isSpotifyAuthenticatedEnhanced();
+  // Reactive Spotify auth state for UI
+  const [isSpotifyAuthValid, setIsSpotifyAuthValid] = useState<boolean>(isSpotifyAuthenticatedEnhanced());
+
+  // Keep UI in sync with auth changes (login/logout, storage changes, tab visibility)
+  useEffect(() => {
+    const updateAuth = () => setIsSpotifyAuthValid(isSpotifyAuthenticatedEnhanced());
+    
+    // Listen to our custom event dispatched by spotifyService
+    window.addEventListener('spotify_auth_changed', updateAuth);
+    // Listen to storage changes from other tabs
+    window.addEventListener('storage', updateAuth);
+    // Update when tab becomes visible
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) updateAuth();
+    });
+    // Periodic safety check
+    const interval = setInterval(updateAuth, 60 * 1000);
+    
+    // Initial sync
+    updateAuth();
+    
+    return () => {
+      window.removeEventListener('spotify_auth_changed', updateAuth);
+      window.removeEventListener('storage', updateAuth);
+      document.removeEventListener('visibilitychange', updateAuth as any);
+      clearInterval(interval);
+    };
+  }, [isSpotifyAuthenticatedEnhanced]);
 
   // Load Spotify account name on mount
   useEffect(() => {
