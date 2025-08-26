@@ -113,19 +113,36 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
     );
   }
 
-  // Connected state
+  // Connected state with actions
   if (isAuth) {
     return (
-      <Button 
-        disabled
-        className={`bg-emerald-600/20 hover:bg-emerald-600/25 text-emerald-400 font-medium flex items-center gap-2 border border-emerald-600/40 ${className}`}
-        variant={variant}
-        size={size}
-        title="Connected to Spotify"
-      >
-        <CheckCircle2 className="h-4 w-4" />
-        {size !== 'icon' && <span>Connected to Spotify</span>}
-      </Button>
+      <div className={`flex items-center gap-2 ${className || ''}`}>
+        <Button 
+          onClick={() => {
+            try { sessionStorage.setItem('spotify_sync_prompt', '1'); } catch {}
+            try { window.location.href = '/liked-songs'; } catch {}
+          }}
+          className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg"
+          variant={variant}
+          size={size}
+          title="Sync your Spotify liked songs"
+        >
+          <Music2 className="h-4 w-4" />
+          {size !== 'icon' && <span>Sync Spotify</span>}
+        </Button>
+        <Button 
+          onClick={() => {
+            try { spotifyLogout(); } catch {}
+          }}
+          className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 font-medium px-4 py-2 rounded-lg"
+          variant="outline"
+          size={size}
+          title="Disconnect from Spotify"
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          {size !== 'icon' && <span>Disconnect</span>}
+        </Button>
+      </div>
     );
   }
 
