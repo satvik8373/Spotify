@@ -176,10 +176,12 @@ class FirestoreService<T extends FirebaseDocument> {
     const cachedData = this.getCachedData(cacheKey);
     
     if (cachedData && Array.isArray(cachedData)) {
+      console.log(`getByField: Using cached data for ${field}=${value}, count:`, cachedData.length);
       return cachedData;
     }
     
     try {
+      console.log(`getByField: Querying Firestore for ${field}=${value}`);
       const q = query(this.getCollectionRef(), where(field, "==", value));
       const querySnapshot = await getDocs(q);
       const results: T[] = [];
@@ -188,6 +190,7 @@ class FirestoreService<T extends FirebaseDocument> {
         results.push({ id: doc.id, ...doc.data() } as T);
       });
       
+      console.log(`getByField: Firestore query returned ${results.length} documents for ${field}=${value}`);
       this.setCachedData(cacheKey, results);
       return results;
     } catch (error) {
@@ -411,7 +414,15 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
   
   // Get user playlists
   async getUserPlaylists(userId: string): Promise<FirestorePlaylist[]> {
-    return this.getByField('createdBy.id', userId);
+    console.log('PlaylistsService.getUserPlaylists: Querying for userId:', userId);
+    try {
+      const playlists = await this.getByField('createdBy.id', userId);
+      console.log('PlaylistsService.getUserPlaylists: Found playlists:', playlists.length);
+      return playlists;
+    } catch (error) {
+      console.error('PlaylistsService.getUserPlaylists: Error:', error);
+      throw error;
+    }
   }
   
   // Get featured playlists

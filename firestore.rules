@@ -32,21 +32,21 @@ service cloud.firestore {
     match /songs/{songId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy);
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy.id);
     }
     
     // Albums collection
     match /albums/{albumId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy);
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy.id);
     }
     
     // Playlists collection
     match /playlists/{playlistId} {
-      allow read: if isAuthenticated() && (resource.data.isPublic || isOwner(resource.data.createdBy));
+      allow read: if isAuthenticated() && (resource.data.isPublic || isOwner(resource.data.createdBy.id));
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy);
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy.id);
     }
   }
 } 

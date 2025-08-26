@@ -74,15 +74,22 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       set({ isLoading: true });
       try {
+        console.log('usePlaylistStore: Calling playlistService.getUserPlaylists');
         const userPlaylists = await playlistService.getUserPlaylists({ limit: 50, page: 1 });
+        console.log('usePlaylistStore: Received userPlaylists:', userPlaylists.length);
+        
         const merged = new Map<string, Playlist>();
         get().publicPlaylists.forEach(p => merged.set(p._id, p));
         userPlaylists.forEach(p => merged.set(p._id, p));
+        
+        console.log('usePlaylistStore: Setting userPlaylists, total count:', userPlaylists.length);
         set({ userPlaylists, playlists: Array.from(merged.values()), isLoading: false });
-      } catch {
+      } catch (error) {
+        console.error('usePlaylistStore: Error in fetchUserPlaylists:', error);
         set({ userPlaylists: [], isLoading: false });
       }
-    } catch {
+    } catch (error) {
+      console.error('usePlaylistStore: Outer error in fetchUserPlaylists:', error);
       set({ isLoading: false });
     }
   },

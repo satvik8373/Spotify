@@ -86,18 +86,25 @@ export const generatePlaylistCoverFromSongs = async (songs: Song[]): Promise<str
 };
 
 // Get all user playlists
-export const getUserPlaylists = async (): Promise<Playlist[]> => {
+export const getUserPlaylists = async (options?: { limit?: number; page?: number }): Promise<Playlist[]> => {
   try {
     const currentUser = auth.currentUser;
     
     if (!currentUser) {
+      console.log('getUserPlaylists: No authenticated user found');
       throw new Error('Not authenticated');
     }
     
     const userId = currentUser.uid;
-    const firestorePlaylists = await playlistsService.getUserPlaylists(userId);
+    console.log('getUserPlaylists: Fetching playlists for user:', userId);
     
-    return firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
+    const firestorePlaylists = await playlistsService.getUserPlaylists(userId);
+    console.log('getUserPlaylists: Firestore returned:', firestorePlaylists.length, 'playlists');
+    
+    const convertedPlaylists = firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
+    console.log('getUserPlaylists: Converted playlists:', convertedPlaylists.length);
+    
+    return convertedPlaylists;
   } catch (error) {
     console.error('Error getting user playlists:', error);
     throw error;
@@ -105,7 +112,7 @@ export const getUserPlaylists = async (): Promise<Playlist[]> => {
 };
 
 // Get featured playlists
-export const getFeaturedPlaylists = async (): Promise<Playlist[]> => {
+export const getFeaturedPlaylists = async (options?: { limit?: number; page?: number }): Promise<Playlist[]> => {
   try {
     const firestorePlaylists = await playlistsService.getFeaturedPlaylists();
     return firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
@@ -116,7 +123,7 @@ export const getFeaturedPlaylists = async (): Promise<Playlist[]> => {
 };
 
 // Get all public playlists
-export const getPublicPlaylists = async (): Promise<Playlist[]> => {
+export const getPublicPlaylists = async (options?: { limit?: number; page?: number }): Promise<Playlist[]> => {
   try {
     const firestorePlaylists = await playlistsService.getPublicPlaylists();
     return firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
