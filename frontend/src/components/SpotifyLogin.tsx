@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Music2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { getLoginUrl, isAuthenticated as isSpotifyAuthenticated, logout as spotifyLogout } from '@/services/spotifyService';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
 
 interface SpotifyLoginProps {
   className?: string;
@@ -19,7 +18,6 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const [isAuth, setIsAuth] = useState<boolean>(false);
-  const navigate = useNavigate();
 
   // Sync auth state with storage and global events
   useEffect(() => {
@@ -122,7 +120,7 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
         <Button 
           onClick={() => {
             try { sessionStorage.setItem('spotify_sync_prompt', '1'); } catch {}
-            navigate('/liked-songs');
+            try { window.location.href = '/liked-songs'; } catch {}
           }}
           className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg"
           variant={variant}

@@ -1,4 +1,4 @@
-    import { useEffect, useState } from 'react';
+     import { useEffect, useState } from 'react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Outlet, useLocation } from 'react-router-dom';
 import LeftSidebar from './components/LeftSidebar';
