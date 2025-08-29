@@ -35,6 +35,7 @@ import {
 import { toast } from 'sonner';
 import { EditPlaylistDialog } from '../../components/playlist/EditPlaylistDialog';
 import { formatTime } from '../../utils/formatTime';
+import { SharePlaylist } from '../../components/SharePlaylist';
 // import { SongMenu } from '../../components/SongMenu';
 import { Song } from '../../types';
 import {
@@ -409,29 +410,7 @@ export function PlaylistPage() {
     }
   };
 
-  const handleSharePlaylist = async (e?: React.MouseEvent) => {
-    // Prevent event propagation if event exists
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-
-    if (!currentPlaylist) return;
-
-    try {
-      const shareUrl = window.location.href;
-      await navigator.share({
-        title: currentPlaylist.name,
-        text: `Check out this playlist: ${currentPlaylist.name}`,
-        url: shareUrl,
-      });
-      updateMetrics('shares');
-    } catch (error) {
-      // Fallback to clipboard
-      const shareUrl = window.location.href;
-      navigator.clipboard.writeText(shareUrl);
-    }
-  };
+  // SharePlaylist component will handle sharing functionality
 
   // Removed scroll listener; toolbar no longer depends on scroll
 
@@ -865,9 +844,16 @@ export function PlaylistPage() {
                     <FileText className="h-4 w-4 mr-2" />
                     Import from File
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSharePlaylist} className="hover:bg-accent">
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Share
+                  <DropdownMenuItem asChild className="hover:bg-accent">
+                    <SharePlaylist 
+                      playlist={currentPlaylist} 
+                      trigger={
+                        <div className="flex items-center w-full">
+                          <Share2 className="h-4 w-4 mr-2" />
+                          Share
+                        </div>
+                      }
+                    />
                   </DropdownMenuItem>
                 {isOwner && (
                   <>

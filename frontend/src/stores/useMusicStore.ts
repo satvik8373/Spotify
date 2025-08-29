@@ -1,4 +1,5 @@
 import axiosInstance from '../lib/axios';
+import { resolveArtist } from '@/lib/resolveArtist';
 import { Album, Song, Stats } from '@/types';
 import { create } from 'zustand';
 
@@ -218,7 +219,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
             .map((item: any) => ({
               id: item.id,
               title: item.name,
-              artist: item.primaryArtists,
+              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
               album: item.album.name,
               year: item.year,
               duration: item.duration,
@@ -256,7 +257,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
             .map((item: any) => ({
               id: item.id,
               title: item.name,
-              artist: item.primaryArtists,
+              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
               album: item.album.name,
               year: item.year,
               duration: item.duration,
@@ -294,7 +295,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
             .map((item: any) => ({
               id: item.id,
               title: item.name,
-              artist: item.primaryArtists,
+              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
               album: item.album.name,
               year: item.year,
               duration: item.duration,
@@ -332,7 +333,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
             .map((item: any) => ({
               id: item.id,
               title: item.name,
-              artist: item.primaryArtists,
+              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
               album: item.album.name,
               year: item.year,
               duration: item.duration,
@@ -370,7 +371,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
             .map((item: any) => ({
               id: item.id,
               title: item.name,
-              artist: item.primaryArtists,
+              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
               album: item.album.name,
               year: item.year,
               duration: item.duration,
@@ -408,7 +409,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
             .map((item: any) => ({
               id: item.id,
               title: item.name,
-              artist: item.primaryArtists,
+              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
               album: item.album.name,
               year: item.year,
               duration: item.duration,
@@ -443,18 +444,59 @@ export const useMusicStore = create<MusicStore>((set) => ({
         
         // Process API data
         if (data.data && data.data.results) {
+          const penaltyWords = ['unknown', 'various', 'tribute', 'cover', 'karaoke', 'hits', 'best of', 'playlist', 'compilation'];
+          const remixWords = ['remix', 'sped up', 'slowed', 'reverb', 'mashup'];
+          const q = query.toLowerCase().trim();
+          const qTokens = q.split(/\s+/).filter(Boolean);
+
+          const score = (item: any): number => {
+            const title = (item?.name || '').toLowerCase();
+            const artist = (item?.primaryArtists || item?.singers || (item?.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || '').toLowerCase();
+            const album = (item?.album?.name || '').toLowerCase();
+            let s = 0;
+
+            if (artist === q) s += 120;
+            if (artist.includes(q)) s += 80;
+            if (title === q) s += 60;
+            if (title.includes(q)) s += 30;
+            const covered = qTokens.filter(t => title.includes(t)).length;
+            s += covered * 15;
+            if (covered >= Math.max(1, Math.ceil(qTokens.length * 0.7))) s += 25;
+
+            if (penaltyWords.some(w => artist.includes(w))) s -= 60;
+            if (penaltyWords.some(w => title.includes(w))) s -= 30;
+            if (penaltyWords.some(w => album.includes(w))) s -= 30;
+            if (remixWords.some(w => title.includes(w))) s -= 25;
+
+            const artistCovered = qTokens.filter(t => artist.includes(t)).length;
+            if (covered === 0 && artistCovered === 0) s -= 100;
+            return s;
+          };
+
           const formattedResults = data.data.results
             .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
             .map((item: any) => ({
               id: item.id,
               title: item.name,
-              artist: item.primaryArtists,
+              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
               album: item.album.name,
               year: item.year,
               duration: item.duration,
               image: item.image[2].url,
               url: item.downloadUrl[4].url,
-            }));
+            }))
+            // Sort by score and remove low-quality mismatches
+            .sort((a: any, b: any) => score(b) - score(a))
+            .filter((item: any, idx: number) => {
+              const t = (item.title || '').toLowerCase();
+              const a = (item.artist || '').toLowerCase();
+              const album = (item.album || '').toLowerCase();
+              const covered = qTokens.filter(token => t.includes(token)).length;
+              const artistCovered = qTokens.filter(token => a.includes(token)).length;
+              const goodMatch = covered > 0 || artistCovered > 0;
+              const notCompilation = !penaltyWords.some(w => t.includes(w) || album.includes(w));
+              return goodMatch && notCompilation;
+            });
 
           set({ indianSearchResults: formattedResults });
         }
@@ -472,7 +514,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     return {
       _id: song.id || `indian-song-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       title: song.title || 'Unknown Title',
-      artist: song.artist || 'Unknown Artist',
+      artist: resolveArtist(song),
       albumId: null,
       imageUrl: song.image || '',
       audioUrl: song.url || '',

@@ -995,13 +995,7 @@ const LikedSongsPage = () => {
     <main className="h-full bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414]">
       {/* Removed fixed header bar to avoid overlap with top mobile nav; back button added inline above */}
 
-      {/* Pull to refresh indicator */}
-      {refreshing && (
-        <div className="absolute top-0 left-0 right-0 z-20 flex justify-center items-center py-2 bg-indigo-900/80 text-white text-sm">
-          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-          Refreshing...
-        </div>
-      )}
+      {/* Pull to refresh indicator removed to avoid post-splash loaders */}
 
       {/* Scrollable content */}
       <ScrollArea 
@@ -1066,10 +1060,7 @@ const LikedSongsPage = () => {
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 text-foreground">Liked Songs</h1>
                     <div className="flex-col sm:flex-row sm:items-center">
                       <p className="text-muted-foreground">
-                        {isLoading 
-                          ? 'Loading songs...' 
-                          : `${likedSongs.length} songs${isAuthenticated && isSpotifyAuthValid ? ` · ${getSyncStatusText()}` : ''}`
-                        }
+                        {`${likedSongs.length} songs${isAuthenticated && isSpotifyAuthValid ? ` · ${getSyncStatusText()}` : ''}`}
                       </p>
                     </div>
                   </div>
@@ -1090,7 +1081,7 @@ const LikedSongsPage = () => {
                         <div>
                           <h3 className="font-semibold text-lg text-foreground">Spotify Integration</h3>
                           <p className="text-sm text-muted-foreground">
-                            {isLoading ? '🔄 Loading...' : upToDate ? '✅ Library is up to date' : '🔄 New songs available to sync'}
+                            {upToDate ? '✅ Library is up to date' : '🔄 New songs available to sync'}
                           </p>
                         </div>
                       </div>
@@ -1143,10 +1134,7 @@ const LikedSongsPage = () => {
                         className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
                       >
                         {syncingSpotify ? (
-                          <>
-                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                            Syncing...
-                          </>
+                          <>Syncing...</>
                         ) : (
                           <>
                             <RefreshCw className="w-4 h-4 mr-2" />
@@ -1457,16 +1445,7 @@ const LikedSongsPage = () => {
           )}
 
           {/* Show loading indicator at bottom if refreshing in background */}
-          {!isLoading && likedSongs.length > 0 && (
-            <div className="text-center py-4 text-sm text-muted-foreground">
-              {refreshing && (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
-                  Refreshing...
-                </div>
-              )}
-            </div>
-          )}
+          {/* Background refresh indicator removed to avoid post-splash loaders */}
 
         </div>
       </ScrollArea>

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import SongDetailsView from '@/components/SongDetailsView';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
+import { resolveArtist } from '@/lib/resolveArtist';
 
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
@@ -162,14 +163,33 @@ const AudioPlayer = () => {
   const setDuration = playerStore.setDuration;
   const playPrevious = playerStore.playPrevious;
 
-  // Clean up on unmount
+  // Clean up on unmount and save state before page unload
   useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (audioRef.current && currentSong) {
+        try {
+          const playerState = { 
+            currentSong: currentSong,
+            currentTime: audioRef.current.currentTime,
+            timestamp: new Date().toISOString()
+          };
+          localStorage.setItem('player_state', JSON.stringify(playerState));
+        } catch (error) {
+          // Silent error handling
+        }
+      }
+    };
+
+    // Save state before page unload/refresh
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
     return () => {
       if (playTimeoutRef.current) {
         clearTimeout(playTimeoutRef.current);
       }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, []);
+  }, [currentSong]);
 
   // Update MediaSession metadata and action handlers
   useEffect(() => {
@@ -183,7 +203,7 @@ const AudioPlayer = () => {
       try {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: currentSong.title || 'Unknown Title',
-          artist: currentSong.artist || 'Unknown Artist',
+          artist: resolveArtist(currentSong),
           album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
           artwork: [
             {
@@ -225,7 +245,7 @@ const AudioPlayer = () => {
     // Update metadata
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title || 'Unknown Title',
-      artist: currentSong.artist || 'Unknown Artist',
+      artist: resolveArtist(currentSong),
       album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
       artwork: [
         {
@@ -1404,13 +1424,25 @@ const AudioPlayer = () => {
 
             // Don't autoplay immediately on page refresh
             setIsPlaying(false);
+            
+            // Restore currentTime after a short delay to ensure audio is ready
+            if (playerState.currentTime && playerState.currentTime > 0) {
+              setTimeout(() => {
+                const audio = document.querySelector('audio');
+                if (audio && audio.duration > 0 && playerState.currentTime < audio.duration) {
+                  console.log('Delayed restoration of playback position:', playerState.currentTime);
+                  audio.currentTime = playerState.currentTime;
+                  setCurrentTime(playerState.currentTime);
+                }
+              }, 1000);
+            }
           }
         }
       } catch (error) {
-        // Error handling without logging
+        console.error('Error restoring playback state:', error);
       }
     }
-  }, [setCurrentSong, currentSong, setIsPlaying]);
+  }, [setCurrentSong, currentSong, setIsPlaying, setCurrentTime]);
 
   // Save player state on song changes and unmount
   useEffect(() => {
@@ -1459,15 +1491,43 @@ const AudioPlayer = () => {
       const currentTime = audioRef.current.currentTime;
       const duration = audioRef.current.duration;
       
+      // Restore saved currentTime if this is a new song load and we haven't restored yet
+      if (currentTime === 0 && duration > 0 && !(audioRef.current as any)._hasRestoredTime) {
+        try {
+          const savedState = localStorage.getItem('player_state');
+          if (savedState) {
+            const { currentTime: savedTime, currentSong: savedSong } = JSON.parse(savedState);
+            // Check if this is the same song and we have a valid saved time
+            if (savedTime && savedTime > 0 && savedTime < duration && 
+                savedSong && currentSong && 
+                (savedSong._id === currentSong._id || 
+                 (savedSong as any).id === (currentSong as any).id ||
+                 savedSong.title === currentSong.title)) {
+              
+              console.log('Restoring playback position:', savedTime, 'seconds');
+              audioRef.current.currentTime = savedTime;
+              setLocalCurrentTime(savedTime);
+              if (setCurrentTime) {
+                setCurrentTime(savedTime);
+              }
+              // Mark as restored to prevent multiple restorations
+              (audioRef.current as any)._hasRestoredTime = true;
+            }
+          }
+        } catch (error) {
+          console.error('Error restoring playback position:', error);
+        }
+      }
+      
       // Update local state
-      setLocalCurrentTime(currentTime);
+      setLocalCurrentTime(audioRef.current.currentTime);
       if (!isNaN(duration)) {
         setLocalDuration(duration);
       }
       
       // Only call these functions if they exist in the store
       if (setCurrentTime) {
-        setCurrentTime(currentTime);
+        setCurrentTime(audioRef.current.currentTime);
       }
       if (setDuration && !isNaN(duration)) {
         setDuration(duration);
@@ -1479,7 +1539,7 @@ const AudioPlayer = () => {
           navigator.mediaSession.setPositionState({
             duration: duration,
             playbackRate: audioRef.current.playbackRate,
-            position: currentTime
+            position: audioRef.current.currentTime
           });
         } catch (error) {
           // Ignore position state errors
@@ -1494,6 +1554,18 @@ const AudioPlayer = () => {
       setLocalCurrentTime(value[0]);
       if (setCurrentTime) {
         setCurrentTime(value[0]);
+      }
+      
+      // Save the new position immediately
+      try {
+        const playerState = { 
+          currentSong: currentSong,
+          currentTime: value[0],
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('player_state', JSON.stringify(playerState));
+      } catch (error) {
+        // Silent error handling
       }
     }
   };
@@ -1980,7 +2052,7 @@ const AudioPlayer = () => {
                     className="text-sm font-medium" 
                   />
                   <MarqueeText 
-                    text={currentSong.artist || "Unknown Artist"} 
+                    text={resolveArtist(currentSong)} 
                     className="text-xs text-zinc-400" 
                   />
                 </div>
@@ -2231,12 +2303,36 @@ const AudioPlayer = () => {
         ref={audioRef}
         src={currentSong?.audioUrl ? currentSong.audioUrl.replace(/^http:\/\//, 'https://') : undefined}
         autoPlay={isPlaying}
+        onLoadStart={() => {
+          // Reset restoration flag when loading new audio
+          if (audioRef.current) {
+            (audioRef.current as any)._hasRestoredTime = false;
+          }
+        }}
         onTimeUpdate={(e) => {
           updateAudioMetadata();
           
+          // Save currentTime to localStorage periodically (every 5 seconds)
+          const audio = e.currentTarget;
+          const currentTime = audio.currentTime;
+          const duration = audio.duration;
+          
+          // Save every 5 seconds to ensure persistence
+          if (currentTime > 0 && duration > 0 && Math.floor(currentTime) % 5 === 0) {
+            try {
+              const playerState = { 
+                currentSong: currentSong,
+                currentTime: currentTime,
+                timestamp: new Date().toISOString()
+              };
+              localStorage.setItem('player_state', JSON.stringify(playerState));
+            } catch (error) {
+              // Silent error handling
+            }
+          }
+          
           // Check if we're near the end of the song (within last 1.5 seconds)
           // This helps ensure transitions work even in background/lock screen
-          const audio = e.currentTarget;
           if (audio && audio.duration && !isNaN(audio.duration) && 
               audio.currentTime > 0 && !audio.paused &&
               audio.duration - audio.currentTime < 1.5) {
@@ -2302,7 +2398,38 @@ const AudioPlayer = () => {
             }
           }
         }}
-        onLoadedMetadata={updateAudioMetadata}
+        onLoadedMetadata={() => {
+          updateAudioMetadata();
+          
+          // Additional restoration attempt when metadata is loaded
+          setTimeout(() => {
+            try {
+              const savedState = localStorage.getItem('player_state');
+              if (savedState && audioRef.current) {
+                const { currentTime: savedTime, currentSong: savedSong } = JSON.parse(savedState);
+                const currentTime = audioRef.current.currentTime;
+                const duration = audioRef.current.duration;
+                
+                if (savedTime && savedTime > 0 && savedTime < duration && 
+                    savedSong && currentSong && 
+                    (savedSong._id === currentSong._id || 
+                     (savedSong as any).id === (currentSong as any).id ||
+                     savedSong.title === currentSong.title) &&
+                    currentTime === 0) {
+                  
+                  console.log('Metadata loaded - restoring playback position:', savedTime);
+                  audioRef.current.currentTime = savedTime;
+                  setLocalCurrentTime(savedTime);
+                  if (setCurrentTime) {
+                    setCurrentTime(savedTime);
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error in metadata restoration:', error);
+            }
+          }, 500);
+        }}
         onError={handleError}
         preload="auto"
         playsInline
@@ -2381,6 +2508,36 @@ const AudioPlayer = () => {
         onCanPlay={() => {
           // Handle ready state
           setIsLoading(false);
+          
+          // Final restoration attempt when audio can play
+          setTimeout(() => {
+            try {
+              const savedState = localStorage.getItem('player_state');
+              if (savedState && audioRef.current) {
+                const { currentTime: savedTime, currentSong: savedSong } = JSON.parse(savedState);
+                const currentTime = audioRef.current.currentTime;
+                const duration = audioRef.current.duration;
+                
+                if (savedTime && savedTime > 0 && savedTime < duration && 
+                    savedSong && currentSong && 
+                    (savedSong._id === currentSong._id || 
+                     (savedSong as any).id === (currentSong as any).id ||
+                     savedSong.title === currentSong.title) &&
+                    currentTime === 0) {
+                  
+                  console.log('Can play - restoring playback position:', savedTime);
+                  audioRef.current.currentTime = savedTime;
+                  setLocalCurrentTime(savedTime);
+                  if (setCurrentTime) {
+                    setCurrentTime(savedTime);
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error in can play restoration:', error);
+            }
+          }, 200);
+          
           // Try to play if we're supposed to be playing
           if (isPlaying && audioRef.current?.paused) {
             audioRef.current.play().catch(() => {});

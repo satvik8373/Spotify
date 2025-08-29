@@ -71,6 +71,7 @@ export const usePlayerStore = create<PlayerState>()(
         try {
           const playerState = { 
             currentSong: song,
+            currentTime: get().currentTime,
             timestamp: new Date().toISOString()
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
@@ -89,7 +90,21 @@ export const usePlayerStore = create<PlayerState>()(
         }
       },
       
-      setCurrentTime: (time) => set({ currentTime: time }),
+      setCurrentTime: (time) => {
+        set({ currentTime: time });
+        
+        // Save current time to localStorage for persistence
+        try {
+          const playerState = { 
+            currentSong: get().currentSong,
+            currentTime: time,
+            timestamp: new Date().toISOString()
+          };
+          localStorage.setItem('player_state', JSON.stringify(playerState));
+        } catch (error) {
+          // Error handling without logging
+        }
+      },
       
       setDuration: (duration) => set({ duration }),
       
@@ -112,6 +127,7 @@ export const usePlayerStore = create<PlayerState>()(
           queue: songs,
           currentIndex: validIndex,
           currentSong: songs[validIndex],
+          currentTime: 0, // Reset time for new album
           hasUserInteracted: true // Assume user interaction when explicitly playing
         });
         
@@ -119,6 +135,7 @@ export const usePlayerStore = create<PlayerState>()(
         try {
           const playerState = { 
             currentSong: songs[validIndex],
+            currentTime: 0, // Reset time for new album
             timestamp: new Date().toISOString()
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
@@ -151,6 +168,7 @@ export const usePlayerStore = create<PlayerState>()(
         const currentState = {
           currentSong: queue[currentIndex],
           currentIndex,
+          currentTime: 0, // Reset time for new song
           timestamp: new Date().toISOString()
         };
         
@@ -158,6 +176,7 @@ export const usePlayerStore = create<PlayerState>()(
         set({
           currentIndex: newIndex,
           currentSong: queue[newIndex],
+          currentTime: 0, // Reset time for new song
           hasUserInteracted: true,
           isPlaying: true // Always ensure playback continues
         });
@@ -316,6 +335,7 @@ export const usePlayerStore = create<PlayerState>()(
           const playerState = { 
             currentSong: queue[newIndex],
             currentIndex: newIndex,
+            currentTime: 0, // Reset time for new song
             timestamp: new Date().toISOString()
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
@@ -343,6 +363,7 @@ export const usePlayerStore = create<PlayerState>()(
         currentSong: state.currentSong,
         queue: state.queue,
         currentIndex: state.currentIndex,
+        currentTime: state.currentTime,
         isShuffled: state.isShuffled,
         isRepeating: state.isRepeating,
         hasUserInteracted: state.hasUserInteracted,
@@ -365,12 +386,17 @@ setTimeout(() => {
     store.playAlbum([store.currentSong], 0);
   }
   
-  // Check if we should resume playback
+  // Check if we should resume playback and restore currentTime
   try {
     const savedState = localStorage.getItem('player_state');
     if (savedState) {
-      const { timestamp, isPlaying } = JSON.parse(savedState);
+      const { timestamp, isPlaying, currentTime: savedTime } = JSON.parse(savedState);
       const timeSinceLastUpdate = Date.now() - new Date(timestamp).getTime();
+      
+      // Restore currentTime if it exists and is valid
+      if (savedTime && savedTime > 0) {
+        store.setCurrentTime(savedTime);
+      }
       
       // If the last update was recent (within 5 minutes) and playback was active
       if (timeSinceLastUpdate < 5 * 60 * 1000 && isPlaying) {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { resolveArtist } from "@/lib/resolveArtist";
 import { Loader, Play, Pause, Heart, RefreshCcw, Music, X, Share2, Download, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import { usePlayerStore } from "@/stores/usePlayerStore";
@@ -143,12 +144,16 @@ const IndianMusicPlayer = () => {
   }, [isAuthenticated, user?.id]);
 
   useEffect(() => {
-    const loadLikedSongsDebounced = () => {
-      const likedSongs = loadLikedSongs();
-      setLikedSongIds(new Set(likedSongs.map(song => song.id)));
+    const loadLikedSongsDebounced = async () => {
+      try {
+        const likedSongs = await loadLikedSongs();
+        setLikedSongIds(new Set(likedSongs.map((song: any) => song.id)));
+      } catch {}
     };
     
-    const initialLoadTimeout = setTimeout(loadLikedSongsDebounced, 500);
+    const initialLoadTimeout = setTimeout(() => {
+      loadLikedSongsDebounced();
+    }, 500);
     
     const handleLikedSongsUpdated = () => loadLikedSongsDebounced();
     document.addEventListener('likedSongsUpdated', handleLikedSongsUpdated);
@@ -297,7 +302,7 @@ const IndianMusicPlayer = () => {
       if (navigator.share) {
         await navigator.share({
           title: selectedSong.title,
-          text: `Listen to ${selectedSong.title} by ${selectedSong.artist || 'Unknown Artist'} on Spotify`,
+          text: `Listen to ${selectedSong.title} by ${resolveArtist(selectedSong)} on Spotify`,
           url: window.location.href
         });
       } else {
@@ -410,7 +415,7 @@ const IndianMusicPlayer = () => {
       >
         {song.title}
       </h3>
-      <p className="text-[11px] text-muted-foreground truncate">{song.artist || 'Unknown Artist'}</p>
+      <p className="text-[11px] text-muted-foreground truncate">{resolveArtist(song)}</p>
     </div>
   );
 
@@ -445,7 +450,7 @@ const IndianMusicPlayer = () => {
           {song.title}
         </h3>
         <p className="text-[11px] text-muted-foreground truncate">
-          {song.artist || 'Unknown Artist'}
+          {resolveArtist(song)}
         </p>
       </div>
       
@@ -530,7 +535,7 @@ const IndianMusicPlayer = () => {
             )}
           </div>
           <h3 className="text-xl font-bold text-center">{selectedSong.title}</h3>
-          <p className="text-muted-foreground text-center">{selectedSong.artist || 'Unknown Artist'}</p>
+          <p className="text-muted-foreground text-center">{resolveArtist(selectedSong)}</p>
           {selectedSong.album && (
             <p className="text-muted-foreground/70 text-sm text-center">{selectedSong.album}</p>
           )}

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { Button } from './ui/button';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
+import { ShareSong } from './ShareSong';
 import { 
   ChevronDown, 
   Heart, 
@@ -389,25 +390,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     }));
   };
 
-  const handleShare = () => {
-    if (!currentSong) return;
-    
-    const shareText = `Check out ${currentSong.title} by ${currentSong.artist}`;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: currentSong.title,
-        text: shareText,
-        url: window.location.href,
-      }).catch(() => {
-        // Silent error handling
-      });
-    } else {
-      // Fallback for browsers that don't support Web Share API
-      navigator.clipboard.writeText(`${shareText} - ${window.location.href}`);
-      toast.success('Link copied to clipboard');
-    }
-  };
+  // ShareSong component will handle sharing functionality
 
   if (!currentSong) return null;
 
@@ -527,16 +510,15 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 <span>Go to artist</span>
               </button>
               
-              <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
-                onClick={() => {
-                  handleShare();
-                  setShowOptionsMenu(false);
-                }}
-              >
-                <Share2 className="h-5 w-5 text-white/60" />
-                <span>Share</span>
-              </button>
+              <ShareSong
+                song={currentSong}
+                trigger={
+                  <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm">
+                    <Share2 className="h-5 w-5 text-white/60" />
+                    <span>Share</span>
+                  </button>
+                }
+              />
               
               <button
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
@@ -783,15 +765,19 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           
           {/* Additional Controls - Fixed to bottom */}
           <div className="flex justify-around pb-8 pt-4 w-full">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-full text-white/70 hover:text-white flex flex-col items-center gap-1"
-              onClick={handleShare}
-            >
-              <Share2 className="h-5 w-5" />
-              <span className="text-[11px] font-medium">Share</span>
-            </Button>
+            <ShareSong
+              song={currentSong}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full text-white/70 hover:text-white flex flex-col items-center gap-1"
+                >
+                  <Share2 className="h-5 w-5" />
+                  <span className="text-[11px] font-medium">Share</span>
+                </Button>
+              }
+            />
             
             <Button
               variant="ghost"

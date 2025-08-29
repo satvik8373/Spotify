@@ -472,7 +472,7 @@ export const PlaybackControls = () => {
 								{/* Song info */}
 								<div className="truncate min-w-0 flex-1">
 									<h4 className="text-xs font-medium truncate">{currentSong.title || "Unknown Title"}</h4>
-									<p className="text-[10px] text-muted-foreground truncate">{currentSong.artist || "Unknown Artist"}</p>
+									<p className="text-[10px] text-muted-foreground truncate">{currentSong.artist}</p>
 								</div>
 							</>
 						)}

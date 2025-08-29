@@ -22,6 +22,8 @@ import { PlaylistCard } from '@/components/playlist/PlaylistCard';
 import type { Playlist } from '@/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useMemo } from 'react';
+import { resolveArtist } from '@/lib/resolveArtist';
 
 // Maximum number of recent searches to store
 const MAX_RECENT_SEARCHES = 8;
@@ -239,6 +241,55 @@ const SearchPage = () => {
       setIsInitialLoad(false);
     }
   }, [query, searchIndianSongs, searchPlaylists]);
+
+  // Compute sorted results prioritizing official/real artist matches
+  const sortedIndianResults = useMemo(() => {
+    if (!indianSearchResults || indianSearchResults.length === 0) return [] as any[];
+    const qRaw = (query || '').trim();
+    const q = qRaw.toLowerCase();
+    const qTokens = q.split(/\s+/).filter(Boolean);
+
+    const penaltyWords = ['unknown', 'various', 'tribute', 'cover', 'karaoke', 'hits', 'best of', 'playlist', 'compilation'];
+    const remixWords = ['remix', 'sped up', 'slowed', 'reverb', 'mashup'];
+
+    const score = (song: any): number => {
+      const title = (song?.title || song?.name || '').toLowerCase();
+      const artist = resolveArtist(song).toLowerCase();
+      let s = 0;
+
+      if (!q) return s;
+
+      // Strong artist matches first
+      if (artist === q) s += 120;
+      if (artist.includes(q)) s += 80;
+
+      // Title matches
+      if (title === q) s += 60;
+      if (title.includes(q)) s += 30;
+
+      // Token coverage: bonus for covering most tokens in title
+      const covered = qTokens.filter(t => title.includes(t)).length;
+      s += covered * 15;
+      if (covered >= Math.max(1, Math.ceil(qTokens.length * 0.7))) s += 25;
+
+      // Penalize generic or unofficial indicators
+      if (penaltyWords.some(w => artist.includes(w))) s -= 60;
+      if (penaltyWords.some(w => title.includes(w))) s -= 30;
+      if (remixWords.some(w => title.includes(w))) s -= 25;
+
+      // Slight boost if title starts with the query
+      if (title.startsWith(q)) s += 10;
+
+      // If neither title nor artist contains query tokens, penalize heavily
+      const artistCovered = qTokens.filter(t => artist.includes(t)).length;
+      if (covered === 0 && artistCovered === 0) s -= 100;
+
+      return s;
+    };
+
+    return [...indianSearchResults]
+      .sort((a, b) => score(b) - score(a));
+  }, [indianSearchResults, query]);
 
   // Update auth store with current user info
   useEffect(() => {
@@ -468,30 +519,30 @@ const SearchPage = () => {
         ) : query ? (
           <div className="space-y-6">
             {/* Top Results - Featured Section */}
-            {(indianSearchResults.length > 0 || playlistResults.length > 0) && (
+            {(sortedIndianResults.length > 0 || playlistResults.length > 0) && (
               <div className="mb-8">
                 <h2 className="text-xl font-bold mb-4">Top Result</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Top Result Card */}
-                  {indianSearchResults.length > 0 && (
+                  {sortedIndianResults.length > 0 && (
                     <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
                       <div className="flex flex-col h-full">
                         <div className="mb-4">
                           <img 
-                            src={indianSearchResults[0].image} 
-                            alt={indianSearchResults[0].title}
+                            src={sortedIndianResults[0].image} 
+                            alt={sortedIndianResults[0].title}
                             className="w-24 h-24 shadow-md rounded-md"
                           />
                         </div>
-                        <h3 className="text-xl font-bold text-foreground truncate">{indianSearchResults[0].title}</h3>
+                        <h3 className="text-xl font-bold text-foreground truncate">{sortedIndianResults[0].title}</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          {indianSearchResults[0].artist || "Unknown Artist"}
+                          {resolveArtist(sortedIndianResults[0])}
                         </p>
                         <div className="mt-auto">
                           <Button 
                             className="rounded-full h-12 w-12 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
                             size="icon"
-                            onClick={() => usePlayerStore.getState().setCurrentSong(indianSearchResults[0] as any)}
+                            onClick={() => usePlayerStore.getState().setCurrentSong(sortedIndianResults[0] as any)}
                           >
                             <Play className="h-6 w-6 ml-0.5" />
                           </Button>
@@ -519,7 +570,7 @@ const SearchPage = () => {
             {renderPlaylistResults()}
             
             {/* Song Results */}
-            {indianSearchResults.length > 0 && (
+            {sortedIndianResults.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold mb-4">Songs</h2>
                 <IndianMusicPlayer />
@@ -527,7 +578,7 @@ const SearchPage = () => {
             )}
             
             {/* Show message if no results */}
-            {indianSearchResults.length === 0 && playlistResults.length === 0 && (
+            {sortedIndianResults.length === 0 && playlistResults.length === 0 && (
               <div className="py-16 text-center bg-card rounded-lg border border-border">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                   <Search className="h-8 w-8 text-muted-foreground" />
@@ -548,3 +599,4 @@ const SearchPage = () => {
 };
 
 export default SearchPage;
+

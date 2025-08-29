@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { resolveArtist } from '@/lib/resolveArtist';
 import { formatTime } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -216,7 +217,7 @@ const MusicPlayer = () => {
   // Extract song details, handling different object structures
   const song = currentSong as any;
   const title = song.title || song.name || 'Unknown Title';
-  const artist = song.artist || song.artistName || 'Unknown Artist';
+  const artist = resolveArtist(song);
   const image =
     song.coverImageUrl ||
     song.imageUrl ||

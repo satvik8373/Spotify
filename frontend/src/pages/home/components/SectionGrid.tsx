@@ -1,5 +1,4 @@
 import { Song } from '@/types';
-import SectionGridSkeleton from './SectionGridSkeleton';
 import { Button } from '@/components/ui/button';
 import PlayButton from './PlayButton';
 
@@ -9,7 +8,8 @@ type SectionGridProps = {
   isLoading: boolean;
 };
 const SectionGrid = ({ songs, title, isLoading }: SectionGridProps) => {
-  if (isLoading) return <SectionGridSkeleton />;
+  // Do not render skeletons; render nothing until data is ready
+  if (isLoading) return null;
 
   return (
     <div className="mb-8">

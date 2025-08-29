@@ -1,4 +1,5 @@
 import { getSavedTracks, isAuthenticated as isSpotifyAuthenticated } from '@/services/spotifyService';
+import { resolveArtist } from '@/lib/resolveArtist';
 import { addLikedSong as addFirestoreLikedSong, Song as FirestoreSong, getLikedSongsCount } from '@/services/likedSongsService';
 import { auth, db } from '@/lib/firebase';
 import { collection, doc, setDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
@@ -15,7 +16,7 @@ const toFirestoreSong = (item: any): FirestoreSong => {
   return {
     id: track?.id,
     title: track?.name || 'Unknown Title',
-    artist: Array.isArray(track?.artists) ? track.artists.map((a: any) => a.name).join(', ') : (track?.artists?.name || 'Unknown Artist'),
+    artist: resolveArtist(track),
     imageUrl: track?.album?.images?.[1]?.url || track?.album?.images?.[0]?.url || '',
     audioUrl: track?.preview_url || '',
     duration: track?.duration_ms ? Math.floor(track.duration_ms / 1000) : 0,

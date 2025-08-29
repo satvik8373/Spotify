@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Song } from '../types';
+import { Playlist } from '../types';
 import { Share2, Copy, MessageCircle, Facebook, Twitter, Link } from 'lucide-react';
 import {
   Dialog,
@@ -12,20 +12,20 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
 
-interface ShareSongProps {
-  song: Song;
+interface SharePlaylistProps {
+  playlist: Playlist;
   trigger?: React.ReactNode;
 }
 
-export function ShareSong({ song, trigger }: ShareSongProps) {
+export function SharePlaylist({ playlist, trigger }: SharePlaylistProps) {
   const [isOpen, setIsOpen] = useState(false);
   
-  // Get the correct song ID (prefer _id, fallback to id)
-  const songId = song._id || (song as any).id;
+  // Get the correct playlist ID (prefer _id, fallback to id)
+  const playlistId = playlist._id || playlist.id;
   
-  // Generate shareable URL with song ID - direct link to song
-  const shareUrl = `${window.location.origin}/song/${songId}`;
-  const shareText = `🎵 Check out "${song.title}" by ${song.artist} on Mavrixfy!`;
+  // Generate shareable URL with playlist ID - direct link to playlist
+  const shareUrl = `${window.location.origin}/playlist/${playlistId}`;
+  const shareText = `🎵 Check out "${playlist.name}" playlist with ${playlist.songs.length} songs on Mavrixfy!`;
   
   // WhatsApp share URL
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`;
@@ -39,7 +39,7 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success('Song link copied to clipboard!');
+      toast.success('Playlist link copied to clipboard!');
     } catch (error) {
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
@@ -48,7 +48,7 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      toast.success('Song link copied to clipboard!');
+      toast.success('Playlist link copied to clipboard!');
     }
   };
 
@@ -56,7 +56,7 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${song.title} - ${song.artist}`,
+          title: playlist.name,
           text: shareText,
           url: shareUrl,
         });
@@ -74,8 +74,8 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
     setIsOpen(false);
   };
 
-  // Validate that we have a valid song ID
-  if (!songId || songId.trim() === '') {
+  // Validate that we have a valid playlist ID
+  if (!playlistId || playlistId.trim() === '') {
     return (
       <Button variant="ghost" size="icon" disabled>
         <Share2 className="h-4 w-4" />
@@ -94,14 +94,14 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Share Song</DialogTitle>
+          <DialogTitle>Share Playlist</DialogTitle>
         </DialogHeader>
         
-        {/* Song Preview */}
+        {/* Playlist Preview */}
         <div className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg">
           <img
-            src={song.imageUrl}
-            alt={song.title}
+            src={playlist.imageUrl}
+            alt={playlist.name}
             className="w-12 h-12 rounded object-cover"
             onError={(e) => {
               (e.target as HTMLImageElement).src = 
@@ -109,8 +109,10 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
             }}
           />
           <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{song.title}</p>
-            <p className="text-sm text-zinc-400 truncate">{song.artist}</p>
+            <p className="font-medium truncate">{playlist.name}</p>
+            <p className="text-sm text-zinc-400 truncate">
+              {playlist.songs.length} songs • {playlist.createdBy?.fullName || 'Unknown'}
+            </p>
           </div>
         </div>
 
@@ -132,7 +134,7 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
 
         {/* Share Options */}
         <div className="grid grid-cols-2 gap-2">
-          {/* Native Share (if supported) */}
+          {/* Native Share */}
           <Button
             variant="outline"
             onClick={handleNativeShare}
@@ -179,7 +181,7 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
           className="w-full flex items-center gap-2"
         >
           <Link className="h-4 w-4" />
-          Copy Song Link
+          Copy Playlist Link
         </Button>
       </DialogContent>
     </Dialog>

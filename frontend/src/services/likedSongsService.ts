@@ -1,4 +1,5 @@
 import { useAuthStore } from "@/stores/useAuthStore";
+import { resolveArtist } from "@/lib/resolveArtist";
 import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, serverTimestamp, orderBy, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { updateUserStats } from "./userService";
@@ -62,7 +63,7 @@ const normalizeSong = (song: any): Song => {
   const normalizedSong = {
     id: song.id || song._id || song.songId || `song-${Date.now()}`,
     title: song.title || 'Unknown Title',
-    artist: song.artist || 'Unknown Artist',
+    artist: resolveArtist(song),
     imageUrl: normalizeUrl(song.imageUrl || song.image || ''),
     audioUrl: normalizeUrl(song.audioUrl || song.url || ''),
     duration: typeof song.duration === 'number' ? song.duration : 0,

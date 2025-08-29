@@ -16,6 +16,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 import { playlistsService } from './firestore';
+import { resolveArtist } from '@/lib/resolveArtist';
 import { Playlist, Song } from '@/types';
 import { FirestorePlaylist, FirestoreSong, firestoreToSong, FirestoreUser } from '@/types/firebase';
 import { createPlaylistCoverCollage, createDominantColorCover } from './playlistImageService';
@@ -277,7 +278,7 @@ export const addSongToPlaylist = async (playlistId: string, song: Song): Promise
     let firestoreSong: FirestoreSong = {
       id: song._id || `song-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       title: song.title || 'Unknown Title',
-      artist: song.artist || 'Unknown Artist',
+      artist: resolveArtist(song),
       imageUrl: song.imageUrl || '',
       audioUrl: song.audioUrl || '',
       duration: typeof song.duration === 'number' ? song.duration : 0,

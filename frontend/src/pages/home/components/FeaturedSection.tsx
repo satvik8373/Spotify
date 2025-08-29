@@ -1,11 +1,11 @@
 import { useMusicStore } from '@/stores/useMusicStore';
-import FeaturedGridSkeleton from '@/components/skeletons/FeaturedGridSkeleton';
 import PlayButton from './PlayButton';
 
 const FeaturedSection = () => {
   const { isLoading, featuredSongs, error } = useMusicStore();
 
-  if (isLoading) return <FeaturedGridSkeleton />;
+  // Do not render skeletons; render nothing until data is ready
+  if (isLoading) return null;
 
   if (error) return <p className="text-red-500 mb-4 text-lg">{error}</p>;
 
