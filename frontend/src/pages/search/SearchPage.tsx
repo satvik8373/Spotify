@@ -72,6 +72,7 @@ const SearchPage = () => {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const query = searchParams.get('q') || '';
+  const songId = searchParams.get('songId') || '';
 
   const { searchIndianSongs, indianSearchResults } = useMusicStore();
   const { searchPlaylists, searchResults: playlistResults } = usePlaylistStore();
@@ -229,6 +230,20 @@ const SearchPage = () => {
       Promise.all(searchPromises)
         .then(() => {
           setIsInitialLoad(false);
+          
+          // If we have a songId parameter, try to find and play that specific song
+          if (songId && indianSearchResults.length > 0) {
+            const targetSong = indianSearchResults.find((s: any) => 
+              s._id === songId || (s as any).id === songId
+            );
+            
+            if (targetSong) {
+              // Auto-play the specific song
+              usePlayerStore.getState().setCurrentSong(targetSong as any);
+              usePlayerStore.getState().setIsPlaying(true);
+              toast.success(`Now playing: ${targetSong.title}`);
+            }
+          }
         })
         .catch(error => {
           console.error('Search failed:', error);
@@ -240,7 +255,7 @@ const SearchPage = () => {
       usePlaylistStore.setState({ searchResults: [] });
       setIsInitialLoad(false);
     }
-  }, [query, searchIndianSongs, searchPlaylists]);
+  }, [query, songId, searchIndianSongs, searchPlaylists, indianSearchResults]);
 
   // Compute sorted results prioritizing official/real artist matches
   const sortedIndianResults = useMemo(() => {

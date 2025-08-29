@@ -23,8 +23,8 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
   // Get the correct song ID (prefer _id, fallback to id)
   const songId = song._id || (song as any).id;
   
-  // Generate shareable URL with song ID - direct link to song
-  const shareUrl = `${window.location.origin}/song/${songId}`;
+  // Generate shareable URL with song title for better searchability
+  const shareUrl = `${window.location.origin}/search?q=${encodeURIComponent(song.title)}&songId=${songId}`;
   const shareText = `🎵 Check out "${song.title}" by ${song.artist} on Mavrixfy!`;
   
   // WhatsApp share URL
