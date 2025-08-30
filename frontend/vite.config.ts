@@ -51,26 +51,47 @@ export default defineConfig(({ mode }) => {
 				},
 				manifest: {
 					name: 'Mavrixfy',
-					short_name: 'Music App',
-					description: 'Discover, listen to, and organize music you love',
-					theme_color: '#1db954',
-					background_color: '#121212',
+					short_name: 'Mavrixfy',
+					description: 'Stream music and enjoy movies with Mavrixfy',
+					theme_color: '#ff0000',
+					background_color: '#000000',
 					display: 'standalone',
 					orientation: 'portrait',
 					scope: '/',
 					start_url: '/',
+					categories: ['music', 'entertainment', 'lifestyle'],
+					lang: 'en',
+					dir: 'ltr',
 					icons: [
+						{
+							src: '/favicon.png',
+							sizes: '64x64',
+							type: 'image/png',
+							purpose: 'any'
+						},
 						{
 							src: '/spotify-icons/spotify-icon-192.png',
 							sizes: '192x192',
 							type: 'image/png',
-							purpose: 'any maskable'
+							purpose: 'any'
 						},
 						{
 							src: '/spotify-icons/spotify-icon-512.png',
 							sizes: '512x512',
 							type: 'image/png',
-							purpose: 'any maskable'
+							purpose: 'any'
+						},
+						{
+							src: '/spotify-icons/spotify-icon-maskable-192.png',
+							sizes: '192x192',
+							type: 'image/png',
+							purpose: 'maskable'
+						},
+						{
+							src: '/spotify-icons/spotify-icon-maskable-512.png',
+							sizes: '512x512',
+							type: 'image/png',
+							purpose: 'maskable'
 						}
 					],
 					shortcuts: [
@@ -88,15 +109,17 @@ export default defineConfig(({ mode }) => {
 							url: '/search',
 							icons: [{ src: '/shortcut-search-96.png', sizes: '96x96' }]
 						}
-					]
+					],
+					prefer_related_applications: false,
+					related_applications: []
 				}
 			}),
 			compression({
-				algorithms: ['gzip'],
+				algorithm: 'gzip',
 				exclude: [/\.(br)$/, /\.(gz)$/],
 			}),
 			compression({
-				algorithms: ['brotliCompress'],
+				algorithm: 'brotliCompress',
 				exclude: [/\.(br)$/, /\.(gz)$/],
 			}),
 		],
