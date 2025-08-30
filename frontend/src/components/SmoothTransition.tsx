@@ -11,7 +11,7 @@ interface SmoothTransitionProps {
 const SmoothTransition: React.FC<SmoothTransitionProps> = ({
   children,
   className = '',
-  duration = 300,
+  duration = 400,
   delay = 0,
   onTransitionComplete
 }) => {
@@ -54,40 +54,40 @@ export const LoadingSkeleton: React.FC<{ className?: string }> = ({ className = 
   </div>
 );
 
-// Page transition wrapper
+// Page transition wrapper - Normal Speed
 export const PageTransition: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <SmoothTransition duration={400} delay={100}>
+  <SmoothTransition duration={500} delay={150}>
     {children}
   </SmoothTransition>
 );
 
-// Card transition wrapper
+// Card transition wrapper - Normal Speed with staggered delays
 export const CardTransition: React.FC<{ children: React.ReactNode; index?: number }> = ({ 
   children, 
   index = 0 
 }) => (
-  <SmoothTransition duration={300} delay={index * 50}>
+  <SmoothTransition duration={400} delay={index * 100}>
     {children}
   </SmoothTransition>
 );
 
-// Fade in transition
+// Fade in transition - Normal Speed
 export const FadeIn: React.FC<{ children: React.ReactNode; delay?: number }> = ({ 
   children, 
   delay = 0 
 }) => (
-  <SmoothTransition duration={500} delay={delay}>
+  <SmoothTransition duration={600} delay={delay}>
     {children}
   </SmoothTransition>
 );
 
-// Slide up transition
+// Slide up transition - Normal Speed
 export const SlideUp: React.FC<{ children: React.ReactNode; delay?: number }> = ({ 
   children, 
   delay = 0 
 }) => (
   <SmoothTransition 
-    duration={400} 
+    duration={500} 
     delay={delay}
     className="slide-up"
   >

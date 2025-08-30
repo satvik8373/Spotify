@@ -2,11 +2,11 @@
 
 /* Mobile-first approach */
 @media (max-width: 768px) {
-  /* Reduce animation complexity on mobile */
+  /* Normal animation complexity on mobile - not too fast */
   * {
-    animation-duration: 0.1s !important;
-    transition-duration: 0.1s !important;
-    animation-fill-mode: none !important;
+    animation-duration: 0.3s !important;
+    transition-duration: 0.3s !important;
+    animation-fill-mode: forwards !important;
   }
   
   /* Optimize for mobile rendering */
@@ -50,11 +50,71 @@
   }
 }
 
-/* Smooth Transitions */
+/* Slow down all spinner animations to normal speed */
+.animate-spin {
+  animation: spin 1.5s linear infinite !important;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Slow down all transitions to normal speed */
+.transition-all,
+.transition-colors,
+.transition-opacity,
+.transition-transform,
+.transition-shadow,
+.transition-scale {
+  transition-duration: 400ms !important;
+}
+
+/* Specific transition durations - Normal Speed */
+.transition-all.duration-150,
+.transition-colors.duration-150,
+.transition-opacity.duration-150,
+.transition-transform.duration-150 {
+  transition-duration: 400ms !important;
+}
+
+.transition-all.duration-200,
+.transition-colors.duration-200,
+.transition-opacity.duration-200,
+.transition-transform.duration-200 {
+  transition-duration: 500ms !important;
+}
+
+.transition-all.duration-300,
+.transition-colors.duration-300,
+.transition-opacity.duration-300,
+.transition-transform.duration-300 {
+  transition-duration: 600ms !important;
+}
+
+/* Slow down pulse animations */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+/* Smooth Transitions - Normal Speed */
 .smooth-transition {
   opacity: 0;
   transform: translateY(20px);
-  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
   will-change: opacity, transform;
 }
 
@@ -63,11 +123,11 @@
   transform: translateY(0);
 }
 
-/* Loading Skeleton */
+/* Loading Skeleton - Normal Speed */
 .loading-skeleton {
   background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
   background-size: 200% 100%;
-  animation: skeleton-loading 1.5s infinite;
+  animation: skeleton-loading 2s infinite;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -83,7 +143,7 @@
   100% { background-position: -200% 0; }
 }
 
-/* Page Transitions */
+/* Page Transitions - Normal Speed */
 .page-transition-enter {
   opacity: 0;
   transform: translateY(20px);
@@ -92,7 +152,7 @@
 .page-transition-enter-active {
   opacity: 1;
   transform: translateY(0);
-  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 500ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-transition-exit {
@@ -103,14 +163,14 @@
 .page-transition-exit-active {
   opacity: 0;
   transform: translateY(-20px);
-  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Card Transitions */
+/* Card Transitions - Normal Speed */
 .card-transition {
   opacity: 0;
   transform: scale(0.95);
-  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card-transition.visible {
@@ -118,7 +178,7 @@
   transform: scale(1);
 }
 
-/* Slide Up Animation */
+/* Slide Up Animation - Normal Speed */
 .slide-up {
   transform: translateY(30px);
 }
@@ -127,32 +187,47 @@
   transform: translateY(0);
 }
 
-/* Fade In Animation */
+/* Fade In Animation - Normal Speed */
 .fade-in {
   opacity: 0;
-  transition: opacity 500ms ease-in-out;
+  transition: opacity 600ms ease-in-out;
 }
 
 .fade-in.visible {
   opacity: 1;
 }
 
-/* Mobile-specific transitions */
+/* Mobile-specific transitions - Normal Speed */
 @media (max-width: 768px) {
   .smooth-transition {
-    transition-duration: 200ms;
+    transition-duration: 350ms;
   }
   
   .page-transition-enter-active {
-    transition-duration: 300ms;
+    transition-duration: 450ms;
   }
   
   .page-transition-exit-active {
-    transition-duration: 200ms;
+    transition-duration: 350ms;
   }
   
   .card-transition {
-    transition-duration: 200ms;
+    transition-duration: 350ms;
+  }
+  
+  /* Even slower spinners on mobile for better UX */
+  .animate-spin {
+    animation: spin 2s linear infinite !important;
+  }
+  
+  /* Slower transitions on mobile */
+  .transition-all,
+  .transition-colors,
+  .transition-opacity,
+  .transition-transform,
+  .transition-shadow,
+  .transition-scale {
+    transition-duration: 500ms !important;
   }
 }
 
@@ -180,6 +255,23 @@
   
   .loading-skeleton {
     animation: none !important;
+  }
+  
+  .animate-spin {
+    animation: none !important;
+  }
+  
+  .animate-pulse {
+    animation: none !important;
+  }
+  
+  .transition-all,
+  .transition-colors,
+  .transition-opacity,
+  .transition-transform,
+  .transition-shadow,
+  .transition-scale {
+    transition: none !important;
   }
 }
 
