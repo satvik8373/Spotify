@@ -2,12 +2,11 @@
 
 /* Mobile-first approach */
 @media (max-width: 768px) {
-  /* Use normal animation and transition speeds for smooth experience */
+  /* Reduce animation complexity on mobile */
   * {
-    animation-duration: 0.3s !important;
-    transition-duration: 0.3s !important;
+    animation-duration: 0.1s !important;
+    transition-duration: 0.1s !important;
     animation-fill-mode: none !important;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
   
   /* Optimize for mobile rendering */
@@ -23,7 +22,6 @@
     min-height: 44px;
     padding: 12px;
     touch-action: manipulation;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
   
   /* Mobile-specific spacing */

@@ -75,7 +75,7 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
     // Otherwise show loading indicator
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <div className="h-8 w-8 animate-spin-normal rounded-full border-t-2 border-b-2 border-primary"></div>
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -107,7 +107,7 @@ const LandingRedirector = () => {
   if (loading && !hasCachedAuth) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <div className="h-8 w-8 animate-spin-normal rounded-full border-t-2 border-b-2 border-primary"></div>
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -239,7 +239,7 @@ function AppContent() {
 	return (
 		<>
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
-			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 animate-spin-normal rounded-full border-t-2 border-b-2 border-primary"></div></div>}>
+			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div></div>}>
 				<RouterProvider 
 					router={router} 
 					future={{ v7_startTransition: true }} 

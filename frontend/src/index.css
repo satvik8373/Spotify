@@ -85,106 +85,12 @@
 	}
 }
 
-/* Custom loading spinner with normal speed */
-@keyframes spin-normal {
-	0% { transform: rotate(0deg); }
-	100% { transform: rotate(360deg); }
-}
-
-.animate-spin-normal {
-	animation: spin-normal 1s linear infinite;
-}
-
-/* Restore smooth transitions to normal speed but keep them super smooth */
-* {
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Specific transition overrides for better UX */
-button, a, input, select, textarea {
-	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.hover\:scale-105:hover {
-	transform: scale(1.05);
-	transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.hover\:scale-110:hover {
-	transform: scale(1.1);
-	transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.hover\:bg-opacity-80:hover {
-	transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.hover\:text-opacity-80:hover {
-	transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth hover effects */
-.hover\:bg-white\/5:hover {
-	background-color: rgba(255, 255, 255, 0.05);
-	transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.hover\:bg-white\/10:hover {
-	background-color: rgba(255, 255, 255, 0.1);
-	transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth focus effects */
-.focus\:ring-2:focus {
-	transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth active effects */
-.active\:scale-95:active {
-	transform: scale(0.95);
-	transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth opacity transitions */
-.opacity-0 {
-	transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.opacity-100 {
-	transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth transform transitions */
-.transform {
-	transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth background transitions */
-.bg-transition {
-	transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth color transitions */
-.text-transition {
-	transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth border transitions */
-.border-transition {
-	transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth shadow transitions */
-.shadow-transition {
-	transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
 /* Spotify-like player styling */
 .slider-hover-effect [data-radix-slider-thumb] {
 	height: 12px;
 	width: 12px;
 	opacity: 1;
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: all 0.2s ease;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
