@@ -2,6 +2,7 @@ import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom'
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
+import { mobilePerformanceService } from './services/mobilePerformanceService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
@@ -198,6 +199,7 @@ function AppContent() {
 			try {
 				// Initialize performance optimizations
 				performanceService.addResourceHints();
+				// Mobile performance service initializes automatically
 				
 				// Check for cached authentication
 				const hasCachedAuth = Boolean(
