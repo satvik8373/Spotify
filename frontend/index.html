@@ -46,10 +46,19 @@
 		<link rel="modulepreload" href="/src/main.tsx">
 		
 		<!-- Mobile-specific optimizations -->
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 		<meta name="apple-mobile-web-app-capable" content="yes">
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+		<meta name="apple-mobile-web-app-title" content="Spotify Clone">
 		<meta name="mobile-web-app-capable" content="yes">
+		<meta name="format-detection" content="telephone=no">
+		<meta name="msapplication-tap-highlight" content="no">
+		
+		<!-- PWA specific meta tags -->
+		<meta name="application-name" content="Spotify Clone">
+		<meta name="msapplication-TileColor" content="#1DB954">
+		<meta name="msapplication-TileImage" content="/spotify-icons/spotify-icon-144.png">
+		<meta name="msapplication-config" content="/browserconfig.xml">
 		
 		<!-- PWA manifest -->
 		<link rel="manifest" href="/manifest.json">

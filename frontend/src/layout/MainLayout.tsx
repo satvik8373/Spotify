@@ -7,11 +7,12 @@ import { PlaybackControls } from './components/PlaybackControls';
 import MobileNav from './components/MobileNav';
 import Header from '@/components/Header';
 import { usePlayerStore } from '@/stores/usePlayerStore';
-import { cn } from '@/lib/utils';
+import { usePWAMode } from '@/hooks/usePWAMode';
 
 const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(false);
   const { currentSong } = usePlayerStore();
+  const { isPWA, isStandalone, isIOS } = usePWAMode();
   const hasActiveSong = !!currentSong;
   const location = useLocation();
 
@@ -42,31 +43,9 @@ const MainLayout = () => {
     };
   }, []);
 
-  // Detect iOS PWA mode and apply appropriate classes
-  useEffect(() => {
-    const detectIOSPWAMode = () => {
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                          (window.navigator as any).standalone === true;
-      
-      if (isIOS && isStandalone) {
-        document.documentElement.classList.add('ios-pwa-mode');
-      } else {
-        document.documentElement.classList.remove('ios-pwa-mode');
-      }
-    };
-    
-    detectIOSPWAMode();
-    window.addEventListener('orientationchange', detectIOSPWAMode);
-    
-    return () => {
-      window.removeEventListener('orientationchange', detectIOSPWAMode);
-    };
-  }, []);
-
   // Route-aware measurements for mobile header/nav/mini-player spacing
   const MOBILE_HEADER_PX = 40;
-  const MOBILE_NAV_PX = 90; // Increased to account for safe areas and proper spacing
+  const MOBILE_NAV_PX = 80; // Increased to account for safe areas and proper spacing
   const MINI_PLAYER_PX = 47;
   const isMobileHeaderRoute = isMobile && (
     location.pathname === '/home' ||
@@ -77,7 +56,7 @@ const MainLayout = () => {
   const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + MOBILE_NAV_PX + (hasActiveSong ? MINI_PLAYER_PX : 0);
 
   return (
-    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden max-w-full">
+    <div className={`h-screen bg-background text-foreground flex flex-col overflow-hidden max-w-full pwa-mode ${isMobile ? 'ios-pwa' : ''} ${isPWA ? 'pwa-active' : ''}`}>
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block">
         <Header />
@@ -112,10 +91,7 @@ const MainLayout = () => {
 
         {/* Main content - full width on mobile */}
         <ResizablePanel defaultSize={isMobile ? 100 : 80} className="overflow-hidden flex flex-col max-w-full">
-          <div className={cn(
-            "flex-1 overflow-y-auto overflow-x-hidden mobile-scroll-fix",
-            isMobile ? "content-above-nav ios-safe-area-content" : ""
-          )}>
+          <div className={`flex-1 overflow-y-auto overflow-x-hidden mobile-scroll-fix pb-safe main-content ${isMobile ? 'pwa-content' : ''}`}>
             <Outlet />
           </div>
         </ResizablePanel>
