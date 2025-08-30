@@ -1,6 +1,8 @@
 import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom';
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { performanceService } from './services/performanceService';
+import PerformanceMonitor from './components/PerformanceMonitor';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
@@ -194,6 +196,9 @@ function AppContent() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
+				// Initialize performance optimizations
+				performanceService.addResourceHints();
+				
 				// Check for cached authentication
 				const hasCachedAuth = Boolean(
 					localStorage.getItem('auth-store') && 
@@ -232,6 +237,7 @@ function AppContent() {
 	// Always show main app content, login will be handled in the header
 	return (
 		<>
+			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
 			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div></div>}>
 				<RouterProvider 
 					router={router} 

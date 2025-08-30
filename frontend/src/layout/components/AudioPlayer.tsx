@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import SongDetailsView from '@/components/SongDetailsView';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
+import OptimizedImage from '@/components/OptimizedImage';
 import { resolveArtist } from '@/lib/resolveArtist';
 
 // Helper function to validate URLs
@@ -2164,13 +2165,15 @@ const AudioPlayer = () => {
               className="w-full max-w-xs aspect-square rounded-md overflow-hidden shadow-2xl"
               style={{ boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3)" }}
             >
-              <img 
+              <OptimizedImage 
                 src={currentSong.imageUrl} 
                 alt={currentSong.title}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
-                }}
+                width={300}
+                height={300}
+                quality={85}
+                priority={true}
+                fallbackSrc="https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png"
               />
             </div>
           </div>

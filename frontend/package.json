@@ -7,10 +7,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:optimized": "node scripts/build-optimized.js",
     "vercel-build": "vite build",
     "preview": "vite preview",
     "start": "vite preview --port $PORT",
-    "deploy": "vercel deploy --prod"
+    "deploy": "vercel deploy --prod",
+    "analyze": "vite-bundle-analyzer dist/assets"
   },
   "keywords": [
     "spotify",
@@ -37,7 +39,6 @@
     "@radix-ui/react-tabs": "^1.0.0",
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-tooltip": "^1.0.7",
-
     "axios": "^1.6.0",
     "class-variance-authority": "^0.7.0",
     "cloudinary": "^2.6.0",
@@ -60,10 +61,11 @@
     "sonner": "^2.0.3",
     "tailwind-merge": "^2.6.0",
     "undici": "^7.8.0",
+    "vite-plugin-compression2": "^2.2.1",
+    "vite-plugin-pwa": "^1.0.3",
     "zustand": "^4.4.6"
   },
   "devDependencies": {
-
     "@types/node": "^20.17.30",
     "@types/react": "^18.3.20",
     "@types/react-dom": "^18.2.15",

@@ -43,7 +43,7 @@ interface OptimizationOptions {
   height?: number;
   crop?: 'fill' | 'scale' | 'fit' | 'limit' | 'thumb';
   quality?: number;
-  format?: 'auto' | 'webp' | 'jpg' | 'png';
+  format?: 'auto' | 'webp' | 'jpg' | 'png' | 'avif';
   blur?: number;
   radius?: number | 'max';
   effect?: string;
