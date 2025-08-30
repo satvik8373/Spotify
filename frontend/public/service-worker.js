@@ -1,7 +1,7 @@
 // Service Worker for Mavrixfy
-const CACHE_NAME = 'mavrixfy-v1.0.0';
-const STATIC_CACHE = 'mavrixfy-static-v1.0.0';
-const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.0';
+const CACHE_NAME = 'mavrixfy-v1.0.1';
+const STATIC_CACHE = 'mavrixfy-static-v1.0.1';
+const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.1';
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -49,6 +49,7 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
+            // Delete ALL old caches to force fresh start
             if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
               console.log('Deleting old cache:', cacheName);
               return caches.delete(cacheName);
@@ -57,8 +58,20 @@ self.addEventListener('activate', (event) => {
         );
       })
       .then(() => {
-        console.log('Service Worker activated');
+        console.log('Service Worker activated - all old caches cleared');
+        // Force claim all clients immediately
         return self.clients.claim();
+      })
+      .then(() => {
+        // Force refresh all open tabs
+        return self.clients.matchAll();
+      })
+      .then((clients) => {
+        clients.forEach((client) => {
+          if (client.type === 'window') {
+            client.postMessage({ type: 'SW_UPDATED' });
+          }
+        });
       })
   );
 });
