@@ -513,12 +513,13 @@ const MobileNav = () => {
       )}
 
       {/* Bottom Navigation */}
-      <div
-        className={cn(
-          "pwa-bottom-nav md:hidden",
-          hasActiveSong ? "player-active" : ""
-        )}
+              <div
+          className={cn(
+            "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414]",
+            hasActiveSong ? "player-active" : ""
+          )}
         style={{
+          paddingBottom: `env(safe-area-inset-bottom, 0px)`,
           ...(hasActiveSong && {
             backgroundColor: albumColors.isLight 
               ? `${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.12)')}`

@@ -1,16 +1,12 @@
 {
   "name": "Mavrixfy",
   "short_name": "Mavrixfy",
-  "description": "Stream music and enjoy movies with Mavrixfy",
+  "description": "A premium music experience with real-time features and enhanced music discovery",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#ff0000",
-  "orientation": "portrait",
-  "scope": "/",
-  "categories": ["music", "entertainment", "lifestyle"],
-  "lang": "en",
-  "dir": "ltr",
+  "background_color": "#191414",
+  "theme_color": "#1DB954",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/favicon.png",
@@ -82,10 +78,5 @@
       "sizes": "1920x1080",
       "form_factor": "wide"
     }
-  ],
-  "prefer_related_applications": false,
-  "related_applications": [],
-  "edge_side_panel": {
-    "preferred_width": 400
-  }
+  ]
 } 

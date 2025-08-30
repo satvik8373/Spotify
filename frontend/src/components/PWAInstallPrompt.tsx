@@ -176,48 +176,52 @@ const PWAInstallPrompt = () => {
   // Show update notification if available
   if (showUpdatePrompt) {
     return (
-      <div className="pwa-install-prompt bg-green-800/90 text-white shadow-lg flex items-center justify-between p-3 px-4">
-        <div>
-          <p className="text-sm md:text-base font-medium">
-            New version available! (v{appVersion})
-          </p>
-          <p className="text-xs text-green-100/80">
-            Update now for new features and improvements
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => {
-              // Clear cache using caches API if available
-              if ('caches' in window) {
-                caches.keys().then(cacheNames => {
-                  return Promise.all(
-                    cacheNames.map(cacheName => {
-                      return caches.delete(cacheName);
-                    })
-                  );
-                }).then(() => {
-                  // Use document.location for reloading the page
+      <div className="fixed top-4 right-4 z-50 max-w-sm w-full bg-green-800/90 text-white shadow-lg rounded-lg border border-green-700 overflow-hidden sm:top-2 sm:right-2 sm:left-2 sm:max-w-none">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm md:text-base font-medium">
+                New version available! (v{appVersion})
+              </p>
+              <p className="text-xs text-green-100/80">
+                Update now for new features and improvements
+              </p>
+            </div>
+            <button 
+              onClick={handleDismiss}
+              className="rounded-full p-1 bg-black/20 hover:bg-black/30 transition-colors"
+              aria-label="Dismiss"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => {
+                // Clear cache using caches API if available
+                if ('caches' in window) {
+                  caches.keys().then(cacheNames => {
+                    return Promise.all(
+                      cacheNames.map(cacheName => {
+                        return caches.delete(cacheName);
+                      })
+                    );
+                  }).then(() => {
+                    // Use document.location for reloading the page
+                    document.location.reload();
+                  });
+                } else {
+                  // Force reload from server
                   document.location.reload();
-                });
-              } else {
-                // Force reload from server
-                document.location.reload();
-              }
-              setShowUpdatePrompt(false);
-            }}
-            className="bg-white text-green-900 text-sm px-3 py-1 rounded-full flex items-center gap-1"
-          >
-            <RefreshCw size={14} />
-            <span>Update</span>
-          </button>
-          <button 
-            onClick={handleDismiss}
-            className="rounded-full p-1 bg-black/20"
-            aria-label="Dismiss"
-          >
-            <X size={16} />
-          </button>
+                }
+                setShowUpdatePrompt(false);
+              }}
+              className="bg-white text-green-900 text-sm px-3 py-1 rounded-full flex items-center gap-1 hover:bg-green-50 transition-colors"
+            >
+              <RefreshCw size={14} />
+              <span>Update</span>
+            </button>
+          </div>
         </div>
       </div>
     );

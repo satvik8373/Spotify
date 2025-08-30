@@ -226,7 +226,7 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
   if (isInstalledPWA || !showHelper) return null;
   
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 p-4 pb-safe">
+    <div className="fixed top-4 right-4 z-50 max-w-sm w-full md:top-4 md:right-4 md:max-w-sm md:w-auto sm:top-2 sm:right-2 sm:left-2 sm:max-w-none">
       <div className="bg-zinc-900 rounded-lg shadow-lg border border-zinc-800 overflow-hidden">
         <div className="px-4 py-3 bg-zinc-800 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-white">

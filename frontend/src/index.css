@@ -86,47 +86,6 @@
 }
 
 @layer components {
-	/* PWA Layout Optimizations */
-	.pwa-layout {
-		/* Ensure proper PWA layout */
-		height: 100vh;
-		height: 100dvh; /* Dynamic viewport height for mobile */
-		overflow: hidden;
-	}
-	
-	.pwa-content {
-		/* Proper bottom spacing for PWA */
-		padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
-	}
-	
-	/* PWA Bottom Navigation Spacing */
-	.pwa-bottom-nav {
-		position: fixed;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		z-index: 50;
-		padding-bottom: env(safe-area-inset-bottom, 0px);
-		background: hsl(var(--background));
-		border-top: 1px solid hsl(var(--border));
-	}
-	
-	/* PWA Safe Area Support */
-	.pwa-safe-area {
-		padding-top: env(safe-area-inset-top, 0px);
-		padding-bottom: env(safe-area-inset-bottom, 0px);
-		padding-left: env(safe-area-inset-left, 0px);
-		padding-right: env(safe-area-inset-right, 0px);
-	}
-	
-	/* PWA Content Area */
-	.pwa-content-area {
-		height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 60px);
-		height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 60px);
-		overflow-y: auto;
-		overflow-x: hidden;
-	}
-	
 	/* Smooth transition utilities */
 	.transition-smooth {
 		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -271,23 +230,47 @@
 /* PWA install prompt styling */
 .pwa-install-prompt {
 	position: fixed;
-	bottom: 0;
-	left: 0;
-	right: 0;
+	top: 1rem;
+	right: 1rem;
+	left: auto;
 	z-index: 100;
-	padding-bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
-	animation: slide-up 0.3s ease-out forwards;
-	box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+	max-width: 400px;
+	animation: slide-in-right 0.3s ease-out forwards;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+	border-radius: 12px;
+	overflow: hidden;
 }
 
-@keyframes slide-up {
+@keyframes slide-in-right {
 	from {
-		transform: translateY(100%);
+		transform: translateX(100%);
 		opacity: 0;
 	}
 	to {
-		transform: translateY(0);
+		transform: translateX(0);
 		opacity: 1;
+	}
+}
+
+/* Mobile responsive positioning for PWA prompt */
+@media (max-width: 768px) {
+	.pwa-install-prompt {
+		top: 0.5rem;
+		right: 0.5rem;
+		left: 0.5rem;
+		max-width: none;
+		animation: slide-in-top 0.3s ease-out forwards;
+	}
+	
+	@keyframes slide-in-top {
+		from {
+			transform: translateY(-100%);
+			opacity: 0;
+		}
+		to {
+			transform: translateY(0);
+			opacity: 1;
+		}
 	}
 }
 
