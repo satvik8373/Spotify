@@ -1,7 +1,6 @@
 import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom';
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
-import { ErrorBoundary } from 'react-error-boundary';
 import { performanceService } from './services/performanceService';
 import { mobilePerformanceService } from './services/mobilePerformanceService';
 import PerformanceMonitor from './components/PerformanceMonitor';
@@ -46,43 +45,13 @@ const NotFoundFallback = () => (
 );
 
 // Error page for when something goes wrong
-const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) => (
-	<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-		<div className="text-center max-w-md">
-			<h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
-			<p className="text-muted-foreground mb-4">
-				We're sorry, but there was an error loading this page.
-			</p>
-			<details className="text-left text-sm text-muted-foreground mb-4">
-				<summary>Error Details</summary>
-				<pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">
-					{error.message}
-				</pre>
-			</details>
-			<button 
-				onClick={resetErrorBoundary}
-				className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 transition-colors"
-			>
-				Try Again
-			</button>
-		</div>
-	</div>
-);
-
-// Router error element (doesn't require props)
-const RouterErrorElement = () => (
+const ErrorFallback = () => (
 	<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
 		<div className="text-center max-w-md">
 			<h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
 			<p className="text-muted-foreground mb-8">
 				We're sorry, but there was an error loading this page. Please try refreshing.
 			</p>
-			<button 
-				onClick={() => window.location.reload()}
-				className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 transition-colors"
-			>
-				Refresh Page
-			</button>
 		</div>
 	</div>
 );
@@ -161,7 +130,7 @@ const router = createBrowserRouter([
 	{
 		path: '/',
 		element: <LandingRedirector />,
-		errorElement: <RouterErrorElement />
+		errorElement: <ErrorFallback />
 	},
 	{
 		path: '/welcome',
@@ -190,7 +159,7 @@ const router = createBrowserRouter([
 				<MainLayout />
 			</AuthGate>
 		),
-		errorElement: <RouterErrorElement />,
+		errorElement: <ErrorFallback />,
 		children: [
 			{
 				path: 'home',
@@ -324,9 +293,7 @@ function App() {
 		<AuthProvider>
 			<SpotifyProvider>
 				<ThemeProvider>
-					<ErrorBoundary FallbackComponent={ErrorFallback}>
-						<AppContent />
-					</ErrorBoundary>
+					<AppContent />
 				</ThemeProvider>
 			</SpotifyProvider>
 		</AuthProvider>

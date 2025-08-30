@@ -1,8 +1,7 @@
-// Service Worker for Mavrixfy - Optimized Version
-const CACHE_VERSION = 'mavrixfy-v2.0.0';
-const STATIC_CACHE = 'mavrixfy-static-v2.0.0';
-const DYNAMIC_CACHE = 'mavrixfy-dynamic-v2.0.0';
-const IMAGE_CACHE = 'mavrixfy-images-v2.0.0';
+// Service Worker for Mavrixfy
+const CACHE_NAME = 'mavrixfy-v1.0.23';
+const STATIC_CACHE = 'mavrixfy-static-v1.0.0';
+const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.0';
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -50,7 +49,7 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (!cacheName.includes('v2.0.0')) {
+            if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
               console.log('Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
@@ -121,68 +120,74 @@ async function handleSameOriginRequest(request) {
 
 // Handle image requests (Cloudinary)
 async function handleImageRequest(request) {
+  const cache = await caches.open(DYNAMIC_CACHE);
+  
   try {
-    // Try cache first for images
-    const cachedResponse = await caches.match(request);
+    // Try cache first
+    const cachedResponse = await cache.match(request);
     if (cachedResponse) {
       return cachedResponse;
     }
     
-    // Fetch from network
+    // Fallback to network
     const networkResponse = await fetch(request);
     
     // Cache successful responses
     if (networkResponse.ok) {
-      const cache = await caches.open(IMAGE_CACHE);
       cache.put(request, networkResponse.clone());
     }
     
     return networkResponse;
   } catch (error) {
-    // Return a placeholder image or throw error
+    // Return a placeholder image if available
+    const placeholderResponse = await cache.match('/spotify-icons/spotify-icon-192.png');
+    if (placeholderResponse) {
+      return placeholderResponse;
+    }
+    
     throw error;
   }
 }
 
 // Handle API requests (Spotify)
 async function handleApiRequest(request) {
+  const cache = await caches.open(DYNAMIC_CACHE);
+  
   try {
-    // Try network first for API calls
+    // Try network first
     const networkResponse = await fetch(request);
     
-    // Cache successful responses
+    // Cache successful responses (but with shorter TTL)
     if (networkResponse.ok) {
-      const cache = await caches.open(DYNAMIC_CACHE);
-      cache.put(request, networkResponse.clone());
+      // Only cache GET requests
+      if (request.method === 'GET') {
+        cache.put(request, networkResponse.clone());
+      }
     }
     
     return networkResponse;
   } catch (error) {
-    // Fallback to cache for API calls
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
+    // Fallback to cache for GET requests
+    if (request.method === 'GET') {
+      const cachedResponse = await cache.match(request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
     }
     
     throw error;
   }
 }
 
-// Handle external requests
+// Handle other external requests
 async function handleExternalRequest(request) {
   try {
     // Try network first
     const networkResponse = await fetch(request);
     
-    // Cache successful responses
-    if (networkResponse.ok) {
-      const cache = await caches.open(DYNAMIC_CACHE);
-      cache.put(request, networkResponse.clone());
-    }
-    
     return networkResponse;
   } catch (error) {
-    // Fallback to cache
+    // Try cache as fallback
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
       return cachedResponse;
@@ -194,43 +199,77 @@ async function handleExternalRequest(request) {
 
 // Background sync for offline actions
 self.addEventListener('sync', (event) => {
+  console.log('Background sync triggered:', event.tag);
+  
   if (event.tag === 'background-sync') {
     event.waitUntil(doBackgroundSync());
   }
 });
 
+// Handle background sync
 async function doBackgroundSync() {
   try {
-    // Handle background sync tasks
-    console.log('Background sync completed');
+    // Sync any pending actions (likes, playlists, etc.)
+    console.log('Performing background sync...');
+    
+    // You can add specific sync logic here
+    // For example, syncing liked songs, playlists, etc.
+    
   } catch (error) {
     console.error('Background sync failed:', error);
   }
 }
 
-// Push notifications
+// Handle push notifications
 self.addEventListener('push', (event) => {
+  console.log('Push notification received:', event);
+  
   const options = {
-    body: event.data ? event.data.text() : 'New notification',
+    body: event.data ? event.data.text() : 'New music available!',
     icon: '/spotify-icons/spotify-icon-192.png',
-    badge: '/spotify-icons/spotify-icon-96.png',
+    badge: '/spotify-icons/spotify-icon-192.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
       primaryKey: 1
-    }
+    },
+    actions: [
+      {
+        action: 'explore',
+        title: 'Explore',
+        icon: '/spotify-icons/spotify-icon-192.png'
+      },
+      {
+        action: 'close',
+        title: 'Close',
+        icon: '/spotify-icons/spotify-icon-192.png'
+      }
+    ]
   };
-
+  
   event.waitUntil(
     self.registration.showNotification('Mavrixfy', options)
   );
 });
 
-// Notification click
+// Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
+  console.log('Notification clicked:', event);
+  
   event.notification.close();
   
-  event.waitUntil(
-    clients.openWindow('/')
-  );
+  if (event.action === 'explore') {
+    event.waitUntil(
+      clients.openWindow('/')
+    );
+  }
+});
+
+// Handle message events
+self.addEventListener('message', (event) => {
+  console.log('Service Worker received message:', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 }); 
