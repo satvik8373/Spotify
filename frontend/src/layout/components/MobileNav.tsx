@@ -539,7 +539,7 @@ const MobileNav = () => {
       {/* Bottom Navigation */}
               <div
           className={cn(
-            "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414]",
+            "fixed bottom-0 left-0 right-0 z-30 md:hidden bg-background dark:bg-[#191414]",
             hasActiveSong ? "player-active" : ""
           )}
         style={{
@@ -678,7 +678,7 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-16 bg-background dark:bg-[#191414] pb-safe rounded-t-none">
+        <div className="grid grid-cols-4 h-16 bg-background dark:bg-[#191414] pb-safe">
           {navItems.map(item => (
             <Link
               key={item.path}
