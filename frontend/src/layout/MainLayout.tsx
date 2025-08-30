@@ -43,7 +43,7 @@ const MainLayout = () => {
 
   // Route-aware measurements for mobile header/nav/mini-player spacing
   const MOBILE_HEADER_PX = 40;
-  const MOBILE_NAV_PX = 14;
+  const MOBILE_NAV_PX = 80; // Increased to account for safe areas and proper spacing
   const MINI_PLAYER_PX = 47;
   const isMobileHeaderRoute = isMobile && (
     location.pathname === '/home' ||

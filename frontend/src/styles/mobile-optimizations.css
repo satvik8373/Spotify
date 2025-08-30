@@ -2,11 +2,11 @@
 
 /* Mobile-first approach */
 @media (max-width: 768px) {
-  /* Reduce animation complexity on mobile */
+  /* Use normal animation speeds instead of aggressive reduction */
   * {
-    animation-duration: 0.1s !important;
-    transition-duration: 0.1s !important;
-    animation-fill-mode: none !important;
+    animation-duration: 0.3s !important;
+    transition-duration: 0.3s !important;
+    animation-fill-mode: both !important;
   }
   
   /* Optimize for mobile rendering */
@@ -269,4 +269,24 @@
   .mobile-modal {
     display: none !important;
   }
+}
+
+/* iOS Safe Area Support */
+.ios-safe-area-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+  bottom: max(env(safe-area-inset-bottom), 0px);
+}
+
+.ios-safe-area-top {
+  padding-top: max(env(safe-area-inset-top), 8px);
+  top: max(env(safe-area-inset-top), 0px);
+}
+
+/* Ensure mobile navigation stays at bottom */
+.mobile-nav-fixed {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 50 !important;
 }

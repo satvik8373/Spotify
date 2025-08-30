@@ -196,9 +196,8 @@ function AppContent() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// Initialize performance optimizations
+				// Initialize essential performance optimizations (normal speed)
 				performanceService.addResourceHints();
-				// Mobile performance service initializes automatically
 				
 				// Check for cached authentication
 				const hasCachedAuth = Boolean(
