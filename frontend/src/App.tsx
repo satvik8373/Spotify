@@ -4,8 +4,6 @@ import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
 import { mobilePerformanceService } from './services/mobilePerformanceService';
 import PerformanceMonitor from './components/PerformanceMonitor';
-import CriticalCSS from './components/CriticalCSS';
-
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
@@ -100,110 +98,96 @@ const LandingRedirector = () => {
     localStorage.getItem('auth-store') && 
     JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
   );
-
-  // Don't redirect while auth is still loading
-  if (loading) {
-    // If we have cached auth, redirect to home optimistically
-    if (hasCachedAuth) {
-      return <Navigate to="/home" replace />;
-    }
-    
-    // Otherwise show loading indicator
+  
+  // If we have cached auth or are authenticated, redirect to home
+  if (hasCachedAuth || isAuthenticated) {
+    return <Navigate to="/home" replace />;
+  }
+  
+  // Still loading, but no cached auth - show loading indicator
+  if (loading && !hasCachedAuth) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
-
-  // If authenticated, redirect to home
-  if (isAuthenticated) {
-    return <Navigate to="/home" replace />;
-  }
-
-  // If not authenticated, redirect to welcome
-  return <Navigate to="/welcome" replace />;
+  
+  // Not authenticated, show welcome page
+  return <Welcome />;
 };
 
-// Create the router configuration
-const router = createBrowserRouter([
-	{
-		path: '/',
-		element: <LandingRedirector />,
-		errorElement: <ErrorFallback />
-	},
-	{
-		path: '/welcome',
-		element: <Welcome />
-	},
-	{
-		path: '/login',
-		element: <Login />
-	},
-	{
-		path: '/register',
-		element: <Register />
-	},
-	{
-		path: '/reset-password',
-		element: <ResetPassword />
-	},
-	{
-		path: '/spotify-callback',
-		element: <SpotifyCallback />
-	},
-	{
-		path: '/',
-		element: (
-			<AuthGate>
-				<MainLayout />
-			</AuthGate>
-		),
-		errorElement: <ErrorFallback />,
-		children: [
-			{
-				path: 'home',
-				element: <HomePage />
-			},
-			{
-				path: 'search',
-				element: <SearchPage />
-			},
-			{
-				path: 'library',
-				element: <LibraryPage />
-			},
-			{
-				path: 'liked-songs',
-				element: <LikedSongsPage />
-			},
-			{
-				path: 'album/:id',
-				element: <AlbumPage />
-			},
-			{
-				path: 'playlist/:id',
-				element: <PlaylistPage />
-			},
-			{
-				path: 'song/:id',
-				element: <SongPage />
-			},
-			{
-				path: 'profile',
-				element: <ProfilePage />
-			},
-			{
-				path: 'debug',
-				element: <ApiDebugPage />
-			},
-			{
-				path: '*',
-				element: <NotFoundFallback />
-			}
-		]
-	}
-]);
+// Configure the router with React Router v6
+const router = createBrowserRouter(
+	[
+		{
+			path: '/',
+			element: <LandingRedirector />
+		},
+		{
+			path: '/login',
+			element: <Login />
+		},
+		{
+			path: '/register',
+			element: <Register />
+		},
+		{
+			path: '/reset-password',
+			element: <ResetPassword />
+		},
+		{
+			path: '/spotify-callback',
+			element: <SpotifyCallback />
+		},
+		{
+			element: <MainLayout />, 
+			errorElement: <ErrorFallback />,
+			children: [
+				{
+					path: '/home',
+					element: <AuthGate><HomePage /></AuthGate>
+				},
+				{
+					path: '/albums/:albumId',
+					element: <AuthGate><AlbumPage /></AuthGate>
+				},
+				{
+					path: '/library',
+					element: <AuthGate><LibraryPage /></AuthGate>
+				},
+				{
+					path: '/liked-songs',
+					element: <AuthGate><LikedSongsPage /></AuthGate>
+				},
+				{
+					path: '/search',
+					element: <AuthGate><SearchPage /></AuthGate>
+				},
+				{
+					path: '/profile',
+					element: <AuthGate><ProfilePage /></AuthGate>
+				},
+				{
+					path: '/playlist/:id',
+					element: <AuthGate><PlaylistPage /></AuthGate>
+				},
+				{
+					path: '/song/:songId',
+					element: <AuthGate><SongPage /></AuthGate>
+				},
+				{
+					path: '/debug/api',
+					element: <ApiDebugPage />
+				},
+				{
+					path: '*',
+					element: <NotFoundFallback />
+				}
+			]
+		}
+	]
+);
 
 function AppContent() {
 	const [showSplash, setShowSplash] = useState(true);
@@ -255,7 +239,6 @@ function AppContent() {
 	// Always show main app content, login will be handled in the header
 	return (
 		<>
-			<CriticalCSS />
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
 			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div></div>}>
 				<RouterProvider 

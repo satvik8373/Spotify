@@ -1,5 +1,5 @@
 // Service Worker for Mavrixfy
-const CACHE_NAME = 'mavrixfy-v1.0.23';
+const CACHE_NAME = 'mavrixfy-v1.0.0';
 const STATIC_CACHE = 'mavrixfy-static-v1.0.0';
 const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.0';
 
@@ -131,8 +131,6 @@ async function handleImageRequest(request) {
     
     // Fallback to network
     const networkResponse = await fetch(request);
-    
-    // Cache successful responses
     if (networkResponse.ok) {
       cache.put(request, networkResponse.clone());
     }
@@ -184,7 +182,6 @@ async function handleExternalRequest(request) {
   try {
     // Try network first
     const networkResponse = await fetch(request);
-    
     return networkResponse;
   } catch (error) {
     // Try cache as fallback

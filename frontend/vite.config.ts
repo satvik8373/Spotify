@@ -47,17 +47,6 @@ export default defineConfig(({ mode }) => {
 								},
 							},
 						},
-						{
-							urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-							handler: 'CacheFirst',
-							options: {
-								cacheName: 'google-fonts',
-								expiration: {
-									maxEntries: 10,
-									maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-								},
-							},
-						},
 					],
 				},
 				manifest: {
@@ -147,127 +136,22 @@ export default defineConfig(({ mode }) => {
 			outDir: "dist",
 			assetsDir: "assets",
 			sourcemap: false,
-			minify: 'terser',
-			terserOptions: {
-				compress: {
-					drop_console: mode === 'production',
-					drop_debugger: mode === 'production',
-					pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn'],
-					passes: 2,
-				},
-				mangle: {
-					toplevel: true,
-				},
-			},
+			minify: 'esbuild',
 			cssCodeSplit: true,
 			modulePreload: { polyfill: true },
 			target: 'es2018',
 			commonjsOptions: { transformMixedEsModules: true },
 			rollupOptions: {
 				output: {
-					manualChunks: (id) => {
-						// Core React and routing
-						if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-							return 'react-core';
-						}
-						
-						// State management
-						if (id.includes('zustand')) {
-							return 'state';
-						}
-						
-						// UI components
-						if (id.includes('@radix-ui')) {
-							return 'ui-components';
-						}
-						
-						// Icons
-						if (id.includes('lucide-react') || id.includes('createLucideIcon')) {
-							return 'icons';
-						}
-						
-						// Utilities
-						if (id.includes('clsx') || id.includes('tailwind-merge')) {
-							return 'utils';
-						}
-						
-						// Audio handling
-						if (id.includes('howler')) {
-							return 'audio';
-						}
-						
-						// Firebase
-						if (id.includes('firebase')) {
-							return 'firebase';
-						}
-						
-						// Cloudinary
-						if (id.includes('cloudinary')) {
-							return 'cloudinary';
-						}
-						
-						// Pages - split by route
-						if (id.includes('/pages/')) {
-							if (id.includes('/home/')) return 'page-home';
-							if (id.includes('/search/')) return 'page-search';
-							if (id.includes('/liked-songs/')) return 'page-liked-songs';
-							if (id.includes('/library/')) return 'page-library';
-							if (id.includes('/playlist/')) return 'page-playlist';
-							if (id.includes('/album/')) return 'page-album';
-							if (id.includes('/profile/')) return 'page-profile';
-							if (id.includes('/login/')) return 'page-auth';
-							if (id.includes('/register/')) return 'page-auth';
-							return 'pages';
-						}
-						
-						// Components
-						if (id.includes('/components/')) {
-							if (id.includes('AudioPlayer') || id.includes('Player')) return 'player';
-							if (id.includes('PlaylistCard') || id.includes('SongCard')) return 'cards';
-							if (id.includes('Dialog') || id.includes('Modal')) return 'dialogs';
-							return 'components';
-						}
-						
-						// Services
-						if (id.includes('/services/')) {
-							if (id.includes('spotify')) return 'spotify-service';
-							if (id.includes('firestore')) return 'firebase-service';
-							return 'services';
-						}
-						
-						// Stores
-						if (id.includes('/stores/')) {
-							return 'stores';
-						}
-						
-						// Layout
-						if (id.includes('/layout/')) {
-							return 'layout';
-						}
-						
-						// Vendor dependencies
-						if (id.includes('node_modules')) {
-							return 'vendor';
-						}
-					},
-					chunkFileNames: (chunkInfo) => {
-						const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
-						return `js/[name]-[hash].js`;
-					},
-					entryFileNames: 'js/[name]-[hash].js',
-					assetFileNames: (assetInfo: { name?: string }) => {
-						if (!assetInfo.name) return 'assets/[name]-[hash][extname]';
-						const info = assetInfo.name.split('.');
-						const ext = info[info.length - 1];
-						if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
-							return `images/[name]-[hash][extname]`;
-						}
-						if (/css/i.test(ext)) {
-							return `css/[name]-[hash][extname]`;
-						}
-						return `assets/[name]-[hash][extname]`;
-					},
-				},
+					manualChunks: {
+						vendor: [
+							'react', 
+							'react-dom', 
+							'react-router-dom',
+							'zustand'
+						]
+					}
+				}
 			},
 			chunkSizeWarningLimit: 1000,
 			assetsInlineLimit: 4096, // Inline small assets as base64
@@ -281,22 +165,6 @@ export default defineConfig(({ mode }) => {
 		},
 		esbuild: {
 			drop: ['console', 'debugger']
-		},
-		optimizeDeps: {
-			include: [
-				'react',
-				'react-dom',
-				'react-router-dom',
-				'zustand',
-				'lucide-react',
-				'clsx',
-				'tailwind-merge'
-			],
-			exclude: [
-				'@radix-ui/react-slider',
-				'@radix-ui/react-dialog',
-				'@radix-ui/react-dropdown-menu'
-			]
 		}
 	}
 });

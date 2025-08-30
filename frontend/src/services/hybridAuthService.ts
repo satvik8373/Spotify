@@ -466,7 +466,6 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
     const redirectCred = await getRedirectResult(auth);
     const userCredential = redirectCred ?? (await (async () => {
       try {
-        // Try popup first, but handle COOP/COEP gracefully
         return await signInWithPopup(auth, provider);
       } catch (e: any) {
         const msg = String(e?.message || e);
@@ -475,10 +474,8 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
           msg.includes('Cross-Origin-Opener-Policy') ||
           msg.includes('window.closed') ||
           msg.includes('popup') ||
-          msg.includes('operation-not-supported') ||
-          msg.includes('popup-closed-by-user')
+          msg.includes('operation-not-supported')
         ) {
-          console.log('Popup blocked by browser policy, falling back to redirect...');
           try { sessionStorage.setItem('auth_redirect', '1'); } catch {}
           await signInWithRedirect(auth, provider);
           // The page will navigate; throw to stop further processing
@@ -528,42 +525,23 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
         // Synchronize with backend if available (non-blocking)
         if (API_URL) {
           try {
-            // Call backend API to sync user - try different endpoint variations
-            const endpoints = [
-              `${API_URL}/api/auth/sync`,
-              `${API_URL}/auth/sync`,
-              `${API_URL}/api/users/sync`
-            ];
+            // Call backend API to sync user
+            const response = await fetch(`${API_URL}/api/auth/sync`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+              },
+              body: JSON.stringify({
+                email: user.email,
+                uid: user.uid,
+                displayName: user.displayName,
+                photoURL: user.photoURL
+              })
+            });
             
-            let syncSuccess = false;
-            for (const endpoint of endpoints) {
-              try {
-                const response = await fetch(endpoint, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`
-                  },
-                  body: JSON.stringify({
-                    email: user.email,
-                    uid: user.uid,
-                    displayName: user.displayName,
-                    photoURL: user.photoURL
-                  })
-                });
-                
-                if (response.ok) {
-                  syncSuccess = true;
-                  break;
-                }
-              } catch (endpointError) {
-                // Try next endpoint
-                continue;
-              }
-            }
-            
-            if (!syncSuccess) {
-              console.warn('Backend sync not available, but Firebase auth successful');
+            if (!response.ok) {
+              console.warn('Failed to sync Google user with backend, but Firebase auth successful');
             }
           } catch (error) {
             console.warn('Backend sync failed for Google login, but Firebase auth successful:', error);
