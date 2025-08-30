@@ -1,10 +1,21 @@
+import path from "path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import { VitePWA } from 'vite-plugin-pwa';
 import { compression } from 'vite-plugin-compression2';
 
 export default defineConfig(({ mode }) => {
+	// Load environment variables
 	const env = loadEnv(mode, process.cwd(), '');
+	const apiUrl = env.VITE_API_URL || 'http://localhost:5000';
+	const cloudinaryName = env.REACT_APP_CLOUDINARY_CLOUD_NAME || 'djqq8kba8';
+	const cloudinaryPreset = env.REACT_APP_CLOUDINARY_UPLOAD_PRESET || 'spotify_clone';
+	const cloudinaryKey = env.REACT_APP_CLOUDINARY_API_KEY || '';
+	const cloudinarySecret = env.REACT_APP_CLOUDINARY_API_SECRET || '';
+	
+	console.log(`Mode: ${mode}`);
+	console.log(`API URL: ${apiUrl}`);
+	console.log(`Cloudinary Cloud Name: ${cloudinaryName}`);
 	
 	return {
 		plugins: [
@@ -12,7 +23,7 @@ export default defineConfig(({ mode }) => {
 			VitePWA({
 				registerType: 'autoUpdate',
 				workbox: {
-					globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+					globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,avif}'],
 					runtimeCaching: [
 						{
 							urlPattern: /^https:\/\/res\.cloudinary\.com\/.*/i,
@@ -32,29 +43,18 @@ export default defineConfig(({ mode }) => {
 								cacheName: 'spotify-api',
 								expiration: {
 									maxEntries: 50,
-									maxAgeSeconds: 60 * 60 * 24, // 24 hours
+									maxAgeSeconds: 60 * 60 * 5, // 5 hours
 								},
 							},
 						},
-						{
-							urlPattern: /^https:\/\/firebase\.googleapis\.com\/.*/i,
-							handler: 'StaleWhileRevalidate',
-							options: {
-								cacheName: 'firebase-sdk',
-								expiration: {
-									maxEntries: 10,
-									maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
-								},
-							},
-						}
 					],
 				},
 				manifest: {
-					name: 'Mavrixfy - Your Ultimate Music Experience',
-					short_name: 'Mavrixfy',
-					description: 'High-performance music streaming with optimized mobile experience',
-					theme_color: '#1DB954',
-					background_color: '#18181b',
+					name: 'Mavrixfy',
+					short_name: 'Music App',
+					description: 'Discover, listen to, and organize music you love',
+					theme_color: '#1db954',
+					background_color: '#121212',
 					display: 'standalone',
 					orientation: 'portrait',
 					scope: '/',
@@ -75,130 +75,96 @@ export default defineConfig(({ mode }) => {
 					],
 					shortcuts: [
 						{
-							name: 'Search Music',
-							short_name: 'Search',
-							description: 'Search for your favorite music',
-							url: '/search',
-							icons: [{ src: '/shortcut-search-96.png', sizes: '96x96' }]
-						},
-						{
 							name: 'Liked Songs',
 							short_name: 'Liked',
-							description: 'Your liked songs collection',
+							description: 'View your liked songs',
 							url: '/liked-songs',
 							icons: [{ src: '/shortcut-liked-96.png', sizes: '96x96' }]
+						},
+						{
+							name: 'Search',
+							short_name: 'Search',
+							description: 'Search for music',
+							url: '/search',
+							icons: [{ src: '/shortcut-search-96.png', sizes: '96x96' }]
 						}
 					]
-				},
-				devOptions: {
-					enabled: true
 				}
 			}),
-			compression({ 
-				algorithms: ['gzip'], 
+			compression({
+				algorithms: ['gzip'],
 				exclude: [/\.(br)$/, /\.(gz)$/],
-				threshold: 1024,
-				compressionOptions: { level: 9 }
 			}),
-			compression({ 
-				algorithms: ['brotliCompress'], 
+			compression({
+				algorithms: ['brotliCompress'],
 				exclude: [/\.(br)$/, /\.(gz)$/],
-				threshold: 1024,
-				compressionOptions: { level: 11 }
 			}),
 		],
 		base: '/',
 		resolve: {
 			alias: {
-				'@': '/src',
+				"@": path.resolve(__dirname, "./src"),
 			},
 		},
-		build: {
-			target: 'es2015',
-			minify: 'terser',
-			terserOptions: {
-				compress: {
-					drop_console: mode === 'production',
-					drop_debugger: mode === 'production',
-					pure_funcs: mode === 'production' ? ['console.log', 'console.info'] : [],
-				},
-				mangle: {
-					toplevel: true,
-				},
+		server: {
+			port: 3000,
+		
+			hmr: {
+				overlay: false,
 			},
+			proxy: {
+				'/api': {
+					target: apiUrl,
+					changeOrigin: true,
+					secure: false,
+					rewrite: (path) => path.replace(/^\/api/, '')
+				}
+			}
+		},
+		preview: {
+			port: 3000,
+			proxy: {
+				'/api': {
+					target: apiUrl,
+					changeOrigin: true,
+					secure: false,
+					rewrite: (path) => path.replace(/^\/api/, '')
+				}
+			}
+		},
+		build: {
+			outDir: "dist",
+			assetsDir: "assets",
+			sourcemap: false,
+			minify: 'esbuild',
+			cssCodeSplit: true,
+			modulePreload: { polyfill: true },
+			target: 'es2018',
+			commonjsOptions: { transformMixedEsModules: true },
 			rollupOptions: {
 				output: {
 					manualChunks: {
 						vendor: [
-							'react',
-							'react-dom',
+							'react', 
+							'react-dom', 
 							'react-router-dom',
 							'zustand'
-						],
-						ui: [
-							'@radix-ui/react-dialog',
-							'@radix-ui/react-dropdown-menu',
-							'@radix-ui/react-slider',
-							'@radix-ui/react-toast'
-						],
-						utils: [
-							'axios',
-							'lucide-react',
-							'react-hot-toast'
 						]
-					},
-					chunkFileNames: (chunkInfo) => {
-						const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
-						return `assets/${facadeModuleId}-[hash].js`;
-					},
-					entryFileNames: 'assets/[name]-[hash].js',
-					assetFileNames: (assetInfo) => {
-						const info = assetInfo.name?.split('.') || [];
-						const ext = info[info.length - 1];
-						if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
-							return `assets/images/[name]-[hash][extname]`;
-						}
-						if (/css/i.test(ext)) {
-							return `assets/[name]-[hash][extname]`;
-						}
-						return `assets/[name]-[hash][extname]`;
 					}
-				},
-				external: mode === 'development' ? [] : undefined,
+				}
 			},
 			chunkSizeWarningLimit: 1000,
-			assetsInlineLimit: 4096,
-			sourcemap: mode === 'development',
-			reportCompressedSize: true,
-			emptyOutDir: true,
+			assetsInlineLimit: 4096, // Inline small assets as base64
 		},
 		define: {
-			__APP_ENV__: JSON.stringify(env.APP_ENV),
-		},
-		server: {
-			port: 3000,
-			host: true,
-		},
-		preview: {
-			port: 4173,
-			host: true,
-		},
-		optimizeDeps: {
-			include: [
-				'react',
-				'react-dom',
-				'react-router-dom',
-				'zustand',
-				'axios',
-				'lucide-react'
-			],
-			exclude: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu']
+			'process.env.VITE_API_URL': JSON.stringify(apiUrl),
+			'process.env.REACT_APP_CLOUDINARY_CLOUD_NAME': JSON.stringify(cloudinaryName),
+			'process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET': JSON.stringify(cloudinaryPreset),
+			'process.env.REACT_APP_CLOUDINARY_API_KEY': JSON.stringify(cloudinaryKey),
+			'process.env.REACT_APP_CLOUDINARY_API_SECRET': JSON.stringify(cloudinarySecret)
 		},
 		esbuild: {
-			drop: mode === 'production' ? ['console', 'debugger'] : [],
-		},
-		css: {
-			devSourcemap: mode === 'development',
-		},
-	};
+			drop: ['console', 'debugger']
+		}
+	}
 });

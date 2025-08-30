@@ -1,28 +1,29 @@
-import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom';
-import { Suspense, lazy, useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { performanceService } from './services/performanceService';
-import { mobilePerformanceService } from './services/mobilePerformanceService';
+import { useAuth, AuthProvider } from './contexts/AuthContext';
+import MainLayout from './layout/MainLayout';
 import PerformanceMonitor from './components/PerformanceMonitor';
-const MainLayout = lazy(() => import('./layout/MainLayout'));
+import SplashScreen from './components/SplashScreen';
+import { performanceService } from './services/performanceService';
+import LoadingSpinner from './components/ui/LoadingSpinner';
+
+// Lazy load pages for better performance
 const HomePage = lazy(() => import('./pages/home/HomePage'));
-const SearchPage = lazy(() => import('./pages/search/SearchPage'));
+const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
 const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
-const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
+const SearchPage = lazy(() => import('./pages/search/SearchPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.PlaylistPage })));
 const SongPage = lazy(() => import('./pages/song/SongPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));
-// import SharedSongPage from './pages/SharedSongPage';
-import SplashScreen from './components/SplashScreen';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+
 // @ts-ignore
 const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const Welcome = lazy(() => import('./pages/Welcome'));
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
@@ -76,7 +77,7 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
     // Otherwise show loading indicator
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
+        <LoadingSpinner size="md" variant="primary" />
       </div>
     );
   }
@@ -108,13 +109,13 @@ const LandingRedirector = () => {
   if (loading && !hasCachedAuth) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
+        <LoadingSpinner size="md" variant="primary" />
       </div>
     );
   }
   
-  // Not authenticated, show welcome page
-  return <Welcome />;
+  // Not authenticated, redirect to login
+  return <Navigate to="/login" replace />;
 };
 
 // Configure the router with React Router v6
@@ -240,7 +241,7 @@ function AppContent() {
 	return (
 		<>
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
-			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div></div>}>
+			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><LoadingSpinner size="lg" variant="primary" /></div>}>
 				<RouterProvider 
 					router={router} 
 					future={{ v7_startTransition: true }} 
