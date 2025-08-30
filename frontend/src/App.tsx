@@ -1,24 +1,22 @@
-import React, { Suspense, lazy, useState, useEffect } from 'react';
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom';
+import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
-import { useAuth, AuthProvider } from './contexts/AuthContext';
-import MainLayout from './layout/MainLayout';
-import PerformanceMonitor from './components/PerformanceMonitor';
-import SplashScreen from './components/SplashScreen';
 import { performanceService } from './services/performanceService';
-import LoadingSpinner from './components/ui/LoadingSpinner';
-
-// Lazy load pages for better performance
+import { mobilePerformanceService } from './services/mobilePerformanceService';
+import PerformanceMonitor from './components/PerformanceMonitor';
+const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
-const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
+const SearchPage = lazy(() => import('./pages/search/SearchPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
 const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
-const SearchPage = lazy(() => import('./pages/search/SearchPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
 const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.PlaylistPage })));
 const SongPage = lazy(() => import('./pages/song/SongPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));
-
+// import SharedSongPage from './pages/SharedSongPage';
+import SplashScreen from './components/SplashScreen';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 // @ts-ignore
 const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
 const Login = lazy(() => import('./pages/Login'));
@@ -77,7 +75,7 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
     // Otherwise show loading indicator
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <LoadingSpinner size="md" variant="primary" />
+        <div className="h-8 w-8 animate-spin-normal rounded-full border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -109,7 +107,7 @@ const LandingRedirector = () => {
   if (loading && !hasCachedAuth) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <LoadingSpinner size="md" variant="primary" />
+        <div className="h-8 w-8 animate-spin-normal rounded-full border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -241,7 +239,7 @@ function AppContent() {
 	return (
 		<>
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
-			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><LoadingSpinner size="lg" variant="primary" /></div>}>
+			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 animate-spin-normal rounded-full border-t-2 border-b-2 border-primary"></div></div>}>
 				<RouterProvider 
 					router={router} 
 					future={{ v7_startTransition: true }} 
