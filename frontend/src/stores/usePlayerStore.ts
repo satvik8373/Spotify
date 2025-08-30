@@ -67,17 +67,22 @@ export const usePlayerStore = create<PlayerState>()(
       setCurrentSong: (song) => {
         set({ currentSong: song });
         
-        // Save to localStorage as a backup for components that need it directly
-        try {
-          const playerState = { 
-            currentSong: song,
-            currentTime: get().currentTime,
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (error) {
-          // Error handling without logging
-        }
+        // Debounced localStorage save to reduce writes
+        const saveToStorage = () => {
+          try {
+            const playerState = { 
+              currentSong: song,
+              currentTime: get().currentTime,
+              timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('player_state', JSON.stringify(playerState));
+          } catch (error) {
+            // Error handling without logging
+          }
+        };
+        
+        // Use setTimeout to debounce localStorage writes
+        setTimeout(saveToStorage, 100);
       },
       
       setIsPlaying: (isPlaying) => {
@@ -93,17 +98,22 @@ export const usePlayerStore = create<PlayerState>()(
       setCurrentTime: (time) => {
         set({ currentTime: time });
         
-        // Save current time to localStorage for persistence
-        try {
-          const playerState = { 
-            currentSong: get().currentSong,
-            currentTime: time,
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (error) {
-          // Error handling without logging
-        }
+        // Debounced localStorage save for current time updates
+        const saveToStorage = () => {
+          try {
+            const playerState = { 
+              currentSong: get().currentSong,
+              currentTime: time,
+              timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('player_state', JSON.stringify(playerState));
+          } catch (error) {
+            // Error handling without logging
+          }
+        };
+        
+        // Use setTimeout to debounce localStorage writes
+        setTimeout(saveToStorage, 200);
       },
       
       setDuration: (duration) => set({ duration }),

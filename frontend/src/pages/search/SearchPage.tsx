@@ -251,10 +251,17 @@ const SearchPage = () => {
       );
       
       if (targetSong) {
-        // Auto-play the specific song
-        usePlayerStore.getState().setCurrentSong(targetSong as any);
-        usePlayerStore.getState().setIsPlaying(true);
-        toast.success(`Now playing: ${targetSong.title}`);
+        // Batch state updates to reduce re-renders
+        usePlayerStore.setState({
+          currentSong: targetSong as any,
+          hasUserInteracted: true,
+          isPlaying: true
+        });
+        
+        // Show success message with slight delay to avoid blocking UI
+        setTimeout(() => {
+          toast.success(`Now playing: ${targetSong.title}`);
+        }, 100);
       }
     }
   }, [songId, indianSearchResults]);

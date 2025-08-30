@@ -88,10 +88,16 @@ const IndianMusicPlayer = () => {
       setAnimationBars(bars);
       
       const interval = setInterval(() => {
-        setAnimationBars(Array.from({ length: 5 }, () => Math.random() * 100));
-      }, 700);
+        setAnimationBars(prev => {
+          // Only update if the component is still mounted and playing
+          return Array.from({ length: 5 }, () => Math.random() * 100);
+        });
+      }, 800); // Slightly slower to reduce CPU usage
       
       return () => clearInterval(interval);
+    } else {
+      // Clear animation when not playing
+      setAnimationBars([]);
     }
   }, [isPlaying, currentSong]);
 
@@ -236,12 +242,33 @@ const IndianMusicPlayer = () => {
     }
     
     try {
+      // Prevent multiple rapid calls
+      if (currentSong && currentSong._id === song.id) {
+        // If it's the same song, just toggle play/pause
+        usePlayerStore.getState().togglePlay();
+        return;
+      }
+      
       const secureUrl = ensureHttps(song.url);
       const appSong = convertIndianSongToAppSong({
         ...song,
         url: secureUrl
       });
-      setAppCurrentSong(appSong);
+      
+      // Batch state updates to reduce re-renders
+      usePlayerStore.setState({
+        currentSong: appSong,
+        hasUserInteracted: true,
+        isPlaying: true
+      });
+      
+      // Preload audio for smoother playback
+      if (appSong.audioUrl) {
+        const audio = new Audio();
+        audio.preload = 'metadata';
+        audio.src = appSong.audioUrl;
+      }
+      
     } catch (error) {
       console.error("Error playing song:", error);
       toast.error("Failed to play song. Please try again.");
