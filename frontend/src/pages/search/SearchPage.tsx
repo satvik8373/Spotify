@@ -230,20 +230,6 @@ const SearchPage = () => {
       Promise.all(searchPromises)
         .then(() => {
           setIsInitialLoad(false);
-          
-          // If we have a songId parameter, try to find and play that specific song
-          if (songId && indianSearchResults.length > 0) {
-            const targetSong = indianSearchResults.find((s: any) => 
-              s._id === songId || (s as any).id === songId
-            );
-            
-            if (targetSong) {
-              // Auto-play the specific song
-              usePlayerStore.getState().setCurrentSong(targetSong as any);
-              usePlayerStore.getState().setIsPlaying(true);
-              toast.success(`Now playing: ${targetSong.title}`);
-            }
-          }
         })
         .catch(error => {
           console.error('Search failed:', error);
@@ -255,7 +241,23 @@ const SearchPage = () => {
       usePlaylistStore.setState({ searchResults: [] });
       setIsInitialLoad(false);
     }
-  }, [query, songId, searchIndianSongs, searchPlaylists, indianSearchResults]);
+  }, [query, searchIndianSongs, searchPlaylists]);
+
+  // Handle auto-playing specific song when songId is provided
+  useEffect(() => {
+    if (songId && indianSearchResults.length > 0) {
+      const targetSong = indianSearchResults.find((s: any) => 
+        s._id === songId || (s as any).id === songId
+      );
+      
+      if (targetSong) {
+        // Auto-play the specific song
+        usePlayerStore.getState().setCurrentSong(targetSong as any);
+        usePlayerStore.getState().setIsPlaying(true);
+        toast.success(`Now playing: ${targetSong.title}`);
+      }
+    }
+  }, [songId, indianSearchResults]);
 
   // Compute sorted results prioritizing official/real artist matches
   const sortedIndianResults = useMemo(() => {
