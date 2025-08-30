@@ -6,13 +6,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "build:optimized": "node scripts/build-optimized.js",
-    "vercel-build": "vite build",
+    "analyze": "vite-bundle-analyzer dist/assets",
+    "analyze:bundle": "node scripts/analyze-bundle.js",
     "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "vercel-build": "vite build",
     "start": "vite preview --port $PORT",
-    "deploy": "vercel deploy --prod",
-    "analyze": "vite-bundle-analyzer dist/assets"
+    "deploy": "vercel deploy --prod"
   },
   "keywords": [
     "spotify",
