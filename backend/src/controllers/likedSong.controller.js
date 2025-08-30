@@ -1,5 +1,4 @@
 import { LikedSong } from "../models/likedSong.model.js";
-import { clerkClient } from "@clerk/express";
 import admin from "firebase-admin";
 
 // Helper to identify user type and ID from request
@@ -14,14 +13,7 @@ const getUserIdentity = async (req) => {
       };
     }
     
-    // Check for Clerk authentication
-    if (req.auth && req.auth.userId) {
-      return {
-        userType: "clerk",
-        userId: req.auth.userId,
-        clerkId: req.auth.userId
-      };
-    }
+
     
     // Check for Google authentication from token
     const authHeader = req.headers.authorization;
@@ -85,7 +77,6 @@ export const getLikedSongs = async (req, res, next) => {
         userId: identity.userId,
         userType: identity.userType,
         ...(identity.googleId && { googleId: identity.googleId }),
-        ...(identity.clerkId && { clerkId: identity.clerkId }),
         songs: []
       });
     }
@@ -133,7 +124,7 @@ export const addLikedSong = async (req, res, next) => {
         userId: identity.userId,
         userType: identity.userType,
         ...(identity.googleId && { googleId: identity.googleId }),
-        ...(identity.clerkId && { clerkId: identity.clerkId }),
+
         songs: []
       });
     }
@@ -300,9 +291,8 @@ export const syncLikedSongs = async (req, res, next) => {
       // Create a new document
       likedSongsDoc = await LikedSong.create({
         userId: identity.userId,
-        userType: identity.userType,
+        userType: identity.userId,
         ...(identity.googleId && { googleId: identity.googleId }),
-        ...(identity.clerkId && { clerkId: identity.clerkId }),
         songs: []
       });
     }

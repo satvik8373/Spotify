@@ -51,7 +51,7 @@ export interface Message {
 
 export interface User {
 	_id: string;
-	clerkId: string;
+	uid: string;
 	fullName: string;
 	imageUrl: string;
 }

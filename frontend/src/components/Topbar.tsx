@@ -11,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { signOut } from '@/services/hybridAuthService';
 
 const Topbar = () => {
-  const { isAdmin } = useAuthStore();
+
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,19 +136,7 @@ const Topbar = () => {
           />
         </form>
 
-        {/* Admin Dashboard Button (only for admins) */}
-        {isAdmin && (
-          <Link
-            to="/admin"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "sm" }),
-              "ml-auto mr-2"
-            )}
-          >
-            <LayoutDashboardIcon className="mr-2 h-4 w-4" />
-            Admin
-          </Link>
-        )}
+
 
         {/* User Profile */}
         <div className="flex items-center gap-4 ml-4">

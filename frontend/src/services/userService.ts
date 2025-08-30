@@ -8,7 +8,6 @@ export interface UserProfile {
   imageUrl?: string;
   createdAt: string;
   updatedAt?: string;
-  isAdmin: boolean;
   // Stats
   likedSongsCount: number;
   playlistsCount: number;
@@ -61,7 +60,7 @@ export const saveUserProfile = async (userData: Partial<UserProfile>): Promise<b
         imageUrl: auth.currentUser.photoURL || undefined,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        isAdmin: false,
+
         likedSongsCount: 0,
         playlistsCount: 0,
         ...userData
@@ -100,13 +99,4 @@ export const updateUserStats = async (stats: {
   }
 };
 
-// Check if a user is admin
-export const isUserAdmin = async (uid: string): Promise<boolean> => {
-  try {
-    const userProfile = await getUserProfile(uid);
-    return userProfile?.isAdmin === true;
-  } catch (error) {
-    console.error("Error checking admin status:", error);
-    return false;
-  }
-}; 
+ 

@@ -232,7 +232,7 @@ export const register = async (email: string, password: string, fullName: string
       fullName,
       imageUrl: null,
       createdAt: new Date().toISOString(),
-      isAdmin: false,
+      
     });
     
     // Create a user profile object
@@ -444,48 +444,7 @@ export const resetPassword = async (email: string) => {
   }
 };
 
-// Check if user is admin
-export const checkAdminStatus = async (uid: string) => {
-  try {
-    // First check Firestore
-    const userDoc = await getDoc(doc(db, "users", uid));
-    const userData = userDoc.data();
-    
-    if (userData?.isAdmin === true) {
-      return true;
-    }
-    
-    // If not in Firestore, check backend
-    if (API_URL) {
-      try {
-        // Get Firebase ID token
-        const idToken = await auth.currentUser?.getIdToken();
-        
-        // Call backend API to check admin status
-        const response = await fetch(`${API_URL}/api/auth/check-admin`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({ uid })
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          return data.isAdmin === true;
-        }
-      } catch (error) {
-        console.warn('Backend admin check failed, using Firestore result:', error);
-      }
-    }
-    
-    return false;
-  } catch (error) {
-    console.error("Error checking admin status:", error);
-    return false;
-  }
-};
+
 
 // Get current user
 export const getCurrentUser = () => {
@@ -559,7 +518,7 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
             fullName: user.displayName,
             imageUrl: user.photoURL,
             createdAt: new Date().toISOString(),
-            isAdmin: false,
+    
           });
         }
         

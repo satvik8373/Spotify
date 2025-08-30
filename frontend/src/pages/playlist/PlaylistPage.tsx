@@ -708,7 +708,7 @@ export function PlaylistPage() {
     );
   }
 
-  const isOwner = userId === currentPlaylist.createdBy.clerkId;
+          const isOwner = userId === currentPlaylist.createdBy.uid;
   const totalDuration = currentPlaylist.songs.reduce((acc, song) => acc + song.duration, 0);
   const formattedTotalDuration = formatTime(totalDuration);
   const totalSongs = currentPlaylist.songs.length;

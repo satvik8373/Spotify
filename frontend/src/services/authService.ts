@@ -56,7 +56,7 @@ export const register = async (email: string, password: string, fullName: string
       fullName,
       imageUrl: null,
       createdAt: new Date().toISOString(),
-      isAdmin: false,
+      
     });
     
     // Update auth store
@@ -139,18 +139,7 @@ export const resetPassword = async (email: string) => {
   }
 };
 
-// Check if user is admin
-export const checkAdminStatus = async (uid: string) => {
-  try {
-    const userDoc = await getDoc(doc(db, "users", uid));
-    const userData = userDoc.data();
-    
-    return userData?.isAdmin === true;
-  } catch (error) {
-    console.error("Error checking admin status:", error);
-    return false;
-  }
-};
+
 
 // Get current user
 export const getCurrentUser = () => {

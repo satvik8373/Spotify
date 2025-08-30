@@ -40,8 +40,6 @@ interface MusicStore {
   fetchTrendingSongs: () => Promise<void>;
   fetchStats: () => Promise<void>;
   fetchSongs: () => Promise<void>;
-  deleteSong: (id: string) => Promise<void>;
-  deleteAlbum: (id: string) => Promise<void>;
 
   // Indian music methods
   fetchIndianTrendingSongs: () => Promise<void>;
@@ -81,39 +79,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     totalArtists: 0,
   },
 
-  deleteSong: async id => {
-    set({ isLoading: true, error: null });
-    try {
-      await axiosInstance.delete(`/admin/songs/${id}`);
 
-      set(state => ({
-        songs: state.songs.filter(song => song._id !== id),
-      }));
-    } catch (error: any) {
-      // Silent error handling
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  deleteAlbum: async id => {
-    set({ isLoading: true, error: null });
-    try {
-      await axiosInstance.delete(`/admin/albums/${id}`);
-      set(state => ({
-        albums: state.albums.filter(album => album._id !== id),
-        songs: state.songs.map(song =>
-          song.albumId === state.albums.find(a => a._id === id)?.title
-            ? { ...song, album: null }
-            : song
-        ),
-      }));
-    } catch (error: any) {
-      // Silent error handling
-    } finally {
-      set({ isLoading: false });
-    }
-  },
 
   fetchSongs: async () => {
     set({ isLoading: true, error: null });

@@ -107,8 +107,8 @@ export const getUserPlaylists = async (req, res) => {
       });
     }
     
-    // Use either Firebase UID or Clerk ID
-    const userId = req.auth.uid || req.auth.userId;
+    // Use Firebase UID
+    const userId = req.auth.uid;
     const targetUserId = req.params.userId || userId;
     
     try {
@@ -123,13 +123,9 @@ export const getUserPlaylists = async (req, res) => {
       });
     }
     
-    // For now, query existing playlists by clerkId
-    // This assumes playlists were created with clerkId stored
+    // Query playlists by Firebase UID
     const playlists = await Playlist.find({ 
-      $or: [
-        { "createdBy.uid": targetUserId },
-        { "createdBy.clerkId": targetUserId }
-      ]
+      "createdBy.uid": targetUserId
     })
     .populate('songs')
     .sort({ createdAt: -1 });
@@ -140,10 +136,10 @@ export const getUserPlaylists = async (req, res) => {
     res.status(500).json({ 
       message: 'Error retrieving user playlists', 
       error: error.message,
-      authInfo: {
-        hasAuth: !!req.auth,
-        userId: req.auth?.userId || req.auth?.uid || 'Not available'
-      }
+              authInfo: {
+          hasAuth: !!req.auth,
+          userId: req.auth?.uid || 'Not available'
+        }
     });
   }
 };
@@ -152,7 +148,7 @@ export const getUserPlaylists = async (req, res) => {
 export const getPlaylistById = async (req, res) => {
   try {
     const playlist = await Playlist.findById(req.params.id)
-      .populate('createdBy', 'fullName imageUrl clerkId')
+      .populate('createdBy', 'fullName imageUrl uid')
       .populate('songs');
     
     if (!playlist) {
@@ -160,7 +156,7 @@ export const getPlaylistById = async (req, res) => {
     }
 
     // Check if playlist is private and not owned by requestor
-    if (!playlist.isPublic && playlist.createdBy.clerkId !== req.auth.userId) {
+    if (!playlist.isPublic && playlist.createdBy.uid !== req.auth.uid) {
       return res.status(403).json({ message: 'You do not have permission to view this playlist' });
     }
     
@@ -176,14 +172,14 @@ export const updatePlaylist = async (req, res) => {
     const { name, description, isPublic, featured, imageUrl } = req.body;
     const playlistId = req.params.id;
     
-    const playlist = await Playlist.findById(playlistId).populate('createdBy', 'clerkId');
+    const playlist = await Playlist.findById(playlistId).populate('createdBy', 'uid');
     
     if (!playlist) {
       return res.status(404).json({ message: 'Playlist not found' });
     }
     
     // Check if user is the owner of the playlist
-    if (playlist.createdBy.clerkId !== req.auth.userId) {
+    if (playlist.createdBy.uid !== req.auth.uid) {
       return res.status(403).json({ message: 'You do not have permission to update this playlist' });
     }
     
@@ -212,13 +208,13 @@ export const addSongToPlaylist = async (req, res) => {
     const playlistId = req.params.id;
     
     // Check if playlist exists
-    const playlist = await Playlist.findById(playlistId).populate('createdBy', 'clerkId');
+    const playlist = await Playlist.findById(playlistId).populate('createdBy', 'uid');
     if (!playlist) {
       return res.status(404).json({ message: 'Playlist not found' });
     }
     
     // Check if user is the owner of the playlist
-    if (playlist.createdBy.clerkId !== req.auth.userId) {
+    if (playlist.createdBy.uid !== req.auth.uid) {
       return res.status(403).json({ message: 'You do not have permission to modify this playlist' });
     }
     
@@ -254,13 +250,13 @@ export const removeSongFromPlaylist = async (req, res) => {
     const playlistId = req.params.id;
     
     // Check if playlist exists
-    const playlist = await Playlist.findById(playlistId).populate('createdBy', 'clerkId');
+    const playlist = await Playlist.findById(playlistId).populate('createdBy', 'uid');
     if (!playlist) {
       return res.status(404).json({ message: 'Playlist not found' });
     }
     
     // Check if user is the owner of the playlist
-    if (playlist.createdBy.clerkId !== req.auth.userId) {
+    if (playlist.createdBy.uid !== req.auth.uid) {
       return res.status(403).json({ message: 'You do not have permission to modify this playlist' });
     }
     
@@ -284,13 +280,13 @@ export const deletePlaylist = async (req, res) => {
     const playlistId = req.params.id;
     
     // Check if playlist exists
-    const playlist = await Playlist.findById(playlistId).populate('createdBy', 'clerkId');
+    const playlist = await Playlist.findById(playlistId).populate('createdBy', 'uid');
     if (!playlist) {
       return res.status(404).json({ message: 'Playlist not found' });
     }
     
     // Check if user is the owner of the playlist
-    if (playlist.createdBy.clerkId !== req.auth.userId) {
+    if (playlist.createdBy.uid !== req.auth.uid) {
       return res.status(403).json({ message: 'You do not have permission to delete this playlist' });
     }
     

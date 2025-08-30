@@ -64,7 +64,7 @@ export interface FirestorePlaylist extends Omit<Playlist, '_id' | 'songs' | 'cre
 export interface FirestoreUser extends Omit<User, '_id'> {
   id: string;
   _id?: string;
-  clerkId: string;
+  uid: string;
   fullName: string;
   imageUrl: string;
 } 

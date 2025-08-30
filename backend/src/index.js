@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 // Load environment variables first
 dotenv.config();
 
-import { clerkMiddleware } from "@clerk/express";
+
 import fileUpload from "express-fileupload";
 import path from "path";
 import cors from "cors";
@@ -18,7 +18,6 @@ import admin from "./config/firebase.js";
 import { initializeSocket } from "./lib/socket.js";
 
 import userRoutes from "./routes/user.route.js";
-import adminRoutes from "./routes/admin.route.js";
 import authRoutes from "./routes/auth.route.js";
 import songRoutes from "./routes/song.route.js";
 import albumRoutes from "./routes/album.route.js";
@@ -27,7 +26,7 @@ import spotifyRoutes from "./routes/spotify.route.js";
 import musicRoutes from "./routes/music.route.js";
 import playlistRoutes from "./routes/playlist.route.js";
 import uploadRoutes from "./routes/upload.route.js";
-import apiTestRoutes from "./routes/api-test.route.js";
+
 import likedSongRoutes from "./routes/likedSong.route.js";
 import cloudinaryRoutes from "./routes/cloudinary.route.js";
 
@@ -81,8 +80,7 @@ app.options('*', cors(corsOptions));
 
 app.use(express.json()); // to parse req.body
 
-// Temporarily disable Clerk middleware during Firebase transition
-// app.use(clerkMiddleware()); // this will add auth to req obj => req.auth
+
 
 // Firebase authentication middleware
 app.use(async (req, res, next) => {
@@ -96,12 +94,11 @@ app.use(async (req, res, next) => {
     
     try {
       const decodedToken = await admin.auth().verifyIdToken(idToken);
-      req.auth = {
-        ...req.auth, // Preserve Clerk auth if present
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        firebase: decodedToken
-      };
+              req.auth = {
+          uid: decodedToken.uid,
+          email: decodedToken.email,
+          firebase: decodedToken
+        };
       console.log(`Firebase auth successful for user: ${decodedToken.uid}`);
     } catch (error) {
       // Check if it's a Firebase initialization error
@@ -152,10 +149,10 @@ if (!process.env.VERCEL) {
 }
 
 // API test routes
-app.use("/api/test", apiTestRoutes);
+
 
 app.use("/api/users", userRoutes);
-app.use("/api/admin", adminRoutes);
+
 app.use("/api/auth", authRoutes);
 app.use("/api/songs", songRoutes);
 app.use("/api/albums", albumRoutes);

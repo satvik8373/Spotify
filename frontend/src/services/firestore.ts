@@ -487,16 +487,7 @@ export class UsersService extends FirestoreService<FirestoreUser> {
     super('users');
   }
   
-  // Get user by Clerk ID
-  async getUserByClerkId(clerkId: string): Promise<FirestoreUser | null> {
-    try {
-      const users = await this.getByField('clerkId', clerkId);
-      return users.length > 0 ? users[0] : null;
-    } catch (error) {
-      console.error('Error getting user by Clerk ID:', error);
-      throw error;
-    }
-  }
+
 }
 
 // Instantiate and export services

@@ -39,37 +39,7 @@ export const firebaseAuth = async (req, res) => {
 	}
 };
 
-// Clerk authentication callback
-export const authCallback = async (req, res, next) => {
-	try {
-		const { id, firstName, lastName, imageUrl } = req.body;
 
-		// Check if user exists in Firebase
-		try {
-			// Try to get the user
-			await admin.auth().getUser(id);
-			// User exists, no need to create
-		} catch (error) {
-			if (error.code === 'auth/user-not-found') {
-				// Create user in Firebase if not exists
-				await admin.auth().createUser({
-					uid: id, // Use Clerk ID as Firebase UID
-					displayName: `${firstName || ""} ${lastName || ""}`.trim(),
-					photoURL: imageUrl || "https://res.cloudinary.com/djqq8kba8/image/upload/v1/spotify-clone/defaults/user_default.png",
-					// No password needed since we're using external auth
-					disabled: false
-				});
-			} else {
-				throw error;
-			}
-		}
-
-		res.status(200).json({ success: true });
-	} catch (error) {
-		console.log("Error in auth callback", error);
-		next(error);
-	}
-};
 
 // Verify JWT token and get user info
 export const verifyToken = async (req, res, next) => {

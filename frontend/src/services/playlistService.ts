@@ -63,7 +63,7 @@ export const convertFirestorePlaylistToPlaylist = (data: any): Playlist => {
     updatedAt: firestorePlaylist.updatedAt,
     createdBy: {
       _id: firestorePlaylist.createdBy.id || 'unknown',
-      clerkId: firestorePlaylist.createdBy.clerkId,
+              uid: firestorePlaylist.createdBy.uid,
       fullName: firestorePlaylist.createdBy.fullName,
       imageUrl: firestorePlaylist.createdBy.imageUrl || ''
     }
@@ -174,7 +174,7 @@ export const createPlaylist = async (
     const userForFirestore = {
       id: currentUser.uid,
       _id: currentUser.uid, // Add _id to match User interface
-      clerkId: currentUser.uid,
+              uid: currentUser.uid,
       fullName: currentUser.displayName || 'User',
       imageUrl: currentUser.photoURL || ''
     };
