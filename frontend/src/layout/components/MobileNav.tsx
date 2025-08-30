@@ -515,12 +515,11 @@ const MobileNav = () => {
       {/* Bottom Navigation */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414]",
+          "mobile-nav-perfect fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414]",
           hasActiveSong ? "player-active" : ""
         )}
         style={{
           paddingBottom: `max(env(safe-area-inset-bottom), 8px)`,
-          bottom: `max(env(safe-area-inset-bottom), 0px)`,
           ...(hasActiveSong && {
             backgroundColor: albumColors.isLight 
               ? `${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.12)')}`

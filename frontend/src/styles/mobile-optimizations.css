@@ -290,3 +290,87 @@
   right: 0 !important;
   z-index: 50 !important;
 }
+
+/* iOS PWA Home Screen Specific Fixes */
+.ios-pwa-mode .mobile-nav {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 50 !important;
+}
+
+.ios-pwa-mode .main-content {
+  padding-bottom: 90px !important;
+}
+
+/* Perfect bottom positioning for mobile navigation */
+.mobile-nav-perfect {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 50 !important;
+  background: var(--background, #ffffff);
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+/* Content spacing above mobile navigation */
+.content-above-nav {
+  padding-bottom: 90px !important;
+}
+
+/* iOS specific safe area handling */
+@supports (padding: max(0px)) {
+  .ios-safe-area-content {
+    padding-bottom: max(90px, env(safe-area-inset-bottom) + 90px);
+  }
+  
+  .ios-safe-area-nav {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Additional fixes for perfect bottom positioning */
+@media (max-width: 768px) {
+  /* Ensure content doesn't get hidden behind navigation */
+  .content-above-nav {
+    padding-bottom: 90px !important;
+    margin-bottom: 0 !important;
+  }
+  
+  /* Perfect navigation positioning */
+  .mobile-nav-perfect {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 50 !important;
+    background: var(--background, #ffffff);
+    border-top: 1px solid var(--border, #e5e7eb);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* iOS PWA specific overrides */
+  .ios-pwa-mode .mobile-nav-perfect {
+    bottom: 0 !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+  }
+  
+  /* Ensure main content area has proper spacing */
+  .ios-pwa-mode .content-above-nav {
+    padding-bottom: max(90px, env(safe-area-inset-bottom) + 90px) !important;
+  }
+  
+  /* Fix for landscape orientation */
+  @media (orientation: landscape) {
+    .mobile-nav-perfect {
+      position: fixed !important;
+      bottom: 0 !important;
+    }
+    
+    .content-above-nav {
+      padding-bottom: 90px !important;
+    }
+  }
+}
