@@ -12,7 +12,10 @@ const SearchPage = lazy(() => import('./pages/search/SearchPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
 const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
 const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
-const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage'));
+const PlaylistPage = lazy(async () => {
+  const module = await import('./pages/playlist/PlaylistPage');
+  return { default: module.default || module.PlaylistPage };
+});
 const SongPage = lazy(() => import('./pages/song/SongPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));

@@ -75,6 +75,8 @@
 		<!-- Mobile-specific scripts -->
 		<script>
 			// Mobile performance monitoring
+			// TEMPORARILY DISABLED SERVICE WORKER TO TEST REACT ERROR
+			/*
 			if ('serviceWorker' in navigator) {
 				window.addEventListener('load', () => {
 					navigator.serviceWorker.register('/service-worker.js')
@@ -97,6 +99,7 @@
 						.catch(error => console.log('SW registration failed'));
 				});
 			}
+			*/
 			
 			// Mobile-specific performance metrics
 			if (window.performance && window.performance.mark) {
