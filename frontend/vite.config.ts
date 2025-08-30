@@ -92,11 +92,11 @@ export default defineConfig(({ mode }) => {
 				}
 			}),
 			compression({
-				algorithm: 'gzip',
+				algorithms: ['gzip'],
 				exclude: [/\.(br)$/, /\.(gz)$/],
 			}),
 			compression({
-				algorithm: 'brotliCompress',
+				algorithms: ['brotliCompress'],
 				exclude: [/\.(br)$/, /\.(gz)$/],
 			}),
 		],

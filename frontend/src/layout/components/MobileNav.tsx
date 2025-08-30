@@ -515,7 +515,7 @@ const MobileNav = () => {
       {/* Bottom Navigation */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414]",
+          "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414] mobile-nav-fixed",
           hasActiveSong ? "player-active" : ""
         )}
         style={{
