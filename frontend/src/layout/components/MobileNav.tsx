@@ -348,19 +348,27 @@ const MobileNav = () => {
       {showMobileTopHeader && !isLikedRoute && (
         <div className="fixed top-0 left-0 right-0 z-30 bg-background dark:bg-[#191414] md:hidden">
           {isLibraryRoute ? (
-            <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center justify-between px-3 py-1">
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
                     <button 
                       onClick={handleProfileClick}
-                      className="h-6 w-6 rounded-full bg-muted flex items-center justify-center overflow-hidden"
                       aria-label="Profile"
+                      className="p-1"
                     >
                       {user?.picture ? (
-                        <img src={(user.picture || '').replace(/^http:\/\//, 'https://')} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
+                        <img
+                          src={(user.picture || '').replace(/^http:\/\//, 'https://')}
+                          alt={user.name || 'User'}
+                          loading="lazy"
+                          decoding="async"
+                          width="24"
+                          height="24"
+                          className="rounded-full object-cover h-6 w-6"
+                        />
                       ) : (
-                        <User className="h-3 w-3 text-muted-foreground" />
+                        <User className="h-5 w-5 text-muted-foreground" />
                       )}
                     </button>
                     {showProfileMenu && (
@@ -390,31 +398,39 @@ const MobileNav = () => {
                 ) : (
                   <button 
                     onClick={handleLogin}
-                    className="h-6 w-6 rounded-full bg-muted flex items-center justify-center"
                     aria-label="Sign in"
+                    className="p-1"
                   >
-                    <LogIn className="h-3 w-3 text-foreground" />
+                    <LogIn className="h-4 w-4 text-foreground" />
                   </button>
                 )}
-                <h2 className="text-base font-semibold text-foreground">Your Library</h2>
+                <h2 className="text-sm font-semibold text-foreground">Your Library</h2>
               </div>
               <div className="flex items-center gap-2">
               </div>
             </div>
           ) : isSearchRoute ? (
-            <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center justify-between px-3 py-1">
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
                     <button 
                       onClick={handleProfileClick}
-                      className="h-6 w-6 rounded-full bg-muted flex items-center justify-center overflow-hidden"
                       aria-label="Profile"
+                      className="p-1"
                     >
                       {user?.picture ? (
-                        <img src={(user.picture || '').replace(/^http:\/\//, 'https://')} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
+                        <img
+                          src={(user.picture || '').replace(/^http:\/\//, 'https://')}
+                          alt={user.name || 'User'}
+                          loading="lazy"
+                          decoding="async"
+                          width="24"
+                          height="24"
+                          className="rounded-full object-cover h-6 w-6"
+                        />
                       ) : (
-                        <User className="h-3 w-3 text-muted-foreground" />
+                        <User className="h-5 w-5 text-muted-foreground" />
                       )}
                     </button>
                     {showProfileMenu && (
@@ -444,30 +460,38 @@ const MobileNav = () => {
                 ) : (
                   <button 
                     onClick={handleLogin}
-                    className="h-6 w-6 rounded-full bg-muted flex items-center justify-center"
                     aria-label="Sign in"
+                    className="p-1"
                   >
-                    <LogIn className="h-3 w-3 text-foreground" />
+                    <LogIn className="h-4 w-4 text-foreground" />
                   </button>
                 )}
-                <h2 className="text-base font-semibold text-foreground">Search</h2>
+                <h2 className="text-sm font-semibold text-foreground">Search</h2>
               </div>
               <div className="flex items-center gap-2" />
             </div>
           ) : (
-            <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center justify-between px-3 py-1">
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
                     <button 
                       onClick={handleProfileClick}
-                      className="h-6 w-6 rounded-full bg-muted flex items-center justify-center overflow-hidden"
                       aria-label="Profile"
+                      className="p-1"
                     >
                       {user?.picture ? (
-                        <img src={(user.picture || '').replace(/^http:\/\//, 'https://')} alt={user.name || 'User'} className="w-full h-full object-cover" loading="lazy" decoding="async" width="24" height="24" />
+                        <img
+                          src={(user.picture || '').replace(/^http:\/\//, 'https://')}
+                          alt={user.name || 'User'}
+                          loading="lazy"
+                          decoding="async"
+                          width="24"
+                          height="24"
+                          className="rounded-full object-cover h-6 w-6"
+                        />
                       ) : (
-                        <User className="h-3 w-3 text-muted-foreground" />
+                        <User className="h-5 w-5 text-muted-foreground" />
                       )}
                     </button>
                     {showProfileMenu && (
@@ -497,10 +521,10 @@ const MobileNav = () => {
                 ) : (
                   <button 
                     onClick={handleLogin}
-                    className="h-6 w-6 rounded-full bg-muted flex items-center justify-center"
                     aria-label="Sign in"
+                    className="p-1"
                   >
-                    <LogIn className="h-3 w-3 text-foreground" />
+                    <LogIn className="h-4 w-4 text-foreground" />
                   </button>
                 )}
               </div>
@@ -654,19 +678,19 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-16 bg-background dark:bg-[#191414]">
+        <div className="grid grid-cols-4 h-16 bg-background dark:bg-[#191414] pb-safe">
           {navItems.map(item => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                'flex flex-col items-center justify-center py-1 transition-colors',
+                'flex flex-col items-center justify-center py-2 transition-colors',
                 isActive(item.path) 
                   ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-                <div className={cn('flex items-center justify-center h-8 w-8 mb-1')}>
+                <div className={cn('flex items-center justify-center h-8 w-8 mb-2')}>
                   <item.icon className={cn(
                     'h-5 w-5', 
                     isActive(item.path) ? 'text-green-500' : 'text-muted-foreground'

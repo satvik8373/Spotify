@@ -142,29 +142,29 @@ const Topbar = () => {
         <div className="flex items-center gap-4 ml-4">
           {!authLoading && user ? (
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 rounded-full bg-zinc-800 p-1 pr-4">
+              <div className="flex items-center gap-2 rounded-full bg-zinc-800/80 backdrop-blur-sm p-1 pr-4 border border-zinc-700/50">
                 <img
                   src={user.picture || "https://via.placeholder.com/32"}
                   alt="User"
-                  className="h-8 w-8 rounded-full"
+                  className="h-8 w-8 rounded-full object-cover border border-zinc-600/50"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "https://via.placeholder.com/32";
                   }}
                 />
-                <span className="text-sm font-medium">{user.name || "User"}</span>
+                <span className="text-sm font-medium text-white">{user.name || "User"}</span>
               </div>
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={handleLogout}
-                className="h-8 px-2"
+                className="h-8 px-3 text-zinc-300 hover:text-white hover:bg-zinc-800/80 transition-colors"
               >
                 Sign out
               </Button>
             </div>
           ) : (
             <Button
-              className="h-8 px-3 bg-white text-black hover:bg-gray-200 font-medium flex items-center justify-center gap-2"
+              className="h-8 px-3 bg-white text-black hover:bg-gray-200 font-medium flex items-center justify-center gap-2 transition-colors"
               onClick={() => navigate('/login')}
             >
               Sign in

@@ -4,13 +4,16 @@
 		<meta charset="UTF-8" />
 		<link rel="icon" type="image/png" href="/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-		<meta name="theme-color" content="#1DB954" />
+		<meta name="theme-color" content="#1DB954" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#191414" media="(prefers-color-scheme: dark)" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 		<meta name="apple-mobile-web-app-title" content="Spotify Clone" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="format-detection" content="telephone=no" />
 		<meta name="msapplication-tap-highlight" content="no" />
+		<meta name="msapplication-TileColor" content="#1DB954" />
+		<meta name="msapplication-config" content="/browserconfig.xml" />
 		
 		<title>Spotify Clone</title>
 		
@@ -88,6 +91,46 @@
 			if (window.performance && window.performance.mark) {
 				window.performance.mark('mobile-app-start');
 			}
+			
+			// Dynamic PWA theme color matching with homepage
+			function updatePWAThemeColors() {
+				const isDark = document.documentElement.classList.contains('dark');
+				const themeColor = isDark ? '#191414' : '#ffffff';
+				const statusBarStyle = isDark ? 'black-translucent' : 'default';
+				
+				// Update theme-color meta tag
+				const themeMeta = document.querySelector('meta[name="theme-color"]');
+				if (themeMeta) {
+					themeMeta.setAttribute('content', themeColor);
+				}
+				
+				// Update Apple status bar style
+				const appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+				if (appleMeta) {
+					appleMeta.setAttribute('content', statusBarStyle);
+				}
+				
+				// Update body background to match homepage
+				document.body.style.backgroundColor = themeColor;
+				document.body.style.transition = 'background-color 0.3s ease';
+			}
+			
+			// Initial theme color update
+			updatePWAThemeColors();
+			
+			// Watch for theme changes
+			const observer = new MutationObserver((mutations) => {
+				mutations.forEach((mutation) => {
+					if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+						updatePWAThemeColors();
+					}
+				});
+			});
+			
+			observer.observe(document.documentElement, {
+				attributes: true,
+				attributeFilter: ['class']
+			});
 		</script>
 	</body>
 </html>

@@ -8,13 +8,13 @@ export function MobileThemeToggle() {
   const getThemeIcon = () => {
     switch (theme) {
       case 'light':
-        return <Sun className="h-3 w-3" />;
+        return <Sun className="h-5 w-5" />;
       case 'dark':
-        return <Moon className="h-3 w-3" />;
+        return <Moon className="h-5 w-5" />;
       case 'system':
-        return <Monitor className="h-3 w-3" />;
+        return <Monitor className="h-5 w-5" />;
       default:
-        return <Moon className="h-3 w-3" />;
+        return <Moon className="h-5 w-5" />;
     }
   };
 
@@ -22,7 +22,7 @@ export function MobileThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      className="h-6 w-6 text-muted-foreground hover:text-foreground transition-colors"
+      className="h-6 w-6 text-muted-foreground hover:text-foreground transition-colors p-1"
       onClick={toggleTheme}
     >
       {getThemeIcon()}
