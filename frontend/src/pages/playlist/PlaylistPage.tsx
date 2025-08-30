@@ -1180,3 +1180,6 @@ export function PlaylistPage() {
     </div>
   );
 }
+
+// Add default export for easier importing
+export default PlaylistPage;
