@@ -18,10 +18,10 @@ class MobilePerformanceService {
   private initializeMobileOptimizations(): void {
     if (!this.isMobile) return;
 
-    // Optimize touch events with normal performance
+    // Optimize touch events
     this.optimizeTouchEvents();
     
-    // Optimize scroll performance with normal speed
+    // Optimize scroll performance
     this.optimizeScrollPerformance();
     
     // Optimize resize events
@@ -35,7 +35,7 @@ class MobilePerformanceService {
   }
 
   private optimizeTouchEvents(): void {
-    // Add passive event listeners for better scroll performance (normal speed)
+    // Add passive event listeners for better scroll performance
     const addPassiveEventListener = (element: EventTarget, event: string) => {
       element.addEventListener(event, () => {}, { passive: true });
     };
@@ -47,7 +47,7 @@ class MobilePerformanceService {
   }
 
   private optimizeScrollPerformance(): void {
-    // Throttle scroll events with normal performance (not aggressive)
+    // Throttle scroll events
     const throttledScroll = () => {
       if (this.scrollThrottleTimer) return;
       
@@ -55,14 +55,14 @@ class MobilePerformanceService {
         // Handle scroll optimizations
         this.handleScrollOptimizations();
         this.scrollThrottleTimer = null;
-      }, 32); // Normal 30fps instead of aggressive 60fps
+      }, 16); // ~60fps
     };
 
     window.addEventListener('scroll', throttledScroll, { passive: true });
   }
 
   private optimizeResizeEvents(): void {
-    // Throttle resize events with normal performance
+    // Throttle resize events
     const throttledResize = () => {
       if (this.resizeThrottleTimer) return;
       
@@ -85,12 +85,11 @@ class MobilePerformanceService {
       document.head.appendChild(viewportMeta);
     }
     
-    // Use normal viewport settings instead of restrictive ones
-    viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
+    viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
   }
 
   private optimizeViewport(): void {
-    // Set mobile-specific CSS variables for safe areas
+    // Set mobile-specific CSS variables
     document.documentElement.style.setProperty('--mobile-safe-area-inset-top', 'env(safe-area-inset-top)');
     document.documentElement.style.setProperty('--mobile-safe-area-inset-bottom', 'env(safe-area-inset-bottom)');
     document.documentElement.style.setProperty('--mobile-safe-area-inset-left', 'env(safe-area-inset-left)');
@@ -98,13 +97,13 @@ class MobilePerformanceService {
   }
 
   private handleScrollOptimizations(): void {
-    // Implement scroll-based optimizations with normal performance
+    // Implement scroll-based optimizations
     const scrollY = window.scrollY;
     
-    // Lazy load images when they come into view (normal speed)
+    // Lazy load images when they come into view
     this.lazyLoadImages();
     
-    // Optimize animations based on scroll position (normal speed)
+    // Optimize animations based on scroll position
     this.optimizeAnimations(scrollY);
   }
 
@@ -132,7 +131,7 @@ class MobilePerformanceService {
         }
       });
     }, {
-      rootMargin: '100px 0px', // Increased margin for normal performance
+      rootMargin: '50px 0px',
       threshold: 0.1
     });
 
@@ -140,16 +139,12 @@ class MobilePerformanceService {
   }
 
   private optimizeAnimations(scrollY: number): void {
-    // Use normal animation performance instead of aggressive reduction
+    // Reduce animation complexity on mobile
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
-    if (prefersReducedMotion) {
-      document.documentElement.style.setProperty('--animation-duration', '0.3s');
-      document.documentElement.style.setProperty('--transition-duration', '0.3s');
-    } else {
-      // Normal animation speeds
-      document.documentElement.style.setProperty('--animation-duration', '0.3s');
-      document.documentElement.style.setProperty('--transition-duration', '0.3s');
+    if (prefersReducedMotion || this.isMobile) {
+      document.documentElement.style.setProperty('--animation-duration', '0.1s');
+      document.documentElement.style.setProperty('--transition-duration', '0.1s');
     }
   }
 
@@ -175,9 +170,9 @@ class MobilePerformanceService {
   public optimizeImageForMobile(src: string, width: number, height: number): string {
     if (!this.isMobile) return src;
     
-    // Mobile-specific image optimizations with normal quality
-    const mobileWidth = Math.min(width, 600); // Increased from 400
-    const mobileHeight = Math.min(height, 600); // Increased from 400
+    // Mobile-specific image optimizations
+    const mobileWidth = Math.min(width, 400);
+    const mobileHeight = Math.min(height, 400);
     
     if (src.includes('cloudinary')) {
       const baseUrl = src.split('/upload/')[0];
@@ -185,7 +180,7 @@ class MobilePerformanceService {
       const transformations = [
         `w_${mobileWidth}`,
         `h_${mobileHeight}`,
-        'q_85', // Normal quality instead of aggressive 80
+        'q_80',
         'f_auto',
         'fl_progressive',
         'fl_force_strip'

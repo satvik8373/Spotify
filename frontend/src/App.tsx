@@ -22,6 +22,7 @@ const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Welcome = lazy(() => import('./pages/Welcome'));
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
@@ -112,8 +113,8 @@ const LandingRedirector = () => {
     );
   }
   
-  // Not authenticated, redirect to login
-  return <Navigate to="/login" replace />;
+  // Not authenticated, show welcome page
+  return <Welcome />;
 };
 
 // Configure the router with React Router v6
@@ -196,8 +197,9 @@ function AppContent() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// Initialize essential performance optimizations (normal speed)
+				// Initialize performance optimizations
 				performanceService.addResourceHints();
+				// Mobile performance service initializes automatically
 				
 				// Check for cached authentication
 				const hasCachedAuth = Boolean(

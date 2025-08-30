@@ -11,10 +11,6 @@ interface MobileOptimizedImageProps {
   priority?: boolean;
   fallbackSrc?: string;
   mobileBreakpoint?: number;
-  format?: 'auto' | 'webp' | 'avif' | 'jpg';
-  sizes?: string;
-  loading?: 'lazy' | 'eager';
-  decoding?: 'async' | 'sync' | 'auto';
 }
 
 const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
@@ -26,18 +22,12 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
   quality = 85,
   priority = false,
   fallbackSrc,
-  mobileBreakpoint = 768,
-  format = 'auto',
-  sizes,
-  loading = 'lazy',
-  decoding = 'async'
+  mobileBreakpoint = 768
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isError, setIsError] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [currentSrc, setCurrentSrc] = useState('');
-  const [srcSet, setSrcSet] = useState('');
   const imgRef = useRef<HTMLImageElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -54,7 +44,7 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
 
   // Intersection Observer for lazy loading
   useEffect(() => {
-    if (!imgRef.current || priority) return;
+    if (!imgRef.current) return;
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -68,7 +58,7 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
         });
       },
       {
-        rootMargin: '100px 0px',
+        rootMargin: '50px 0px',
         threshold: 0.1
       }
     );
@@ -80,12 +70,12 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
         observerRef.current.disconnect();
       }
     };
-  }, [priority]);
+  }, []);
 
   // Preload critical images
   useEffect(() => {
     if (priority && src) {
-      performanceService.preloadImage(src, 'high');
+      performanceService.preloadImage(src);
     }
   }, [priority, src]);
 
@@ -101,7 +91,7 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
       `w_${mobileWidth}`,
       `h_${height}`,
       `q_${mobileQuality}`,
-      `f_${format === 'auto' ? 'auto' : format}`,
+      'f_auto', // Auto format selection
       'fl_progressive', // Progressive loading
       'fl_force_strip', // Strip metadata
       'fl_attachment:flatten' // Flatten layers
@@ -116,51 +106,6 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
     return originalSrc;
   };
 
-  const generateSrcSet = (originalSrc: string): string => {
-    if (!originalSrc || !originalSrc.includes('cloudinary')) return '';
-
-    const baseUrl = originalSrc.split('/upload/')[0];
-    const imagePath = originalSrc.split('/upload/')[1];
-    
-    const breakpoints = [
-      { width: 320, quality: 70 },
-      { width: 480, quality: 75 },
-      { width: 768, quality: 80 },
-      { width: 1024, quality: 85 },
-      { width: 1440, quality: 90 }
-    ];
-
-    const srcSetParts = breakpoints.map(({ width, quality }) => {
-      const transformations = [
-        `w_${width}`,
-        `q_${quality}`,
-        `f_${format === 'auto' ? 'auto' : format}`,
-        'fl_progressive',
-        'fl_force_strip'
-      ];
-      return `${baseUrl}/upload/${transformations.join(',')}/${imagePath} ${width}w`;
-    });
-
-    return srcSetParts.join(', ');
-  };
-
-  const generateSizes = (): string => {
-    if (sizes) return sizes;
-    
-    return `(max-width: 480px) ${Math.min(width, 320)}px, (max-width: 768px) ${Math.min(width, 480)}px, ${width}px`;
-  };
-
-  // Update image source when in view or priority
-  useEffect(() => {
-    if (isInView || priority) {
-      const optimizedSrc = isMobile ? generateMobileOptimizedSrc(src) : src;
-      const responsiveSrcSet = generateSrcSet(src);
-      
-      setCurrentSrc(optimizedSrc);
-      setSrcSet(responsiveSrcSet);
-    }
-  }, [isInView, priority, src, isMobile, width, height, quality, format]);
-
   const handleLoad = () => {
     setIsLoaded(true);
     setIsError(false);
@@ -173,14 +118,14 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
     }
   };
 
-  const displaySrc = (isInView || priority) ? currentSrc : '';
-  const displaySrcSet = (isInView || priority) ? srcSet : '';
+  const optimizedSrc = isMobile ? generateMobileOptimizedSrc(src) : src;
+  const displaySrc = isInView || priority ? optimizedSrc : '';
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
       {!isLoaded && !isError && (
         <div 
-          className="flex items-center justify-center bg-gray-100 rounded-lg animate-pulse"
+          className="flex items-center justify-center bg-gray-100 rounded-lg"
           style={{
             width: `${width}px`,
             height: `${height}px`
@@ -193,8 +138,6 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
       <img
         ref={imgRef}
         src={displaySrc}
-        srcSet={displaySrcSet}
-        sizes={generateSizes()}
         alt={alt}
         className={`block max-w-full h-auto rounded-lg transition-opacity duration-300 ${
           isLoaded ? 'opacity-100' : 'opacity-0'
@@ -206,11 +149,10 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
           height: isMobile ? 'auto' : `${height}px`,
           objectFit: 'cover'
         }}
-        loading={priority ? 'eager' : loading}
-        decoding={decoding}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
         onLoad={handleLoad}
         onError={handleError}
-        fetchPriority={priority ? 'high' : 'auto'}
       />
     </div>
   );
