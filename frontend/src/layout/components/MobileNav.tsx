@@ -678,7 +678,7 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-16 bg-background dark:bg-[#191414] pb-safe">
+        <div className="grid grid-cols-4 h-16 bg-background dark:bg-[#191414] pb-safe rounded-t-none">
           {navItems.map(item => (
             <Link
               key={item.path}

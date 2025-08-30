@@ -12,6 +12,10 @@
   height: 2.5rem;
 }
 
+.h-16 {
+    height: 4.5rem;
+}
+
 /* Additional utility classes for consistent spacing */
 .pb-6 {
   padding-bottom: 1.5rem;
