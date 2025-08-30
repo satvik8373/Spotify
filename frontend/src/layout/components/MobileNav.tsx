@@ -678,7 +678,13 @@ const MobileNav = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-16 bg-background dark:bg-[#191414] pb-safe">
+        <div 
+          className="grid grid-cols-4 h-16 pb-safe"
+          style={{
+            background: "linear-gradient(to bottom, rgba(0, 0, 0, 0.64) 0%, rgba(0,0,0,1) 100%)",
+            borderTop: '1px solid rgba(255, 255, 255, 0)'
+          }}
+        >
           {navItems.map(item => (
             <Link
               key={item.path}
