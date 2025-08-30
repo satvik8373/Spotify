@@ -41,20 +41,27 @@ const MainLayout = () => {
     };
   }, []);
 
-  // Route-aware measurements for mobile header/nav/mini-player spacing
+  // Improved mobile layout calculations with PWA considerations
   const MOBILE_HEADER_PX = 40;
-  const MOBILE_NAV_PX = 14;
+  const MOBILE_NAV_PX = 60; // Increased for better PWA bottom spacing
   const MINI_PLAYER_PX = 47;
+  const SAFE_AREA_BOTTOM = 20; // Additional safe area for PWA
+  
   const isMobileHeaderRoute = isMobile && (
     location.pathname === '/home' ||
     location.pathname === '/' ||
     location.pathname.startsWith('/library') ||
     location.pathname.startsWith('/search')
   );
-  const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + MOBILE_NAV_PX + (hasActiveSong ? MINI_PLAYER_PX : 0);
+  
+  // Calculate mobile layout with proper PWA bottom spacing
+  const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + 
+                          MOBILE_NAV_PX + 
+                          (hasActiveSong ? MINI_PLAYER_PX : 0) + 
+                          SAFE_AREA_BOTTOM;
 
   return (
-    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden max-w-full">
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden max-w-full pwa-layout">
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block">
         <Header />
@@ -87,9 +94,9 @@ const MainLayout = () => {
 
         {!isMobile && <ResizableHandle className="w-1 bg-border rounded-lg transition-colors hover:bg-primary/20" />}
 
-        {/* Main content - full width on mobile */}
+        {/* Main content - full width on mobile with proper bottom spacing */}
         <ResizablePanel defaultSize={isMobile ? 100 : 80} className="overflow-hidden flex flex-col max-w-full">
-          <div className="flex-1 overflow-y-auto overflow-x-hidden mobile-scroll-fix pb-safe">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden mobile-scroll-fix pb-safe pwa-content">
             <Outlet />
           </div>
         </ResizablePanel>
@@ -98,7 +105,7 @@ const MainLayout = () => {
       {/* Playback controls - visible on desktop only when there's a song */}
       {currentSong && !isMobile && <PlaybackControls />}
 
-      {/* Mobile Navigation */}
+      {/* Mobile Navigation with PWA bottom spacing */}
       <MobileNav />
     </div>
   );
