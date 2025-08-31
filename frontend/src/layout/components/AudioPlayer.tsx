@@ -2024,7 +2024,7 @@ const AudioPlayer = () => {
       
       {/* Desktop mini player (only shows when not visible on mobile) */}
       <div 
-        className="fixed bottom-0 left-0 right-0 bg-gradient-to-b from-zinc-900/80 to-black border-t border-zinc-800/50 h-16 backdrop-blur-md z-40 hidden sm:block md:hidden transition-all duration-300"
+        className="fixed bottom-0 left-0 right-0 bg-gradient-to-b from-zinc-900/80 to-black border-t border-zinc-800/50 h-16 z-40 hidden sm:block md:hidden transition-all duration-300"
         onClick={(e) => {
           e.preventDefault();
           setShowSongDetails(true);
@@ -2048,14 +2048,14 @@ const AudioPlayer = () => {
 
                 {/* Song info */}
                 <div className="truncate min-w-0 flex-1">
-                  <MarqueeText 
-                    text={currentSong.title || "Unknown Title"} 
-                    className="text-sm font-medium" 
-                  />
-                  <MarqueeText 
-                    text={resolveArtist(currentSong)} 
-                    className="text-xs text-zinc-400" 
-                  />
+                                  <MarqueeText 
+                  text={currentSong.title || "Unknown Title"} 
+                  className="text-sm font-medium text-white" 
+                />
+                <MarqueeText 
+                  text={resolveArtist(currentSong)} 
+                  className="text-xs text-zinc-300" 
+                />
                 </div>
               </>
             )}
@@ -2142,9 +2142,7 @@ const AudioPlayer = () => {
           style={{
             background: albumColors.isLight
               ? `linear-gradient(to bottom, ${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.95)')}, ${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.85)')})`
-              : `linear-gradient(to bottom, ${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.95)')}, ${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.85)')})`,
-            backdropFilter: "blur(25px)",
-            WebkitBackdropFilter: "blur(25px)"
+              : `linear-gradient(to bottom, ${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.95)')}, ${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.85)')})`
           }}
         >
           {/* Close button */}
@@ -2182,16 +2180,16 @@ const AudioPlayer = () => {
           <div className="px-6 pt-4">
             <h2 
               className={cn(
-                "text-xl font-bold truncate mb-1",
-                albumColors.isLight ? "text-black" : "text-white"
+                "text-xl font-bold truncate mb-1 audio-title-high-contrast",
+                albumColors.isLight ? "audio-title-light" : "audio-title-dark"
               )}
             >
               {currentSong.title}
             </h2>
             <p 
               className={cn(
-                "text-sm truncate mb-6",
-                albumColors.isLight ? "text-black/70" : "text-white/70"
+                "text-sm truncate mb-6 audio-title-high-contrast",
+                albumColors.isLight ? "audio-title-light" : "audio-title-dark"
               )}
             >
               {currentSong.artist}

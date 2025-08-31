@@ -40,7 +40,6 @@ const MobileNav = () => {
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [showTimeIndicators, setShowTimeIndicators] = useState(false);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
   const [isAtTop, setIsAtTop] = useState(true);
   
@@ -292,49 +291,7 @@ const MobileNav = () => {
     };
   };
 
-  // Handle seeking when user taps on progress bar
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    
-    if (!currentSong || !duration) return;
-    
-    // Show time indicators when interacting with progress bar
-    setShowTimeIndicators(true);
-    
-    // Hide time indicators after 2 seconds
-    setTimeout(() => {
-      setShowTimeIndicators(false);
-    }, 2000);
-    
-    // Get the progress bar element
-    const progressBar = e.currentTarget;
-    const rect = progressBar.getBoundingClientRect();
-    
-    // Calculate the click/touch position
-    let clientX: number;
-    if ('touches' in e) {
-      // Touch event
-      clientX = e.touches[0].clientX;
-    } else {
-      // Mouse event
-      clientX = e.clientX;
-    }
-    
-    // Calculate the percentage and new time
-    const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const newTime = percentage * duration;
-    
-    // Set the time in the player store
-    if (usePlayerStore.getState().setCurrentTime) {
-      usePlayerStore.getState().setCurrentTime(newTime);
-    }
-    
-    // Also update any audio element directly
-    const audio = document.querySelector('audio');
-    if (audio) {
-      audio.currentTime = newTime;
-    }
-  };
+
 
   return (
     <>
@@ -539,15 +496,15 @@ const MobileNav = () => {
       {/* Bottom Navigation */}
               <div
           className={cn(
-            "fixed bottom-0 left-0 right-0 z-30 md:hidden bg-background dark:bg-[#191414]",
+            "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414]",
             hasActiveSong ? "player-active" : ""
           )}
         style={{
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
           ...(hasActiveSong && {
             backgroundColor: albumColors.isLight 
-              ? `${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.12)')}`
-              : `${albumColors.primary.replace('rgb', 'rgba').replace(')', ', 0.12)')}`,
+              ? `${albumColors.primary}`
+              : `${albumColors.primary}`,
           })
         }}
       >
@@ -557,8 +514,8 @@ const MobileNav = () => {
             className="flex flex-col justify-between transition-colors duration-500"
             style={{
               backgroundColor: albumColors.isLight
-                ? `${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.85)')}`
-                : `${albumColors.secondary.replace('rgb', 'rgba').replace(')', ', 0.85)')}`,
+                ? `${albumColors.secondary}`
+                : `${albumColors.secondary}`,
               color: albumColors.isLight ? '#000' : '#fff'
             }}
           >
@@ -582,7 +539,7 @@ const MobileNav = () => {
                   <p 
                     className={cn(
                       "text-sm font-medium truncate",
-                      "text-black"
+                      albumColors.isLight ? "text-black" : "text-white"
                     )}
                   >
                     {currentSong.title}
@@ -590,7 +547,7 @@ const MobileNav = () => {
                   <p 
                     className={cn(
                       "text-xs truncate",
-                      "text-black/70"
+                      albumColors.isLight ? "text-black/80" : "text-white/80"
                     )}
                   >
                     {currentSong.artist}
@@ -601,10 +558,37 @@ const MobileNav = () => {
                 <button
                   onClick={handleLikeToggle}
                   className={cn(
-                    "mr-2 h-8 w-8 flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
-                    "bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30",
+                    "mr-2 h-8 w-8 flex items-center justify-center flex-shrink-0 rounded-full transition-all duration-200 hover:scale-105",
                     songLiked ? "text-green-500" : "text-foreground"
                   )}
+                  style={{
+                    backgroundColor: albumColors.isLight 
+                      ? 'rgba(0, 0, 0, 0.15)' 
+                      : 'rgba(255, 255, 255, 0.15)',
+                    color: songLiked 
+                      ? '#22c55e' 
+                      : (albumColors.isLight ? '#000000' : '#ffffff')
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = albumColors.isLight 
+                      ? 'rgba(0, 0, 0, 0.25)' 
+                      : 'rgba(255, 255, 255, 0.25)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = albumColors.isLight 
+                      ? 'rgba(0, 0, 0, 0.15)' 
+                      : 'rgba(255, 255, 255, 0.15)';
+                  }}
+                  onTouchStart={(e) => {
+                    e.currentTarget.style.backgroundColor = albumColors.isLight 
+                      ? 'rgba(0, 0, 0, 0.25)' 
+                      : 'rgba(255, 255, 255, 0.25)';
+                  }}
+                  onTouchEnd={(e) => {
+                    e.currentTarget.style.backgroundColor = albumColors.isLight 
+                      ? 'rgba(0, 0, 0, 0.15)' 
+                      : 'rgba(255, 255, 255, 0.15)';
+                  }}
                 >
                   <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
                 </button>
@@ -614,11 +598,52 @@ const MobileNav = () => {
                     usePlayerStore.getState().togglePlay();
                   }}
                   className={cn(
-                    "h-9 w-9 flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
-                    isPlaying 
-                      ? "bg-black/20 hover:bg-black/30 dark:bg-white/20 dark:hover:bg-white/30 text-foreground" 
-                      : "bg-green-500 hover:bg-green-400 text-black"
+                    "h-9 w-9 flex items-center justify-center flex-shrink-0 rounded-full transition-all duration-200 hover:scale-105"
                   )}
+                  style={{
+                    backgroundColor: isPlaying 
+                      ? (albumColors.isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)')
+                      : '#22c55e',
+                    color: isPlaying 
+                      ? (albumColors.isLight ? '#000000' : '#ffffff')
+                      : '#000000'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (isPlaying) {
+                      e.currentTarget.style.backgroundColor = albumColors.isLight 
+                        ? 'rgba(0, 0, 0, 0.25)' 
+                        : 'rgba(255, 255, 255, 0.25)';
+                    } else {
+                      e.currentTarget.style.backgroundColor = '#16a34a'; // Darker green on hover
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (isPlaying) {
+                      e.currentTarget.style.backgroundColor = albumColors.isLight 
+                        ? 'rgba(0, 0, 0, 0.15)' 
+                        : 'rgba(255, 255, 255, 0.15)';
+                    } else {
+                      e.currentTarget.style.backgroundColor = '#22c55e'; // Restore original green
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    if (isPlaying) {
+                      e.currentTarget.style.backgroundColor = albumColors.isLight 
+                        ? 'rgba(0, 0, 0, 0.25)' 
+                        : 'rgba(255, 255, 255, 0.25)';
+                    } else {
+                      e.currentTarget.style.backgroundColor = '#16a34a'; // Darker green on touch
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    if (isPlaying) {
+                      e.currentTarget.style.backgroundColor = albumColors.isLight 
+                        ? 'rgba(0, 0, 0, 0.15)' 
+                        : 'rgba(255, 255, 255, 0.15)';
+                    } else {
+                      e.currentTarget.style.backgroundColor = '#22c55e'; // Restore original green
+                    }
+                  }}
                 >
                   {isPlaying ? (
                     <Pause className={cn("h-4 w-4")} />
@@ -631,61 +656,27 @@ const MobileNav = () => {
             
             {/* Song progress bar */}
             <div 
-              className="relative w-full cursor-pointer"
-              onClick={handleSeek}
-              onTouchStart={handleSeek}
-              onMouseEnter={() => setShowTimeIndicators(true)}
-              onMouseLeave={() => setShowTimeIndicators(false)}
+              className="relative w-full"
             >
-              <div className="h-6 w-full absolute bottom-0 opacity-0">
-                {/* Invisible touch target to make seeking easier */}
-              </div>
               <div 
                 className="h-[3px] w-full relative transition-colors duration-500"
                 style={{
                   backgroundColor: albumColors.isLight 
-                    ? 'rgba(0, 0, 0, 0.4)' 
-                    : 'rgba(255, 255, 255, 0.4)'
+                    ? 'rgba(0, 0, 0, 0.8)' 
+                    : 'rgba(255, 255, 255, 0.8)'
                 }}
               >
                 <div 
                   className="h-full bg-green-500" 
                   style={{ width: `${progress || 0}%` }}
                 />
-                
-                {/* Position dot indicator */}
-                {showTimeIndicators && (
-                  <div 
-                    className="absolute top-1/2 -translate-y-1/2 h-3 w-3 bg-green-500 rounded-full shadow-md pointer-events-none" 
-                    style={{ left: `calc(${progress || 0}% - 4px)` }}
-                  />
-                )}
               </div>
-              
-              {/* Time indicators - conditionally shown */}
-              {showTimeIndicators && (
-                <div 
-                  className={cn(
-                    "flex justify-between px-3 py-1 text-[10px]",
-                    albumColors.isLight ? "text-black/80" : "text-white/80"
-                  )}
-                >
-                  <span>{formatTime(currentTime || 0)}</span>
-                  <span>{formatTime(duration || 0)}</span>
-                </div>
-              )}
             </div>
           </div>
         )}
 
-        <div 
-          className="grid grid-cols-4 h-16 pb-safe"
-          style={{
-            background: "linear-gradient(to bottom, rgba(0, 0, 0, 0.71) 0%, rgba(0,0,0,1) 100%)",
-            borderTop: '1px solid rgba(0, 0, 0, 0.69)'
-          }}
-        >
-          {navItems.map(item => ( 
+        <div className="grid grid-cols-4 h-16 bg-background dark:bg-[#191414] pb-safe">
+          {navItems.map(item => (
             <Link
               key={item.path}
               to={item.path}

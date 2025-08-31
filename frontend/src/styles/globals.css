@@ -183,14 +183,10 @@
 /* Mini Player Glass Effect */
 .mobile-nav-glass {
   background-color: rgba(24, 24, 27, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 /* Liquid Glass Buttons */
 .liquid-glass-button {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   transition: all 0.3s ease;
 }
 
@@ -259,14 +255,10 @@
 /* Theme-specific styles for Spotify app */
 .dark .playback-controls-glass {
   background: rgba(24, 24, 27, 0.85) !important;
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
 }
 
 .light .playback-controls-glass {
   background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
 }
 
 /* Smooth theme transitions */

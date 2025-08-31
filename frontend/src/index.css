@@ -273,8 +273,6 @@ img.object-cover.bg-zinc-800 {
 .fixed.bottom-0.z-30 {
 	bottom: 0;
 	padding-bottom: env(safe-area-inset-bottom, 0px);
-	-webkit-backdrop-filter: blur(10px);
-	backdrop-filter: blur(10px);
 }
 
 /* Mobile mini player styles */
@@ -309,8 +307,6 @@ img.object-cover.bg-zinc-800 {
 /* Transparent nav appearance improvements */
 .bg-black\/70 {
 	background-color: rgba(0, 0, 0, 0.7);
-	-webkit-backdrop-filter: blur(10px);
-	backdrop-filter: blur(10px);
 }
 
 /* Hide scrollbars but maintain functionality */
