@@ -381,28 +381,52 @@ const HomePage = () => {
 
   // Inject external ad script into container
   useEffect(() => {
-    try {
-      (window as any).atOptions = {
-        key: '0a3dc65c1dc3cb69102dcd1b8531e50a',
-        format: 'iframe',
-        height: 250,
-        width: 300,
-        params: {},
-      };
+    const loadAdScript = async () => {
+      try {
+        // Set up ad options
+        (window as any).atOptions = {
+          key: '0a3dc65c1dc3cb69102dcd1b8531e50a',
+          format: 'iframe',
+          height: 250,
+          width: 300,
+          params: {},
+        };
 
-      const script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.src = '//www.highperformanceformat.com/0a3dc65c1dc3cb69102dcd1b8531e50a/invoke.js';
-      script.async = true;
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = '//www.highperformanceformat.com/0a3dc65c1dc3cb69102dcd1b8531e50a/invoke.js';
+        script.async = true;
 
-      if (adContainerRef.current) {
-        adContainerRef.current.innerHTML = '';
-        adContainerRef.current.appendChild(script);
+        // Add error handling for script loading
+        script.onerror = () => {
+          console.warn('Ad script failed to load, hiding ad container');
+          if (adContainerRef.current) {
+            adContainerRef.current.style.display = 'none';
+          }
+        };
+
+        script.onload = () => {
+          console.log('Ad script loaded successfully');
+        };
+
+        if (adContainerRef.current) {
+          adContainerRef.current.innerHTML = '';
+          adContainerRef.current.appendChild(script);
+        }
+      } catch (error) {
+        console.error('Failed to load ad script', error);
+        // Hide the ad container if there's an error
+        if (adContainerRef.current) {
+          adContainerRef.current.style.display = 'none';
+        }
       }
-    } catch (error) {
-      console.error('Failed to load ad script', error);
+    };
+
+    // Only load ads if online
+    if (isOnline) {
+      loadAdScript();
     }
-  }, []);
+  }, [isOnline]);
 
   return (
     <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] ">
@@ -469,15 +493,17 @@ const HomePage = () => {
 
             {/* Recently Played Section */}
             <RecentlyPlayed />
-
-            {/* Ad slot */}
-            <div className="px-2 sm:px-4 mb-5 flex justify-center">
-              <div
-                ref={adContainerRef}
-                style={{ width: 300, height: 250 }}
-                aria-label="advertisement"
-              />
-            </div>
+                
+            {/* Ad slot - only show when online */}
+            {isOnline && (
+              <div className="px-2 sm:px-4 mb-5 flex justify-center">
+                <div
+                  ref={adContainerRef}
+                  style={{ width: 300, height: 250 }}
+                  aria-label="advertisement"
+                />
+              </div>
+            )}
 
             {/* Public Playlists Section */}
             {publicPlaylists.length > 0 && (

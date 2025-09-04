@@ -83,6 +83,9 @@ self.addEventListener('fetch', (event) => {
   } else if (url.hostname === 'api.spotify.com') {
     // Spotify API - network first strategy
     event.respondWith(handleApiRequest(request));
+  } else if (url.hostname === 'www.highperformanceformat.com') {
+    // Ad scripts - network first, no caching
+    event.respondWith(handleAdRequest(request));
   } else {
     // Other external requests - network first
     event.respondWith(handleExternalRequest(request));
@@ -173,6 +176,18 @@ async function handleApiRequest(request) {
       }
     }
     
+    throw error;
+  }
+}
+
+// Handle ad requests (no caching)
+async function handleAdRequest(request) {
+  try {
+    // Try network first, no caching for ads
+    const networkResponse = await fetch(request);
+    return networkResponse;
+  } catch (error) {
+    // Don't cache ad failures, just throw
     throw error;
   }
 }
