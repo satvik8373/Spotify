@@ -9,8 +9,8 @@ const STATIC_FILES = [
   '/index.html',
   '/manifest.json',
   '/favicon.png',
-  '/spotify-icons/spotify-icon-192.png',
-  '/spotify-icons/spotify-icon-512.png',
+  '/spotify-icons/spotify-icon-maskable-192.png',
+  '/spotify-icons/spotify-icon-maskable-512.png',
   '/spotify-icons/spotify-logo-green.svg',
   '/apple-touch-icon.png',
   '/apple-touch-icon-120.png',
@@ -223,8 +223,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: event.data ? event.data.text() : 'New music available!',
-    icon: '/spotify-icons/spotify-icon-192.png',
-    badge: '/spotify-icons/spotify-icon-192.png',
+    icon: '/spotify-icons/spotify-icon-maskable-192.png',
+    badge: '/spotify-icons/spotify-icon-maskable-192.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -234,12 +234,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'explore',
         title: 'Explore',
-        icon: '/spotify-icons/spotify-icon-192.png'
+        icon: '/spotify-icons/spotify-icon-maskable-192.png'
       },
       {
         action: 'close',
         title: 'Close',
-        icon: '/spotify-icons/spotify-icon-192.png'
+        icon: '/spotify-icons/spotify-icon-maskable-192.png'
       }
     ]
   };
