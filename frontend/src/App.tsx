@@ -243,6 +243,7 @@ function AppContent() {
 			import('./layout/MainLayout');
 			import('./pages/home/HomePage');
 			import('./pages/search/SearchPage');
+			import('./pages/Login');
 		});
 	}, []);
 	
