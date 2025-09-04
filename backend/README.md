@@ -1,6 +1,6 @@
-# Spotify Clone Backend API
+# Mavrixfy Backend API
 
-This is the backend API for the Spotify Clone application.
+This is the backend API for the Mavrixfy application.
 
 ## Deployment on Vercel
 

@@ -174,7 +174,7 @@ app.get('/spotify-callback', (req, res) => {
 // Add a root route handler
 app.get('/', (req, res) => {
 	res.json({ 
-    message: 'Spotify Clone API - Welcome! Use /api/playlists, /api/songs, etc.',
+    message: 'Mavrixfy API - Welcome! Use /api/playlists, /api/songs, etc.',
     environment: process.env.NODE_ENV || 'development',
     vercel: process.env.VERCEL ? 'yes' : 'no',
     timestamp: new Date().toISOString(),
