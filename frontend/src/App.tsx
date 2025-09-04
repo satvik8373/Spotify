@@ -2,7 +2,6 @@ import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom'
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
-import { mobilePerformanceService } from './services/mobilePerformanceService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
@@ -211,10 +210,8 @@ function AppContent() {
 
 				// Reduce splash screen time for logged-in users or after auth redirect
 				if (hasCachedAuth || fromAuthRedirect) {
-					// For logged-in users, reduce splash screen time to minimum
-					setTimeout(() => {
-						setInitialized(true);
-					}, 500); // Reduce to just 500ms for authenticated users
+					// Skip delay entirely for authenticated users
+					setInitialized(true);
 				} else {
 					// For new visitors, keep the normal timing
 					setTimeout(() => {
@@ -229,6 +226,25 @@ function AppContent() {
 		};
 		
 		initializeApp();
+	}, []);
+
+	// Prefetch critical lazy routes to reduce render delay for first navigation
+	useEffect(() => {
+		// Only prefetch after first paint to avoid blocking FCP
+		const idle = (cb: () => void) => {
+			if ('requestIdleCallback' in window) {
+				(window as any).requestIdleCallback(cb, { timeout: 1500 });
+			} else {
+				setTimeout(cb, 800);
+			}
+		};
+
+		idle(() => {
+			// Warm important route chunks
+			import('./layout/MainLayout');
+			import('./pages/home/HomePage');
+			import('./pages/search/SearchPage');
+		});
 	}, []);
 	
 	// Always show splash screen on initial load until initialization completes

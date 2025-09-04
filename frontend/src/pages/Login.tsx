@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link, useLocation, Navigate } from 'react-router-dom';
 import { login, signInWithGoogle } from '@/services/hybridAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,13 +18,26 @@ const Login = () => {
   const location = useLocation();
   const { isAuthenticated, loading: authLoading } = useAuth();
 
-  // Redirect if already authenticated
+  // Fast path: if we have persisted auth in localStorage, redirect immediately
+  const hasLocalAuth = (() => {
+    try {
+      const raw = localStorage.getItem('auth-store');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw || '{}');
+      return Boolean(parsed?.isAuthenticated && parsed?.userId);
+    } catch {
+      return false;
+    }
+  })();
+
+  if (hasLocalAuth) {
+    const redirectTo = (location.state as any)?.from || '/home';
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  // Redirect if already authenticated (when context is ready)
   useEffect(() => {
-    // Check both context auth and localStorage
-    const hasLocalAuth = localStorage.getItem('auth-store') && 
-      JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated;
-    
-    if ((isAuthenticated || hasLocalAuth) && !authLoading) {
+    if (isAuthenticated && !authLoading) {
       console.log("Already authenticated, redirecting to home");
       
       // If we have a from location, use it, otherwise use home

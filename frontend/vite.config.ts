@@ -61,13 +61,13 @@ export default defineConfig(({ mode }) => {
 					start_url: '/',
 					icons: [
 						{
-							src: '/spotify-icons/spotify-icon-192.png',
+							src: '/spotify-icons/spotify-icon-maskable-192.png',
 							sizes: '192x192',
 							type: 'image/png',
 							purpose: 'any maskable'
 						},
 						{
-							src: '/spotify-icons/spotify-icon-512.png',
+							src: '/spotify-icons/spotify-icon-maskable-512.png',
 							sizes: '512x512',
 							type: 'image/png',
 							purpose: 'any maskable'
@@ -92,11 +92,11 @@ export default defineConfig(({ mode }) => {
 				}
 			}),
 			compression({
-				algorithms: ['gzip'],
+				algorithm: 'gzip',
 				exclude: [/\.(br)$/, /\.(gz)$/],
 			}),
 			compression({
-				algorithms: ['brotliCompress'],
+				algorithm: 'brotliCompress',
 				exclude: [/\.(br)$/, /\.(gz)$/],
 			}),
 		],

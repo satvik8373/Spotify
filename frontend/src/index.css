@@ -209,9 +209,7 @@
 }
 
 /* Utility classes */
-.pb-safe {
-	padding-bottom: env(safe-area-inset-bottom, 0.5rem);
-}
+
 
 /* Album art styling */
 img.object-cover {
