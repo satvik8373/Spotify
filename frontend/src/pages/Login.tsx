@@ -1,12 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { useNavigate, Link, useLocation, Navigate } from 'react-router-dom';
 import { login, signInWithGoogle } from '@/services/hybridAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
+
+// Lightweight inline SVG icons to avoid pulling icon libraries on this route
+const ArrowLeftIcon = memo(({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+));
+
+const EyeIcon = memo(({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="currentColor" strokeWidth="2" fill="none"/>
+    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+  </svg>
+));
+
+const EyeOffIcon = memo(({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.77 21.77 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.8 21.8 0 0 1-3.22 4.19M1 1l22 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+));
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -38,7 +57,6 @@ const Login = () => {
   // Redirect if already authenticated (when context is ready)
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      console.log("Already authenticated, redirecting to home");
       
       // If we have a from location, use it, otherwise use home
       const redirectTo = location.state?.from || '/home';
@@ -101,7 +119,7 @@ const Login = () => {
             className="text-white mr-4" 
             onClick={() => navigate('/')}
           >
-            <ArrowLeft />
+            <ArrowLeftIcon />
           </Button>
           <h1 className="text-2xl font-bold text-white">Log in to Spotify</h1>
         </div>
@@ -165,7 +183,7 @@ const Login = () => {
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
               </Button>
             </div>
           </div>
