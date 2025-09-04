@@ -4,7 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
-const HomePage = import('./pages/home/HomePage');
+const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
 const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
@@ -111,8 +111,8 @@ const LandingRedirector = () => {
     );
   }
   
-  // Not authenticated, show welcome page
-  return <Welcome />;
+  // Not authenticated, go to login
+  return <Navigate to="/login" replace />;
 };
 
 // Configure the router with React Router v6
