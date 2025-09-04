@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import AdSlot from '@/components/AdSlot';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import IndianMusicPlayer from '@/components/IndianMusicPlayer';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
@@ -382,6 +383,11 @@ const HomePage = () => {
     <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] ">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
         <div className="pt-3 pb-6 max-w-full overflow-x-hidden px-[6px]">
+          {/* Ad slot near top (below status banners) */}
+          <div className="px-2 sm:px-4 mb-3 flex justify-center">
+            <AdSlot />
+          </div>
+
           {/* Offline banner */}
           {!isOnline && (
             <div className="px-2 sm:px-4 mb-3">

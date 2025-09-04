@@ -1,4 +1,5 @@
 import React, { useState, useEffect, memo } from 'react';
+import AdSlot from '@/components/AdSlot';
 import { useNavigate, Link, useLocation, Navigate } from 'react-router-dom';
 import { login, signInWithGoogle } from '@/services/hybridAuthService';
 import { Button } from '@/components/ui/button';
@@ -151,6 +152,10 @@ const Login = () => {
             </div>
             <div className="relative flex justify-center text-xs">
               <span className="bg-black px-2 text-zinc-400">OR</span>
+            </div>
+            {/* Ad slot shown below-the-fold to avoid impacting LCP */}
+            <div className="mt-6 flex justify-center">
+              <AdSlot />
             </div>
           </div>
         )}
