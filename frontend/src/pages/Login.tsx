@@ -8,12 +8,6 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Lightweight inline SVG icons to avoid pulling icon libraries on this route
-const ArrowLeftIcon = memo(({ size = 20 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-));
-
 const EyeIcon = memo(({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="currentColor" strokeWidth="2" fill="none"/>
@@ -33,6 +27,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showBelowFold, setShowBelowFold] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -63,6 +58,18 @@ const Login = () => {
       navigate(redirectTo, { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate, location.state]);
+
+  // Defer non-critical UI to idle time to reduce render delay
+  useEffect(() => {
+    const idle = (cb: () => void) => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(cb, { timeout: 1500 });
+      } else {
+        setTimeout(cb, 800);
+      }
+    };
+    idle(() => setShowBelowFold(true));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,8 +119,6 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-black flex flex-col items-center">
       <div className="w-full max-w-md px-6 py-8">
-        <br>
-        </br>
         
         <div className="mb-6">
           <Button
@@ -132,14 +137,16 @@ const Login = () => {
           </Button>
         </div>
         
-        <div className="relative mb-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-zinc-800"></div>
+        {showBelowFold && (
+          <div className="relative mb-6" style={{ contentVisibility: 'auto' as any }}>
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-zinc-800"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-black px-2 text-zinc-400">OR</span>
+            </div>
           </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-black px-2 text-zinc-400">OR</span>
-          </div>
-        </div>
+        )}
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -188,23 +195,27 @@ const Login = () => {
           </Button>
         </form>
         
-        <div className="mt-6 text-center">
-          <Link to="/reset-password" className="text-white hover:underline text-sm">
-            Forgot your password?
-          </Link>
-        </div>
-        
-        <div className="border-t border-zinc-800 my-8"></div>
-        
-        <div className="text-center">
-          <p className="text-zinc-400 mb-4">Don't have an account?</p>
-          <Link 
-            to="/register" 
-            className="inline-block border border-zinc-700 text-white rounded-full px-8 py-3 font-bold hover:border-white transition-colors"
-          >
-            Sign up for Spotify
-          </Link>
-        </div>
+        {showBelowFold && (
+          <>
+            <div className="mt-6 text-center" style={{ contentVisibility: 'auto' as any }}>
+              <Link to="/reset-password" className="text-white hover:underline text-sm">
+                Forgot your password?
+              </Link>
+            </div>
+            
+            <div className="border-t border-zinc-800 my-8" style={{ contentVisibility: 'auto' as any }}></div>
+            
+            <div className="text-center" style={{ contentVisibility: 'auto' as any }}>
+              <p className="text-zinc-400 mb-4">Don't have an account?</p>
+              <Link 
+                to="/register" 
+                className="inline-block border border-zinc-700 text-white rounded-full px-8 py-3 font-bold hover:border-white transition-colors"
+              >
+                Sign up for Spotify
+              </Link>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
