@@ -112,17 +112,8 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-black flex flex-col items-center">
       <div className="w-full max-w-md px-6 py-8">
-        <div className="flex items-center mb-8">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-white mr-4" 
-            onClick={() => navigate('/')}
-          >
-            <ArrowLeftIcon />
-          </Button>
-          <h1 className="text-2xl font-bold text-white">Log in to Spotify</h1>
-        </div>
+        <br>
+        </br>
         
         <div className="mb-6">
           <Button
