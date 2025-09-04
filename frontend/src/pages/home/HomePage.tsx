@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-import AdSlot from '@/components/AdSlot';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import IndianMusicPlayer from '@/components/IndianMusicPlayer';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
@@ -176,6 +175,7 @@ const HomePage = () => {
 
   const { setCurrentSong } = usePlayerStore();
   const hasTrending = indianTrendingSongs && indianTrendingSongs.length > 0;
+  const adContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchFeaturedPlaylists();
@@ -379,15 +379,35 @@ const HomePage = () => {
     };
   }, []);
 
+  // Inject external ad script into container
+  useEffect(() => {
+    try {
+      (window as any).atOptions = {
+        key: '0a3dc65c1dc3cb69102dcd1b8531e50a',
+        format: 'iframe',
+        height: 250,
+        width: 300,
+        params: {},
+      };
+
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.src = '//www.highperformanceformat.com/0a3dc65c1dc3cb69102dcd1b8531e50a/invoke.js';
+      script.async = true;
+
+      if (adContainerRef.current) {
+        adContainerRef.current.innerHTML = '';
+        adContainerRef.current.appendChild(script);
+      }
+    } catch (error) {
+      console.error('Failed to load ad script', error);
+    }
+  }, []);
+
   return (
     <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] ">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
         <div className="pt-3 pb-6 max-w-full overflow-x-hidden px-[6px]">
-          {/* Ad slot near top (below status banners) */}
-          <div className="px-2 sm:px-4 mb-3 flex justify-center">
-            <AdSlot />
-          </div>
-
           {/* Offline banner */}
           {!isOnline && (
             <div className="px-2 sm:px-4 mb-3">
@@ -449,6 +469,15 @@ const HomePage = () => {
 
             {/* Recently Played Section */}
             <RecentlyPlayed />
+
+            {/* Ad slot */}
+            <div className="px-2 sm:px-4 mb-5 flex justify-center">
+              <div
+                ref={adContainerRef}
+                style={{ width: 300, height: 250 }}
+                aria-label="advertisement"
+              />
+            </div>
 
             {/* Public Playlists Section */}
             {publicPlaylists.length > 0 && (
