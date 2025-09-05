@@ -550,13 +550,35 @@ const HomePage = () => {
                         ×
                       </button>
                       
-                      {/* Loading state */}
+                      {/* Loading state - Skeleton */}
                       {!adLoaded && !adError && (
-                        <div className="w-[300px] h-[250px] flex items-center justify-center bg-muted/50 dark:bg-muted/30 rounded-lg">
-                          <div className="flex flex-col items-center gap-3">
-                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-sm text-muted-foreground">Loading advertisement...</p>
+                        <div className="w-[300px] h-[250px] bg-muted/50 dark:bg-muted/30 rounded-lg overflow-hidden relative">
+                          {/* Skeleton shimmer effect */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
+                          
+                          {/* Skeleton content structure */}
+                          <div className="p-4 space-y-3">
+                            {/* Header skeleton */}
+                            <div className="h-4 bg-muted/70 dark:bg-muted/50 rounded w-3/4 animate-pulse"></div>
+                            
+                            {/* Content area skeleton */}
+                            <div className="space-y-2">
+                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-full animate-pulse"></div>
+                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-5/6 animate-pulse"></div>
+                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-4/5 animate-pulse"></div>
+                            </div>
+                            
+                            {/* Image placeholder skeleton */}
+                            <div className="mt-4 h-24 bg-muted/60 dark:bg-muted/40 rounded animate-pulse"></div>
+                            
+                            {/* Button skeleton */}
+                            <div className="mt-4 flex justify-center">
+                              <div className="h-8 w-20 bg-muted/70 dark:bg-muted/50 rounded animate-pulse"></div>
+                            </div>
                           </div>
+                          
+                          {/* Shimmer overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent transform -skew-x-12 animate-pulse"></div>
                         </div>
                       )}
                       
