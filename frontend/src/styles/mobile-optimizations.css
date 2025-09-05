@@ -2,11 +2,21 @@
 
 /* Mobile-first approach */
 @media (max-width: 768px) {
-  /* Reduce animation complexity on mobile */
-  * {
-    animation-duration: 0.1s !important;
-    transition-duration: 0.1s !important;
-    animation-fill-mode: none !important;
+  /* Respect user's motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      animation-fill-mode: none !important;
+    }
+  }
+  
+  /* Use smooth animations for users who don't prefer reduced motion */
+  @media (prefers-reduced-motion: no-preference) {
+    * {
+      animation-duration: 2s !important;
+      transition-duration: 0.3s !important;
+    }
   }
   
   /* Optimize for mobile rendering */

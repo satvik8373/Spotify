@@ -418,17 +418,17 @@ const HomePage = () => {
 
         script.onload = () => {
           console.log('Ad script loaded successfully');
-          // Add a small delay to ensure the ad content is rendered
+          // Add a delay to ensure the ad content is rendered and show skeleton for a bit
           setTimeout(() => {
             setAdLoaded(true);
-          }, 1000);
+          }, 2000);
         };
 
         if (adContainerRef.current) {
           adContainerRef.current.innerHTML = '';
           adContainerRef.current.appendChild(script);
           
-          // Add CSS to ensure iframe fits perfectly
+          // Add CSS to ensure iframe fits perfectly and smooth skeleton animations
           const style = document.createElement('style');
           style.textContent = `
             #ad-container iframe {
@@ -439,6 +439,33 @@ const HomePage = () => {
               padding: 0 !important;
               overflow: hidden !important;
               display: block !important;
+            }
+            
+            /* Custom skeleton animations for smoother loading */
+            .skeleton-pulse {
+              animation: skeleton-pulse 2s ease-in-out infinite;
+            }
+            
+            .skeleton-shimmer {
+              animation: skeleton-shimmer 2.5s ease-in-out infinite;
+            }
+            
+            @keyframes skeleton-pulse {
+              0%, 100% {
+                opacity: 1;
+              }
+              50% {
+                opacity: 0.6;
+              }
+            }
+            
+            @keyframes skeleton-shimmer {
+              0% {
+                transform: translateX(-100%) skewX(-12deg);
+              }
+              100% {
+                transform: translateX(200%) skewX(-12deg);
+              }
             }
           `;
           document.head.appendChild(style);
@@ -553,32 +580,29 @@ const HomePage = () => {
                       {/* Loading state - Skeleton */}
                       {!adLoaded && !adError && (
                         <div className="w-[300px] h-[250px] bg-muted/50 dark:bg-muted/30 rounded-lg overflow-hidden relative">
-                          {/* Skeleton shimmer effect */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
-                          
                           {/* Skeleton content structure */}
                           <div className="p-4 space-y-3">
                             {/* Header skeleton */}
-                            <div className="h-4 bg-muted/70 dark:bg-muted/50 rounded w-3/4 animate-pulse"></div>
+                            <div className="h-4 bg-muted/70 dark:bg-muted/50 rounded w-3/4 skeleton-pulse"></div>
                             
                             {/* Content area skeleton */}
                             <div className="space-y-2">
-                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-full animate-pulse"></div>
-                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-5/6 animate-pulse"></div>
-                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-4/5 animate-pulse"></div>
+                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-full skeleton-pulse"></div>
+                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-5/6 skeleton-pulse"></div>
+                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-4/5 skeleton-pulse"></div>
                             </div>
                             
                             {/* Image placeholder skeleton */}
-                            <div className="mt-4 h-24 bg-muted/60 dark:bg-muted/40 rounded animate-pulse"></div>
+                            <div className="mt-4 h-24 bg-muted/60 dark:bg-muted/40 rounded skeleton-pulse"></div>
                             
                             {/* Button skeleton */}
                             <div className="mt-4 flex justify-center">
-                              <div className="h-8 w-20 bg-muted/70 dark:bg-muted/50 rounded animate-pulse"></div>
+                              <div className="h-8 w-20 bg-muted/70 dark:bg-muted/50 rounded skeleton-pulse"></div>
                             </div>
                           </div>
                           
                           {/* Shimmer overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent transform -skew-x-12 animate-pulse"></div>
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent transform -skew-x-12 skeleton-shimmer"></div>
                         </div>
                       )}
                       

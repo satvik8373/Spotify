@@ -139,12 +139,17 @@ class MobilePerformanceService {
   }
 
   private optimizeAnimations(scrollY: number): void {
-    // Reduce animation complexity on mobile
+    // Respect user's motion preferences
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
-    if (prefersReducedMotion || this.isMobile) {
-      document.documentElement.style.setProperty('--animation-duration', '0.1s');
-      document.documentElement.style.setProperty('--transition-duration', '0.1s');
+    if (prefersReducedMotion) {
+      // Disable animations for users who prefer reduced motion
+      document.documentElement.style.setProperty('--animation-duration', '0.01ms');
+      document.documentElement.style.setProperty('--transition-duration', '0.01ms');
+    } else {
+      // Use our normalized smooth animations
+      document.documentElement.style.setProperty('--animation-duration', '2s');
+      document.documentElement.style.setProperty('--transition-duration', '0.3s');
     }
   }
 
