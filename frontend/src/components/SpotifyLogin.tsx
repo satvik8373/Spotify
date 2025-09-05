@@ -157,7 +157,7 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
     >
       {isLoading ? (
         <>
-          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+          <div className="h-4 w-4 bg-white/20 rounded-full animate-pulse"></div>
           Connecting...
         </>
       ) : (

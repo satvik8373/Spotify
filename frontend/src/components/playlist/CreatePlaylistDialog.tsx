@@ -14,7 +14,8 @@ import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { useNavigate } from 'react-router-dom';
-import { ImagePlus, Loader2, AlertCircle } from 'lucide-react';
+import { ImagePlus, AlertCircle } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 import { toast } from 'sonner';
 import { uploadImage } from '@/services/cloudinaryService';
 
@@ -147,16 +148,11 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
               <div className="relative group">
                 {isLoading || isUploading ? (
                   <div className="w-40 h-40 flex flex-col items-center justify-center bg-zinc-900 rounded-md">
-                    <Loader2 className="h-8 w-8 animate-spin text-green-500 mb-2" />
+                    <Skeleton className="w-32 h-32 rounded-md mb-2" />
                     {isUploading && (
                       <div className="w-full px-4">
-                        <div className="h-2 w-full bg-gray-300 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-green-500 rounded-full" 
-                            style={{ width: `${uploadProgress}%` }} 
-                          />
-                        </div>
-                        <p className="text-xs text-center mt-1">{uploadProgress}%</p>
+                        <Skeleton className="h-2 w-full rounded-full mb-1" />
+                        <Skeleton className="h-3 w-16 mx-auto" />
                       </div>
                     )}
                   </div>

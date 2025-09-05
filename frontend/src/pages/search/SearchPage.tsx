@@ -7,13 +7,13 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Play, 
-  Loader, 
   Search, 
   XCircle, 
   Instagram,
   Mic,
   ExternalLink
 } from 'lucide-react';
+import { ListSkeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '../../contexts/AuthContext';
@@ -537,8 +537,8 @@ const SearchPage = () => {
         </div>
 
         {isInitialLoad ? (
-          <div className="flex justify-center py-12">
-            <Loader className="w-8 h-8 animate-spin text-zinc-500" />
+          <div className="py-12">
+            <ListSkeleton count={8} isMobile={false} />
           </div>
         ) : query ? (
           <div className="space-y-6">

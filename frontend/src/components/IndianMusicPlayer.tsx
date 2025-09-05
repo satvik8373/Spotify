@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { resolveArtist } from "@/lib/resolveArtist";
-import { Loader, Play, Pause, Heart, RefreshCcw, Music, X, Share2, Download, ArrowLeft } from "lucide-react";
+import { Play, Pause, Heart, RefreshCcw, Music, X, Share2, Download, ArrowLeft } from "lucide-react";
+import { ListSkeleton } from './ui/skeleton';
 import toast from "react-hot-toast";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useMusicStore } from "@/stores/useMusicStore";
@@ -718,8 +719,8 @@ const IndianMusicPlayer = () => {
       
       {/* Loading State */}
       {isIndianMusicLoading && (
-        <div className="py-6 flex justify-center">
-          <Loader className="size-6 animate-spin text-muted-foreground" />
+        <div className="py-6">
+          <ListSkeleton count={5} isMobile={false} />
         </div>
       )}
       
