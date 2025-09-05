@@ -281,12 +281,10 @@ function AppContent() {
 		<>
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
 			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div></div>}>
-				<div className="animate-fade-in">
-					<RouterProvider 
-						router={router} 
-						future={{ v7_startTransition: true }} 
-					/>
-				</div>
+				<RouterProvider 
+					router={router} 
+					future={{ v7_startTransition: true }} 
+				/>
 			</Suspense>
 			<Toaster />
 			<PWAInstallPrompt />
