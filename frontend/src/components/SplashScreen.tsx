@@ -6,7 +6,16 @@ interface SplashScreenProps {
 
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   useEffect(() => {
-    const timer = setTimeout(onComplete, 10);
+    // Check if user is already authenticated from cache
+    const hasCachedAuth = Boolean(
+      localStorage.getItem('auth-store') && 
+      JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
+    );
+    
+    // For cached authenticated users, complete immediately
+    const delay = hasCachedAuth ? 0 : 10;
+    
+    const timer = setTimeout(onComplete, delay);
     return () => clearTimeout(timer);
   }, [onComplete]);
 

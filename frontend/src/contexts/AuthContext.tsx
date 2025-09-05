@@ -49,7 +49,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       loadingRef.current = true;
-      if (!authStateCheckedRef.current) setLoading(true);
+      // Only show loading if we don't have a cached user
+      if (!authStateCheckedRef.current && !user) setLoading(true);
       
       const firebaseUser = auth.currentUser;
       
@@ -184,7 +185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch {}
 
-    // If cached user exists in auth store, use it immediately
+    // If cached user exists in auth store, use it immediately for smooth UX
     const authStore = useAuthStore.getState();
     if (authStore.isAuthenticated && authStore.userId && !user) {
       const cachedUser: User = {
@@ -195,13 +196,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       setUser(cachedUser);
+      setLoading(false); // Stop loading immediately with cached user
       // console.log("Using cached user from auth store while waiting for Firebase");
     }
 
     // Listen for Firebase auth state changes
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      // Don't set loading to true if initial load is completed
-      if (!initialLoadCompletedRef.current) setLoading(true);
+      // Don't set loading to true if we already have a cached user
+      if (!initialLoadCompletedRef.current && !user) setLoading(true);
       
       if (firebaseUser) {
         // User is signed in

@@ -64,11 +64,23 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
     JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
   );
 
+  // Check if we're coming from a login redirect (smooth transition)
+  const isFromLoginRedirect = sessionStorage.getItem('auth_redirect') === '1';
+
   // Don't redirect while auth is still loading
   if (loading) {
-    // If we have cached auth, render children optimistically
+    // If we have cached auth, render children optimistically for smooth UX
     if (hasCachedAuth) {
       return <>{children}</>;
+    }
+    
+    // If coming from login redirect, show minimal loading
+    if (isFromLoginRedirect) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-background">
+          <div className="h-6 w-6 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
+        </div>
+      );
     }
     
     // Otherwise show loading indicator
@@ -97,13 +109,25 @@ const LandingRedirector = () => {
     JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
   );
   
-  // If we have cached auth or are authenticated, redirect to home
+  // Check if we're coming from a login redirect (smooth transition)
+  const isFromLoginRedirect = sessionStorage.getItem('auth_redirect') === '1';
+  
+  // If we have cached auth or are authenticated, redirect to home immediately
   if (hasCachedAuth || isAuthenticated) {
     return <Navigate to="/home" replace />;
   }
   
   // Still loading, but no cached auth - show loading indicator
   if (loading && !hasCachedAuth) {
+    // Smaller spinner for login redirects
+    if (isFromLoginRedirect) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-background">
+          <div className="h-6 w-6 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+    
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
@@ -211,6 +235,7 @@ function AppContent() {
 				if (hasCachedAuth || fromAuthRedirect) {
 					// Skip delay entirely for authenticated users
 					setInitialized(true);
+					setShowSplash(false); // Skip splash screen completely
 				} else {
 					// For new visitors, keep the normal timing
 					setTimeout(() => {
@@ -256,10 +281,12 @@ function AppContent() {
 		<>
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
 			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div></div>}>
-				<RouterProvider 
-					router={router} 
-					future={{ v7_startTransition: true }} 
-				/>
+				<div className="animate-fade-in">
+					<RouterProvider 
+						router={router} 
+						future={{ v7_startTransition: true }} 
+					/>
+				</div>
 			</Suspense>
 			<Toaster />
 			<PWAInstallPrompt />
