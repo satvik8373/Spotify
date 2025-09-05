@@ -390,11 +390,11 @@ const HomePage = () => {
       try {
         setAdError(false);
         
-        // Set up ad options with exact dimensions
+        // Set up ad options with compact dimensions
         (window as any).atOptions = {
           key: '0a3dc65c1dc3cb69102dcd1b8531e50a',
           format: 'iframe',
-          height: 250,
+          height: 150,
           width: 300,
           params: {
             'margin': '0',
@@ -418,10 +418,10 @@ const HomePage = () => {
 
         script.onload = () => {
           console.log('Ad script loaded successfully');
-          // Add a delay to ensure the ad content is rendered and show skeleton for a bit
+          // Reduced delay for faster loading
           setTimeout(() => {
             setAdLoaded(true);
-          }, 2000);
+          }, 500);
         };
 
         if (adContainerRef.current) {
@@ -433,7 +433,7 @@ const HomePage = () => {
           style.textContent = `
             #ad-container iframe {
               width: 300px !important;
-              height: 250px !important;
+              height: 150px !important;
               border: none !important;
               margin: 0 !important;
               padding: 0 !important;
@@ -441,13 +441,13 @@ const HomePage = () => {
               display: block !important;
             }
             
-            /* Custom skeleton animations for smoother loading */
+            /* Normal speed skeleton animations */
             .skeleton-pulse {
-              animation: skeleton-pulse 2s ease-in-out infinite;
+              animation: skeleton-pulse 1.5s ease-in-out infinite;
             }
             
             .skeleton-shimmer {
-              animation: skeleton-shimmer 2.5s ease-in-out infinite;
+              animation: skeleton-shimmer 2s ease-in-out infinite;
             }
             
             @keyframes skeleton-pulse {
@@ -577,27 +577,26 @@ const HomePage = () => {
                         ×
                       </button>
                       
-                      {/* Loading state - Skeleton */}
+                      {/* Loading state - Compact Skeleton */}
                       {!adLoaded && !adError && (
-                        <div className="w-[300px] h-[250px] bg-muted/50 dark:bg-muted/30 rounded-lg overflow-hidden relative">
-                          {/* Skeleton content structure */}
-                          <div className="p-4 space-y-3">
+                        <div className="w-[300px] h-[150px] bg-muted/50 dark:bg-muted/30 rounded-lg overflow-hidden relative">
+                          {/* Compact skeleton content structure */}
+                          <div className="p-3 space-y-2">
                             {/* Header skeleton */}
-                            <div className="h-4 bg-muted/70 dark:bg-muted/50 rounded w-3/4 skeleton-pulse"></div>
+                            <div className="h-3 bg-muted/70 dark:bg-muted/50 rounded w-2/3 skeleton-pulse"></div>
                             
                             {/* Content area skeleton */}
-                            <div className="space-y-2">
-                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-full skeleton-pulse"></div>
-                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-5/6 skeleton-pulse"></div>
-                              <div className="h-3 bg-muted/60 dark:bg-muted/40 rounded w-4/5 skeleton-pulse"></div>
+                            <div className="space-y-1">
+                              <div className="h-2 bg-muted/60 dark:bg-muted/40 rounded w-full skeleton-pulse"></div>
+                              <div className="h-2 bg-muted/60 dark:bg-muted/40 rounded w-4/5 skeleton-pulse"></div>
                             </div>
                             
                             {/* Image placeholder skeleton */}
-                            <div className="mt-4 h-24 bg-muted/60 dark:bg-muted/40 rounded skeleton-pulse"></div>
+                            <div className="mt-2 h-12 bg-muted/60 dark:bg-muted/40 rounded skeleton-pulse"></div>
                             
                             {/* Button skeleton */}
-                            <div className="mt-4 flex justify-center">
-                              <div className="h-8 w-20 bg-muted/70 dark:bg-muted/50 rounded skeleton-pulse"></div>
+                            <div className="mt-2 flex justify-center">
+                              <div className="h-6 w-16 bg-muted/70 dark:bg-muted/50 rounded skeleton-pulse"></div>
                             </div>
                           </div>
                           
@@ -608,7 +607,7 @@ const HomePage = () => {
                       
                       {/* Error state */}
                       {adError && (
-                        <div className="w-[300px] h-[250px] flex items-center justify-center bg-destructive/10 dark:bg-destructive/20 rounded-lg border border-destructive/30">
+                        <div className="w-[300px] h-[150px] flex items-center justify-center bg-destructive/10 dark:bg-destructive/20 rounded-lg border border-destructive/30">
                           <div className="flex flex-col items-center gap-2">
                             <div className="w-6 h-6 text-destructive">⚠️</div>
                             <p className="text-sm text-destructive">Ad failed to load</p>
@@ -633,10 +632,10 @@ const HomePage = () => {
                         }`}
                         style={{ 
                           width: '300px', 
-                          height: '250px',
-                          minHeight: '250px',
+                          height: '150px',
+                          minHeight: '150px',
                           maxWidth: '300px',
-                          maxHeight: '250px'
+                          maxHeight: '150px'
                         }}
                         aria-label="advertisement"
                       />
