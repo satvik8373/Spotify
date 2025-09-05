@@ -132,18 +132,9 @@ export function Player() {
   };
 
   const handleEnded = () => {
-    if (repeat) {
-      // If repeat is on, restart the current song
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(err => {
-          // Silent error handling
-        });
-      }
-    } else {
-      // Otherwise, go to the next song
-      playNext();
-    }
+    // This component is not the main audio player, so we don't handle song end here
+    // The main AudioPlayer component handles song transitions
+    return;
   };
 
   const handleSeek = (newPosition: number[]) => {

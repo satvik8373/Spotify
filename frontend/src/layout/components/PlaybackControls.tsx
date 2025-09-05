@@ -71,14 +71,11 @@ export const PlaybackControls = () => {
 				audio.currentTime = 0;
 				audio.play();
 			} else {
-				playNext();
-				
-				setTimeout(() => {
-					const store = usePlayerStore.getState();
-					store.setUserInteracted();
-					store.playNext();
-					store.setIsPlaying(true);
-				}, 50);
+				// Only call playNext once to avoid race conditions
+				const store = usePlayerStore.getState();
+				store.setUserInteracted();
+				store.playNext();
+				store.setIsPlaying(true);
 			}
 		};
 

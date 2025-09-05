@@ -425,6 +425,12 @@ const AudioPlayer = () => {
     if (!audio) return;
 
     const handleEnded = () => {
+      // Prevent multiple rapid calls to handleEnded
+      if (audio.dataset.ending === 'true') {
+        return;
+      }
+      audio.dataset.ending = 'true';
+      
       // Get the current state for better control
       const state = usePlayerStore.getState();
       
@@ -435,7 +441,14 @@ const AudioPlayer = () => {
       if (state.isRepeating) {
         // Just restart the current song
         audio.currentTime = 0;
+        audio.dataset.ending = 'false';
         audio.play().catch(() => {});
+        return;
+      }
+      
+      // Ensure the song has actually ended (not just paused)
+      if (audio.currentTime < audio.duration - 0.1) {
+        audio.dataset.ending = 'false';
         return;
       }
       
@@ -472,7 +485,14 @@ const AudioPlayer = () => {
             });
           }
         }
-      }, 50);
+        
+        // Reset the ending flag after a delay
+        setTimeout(() => {
+          if (audio) {
+            audio.dataset.ending = 'false';
+          }
+        }, 1000);
+      }, 100);
     };
 
     // Set up multiple event listeners for song end detection
@@ -494,13 +514,14 @@ const AudioPlayer = () => {
         lastTime = audio.currentTime;
       }
       
-      // Detect if we're very close to the end (within 0.3 seconds)
+      // Detect if we're very close to the end (within 0.2 seconds)
       // This helps when the ended event doesn't fire properly
       if (audio.currentTime > 0 && 
           audio.duration > 0 && 
-          audio.currentTime >= audio.duration - 0.3 && 
+          audio.currentTime >= audio.duration - 0.2 && 
           audio.currentTime > lastTime && // Ensure we're actually progressing
-          !audio.paused) { // Only trigger for playing audio to avoid duplicate triggers
+          !audio.paused && // Only trigger for playing audio to avoid duplicate triggers
+          audio.dataset.ending !== 'true') { // Prevent duplicate triggers
         
         // Only trigger if we haven't reached the actual end yet (to avoid duplicates)
         if (audio.currentTime < audio.duration) {

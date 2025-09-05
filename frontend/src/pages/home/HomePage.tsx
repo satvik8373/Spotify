@@ -176,6 +176,9 @@ const HomePage = () => {
   const { setCurrentSong } = usePlayerStore();
   const hasTrending = indianTrendingSongs && indianTrendingSongs.length > 0;
   const adContainerRef = useRef<HTMLDivElement>(null);
+  const [adLoaded, setAdLoaded] = useState(false);
+  const [adError, setAdError] = useState(false);
+  const [showAd, setShowAd] = useState(true);
 
   useEffect(() => {
     fetchFeaturedPlaylists();
@@ -382,14 +385,23 @@ const HomePage = () => {
   // Inject external ad script into container
   useEffect(() => {
     const loadAdScript = async () => {
+      if (!isOnline || !showAd) return;
+      
       try {
-        // Set up ad options
+        setAdError(false);
+        
+        // Set up ad options with exact dimensions
         (window as any).atOptions = {
           key: '0a3dc65c1dc3cb69102dcd1b8531e50a',
           format: 'iframe',
           height: 250,
           width: 300,
-          params: {},
+          params: {
+            'margin': '0',
+            'padding': '0',
+            'border': 'none',
+            'overflow': 'hidden'
+          },
         };
 
         const script = document.createElement('script');
@@ -399,34 +411,61 @@ const HomePage = () => {
 
         // Add error handling for script loading
         script.onerror = () => {
-          console.warn('Ad script failed to load, hiding ad container');
-          if (adContainerRef.current) {
-            adContainerRef.current.style.display = 'none';
-          }
+          console.warn('Ad script failed to load');
+          setAdError(true);
+          setAdLoaded(false);
         };
 
         script.onload = () => {
           console.log('Ad script loaded successfully');
+          // Add a small delay to ensure the ad content is rendered
+          setTimeout(() => {
+            setAdLoaded(true);
+          }, 1000);
         };
 
         if (adContainerRef.current) {
           adContainerRef.current.innerHTML = '';
           adContainerRef.current.appendChild(script);
+          
+          // Add CSS to ensure iframe fits perfectly
+          const style = document.createElement('style');
+          style.textContent = `
+            #ad-container iframe {
+              width: 300px !important;
+              height: 250px !important;
+              border: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+              display: block !important;
+            }
+          `;
+          document.head.appendChild(style);
+          
+          // Set container ID for CSS targeting
+          adContainerRef.current.id = 'ad-container';
         }
       } catch (error) {
         console.error('Failed to load ad script', error);
-        // Hide the ad container if there's an error
-        if (adContainerRef.current) {
-          adContainerRef.current.style.display = 'none';
-        }
+        setAdError(true);
+        setAdLoaded(false);
       }
     };
 
-    // Only load ads if online
-    if (isOnline) {
+    // Only load ads if online and ad should be shown
+    if (isOnline && showAd) {
       loadAdScript();
     }
-  }, [isOnline]);
+  }, [isOnline, showAd]);
+
+  // Handle ad close
+  const handleCloseAd = () => {
+    setShowAd(false);
+    if (adContainerRef.current) {
+      adContainerRef.current.innerHTML = '';
+    }
+  };
 
   return (
     <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] ">
@@ -494,14 +533,75 @@ const HomePage = () => {
             {/* Recently Played Section */}
             <RecentlyPlayed />
                 
-            {/* Ad slot - only show when online */}
-            {isOnline && (
+            {/* Ad slot - only show when online and ad should be shown */}
+            {isOnline && showAd && (
               <div className="px-2 sm:px-4 mb-5 flex justify-center">
-                <div
-                  ref={adContainerRef}
-                  style={{ width: 300, height: 250 }}
-                  aria-label="advertisement"
-                />
+                <div className="relative group">
+                  {/* Container with theme-matching background */}
+                  <div className="relative bg-background/95 dark:bg-[#191414]/95 rounded-xl p-1 shadow-lg border border-border/50">
+                    {/* Inner container */}
+                    <div className="relative bg-background dark:bg-[#191414] rounded-lg p-2">
+                      {/* Close button */}
+                      <button
+                        onClick={handleCloseAd}
+                        className="absolute -top-1 -right-1 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg transition-all duration-200 hover:scale-110"
+                        aria-label="Close advertisement"
+                      >
+                        ×
+                      </button>
+                      
+                      {/* Loading state */}
+                      {!adLoaded && !adError && (
+                        <div className="w-[300px] h-[250px] flex items-center justify-center bg-muted/50 dark:bg-muted/30 rounded-lg">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-sm text-muted-foreground">Loading advertisement...</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Error state */}
+                      {adError && (
+                        <div className="w-[300px] h-[250px] flex items-center justify-center bg-destructive/10 dark:bg-destructive/20 rounded-lg border border-destructive/30">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-6 h-6 text-destructive">⚠️</div>
+                            <p className="text-sm text-destructive">Ad failed to load</p>
+                            <button
+                              onClick={() => {
+                                setAdError(false);
+                                setShowAd(true);
+                              }}
+                              className="text-xs text-primary hover:text-primary/80 underline"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Ad container - exact dimensions */}
+                      <div
+                        ref={adContainerRef}
+                        className={`rounded-lg overflow-hidden transition-all duration-500 ${
+                          adLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                        }`}
+                        style={{ 
+                          width: '300px', 
+                          height: '250px',
+                          minHeight: '250px',
+                          maxWidth: '300px',
+                          maxHeight: '250px'
+                        }}
+                        aria-label="advertisement"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Ad label */}
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 bg-background/90 dark:bg-[#191414]/90 text-foreground text-xs px-2 py-1 rounded-full backdrop-blur-sm border border-border/50">
+                    Advertisement
+                  </div>
+                </div>
               </div>
             )}
 

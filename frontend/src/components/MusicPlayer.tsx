@@ -115,20 +115,11 @@ const MusicPlayer = () => {
     }
   };
 
-  // Handle song end
+  // Handle song end - DISABLED to prevent conflicts with main AudioPlayer
   const handleSongEnd = () => {
-    if (isRepeat) {
-      // Repeat current song
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(err => {
-          // Silent error handling
-        });
-      }
-    } else {
-      // Play next song
-      playNext();
-    }
+    // This component is not the main audio player, so we don't handle song end here
+    // The main AudioPlayer component handles song transitions
+    return;
   };
 
   // Handle metadata loaded (song duration)

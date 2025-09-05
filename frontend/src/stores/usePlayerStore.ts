@@ -17,6 +17,7 @@ export interface PlayerState {
   hasUserInteracted: boolean;
   autoplayBlocked: boolean;
   wasPlayingBeforeInterruption: boolean;
+  lastPlayNextTime: number;
   
   // Actions
   setCurrentSong: (song: Song) => void;
@@ -63,6 +64,7 @@ export const usePlayerStore = create<PlayerState>()(
       hasUserInteracted: false,
       autoplayBlocked: false,
       wasPlayingBeforeInterruption: false,
+      lastPlayNextTime: 0,
 
       setCurrentSong: (song) => {
         set({ currentSong: song });
@@ -159,12 +161,20 @@ export const usePlayerStore = create<PlayerState>()(
         
         if (queue.length === 0) return;
         
+        // Prevent rapid successive calls
+        const now = Date.now();
+        const lastPlayNext = get().lastPlayNextTime || 0;
+        if (now - lastPlayNext < 500) { // 500ms cooldown
+          return;
+        }
+        
         // First check if we should repeat the current song
         if (isRepeating) {
           // Just restart the current song
           const audio = document.querySelector('audio');
           if (audio) {
             audio.currentTime = 0;
+            audio.dataset.ending = 'false'; // Reset ending flag
             audio.play().catch(() => {});
           }
           return;
@@ -173,6 +183,11 @@ export const usePlayerStore = create<PlayerState>()(
         const newIndex = isShuffled 
           ? getRandomIndex(currentIndex, queue.length)
           : currentIndex >= queue.length - 1 ? 0 : currentIndex + 1;
+        
+        // Don't play the same song if it's the only one in queue
+        if (newIndex === currentIndex && queue.length > 1) {
+          return;
+        }
         
         // Save current state before changing
         const currentState = {
@@ -188,7 +203,8 @@ export const usePlayerStore = create<PlayerState>()(
           currentSong: queue[newIndex],
           currentTime: 0, // Reset time for new song
           hasUserInteracted: true,
-          isPlaying: true // Always ensure playback continues
+          isPlaying: true, // Always ensure playback continues
+          lastPlayNextTime: now // Track when we last called playNext
         });
         
         // More reliable method to ensure the audio element updates
@@ -196,9 +212,13 @@ export const usePlayerStore = create<PlayerState>()(
         const playNextAudio = () => {
           const audio = document.querySelector('audio');
           if (audio) {
+            // Reset ending flag to prevent conflicts
+            audio.dataset.ending = 'false';
+            
             // Ensure the audio element has the latest src and is playing
-            if (audio.src !== queue[newIndex].audioUrl) {
-              audio.src = queue[newIndex].audioUrl;
+            const newAudioUrl = queue[newIndex].audioUrl || (queue[newIndex] as any).url;
+            if (audio.src !== newAudioUrl && newAudioUrl) {
+              audio.src = newAudioUrl;
               audio.load(); // Important for mobile browsers
             }
             
