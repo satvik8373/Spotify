@@ -38,8 +38,6 @@ const MobileNav = () => {
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
   const [isAtTop, setIsAtTop] = useState(true);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
@@ -109,35 +107,6 @@ const MobileNav = () => {
       body.playing {
         overscroll-behavior-y: none;
       }
-
-      /* Smooth transitions and prevent flickering */
-      .mobile-nav-container {
-        transition: all 0.2s ease-in-out;
-        will-change: transform, opacity;
-      }
-
-      .mobile-nav-container.transitioning {
-        opacity: 0.95;
-      }
-
-      .mobile-nav-container.initialized {
-        opacity: 1;
-      }
-
-      /* Optimize animations for better performance */
-      .mobile-nav-container * {
-        backface-visibility: hidden;
-        -webkit-backface-visibility: hidden;
-        transform: translateZ(0);
-        -webkit-transform: translateZ(0);
-      }
-
-      /* Reduce motion for users who prefer it */
-      @media (prefers-reduced-motion: reduce) {
-        .mobile-nav-container {
-          transition: none;
-        }
-      }
     `;
     document.head.appendChild(style);
 
@@ -204,26 +173,6 @@ const MobileNav = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isPlaying, currentSong]);
-
-  // Initialize component to prevent flickering
-  useEffect(() => {
-    // Add a small delay to ensure all stores are loaded
-    const timer = setTimeout(() => {
-      setIsInitialized(true);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Handle route transitions smoothly
-  useEffect(() => {
-    setIsTransitioning(true);
-    const timer = setTimeout(() => {
-      setIsTransitioning(false);
-    }, 150);
-
-    return () => clearTimeout(timer);
-  }, [location.pathname]);
 
   const navItems = [
     {
@@ -404,17 +353,8 @@ const MobileNav = () => {
 
 
 
-  // Don't render until initialized to prevent flickering
-  if (!isInitialized) {
-    return null;
-  }
-
   return (
-    <div className={cn(
-      "mobile-nav-container",
-      isInitialized && "initialized",
-      isTransitioning && "transitioning"
-    )}>
+    <>
       {/* Song Details View */}
       <SongDetailsView
         isOpen={showSongDetails}
@@ -423,7 +363,7 @@ const MobileNav = () => {
 
       {/* Mobile Header - Spotify style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
-        <div className="fixed top-0 left-0 right-0 z-30 bg-background dark:bg-[#191414] md:hidden transition-all duration-200 ease-in-out">
+        <div className="fixed top-0 left-0 right-0 z-30 bg-background dark:bg-[#191414] md:hidden">
           {isLibraryRoute ? (
             <div className="flex items-center justify-between px-3 py-1">
               <div className="flex items-center gap-2">
@@ -616,7 +556,7 @@ const MobileNav = () => {
       {/* Bottom Navigation */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414] transition-all duration-300 ease-in-out",
+          "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414]",
           hasActiveSong ? "player-active" : ""
         )}
         style={{
@@ -631,7 +571,7 @@ const MobileNav = () => {
         {/* Add mini player when song is active */}
         {hasActiveSong && (
           <div
-            className="flex flex-col justify-between transition-all duration-300 ease-in-out"
+            className="flex flex-col justify-between transition-colors duration-500"
             style={{
               backgroundColor: albumColors.isLight
                 ? `${albumColors.secondary}`
@@ -641,25 +581,18 @@ const MobileNav = () => {
           >
             <div className="flex items-center justify-between px-3 py-2">
               <div
-                className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-zinc-800/30 rounded-md py-1 transition-all duration-150 ease-in-out"
+                className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-zinc-800/30 rounded-md py-1"
                 onClick={handleSongTap}
               >
                 <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md shadow">
                   <img
                     src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')}
                     alt={currentSong.title}
-                    className="w-full h-full object-cover transition-opacity duration-200 ease-in-out"
-                    loading="eager"
+                    className="w-full h-full object-cover"
+                    loading="lazy"
                     decoding="async"
                     width="40"
                     height="40"
-                    onLoad={(e) => {
-                      e.currentTarget.style.opacity = '1';
-                    }}
-                    onError={(e) => {
-                      e.currentTarget.style.opacity = '0.7';
-                    }}
-                    style={{ opacity: 0 }}
                   />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -866,9 +799,11 @@ const MobileNav = () => {
             </div>
 
             {/* Song progress bar */}
-            <div className="relative w-full">
+            <div
+              className="relative w-full"
+            >
               <div
-                className="h-[3px] w-full relative transition-colors duration-300 ease-in-out"
+                className="h-[3px] w-full relative transition-colors duration-500"
                 style={{
                   backgroundColor: albumColors.isLight
                     ? 'rgba(0, 0, 0, 0.8)'
@@ -876,11 +811,8 @@ const MobileNav = () => {
                 }}
               >
                 <div
-                  className="h-full bg-green-500 transition-all duration-100 ease-linear"
-                  style={{ 
-                    width: `${progress || 0}%`,
-                    willChange: 'width'
-                  }}
+                  className="h-full bg-green-500"
+                  style={{ width: `${progress || 0}%` }}
                 />
               </div>
             </div>
@@ -893,7 +825,7 @@ const MobileNav = () => {
               key={item.path}
               to={item.path}
               className={cn(
-                'flex flex-col items-center justify-center py-2 transition-all duration-200 ease-in-out',
+                'flex flex-col items-center justify-center py-2 transition-colors',
                 isActive(item.path)
                   ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -915,7 +847,7 @@ const MobileNav = () => {
           ))}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
