@@ -966,7 +966,7 @@ const LikedSongsPage = () => {
 
   // Skeleton loader for songs
   const SkeletonLoader = () => (
-    <div className="space-y-2 pb-8">
+    <div className="space-y-2 animate-pulse pb-8">
       {[...Array(10)].map((_, i) => (
         <div key={i} className="grid grid-cols-[16px_1fr_auto] md:grid-cols-[16px_4fr_2fr_1fr_auto] gap-4 p-2 hover:bg-white/5 group relative">
           <div className="w-4 h-4 bg-zinc-800 rounded-sm mx-auto self-center"></div>
@@ -1088,7 +1088,7 @@ const LikedSongsPage = () => {
                       {/* Show connected account info */}
                       {spotifyAccountName && (
                         <div className="flex items-center gap-2 text-sm">
-                          <div className="w-2 h-2 bg-green-500 rounded-full skeleton-shimmer"></div>
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                           <span className="text-green-500 font-medium">Connected to: {spotifyAccountName}</span>
                         </div>
                       )}

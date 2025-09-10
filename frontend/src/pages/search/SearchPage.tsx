@@ -527,7 +527,7 @@ const SearchPage = () => {
                 title={isListening ? "Stop listening" : "Search with voice"}
               >
                 {isListening ? (
-                  <Mic className="h-5 w-5 skeleton-shimmer" />
+                  <Mic className="h-5 w-5 animate-pulse" />
                 ) : (
                   <Mic className="h-5 w-5" />
                 )}

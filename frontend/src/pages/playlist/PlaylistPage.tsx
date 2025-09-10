@@ -952,7 +952,7 @@ export function PlaylistPage() {
                     <div className="flex items-center justify-center">
                       {isThisSongPlaying ? (
                         <div className="w-8 h-8 flex items-center justify-center">
-                          <div className="w-3 h-3 bg-green-500 rounded-sm skeleton-shimmer"></div>
+                          <div className="w-3 h-3 bg-green-500 rounded-sm animate-pulse"></div>
                         </div>
                       ) : (
                         <>
@@ -1164,7 +1164,7 @@ export function PlaylistPage() {
             >
               {isRegeneratingCover ? (
                 <>
-                  <div className="h-4 w-4 bg-white/20 rounded-full skeleton-shimmer mr-2" />
+                  <div className="h-4 w-4 bg-white/20 rounded-full animate-pulse mr-2" />
                   Processing...
                 </>
               ) : (
