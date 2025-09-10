@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,20 +21,16 @@ import { MobileThemeToggle } from '@/components/MobileThemeToggle';
  * Note: For full lockscreen controls to work properly on mobile devices:
  * - iOS: Activate video to fullscreen mode, then swipe up to home screen
  * - Android: Enable background play in browser settings (Menu > Settings > Media > Background play)
+ * - Uses Wake Lock API to prevent screen sleep during playback
+ * - Implements proper playlist navigation with next/previous controls
  */
 
-// Format time helper function
-const formatTime = (seconds: number) => {
-  if (isNaN(seconds)) return "0:00";
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-};
+
 
 const MobileNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentSong, isPlaying, currentTime, duration } = usePlayerStore();
+  const { currentSong, isPlaying, currentTime, duration, playNext, playPrevious, queue } = usePlayerStore();
   const { isAuthenticated, user } = useAuth();
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const [showSongDetails, setShowSongDetails] = useState(false);
@@ -42,13 +38,15 @@ const MobileNav = () => {
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
   const [isAtTop, setIsAtTop] = useState(true);
-  
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
-  
+
   // Check if current song is liked
   const isLiked = currentSong ? likedSongIds?.has((currentSong as any).id || currentSong._id) : false;
-  
+
   // State to track liked status independently
   const [songLiked, setSongLiked] = useState(isLiked);
 
@@ -61,53 +59,100 @@ const MobileNav = () => {
   useEffect(() => {
     const handleLikeUpdate = (e: Event) => {
       if (!currentSong) return;
-      
+
       const songId = (currentSong as any).id || currentSong._id;
-      
+
       // Check if this event includes details about which song was updated
       if (e instanceof CustomEvent && e.detail) {
         // If we have details and it's not for our current song, ignore
         if (e.detail.songId && e.detail.songId !== songId) {
           return;
         }
-        
+
         // If we have explicit like state in the event, use it
         if (typeof e.detail.isLiked === 'boolean') {
           setSongLiked(e.detail.isLiked);
           return;
         }
       }
-      
+
       // Otherwise do a fresh check from the store
       const freshCheck = songId ? likedSongIds?.has(songId) : false;
       setSongLiked(freshCheck);
     };
-    
+
     document.addEventListener('likedSongsUpdated', handleLikeUpdate);
     document.addEventListener('songLikeStateChanged', handleLikeUpdate);
-    
+
     return () => {
       document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
       document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
     };
   }, [currentSong, likedSongIds]);
 
-  // Disable pinch zoom using touch-action CSS property
+  // Disable pinch zoom and enable background playback
   useEffect(() => {
-    // Add touch-action CSS to prevent pinch-zoom
+    // Add touch-action CSS to prevent pinch-zoom and enable background playback
     const style = document.createElement('style');
     style.innerHTML = `
       html, body {
         touch-action: pan-x pan-y;
         overscroll-behavior: none;
       }
+      
+      /* Enable background playback for mobile browsers */
+      audio {
+        background-playback: enabled;
+      }
+      
+      /* Prevent page refresh on pull-to-refresh when audio is playing */
+      body.playing {
+        overscroll-behavior-y: none;
+      }
+
+      /* Smooth transitions and prevent flickering */
+      .mobile-nav-container {
+        transition: all 0.2s ease-in-out;
+        will-change: transform, opacity;
+      }
+
+      .mobile-nav-container.transitioning {
+        opacity: 0.95;
+      }
+
+      .mobile-nav-container.initialized {
+        opacity: 1;
+      }
+
+      /* Optimize animations for better performance */
+      .mobile-nav-container * {
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+      }
+
+      /* Reduce motion for users who prefer it */
+      @media (prefers-reduced-motion: reduce) {
+        .mobile-nav-container {
+          transition: none;
+        }
+      }
     `;
     document.head.appendChild(style);
 
+    // Add playing class to body when audio is playing for background support
+    if (isPlaying) {
+      document.body.classList.add('playing');
+    } else {
+      document.body.classList.remove('playing');
+    }
+
     return () => {
       document.head.removeChild(style);
+      document.body.classList.remove('playing');
     };
-  }, []);
+  }, [isPlaying]);
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -143,6 +188,42 @@ const MobileNav = () => {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Handle visibility change for background playback
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // When page becomes hidden (user switches apps/tabs), ensure audio continues
+      if (document.hidden && isPlaying) {
+        // Dispatch event to audio player to maintain playback
+        document.dispatchEvent(new CustomEvent('maintainBackgroundPlayback', {
+          detail: { isPlaying, currentSong }
+        }));
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isPlaying, currentSong]);
+
+  // Initialize component to prevent flickering
+  useEffect(() => {
+    // Add a small delay to ensure all stores are loaded
+    const timer = setTimeout(() => {
+      setIsInitialized(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Handle route transitions smoothly
+  useEffect(() => {
+    setIsTransitioning(true);
+    const timer = setTimeout(() => {
+      setIsTransitioning(false);
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   const navItems = [
     {
@@ -198,7 +279,7 @@ const MobileNav = () => {
       // Navigate to welcome page first for faster perceived performance
       setShowProfileMenu(false);
       navigate('/', { replace: true });
-      
+
       // Then perform the actual logout
       const result = await signOut();
       if (!result.success) {
@@ -212,17 +293,17 @@ const MobileNav = () => {
   };
 
   // (removed unused search click handler)
-  
+
   // Handle like toggle
   const handleLikeToggle = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent opening song details
     if (currentSong) {
       // Get the song ID consistently
       const songId = (currentSong as any).id || currentSong._id;
-      
+
       // Optimistically update UI
       setSongLiked(!songLiked);
-      
+
       // Perform the actual toggle with the correct song format
       toggleLikeSong({
         _id: songId,
@@ -235,9 +316,9 @@ const MobileNav = () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
-      
+
       // Also dispatch a direct event for immediate notification
-      document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
+      document.dispatchEvent(new CustomEvent('songLikeStateChanged', {
         detail: {
           songId,
           song: currentSong,
@@ -248,13 +329,44 @@ const MobileNav = () => {
       }));
     }
   };
-  
+
   // Handle song tap to open song details view
   const handleSongTap = () => {
     if (currentSong) {
       // Open the song details modal instead of navigating
       setShowSongDetails(true);
     }
+  };
+
+  // Handle next track
+  const handleNextTrack = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (playNext) {
+      playNext();
+    }
+  };
+
+  // Handle previous track
+  const handlePreviousTrack = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (playPrevious) {
+      playPrevious();
+    }
+  };
+
+  // Handle play/pause with background support
+  const handlePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    // Request wake lock for background playback on mobile
+    if ('wakeLock' in navigator && isPlaying === false) {
+      navigator.wakeLock.request('screen').catch(() => {
+        // Wake lock failed, but continue with playback
+        console.log('Wake lock request failed, continuing without it');
+      });
+    }
+
+    usePlayerStore.getState().togglePlay();
   };
 
   // Handle profile click
@@ -266,16 +378,15 @@ const MobileNav = () => {
   // Calculate dropdown position to stay within viewport
   const getDropdownPosition = () => {
     if (typeof window === 'undefined') return 'right-0';
-    
+
     // Check if we're near the right edge of the screen
     const viewportWidth = window.innerWidth;
-    const dropdownWidth = 144; // w-36 = 144px
-    
+
     // If we're within 160px of the right edge, position dropdown to the left
     if (viewportWidth < 400) {
       return 'left-0';
     }
-    
+
     return 'right-0';
   };
 
@@ -293,23 +404,32 @@ const MobileNav = () => {
 
 
 
+  // Don't render until initialized to prevent flickering
+  if (!isInitialized) {
+    return null;
+  }
+
   return (
-    <>
+    <div className={cn(
+      "mobile-nav-container",
+      isInitialized && "initialized",
+      isTransitioning && "transitioning"
+    )}>
       {/* Song Details View */}
-      <SongDetailsView 
-        isOpen={showSongDetails} 
-        onClose={() => setShowSongDetails(false)} 
+      <SongDetailsView
+        isOpen={showSongDetails}
+        onClose={() => setShowSongDetails(false)}
       />
-      
+
       {/* Mobile Header - Spotify style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
-        <div className="fixed top-0 left-0 right-0 z-30 bg-background dark:bg-[#191414] md:hidden">
+        <div className="fixed top-0 left-0 right-0 z-30 bg-background dark:bg-[#191414] md:hidden transition-all duration-200 ease-in-out">
           {isLibraryRoute ? (
             <div className="flex items-center justify-between px-3 py-1">
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={handleProfileClick}
                       aria-label="Profile"
                       className="p-1"
@@ -329,19 +449,19 @@ const MobileNav = () => {
                       )}
                     </button>
                     {showProfileMenu && (
-                      <div 
+                      <div
                         className={getDropdownStyles().className}
                         style={getDropdownStyles().style}
                       >
                         <div className="py-1">
-                          <Link 
-                            to="/profile" 
+                          <Link
+                            to="/profile"
                             className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                             onClick={() => setShowProfileMenu(false)}
                           >
                             Profile
                           </Link>
-                          <button 
+                          <button
                             onClick={handleLogout}
                             className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
                           >
@@ -353,7 +473,7 @@ const MobileNav = () => {
                     )}
                   </div>
                 ) : (
-                  <button 
+                  <button
                     onClick={handleLogin}
                     aria-label="Sign in"
                     className="p-1"
@@ -371,7 +491,7 @@ const MobileNav = () => {
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={handleProfileClick}
                       aria-label="Profile"
                       className="p-1"
@@ -391,19 +511,19 @@ const MobileNav = () => {
                       )}
                     </button>
                     {showProfileMenu && (
-                      <div 
+                      <div
                         className={getDropdownStyles().className}
                         style={getDropdownStyles().style}
                       >
                         <div className="py-1">
-                          <Link 
-                            to="/profile" 
+                          <Link
+                            to="/profile"
                             className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                             onClick={() => setShowProfileMenu(false)}
                           >
                             Profile
                           </Link>
-                          <button 
+                          <button
                             onClick={handleLogout}
                             className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
                           >
@@ -415,7 +535,7 @@ const MobileNav = () => {
                     )}
                   </div>
                 ) : (
-                  <button 
+                  <button
                     onClick={handleLogin}
                     aria-label="Sign in"
                     className="p-1"
@@ -432,7 +552,7 @@ const MobileNav = () => {
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={handleProfileClick}
                       aria-label="Profile"
                       className="p-1"
@@ -452,19 +572,19 @@ const MobileNav = () => {
                       )}
                     </button>
                     {showProfileMenu && (
-                      <div 
+                      <div
                         className={getDropdownStyles().className}
                         style={getDropdownStyles().style}
                       >
                         <div className="py-1">
-                          <Link 
-                            to="/profile" 
+                          <Link
+                            to="/profile"
                             className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                             onClick={() => setShowProfileMenu(false)}
                           >
                             Profile
                           </Link>
-                          <button 
+                          <button
                             onClick={handleLogout}
                             className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
                           >
@@ -476,7 +596,7 @@ const MobileNav = () => {
                     )}
                   </div>
                 ) : (
-                  <button 
+                  <button
                     onClick={handleLogin}
                     aria-label="Sign in"
                     className="p-1"
@@ -494,15 +614,15 @@ const MobileNav = () => {
       )}
 
       {/* Bottom Navigation */}
-              <div
-          className={cn(
-            "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414]",
-            hasActiveSong ? "player-active" : ""
-          )}
+      <div
+        className={cn(
+          "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414] transition-all duration-300 ease-in-out",
+          hasActiveSong ? "player-active" : ""
+        )}
         style={{
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
           ...(hasActiveSong && {
-            backgroundColor: albumColors.isLight 
+            backgroundColor: albumColors.isLight
               ? `${albumColors.primary}`
               : `${albumColors.primary}`,
           })
@@ -510,8 +630,8 @@ const MobileNav = () => {
       >
         {/* Add mini player when song is active */}
         {hasActiveSong && (
-          <div 
-            className="flex flex-col justify-between transition-colors duration-500"
+          <div
+            className="flex flex-col justify-between transition-all duration-300 ease-in-out"
             style={{
               backgroundColor: albumColors.isLight
                 ? `${albumColors.secondary}`
@@ -520,23 +640,30 @@ const MobileNav = () => {
             }}
           >
             <div className="flex items-center justify-between px-3 py-2">
-              <div 
-                className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-zinc-800/30 rounded-md py-1"
+              <div
+                className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-zinc-800/30 rounded-md py-1 transition-all duration-150 ease-in-out"
                 onClick={handleSongTap}
               >
                 <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md shadow">
-                  <img 
-                    src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')} 
-                    alt={currentSong.title} 
-                    className="w-full h-full object-cover"
-                    loading="lazy"
+                  <img
+                    src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')}
+                    alt={currentSong.title}
+                    className="w-full h-full object-cover transition-opacity duration-200 ease-in-out"
+                    loading="eager"
                     decoding="async"
                     width="40"
                     height="40"
+                    onLoad={(e) => {
+                      e.currentTarget.style.opacity = '1';
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.style.opacity = '0.7';
+                    }}
+                    style={{ opacity: 0 }}
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p 
+                  <p
                     className={cn(
                       "text-sm font-medium truncate",
                       albumColors.isLight ? "text-black" : "text-white"
@@ -544,7 +671,7 @@ const MobileNav = () => {
                   >
                     {currentSong.title}
                   </p>
-                  <p 
+                  <p
                     className={cn(
                       "text-xs truncate",
                       albumColors.isLight ? "text-black/80" : "text-white/80"
@@ -554,94 +681,97 @@ const MobileNav = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center">
+              <div className="flex items-center gap-1">
+                {/* Previous Track Button */}
                 <button
-                  onClick={handleLikeToggle}
+                  onClick={handlePreviousTrack}
+                  disabled={!queue || queue.length <= 1}
                   className={cn(
-                    "mr-2 h-8 w-8 flex items-center justify-center flex-shrink-0 rounded-full transition-all duration-200 hover:scale-105",
-                    songLiked ? "text-green-500" : "text-foreground"
+                    "h-8 w-8 flex items-center justify-center flex-shrink-0 rounded-full transition-all duration-200 hover:scale-105",
+                    (!queue || queue.length <= 1) && "opacity-50 cursor-not-allowed"
                   )}
                   style={{
-                    backgroundColor: albumColors.isLight 
-                      ? 'rgba(0, 0, 0, 0.15)' 
+                    backgroundColor: albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.15)'
                       : 'rgba(255, 255, 255, 0.15)',
-                    color: songLiked 
-                      ? '#22c55e' 
-                      : (albumColors.isLight ? '#000000' : '#ffffff')
+                    color: albumColors.isLight ? '#000000' : '#ffffff'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = albumColors.isLight 
-                      ? 'rgba(0, 0, 0, 0.25)' 
-                      : 'rgba(255, 255, 255, 0.25)';
+                    if (queue && queue.length > 1) {
+                      e.currentTarget.style.backgroundColor = albumColors.isLight
+                        ? 'rgba(0, 0, 0, 0.25)'
+                        : 'rgba(255, 255, 255, 0.25)';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = albumColors.isLight 
-                      ? 'rgba(0, 0, 0, 0.15)' 
+                    e.currentTarget.style.backgroundColor = albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.15)'
                       : 'rgba(255, 255, 255, 0.15)';
                   }}
                   onTouchStart={(e) => {
-                    e.currentTarget.style.backgroundColor = albumColors.isLight 
-                      ? 'rgba(0, 0, 0, 0.25)' 
-                      : 'rgba(255, 255, 255, 0.25)';
+                    if (queue && queue.length > 1) {
+                      e.currentTarget.style.backgroundColor = albumColors.isLight
+                        ? 'rgba(0, 0, 0, 0.25)'
+                        : 'rgba(255, 255, 255, 0.25)';
+                    }
                   }}
                   onTouchEnd={(e) => {
-                    e.currentTarget.style.backgroundColor = albumColors.isLight 
-                      ? 'rgba(0, 0, 0, 0.15)' 
+                    e.currentTarget.style.backgroundColor = albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.15)'
                       : 'rgba(255, 255, 255, 0.15)';
                   }}
                 >
-                  <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
+                  <SkipBack className="h-4 w-4" />
                 </button>
+
+                {/* Play/Pause Button */}
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    usePlayerStore.getState().togglePlay();
-                  }}
+                  onClick={handlePlayPause}
                   className={cn(
                     "h-9 w-9 flex items-center justify-center flex-shrink-0 rounded-full transition-all duration-200 hover:scale-105"
                   )}
                   style={{
-                    backgroundColor: isPlaying 
+                    backgroundColor: isPlaying
                       ? (albumColors.isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)')
                       : '#22c55e',
-                    color: isPlaying 
+                    color: isPlaying
                       ? (albumColors.isLight ? '#000000' : '#ffffff')
                       : '#000000'
                   }}
                   onMouseEnter={(e) => {
                     if (isPlaying) {
-                      e.currentTarget.style.backgroundColor = albumColors.isLight 
-                        ? 'rgba(0, 0, 0, 0.25)' 
+                      e.currentTarget.style.backgroundColor = albumColors.isLight
+                        ? 'rgba(0, 0, 0, 0.25)'
                         : 'rgba(255, 255, 255, 0.25)';
                     } else {
-                      e.currentTarget.style.backgroundColor = '#16a34a'; // Darker green on hover
+                      e.currentTarget.style.backgroundColor = '#16a34a';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (isPlaying) {
-                      e.currentTarget.style.backgroundColor = albumColors.isLight 
-                        ? 'rgba(0, 0, 0, 0.15)' 
+                      e.currentTarget.style.backgroundColor = albumColors.isLight
+                        ? 'rgba(0, 0, 0, 0.15)'
                         : 'rgba(255, 255, 255, 0.15)';
                     } else {
-                      e.currentTarget.style.backgroundColor = '#22c55e'; // Restore original green
+                      e.currentTarget.style.backgroundColor = '#22c55e';
                     }
                   }}
                   onTouchStart={(e) => {
                     if (isPlaying) {
-                      e.currentTarget.style.backgroundColor = albumColors.isLight 
-                        ? 'rgba(0, 0, 0, 0.25)' 
+                      e.currentTarget.style.backgroundColor = albumColors.isLight
+                        ? 'rgba(0, 0, 0, 0.25)'
                         : 'rgba(255, 255, 255, 0.25)';
                     } else {
-                      e.currentTarget.style.backgroundColor = '#16a34a'; // Darker green on touch
+                      e.currentTarget.style.backgroundColor = '#16a34a';
                     }
                   }}
                   onTouchEnd={(e) => {
                     if (isPlaying) {
-                      e.currentTarget.style.backgroundColor = albumColors.isLight 
-                        ? 'rgba(0, 0, 0, 0.15)' 
+                      e.currentTarget.style.backgroundColor = albumColors.isLight
+                        ? 'rgba(0, 0, 0, 0.15)'
                         : 'rgba(255, 255, 255, 0.15)';
                     } else {
-                      e.currentTarget.style.backgroundColor = '#22c55e'; // Restore original green
+                      e.currentTarget.style.backgroundColor = '#22c55e';
                     }
                   }}
                 >
@@ -651,24 +781,106 @@ const MobileNav = () => {
                     <Play className={cn("h-4 w-4 translate-x-0.5")} />
                   )}
                 </button>
+
+                {/* Next Track Button */}
+                <button
+                  onClick={handleNextTrack}
+                  disabled={!queue || queue.length <= 1}
+                  className={cn(
+                    "h-8 w-8 flex items-center justify-center flex-shrink-0 rounded-full transition-all duration-200 hover:scale-105",
+                    (!queue || queue.length <= 1) && "opacity-50 cursor-not-allowed"
+                  )}
+                  style={{
+                    backgroundColor: albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.15)'
+                      : 'rgba(255, 255, 255, 0.15)',
+                    color: albumColors.isLight ? '#000000' : '#ffffff'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (queue && queue.length > 1) {
+                      e.currentTarget.style.backgroundColor = albumColors.isLight
+                        ? 'rgba(0, 0, 0, 0.25)'
+                        : 'rgba(255, 255, 255, 0.25)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.15)'
+                      : 'rgba(255, 255, 255, 0.15)';
+                  }}
+                  onTouchStart={(e) => {
+                    if (queue && queue.length > 1) {
+                      e.currentTarget.style.backgroundColor = albumColors.isLight
+                        ? 'rgba(0, 0, 0, 0.25)'
+                        : 'rgba(255, 255, 255, 0.25)';
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    e.currentTarget.style.backgroundColor = albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.15)'
+                      : 'rgba(255, 255, 255, 0.15)';
+                  }}
+                >
+                  <SkipForward className="h-4 w-4" />
+                </button>
+
+                {/* Like Button */}
+                <button
+                  onClick={handleLikeToggle}
+                  className={cn(
+                    "ml-1 h-8 w-8 flex items-center justify-center flex-shrink-0 rounded-full transition-all duration-200 hover:scale-105",
+                    songLiked ? "text-green-500" : "text-foreground"
+                  )}
+                  style={{
+                    backgroundColor: albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.15)'
+                      : 'rgba(255, 255, 255, 0.15)',
+                    color: songLiked
+                      ? '#22c55e'
+                      : (albumColors.isLight ? '#000000' : '#ffffff')
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.25)'
+                      : 'rgba(255, 255, 255, 0.25)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.15)'
+                      : 'rgba(255, 255, 255, 0.15)';
+                  }}
+                  onTouchStart={(e) => {
+                    e.currentTarget.style.backgroundColor = albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.25)'
+                      : 'rgba(255, 255, 255, 0.25)';
+                  }}
+                  onTouchEnd={(e) => {
+                    e.currentTarget.style.backgroundColor = albumColors.isLight
+                      ? 'rgba(0, 0, 0, 0.15)'
+                      : 'rgba(255, 255, 255, 0.15)';
+                  }}
+                >
+                  <Heart className="h-3.5 w-3.5" fill={songLiked ? 'currentColor' : 'none'} />
+                </button>
               </div>
             </div>
-            
+
             {/* Song progress bar */}
-            <div 
-              className="relative w-full"
-            >
-              <div 
-                className="h-[3px] w-full relative transition-colors duration-500"
+            <div className="relative w-full">
+              <div
+                className="h-[3px] w-full relative transition-colors duration-300 ease-in-out"
                 style={{
-                  backgroundColor: albumColors.isLight 
-                    ? 'rgba(0, 0, 0, 0.8)' 
+                  backgroundColor: albumColors.isLight
+                    ? 'rgba(0, 0, 0, 0.8)'
                     : 'rgba(255, 255, 255, 0.8)'
                 }}
               >
-                <div 
-                  className="h-full bg-green-500" 
-                  style={{ width: `${progress || 0}%` }}
+                <div
+                  className="h-full bg-green-500 transition-all duration-100 ease-linear"
+                  style={{ 
+                    width: `${progress || 0}%`,
+                    willChange: 'width'
+                  }}
                 />
               </div>
             </div>
@@ -681,29 +893,29 @@ const MobileNav = () => {
               key={item.path}
               to={item.path}
               className={cn(
-                'flex flex-col items-center justify-center py-2 transition-colors',
-                isActive(item.path) 
+                'flex flex-col items-center justify-center py-2 transition-all duration-200 ease-in-out',
+                isActive(item.path)
                   ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-                <div className={cn('flex items-center justify-center h-8 w-8 mb-2')}>
-                  <item.icon className={cn(
-                    'h-5 w-5', 
-                    isActive(item.path) ? 'text-green-500' : 'text-muted-foreground'
-                  )} />
-                </div>
-                              <span className={cn(
-                  "text-[11px] font-medium tracking-tight",
-                  isActive(item.path) 
-                    ? "text-foreground" 
-                    : "text-muted-foreground"
-                )}>{item.label}</span>
+              <div className={cn('flex items-center justify-center h-8 w-8 mb-2')}>
+                <item.icon className={cn(
+                  'h-5 w-5',
+                  isActive(item.path) ? 'text-green-500' : 'text-muted-foreground'
+                )} />
+              </div>
+              <span className={cn(
+                "text-[11px] font-medium tracking-tight",
+                isActive(item.path)
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              )}>{item.label}</span>
             </Link>
           ))}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
