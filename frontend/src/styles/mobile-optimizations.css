@@ -2,11 +2,11 @@
 
 /* Mobile-first approach */
 @media (max-width: 768px) {
-  /* Reduce animation complexity on mobile */
+  /* Normal animation speeds for smooth experience */
   * {
-    animation-duration: 0.1s !important;
-    transition-duration: 0.1s !important;
-    animation-fill-mode: none !important;
+    animation-duration: 0.3s !important;
+    transition-duration: 0.2s !important;
+    animation-fill-mode: both !important;
   }
   
   /* Optimize for mobile rendering */
@@ -212,9 +212,9 @@
 /* Reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
   * {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0.1s !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0.1s !important;
   }
 }
 

@@ -3,6 +3,7 @@ const UsersListSkeleton = () => {
     <div
       key={i}
       className="flex items-center justify-center lg:justify-start gap-3 p-3 rounded-lg animate-pulse"
+      style={{ animationDuration: '1.5s', animationDelay: `${i * 0.1}s` }}
     >
       <div className="h-12 w-12 rounded-full bg-zinc-800" />
       <div className="flex-1 lg:block hidden">

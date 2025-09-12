@@ -5,6 +5,7 @@ const FeaturedGridSkeleton = () => {
         <div
           key={i}
           className="flex items-center bg-zinc-800/50 rounded-md overflow-hidden animate-pulse"
+          style={{ animationDuration: '1.5s', animationDelay: `${i * 0.1}s` }}
         >
           <div className="w-16 sm:w-20 h-16 sm:h-20 bg-zinc-700 flex-shrink-0" />
           <div className="flex-1 p-4">

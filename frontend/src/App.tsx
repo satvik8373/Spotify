@@ -16,7 +16,6 @@ const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));
 // import SharedSongPage from './pages/SharedSongPage';
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { PageSkeleton } from './components/ui/skeleton';
 // @ts-ignore
 const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
 const Login = lazy(() => import('./pages/Login'));
@@ -77,11 +76,19 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
     
     // If coming from login redirect, show minimal loading
     if (isFromLoginRedirect) {
-      return <PageSkeleton />;
+      return (
+        <div className="flex items-center justify-center h-screen bg-background">
+          <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+        </div>
+      );
     }
     
-    // Otherwise show loading indicator
-    return <PageSkeleton />;
+    // Otherwise show loading indicator with smoother animation
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   // If not authenticated, redirect to login with return URL
@@ -112,12 +119,20 @@ const LandingRedirector = () => {
   
   // Still loading, but no cached auth - show loading indicator
   if (loading && !hasCachedAuth) {
-    // Smaller skeleton for login redirects
+    // Smaller spinner for login redirects
     if (isFromLoginRedirect) {
-      return <PageSkeleton />;
+      return (
+        <div className="flex items-center justify-center h-screen bg-background">
+          <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+        </div>
+      );
     }
     
-    return <PageSkeleton />;
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    );
   }
   
   // Not authenticated, go to login
@@ -265,7 +280,7 @@ function AppContent() {
 	return (
 		<>
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
-			<Suspense fallback={<PageSkeleton />}>
+			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div></div>}>
 				<RouterProvider 
 					router={router} 
 					future={{ v7_startTransition: true }} 

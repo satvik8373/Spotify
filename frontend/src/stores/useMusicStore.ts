@@ -112,7 +112,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
       const response = await axiosInstance.get('/albums');
       set({ albums: response.data });
     } catch (error: any) {
-      set({ error: error.response.data.message });
+      set({ error: (error?.response?.data?.message) || 'Failed to load songs' });
     } finally {
       set({ isLoading: false });
     }
@@ -124,7 +124,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
       const response = await axiosInstance.get(`/albums/${id}`);
       set({ currentAlbum: response.data });
     } catch (error: any) {
-      set({ error: error.response.data.message });
+      set({ error: (error?.response?.data?.message) || 'Failed to load trending songs' });
     } finally {
       set({ isLoading: false });
     }
@@ -234,7 +234,8 @@ export const useMusicStore = create<MusicStore>((set) => ({
           set({ bollywoodSongs: formattedResults });
         }
       } catch (error) {
-        // Silent error handling
+        // network error -> ensure array set
+        set({ bollywoodSongs: [] });
       }
     } catch (error: any) {
       // Silent error handling
@@ -272,7 +273,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
           set({ hollywoodSongs: formattedResults });
         }
       } catch (error) {
-        // Silent error handling
+        set({ hollywoodSongs: [] });
       }
     } catch (error: any) {
       // Silent error handling
@@ -310,7 +311,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
           set({ officialTrendingSongs: formattedResults });
         }
       } catch (error) {
-        // Silent error handling
+        set({ officialTrendingSongs: [] });
       }
     } catch (error: any) {
       // Silent error handling
@@ -348,7 +349,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
           set({ hindiSongs: formattedResults });
         }
       } catch (error) {
-        // Silent error handling
+        set({ hindiSongs: [] });
       }
     } catch (error: any) {
       // Silent error handling
@@ -386,7 +387,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
           set({ indianNewReleases: formattedResults });
         }
       } catch (error) {
-        // Silent error handling
+        set({ indianNewReleases: [] });
       }
     } catch (error: any) {
       // Silent error handling

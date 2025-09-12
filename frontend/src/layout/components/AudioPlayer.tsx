@@ -1296,8 +1296,10 @@ const AudioPlayer = () => {
         const loadingLock = Date.now();
         const currentLoadingOperation = loadingLock;
         
-        // Store the current loading operation to check for conflicts
-        (audioRef.current as any)._currentLoadingOperation = loadingLock;
+          // Store the current loading operation to check for conflicts (guard for null)
+        if (audioRef.current) {
+          (audioRef.current as any)._currentLoadingOperation = loadingLock;
+        }
         
         // Indicate loading state to prevent play attempts during load
         setIsLoading(true);
@@ -1313,8 +1315,11 @@ const AudioPlayer = () => {
 
         // Set up event listeners for this specific load sequence
         const handleCanPlay = () => {
+          // Check if audio element still exists
+          const currentAudioEl = audioRef.current;
+          if (!currentAudioEl) return;
           // Check if this is still the current loading operation
-          if ((audioRef.current as any)._currentLoadingOperation !== currentLoadingOperation) {
+          if ((currentAudioEl as any)._currentLoadingOperation !== currentLoadingOperation) {
             return;
           }
           
@@ -1381,7 +1386,9 @@ const AudioPlayer = () => {
           }
 
           // Remove the one-time listener
-          audio.removeEventListener('canplay', handleCanPlay);
+          if (audio) {
+            audio.removeEventListener('canplay', handleCanPlay);
+          }
         };
 
         // Listen for the canplay event which indicates the audio is ready

@@ -474,9 +474,13 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
           msg.includes('Cross-Origin-Opener-Policy') ||
           msg.includes('window.closed') ||
           msg.includes('popup') ||
-          msg.includes('operation-not-supported')
+          msg.includes('operation-not-supported') ||
+          msg.includes('blocked')
         ) {
-          try { sessionStorage.setItem('auth_redirect', '1'); } catch {}
+          try { 
+            sessionStorage.setItem('auth_redirect', '1'); 
+            console.log('Popup blocked, falling back to redirect flow');
+          } catch {}
           await signInWithRedirect(auth, provider);
           // The page will navigate; throw to stop further processing
           throw new Error('Redirecting to Google sign-in...');

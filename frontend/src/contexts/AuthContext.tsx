@@ -49,8 +49,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       loadingRef.current = true;
-      // Only show loading if we don't have a cached user
-      if (!authStateCheckedRef.current && !user) setLoading(true);
+      // Only show loading if we don't have a cached user and haven't checked auth state yet
+      if (!authStateCheckedRef.current && !user && !initialLoadCompletedRef.current) {
+        setLoading(true);
+      }
       
       const firebaseUser = auth.currentUser;
       
@@ -202,8 +204,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for Firebase auth state changes
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      // Don't set loading to true if we already have a cached user
-      if (!initialLoadCompletedRef.current && !user) setLoading(true);
+      // Don't set loading to true if we already have a cached user or initial load completed
+      if (!initialLoadCompletedRef.current && !user && !authStateCheckedRef.current) {
+        setLoading(true);
+      }
       
       if (firebaseUser) {
         // User is signed in
@@ -225,21 +229,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, [loadUser, user]);
 
-  // Force refresh if login state inconsistency detected
+  // Force refresh if login state inconsistency detected (reduced frequency to prevent flickering)
   useEffect(() => {
     // Check for potential login state inconsistency:
     // If auth store says user is authenticated but AuthContext doesn't have user data
     const checkInterval = setInterval(() => {
       const authStore = useAuthStore.getState();
       if (authStore.isAuthenticated && authStore.userId && !user && initialLoadCompletedRef.current) {
-        // console.log('Auth inconsistency detected - forcing refresh');
-        loadUser(true);
+        // Only refresh if we haven't loaded user data yet
+        if (!loadingRef.current) {
+          loadUser(true);
+        }
       } else if (!authStore.isAuthenticated && user) {
         // Also check the reverse inconsistency
-        // console.log('Reverse auth inconsistency detected - user in AuthContext but not in authStore');
         setUser(null);
       }
-    }, 3000); // Check every 3 seconds
+    }, 10000); // Check every 10 seconds instead of 3 to reduce flickering
     
     return () => clearInterval(checkInterval);
   }, [loadUser, user]);

@@ -1,6 +1,5 @@
 class MobilePerformanceService {
   private isMobile: boolean = false;
-  private touchStartTime: number = 0;
   private scrollThrottleTimer: number | null = null;
   private resizeThrottleTimer: number | null = null;
 
@@ -104,7 +103,7 @@ class MobilePerformanceService {
     this.lazyLoadImages();
     
     // Optimize animations based on scroll position
-    this.optimizeAnimations(scrollY);
+    this.optimizeAnimations();
   }
 
   private handleResizeOptimizations(): void {
@@ -116,7 +115,7 @@ class MobilePerformanceService {
     this.isMobile = width <= 768;
     
     // Adjust layout for new dimensions
-    this.adjustLayoutForDimensions(width, height);
+    this.adjustLayoutForDimensions(width);
   }
 
   private lazyLoadImages(): void {
@@ -138,17 +137,22 @@ class MobilePerformanceService {
     images.forEach(img => imageObserver.observe(img));
   }
 
-  private optimizeAnimations(scrollY: number): void {
-    // Reduce animation complexity on mobile
+  private optimizeAnimations(): void {
+    // Set normal animation speeds for smooth experience
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
-    if (prefersReducedMotion || this.isMobile) {
+    if (prefersReducedMotion) {
+      // Only reduce motion for users who prefer it
       document.documentElement.style.setProperty('--animation-duration', '0.1s');
       document.documentElement.style.setProperty('--transition-duration', '0.1s');
+    } else {
+      // Normal smooth animations for better UX
+      document.documentElement.style.setProperty('--animation-duration', '0.3s');
+      document.documentElement.style.setProperty('--transition-duration', '0.2s');
     }
   }
 
-  private adjustLayoutForDimensions(width: number, height: number): void {
+  private adjustLayoutForDimensions(width: number): void {
     // Adjust layout based on screen dimensions
     if (width < 480) {
       // Small mobile

@@ -13,7 +13,8 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
     );
     
     // For cached authenticated users, complete immediately
-    const delay = hasCachedAuth ? 0 : 10;
+    // For new users, show splash for a minimum time to prevent flickering
+    const delay = hasCachedAuth ? 0 : 500;
     
     const timer = setTimeout(onComplete, delay);
     return () => clearTimeout(timer);

@@ -25,7 +25,6 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { ListSkeleton, PageSkeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -216,8 +215,8 @@ function AddSongsDialog({
 
         <ScrollArea className="h-[400px] pr-4 mt-4">
           {isIndianMusicLoading ? (
-            <div className="p-4">
-              <ListSkeleton count={5} isMobile={false} />
+            <div className="flex justify-center p-4">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
             </div>
           ) : (
             <>
@@ -693,7 +692,11 @@ export function PlaylistPage() {
   };
 
   if (isLoading) {
-    return <PageSkeleton />;
+  return (
+      <div className="flex h-full items-center justify-center">
+        <div className="h-16 w-16 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+        </div>
+    );
   }
 
   if (!currentPlaylist) {
@@ -1164,7 +1167,7 @@ export function PlaylistPage() {
             >
               {isRegeneratingCover ? (
                 <>
-                  <div className="h-4 w-4 bg-white/20 rounded-full animate-pulse mr-2" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
                   Processing...
                 </>
               ) : (

@@ -3,8 +3,7 @@ import { useSpotify } from '../../contexts/SpotifyContext';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import SpotifyLogin from '../../components/SpotifyLogin';
-import { Play, PauseIcon, Search } from 'lucide-react';
-import { PageSkeleton, ListSkeleton } from '../../components/ui/skeleton';
+import { Play, PauseIcon, Search, Loader2 } from 'lucide-react';
 
 interface Track {
   id: string;
@@ -81,7 +80,11 @@ const SpotifySongsPage: React.FC = () => {
   };
 
   if (spotify.loading) {
-    return <PageSkeleton />;
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+      </div>
+    );
   }
 
   if (!spotify.isAuthenticated) {
@@ -124,7 +127,7 @@ const SpotifySongsPage: React.FC = () => {
           />
         </div>
         <Button type="submit" disabled={isSearching}>
-          {isSearching ? 'Searching...' : 'Search'}
+          {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
         </Button>
       </form>
 

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
+  Loader, 
   Library, 
   Heart, 
   Music, 
@@ -17,7 +18,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { usePlaylistStore } from '../stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../components/playlist/CreatePlaylistDialog';
-import { GridSkeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 const LibraryPage = () => {
@@ -185,8 +185,8 @@ const LibraryPage = () => {
         >
           <div className="p-2 sm:p-4 pt-4">
           {isLibraryLoading || loading ? (
-            <div className="h-64">
-              <GridSkeleton count={6} />
+            <div className="flex items-center justify-center h-64">
+              <Loader className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : !isAuthenticated ? (
             <div className="bg-card border border-border rounded-lg p-8 text-center">
