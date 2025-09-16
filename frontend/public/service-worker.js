@@ -1,7 +1,7 @@
 // Service Worker for Mavrixfy
-const CACHE_NAME = 'mavrixfy-v1.0.0';
-const STATIC_CACHE = 'mavrixfy-static-v1.0.0';
-const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.0';
+const CACHE_NAME = 'mavrixfy-v1.0.1';
+const STATIC_CACHE = 'mavrixfy-static-v1.0.1';
+const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.1';
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -24,40 +24,34 @@ const STATIC_FILES = [
 
 // Install event - cache static files
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('Caching static files');
         return cache.addAll(STATIC_FILES);
       })
       .then(() => {
-        console.log('Service Worker installed');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('Service Worker install failed:', error);
+        // swallow
       })
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...');
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
-              console.log('Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('Service Worker activated');
         return self.clients.claim();
       })
   );
@@ -83,6 +77,9 @@ self.addEventListener('fetch', (event) => {
   } else if (url.hostname === 'api.spotify.com') {
     // Spotify API - network first strategy
     event.respondWith(handleApiRequest(request));
+  } else if (url.hostname === 'saavn.dev' || url.hostname.endsWith('.googleusercontent.com')) {
+    // Bypass SW for these hosts to avoid unintended 504 fallbacks or rate-limit noise
+    return; // allow default browser fetch handling
   } else {
     // Other external requests - network first
     event.respondWith(handleExternalRequest(request));
@@ -190,14 +187,15 @@ async function handleExternalRequest(request) {
     if (cachedResponse) {
       return cachedResponse;
     }
-    
-    throw error;
+    // Gracefully fall back without throwing to avoid uncaught promise errors
+    // Return a 504 Gateway Timeout-like response so the app can handle it
+    return new Response(null, { status: 504, statusText: 'Network request failed (service worker fallback)' });
   }
 }
 
 // Background sync for offline actions
 self.addEventListener('sync', (event) => {
-  console.log('Background sync triggered:', event.tag);
+  // no-op
   
   if (event.tag === 'background-sync') {
     event.waitUntil(doBackgroundSync());
@@ -220,7 +218,7 @@ async function doBackgroundSync() {
 
 // Handle push notifications
 self.addEventListener('push', (event) => {
-  console.log('Push notification received:', event);
+  // no-op
   
   const options = {
     body: event.data ? event.data.text() : 'New music available!',
@@ -252,7 +250,7 @@ self.addEventListener('push', (event) => {
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
-  console.log('Notification clicked:', event);
+  // no-op
   
   event.notification.close();
   
@@ -265,7 +263,6 @@ self.addEventListener('notificationclick', (event) => {
 
 // Handle message events
 self.addEventListener('message', (event) => {
-  console.log('Service Worker received message:', event.data);
   
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

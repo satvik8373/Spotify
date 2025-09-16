@@ -54,6 +54,56 @@ interface MusicStore {
 
 //
 
+// Lightweight request de-duplication + cache for Saavn endpoints
+const saavnRequestState = {
+  inFlight: new Map<string, Promise<any>>(),
+  cache: new Map<string, { ts: number; data: any }>(),
+  activeKeys: new Set<string>(),
+};
+
+async function fetchSaavnJson(url: string, ttlMs: number = 5 * 60 * 1000, retries: number = 1): Promise<any> {
+  const cached = saavnRequestState.cache.get(url);
+  if (cached && Date.now() - cached.ts < ttlMs) {
+    return cached.data;
+  }
+
+  const existing = saavnRequestState.inFlight.get(url);
+  if (existing) {
+    return existing;
+  }
+
+  const doFetch = async () => {
+    let attempt = 0;
+    let backoffMs = 500;
+    while (true) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Saavn request failed: ${response.status}`);
+        }
+        const data = await response.json();
+        saavnRequestState.cache.set(url, { ts: Date.now(), data });
+        return data;
+      } catch (error) {
+        if (attempt >= retries) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        backoffMs *= 2;
+        attempt++;
+      }
+    }
+  };
+
+  const promise = doFetch();
+  saavnRequestState.inFlight.set(url, promise);
+  try {
+    const data = await promise;
+    return data;
+  } finally {
+    saavnRequestState.inFlight.delete(url);
+  }
+}
 
 export const useMusicStore = create<MusicStore>((set) => ({
   albums: [],
@@ -168,230 +218,193 @@ export const useMusicStore = create<MusicStore>((set) => ({
 
   // Indian Music API Methods
   fetchIndianTrendingSongs: async () => {
+    const url = 'https://saavn.dev/api/search/songs?query=latest%20hits&page=1&limit=10';
+    if (saavnRequestState.activeKeys.has(url)) return;
+    saavnRequestState.activeKeys.add(url);
     set({ isIndianMusicLoading: true });
     try {
-      try {
-        // Call JioSaavn API directly
-        const response = await fetch(
-          'https://saavn.dev/api/search/songs?query=latest%20hits&page=1&limit=10'
-        );
-        if (!response.ok) throw new Error('Failed to fetch trending songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results && data.data.results.length > 0) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
-
-          set({ indianTrendingSongs: formattedResults });
-        } else {
-          set({ indianTrendingSongs: [] });
-        }
-      } catch (error) {
+      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      if (data?.data?.results && data.data.results.length > 0) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+        set({ indianTrendingSongs: formattedResults });
+      } else {
         set({ indianTrendingSongs: [] });
       }
+    } catch (error) {
+      set({ indianTrendingSongs: [] });
     } finally {
+      saavnRequestState.activeKeys.delete(url);
       set({ isIndianMusicLoading: false });
     }
   },
 
   fetchBollywoodSongs: async () => {
+    const url = 'https://saavn.dev/api/search/songs?query=bollywood%20hits&page=1&limit=15';
+    if (saavnRequestState.activeKeys.has(url)) return;
+    saavnRequestState.activeKeys.add(url);
     set({ isIndianMusicLoading: true });
     try {
-      try {
-        // Call JioSaavn API directly
-        const response = await fetch(
-          'https://saavn.dev/api/search/songs?query=bollywood%20hits&page=1&limit=15'
-        );
-        if (!response.ok) throw new Error('Failed to fetch bollywood songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
-
-          set({ bollywoodSongs: formattedResults });
-        }
-      } catch (error) {
-        // network error -> ensure array set
+      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+        set({ bollywoodSongs: formattedResults });
+      } else {
         set({ bollywoodSongs: [] });
       }
-    } catch (error: any) {
-      // Silent error handling
+    } catch (error) {
+      set({ bollywoodSongs: [] });
     } finally {
+      saavnRequestState.activeKeys.delete(url);
       set({ isIndianMusicLoading: false });
     }
   },
 
   fetchHollywoodSongs: async () => {
+    const url = 'https://saavn.dev/api/search/songs?query=english%20top%20hits&page=1&limit=15';
+    if (saavnRequestState.activeKeys.has(url)) return;
+    saavnRequestState.activeKeys.add(url);
     set({ isIndianMusicLoading: true });
     try {
-      try {
-        // Call JioSaavn API directly
-        const response = await fetch(
-          'https://saavn.dev/api/search/songs?query=english%20top%20hits&page=1&limit=15'
-        );
-        if (!response.ok) throw new Error('Failed to fetch hollywood songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
-
-          set({ hollywoodSongs: formattedResults });
-        }
-      } catch (error) {
+      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+        set({ hollywoodSongs: formattedResults });
+      } else {
         set({ hollywoodSongs: [] });
       }
-    } catch (error: any) {
-      // Silent error handling
+    } catch (error) {
+      set({ hollywoodSongs: [] });
     } finally {
+      saavnRequestState.activeKeys.delete(url);
       set({ isIndianMusicLoading: false });
     }
   },
 
   fetchOfficialTrendingSongs: async () => {
+    const url = 'https://saavn.dev/api/search/songs?query=trending%20songs&page=1&limit=15';
+    if (saavnRequestState.activeKeys.has(url)) return;
+    saavnRequestState.activeKeys.add(url);
     set({ isIndianMusicLoading: true });
     try {
-      try {
-        // Call JioSaavn API directly
-        const response = await fetch(
-          'https://saavn.dev/api/search/songs?query=trending%20songs&page=1&limit=15'
-        );
-        if (!response.ok) throw new Error('Failed to fetch trending songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
-
-          set({ officialTrendingSongs: formattedResults });
-        }
-      } catch (error) {
+      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+        set({ officialTrendingSongs: formattedResults });
+      } else {
         set({ officialTrendingSongs: [] });
       }
-    } catch (error: any) {
-      // Silent error handling
+    } catch (error) {
+      set({ officialTrendingSongs: [] });
     } finally {
+      saavnRequestState.activeKeys.delete(url);
       set({ isIndianMusicLoading: false });
     }
   },
 
   fetchHindiSongs: async () => {
+    const url = 'https://saavn.dev/api/search/songs?query=hindi%20top%20songs&page=1&limit=15';
+    if (saavnRequestState.activeKeys.has(url)) return;
+    saavnRequestState.activeKeys.add(url);
     set({ isIndianMusicLoading: true });
     try {
-      try {
-        // Call JioSaavn API directly
-        const response = await fetch(
-          'https://saavn.dev/api/search/songs?query=hindi%20top%20songs&page=1&limit=15'
-        );
-        if (!response.ok) throw new Error('Failed to fetch hindi songs');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
-
-          set({ hindiSongs: formattedResults });
-        }
-      } catch (error) {
+      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+        set({ hindiSongs: formattedResults });
+      } else {
         set({ hindiSongs: [] });
       }
-    } catch (error: any) {
-      // Silent error handling
+    } catch (error) {
+      set({ hindiSongs: [] });
     } finally {
+      saavnRequestState.activeKeys.delete(url);
       set({ isIndianMusicLoading: false });
     }
   },
 
   fetchIndianNewReleases: async () => {
+    const url = 'https://saavn.dev/api/search/songs?query=new%20releases&page=1&limit=10';
+    if (saavnRequestState.activeKeys.has(url)) return;
+    saavnRequestState.activeKeys.add(url);
     set({ isIndianMusicLoading: true });
     try {
-      try {
-        // Call JioSaavn API directly
-        const response = await fetch(
-          'https://saavn.dev/api/search/songs?query=new%20releases&page=1&limit=10'
-        );
-        if (!response.ok) throw new Error('Failed to fetch new releases');
-        const data = await response.json();
-        
-        // Process API data
-        if (data.data && data.data.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }));
-
-          set({ indianNewReleases: formattedResults });
-        }
-      } catch (error) {
+      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
+            album: item.album.name,
+            year: item.year,
+            duration: item.duration,
+            image: item.image[2].url,
+            url: item.downloadUrl[4].url,
+          }));
+        set({ indianNewReleases: formattedResults });
+      } else {
         set({ indianNewReleases: [] });
       }
-    } catch (error: any) {
-      // Silent error handling
+    } catch (error) {
+      set({ indianNewReleases: [] });
     } finally {
+      saavnRequestState.activeKeys.delete(url);
       set({ isIndianMusicLoading: false });
     }
   },
@@ -399,17 +412,13 @@ export const useMusicStore = create<MusicStore>((set) => ({
   searchIndianSongs: async query => {
     if (!query || query.trim() === '') return;
 
+    const url = `https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&page=1&limit=20`;
+    if (saavnRequestState.activeKeys.has(url)) return;
+    saavnRequestState.activeKeys.add(url);
     set({ isIndianMusicLoading: true });
     try {
       try {
-        // Call JioSaavn API directly
-        const response = await fetch(
-          `https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&page=1&limit=20`
-        );
-        if (!response.ok) throw new Error('Failed to search songs');
-        const data = await response.json();
-        
-        // Process API data
+        const data = await fetchSaavnJson(url, 60 * 1000, 0); // shorter TTL for search
         if (data.data && data.data.results) {
           const penaltyWords = ['unknown', 'various', 'tribute', 'cover', 'karaoke', 'hits', 'best of', 'playlist', 'compilation'];
           const remixWords = ['remix', 'sped up', 'slowed', 'reverb', 'mashup'];
@@ -473,6 +482,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     } catch (error: any) {
       // Silent error handling
     } finally {
+      saavnRequestState.activeKeys.delete(url);
       set({ isIndianMusicLoading: false });
     }
   },
