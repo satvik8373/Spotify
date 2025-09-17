@@ -86,19 +86,25 @@ const MobileNav = () => {
     };
   }, [currentSong, likedSongIds]);
 
-  // Stable gradient background with isolation and theme-aware fallbacks
+  // Bulletproof gradient style that overrides ALL possible conflicts
   const gradientStyle = React.useMemo(() => ({
     background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
+    backgroundImage: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
     backgroundColor: 'transparent',
     border: 'none',
     boxShadow: 'none',
     isolation: 'isolate',
     zIndex: 30,
+    // Override CSS variables that might interfere
+    '--tw-bg-opacity': '0',
+    '--background': 'transparent',
+    '--card': 'transparent',
+    '--popover': 'transparent',
   }), []);
 
-  // Force gradient override on theme changes and re-renders
+  // Ultra-aggressive CSS override that prevents ANY background changes
   useEffect(() => {
-    const styleId = 'mobile-nav-gradient-override';
+    const styleId = 'mobile-nav-bulletproof-override';
     let styleElement = document.getElementById(styleId) as HTMLStyleElement;
 
     if (!styleElement) {
@@ -107,10 +113,26 @@ const MobileNav = () => {
       document.head.appendChild(styleElement);
     }
 
-    // Ultra-specific CSS to prevent any overrides
+    // Maximum specificity CSS to override everything
     styleElement.textContent = `
-      .mobile-nav-gradient-container {
+      /* Bulletproof gradient - overrides EVERYTHING */
+      .mobile-nav-gradient-container,
+      .mobile-nav-gradient-container.fixed,
+      .mobile-nav-gradient-container.fixed.bottom-0,
+      html .mobile-nav-gradient-container,
+      body .mobile-nav-gradient-container,
+      div .mobile-nav-gradient-container {
         background: linear-gradient(0deg, 
+          rgba(0, 0, 0, 0.95) 0%, 
+          rgba(0, 0, 0, 0.9) 10%, 
+          rgba(0, 0, 0, 0.8) 25%, 
+          rgba(0, 0, 0, 0.6) 40%, 
+          rgba(0, 0, 0, 0.4) 60%, 
+          rgba(0, 0, 0, 0.2) 75%, 
+          rgba(0, 0, 0, 0.1) 85%, 
+          transparent 95%, 
+          transparent 100%) !important;
+        background-image: linear-gradient(0deg, 
           rgba(0, 0, 0, 0.95) 0%, 
           rgba(0, 0, 0, 0.9) 10%, 
           rgba(0, 0, 0, 0.8) 25%, 
@@ -126,28 +148,63 @@ const MobileNav = () => {
         isolation: isolate !important;
       }
       
-      /* Prevent theme variables from affecting the nav */
-      .mobile-nav-gradient-container,
+      /* Kill ALL CSS variables that could interfere */
+      .mobile-nav-gradient-container {
+        --tw-bg-opacity: 0 !important;
+        --background: transparent !important;
+        --card: transparent !important;
+        --popover: transparent !important;
+        --muted: transparent !important;
+        --secondary: transparent !important;
+        --accent: transparent !important;
+      }
+      
+      /* Override ALL possible Tailwind background classes */
+      .mobile-nav-gradient-container.bg-background,
+      .mobile-nav-gradient-container.bg-card,
+      .mobile-nav-gradient-container.bg-popover,
+      .mobile-nav-gradient-container.bg-muted,
+      .mobile-nav-gradient-container.bg-secondary,
+      .mobile-nav-gradient-container.bg-accent,
+      .mobile-nav-gradient-container.bg-black,
+      .mobile-nav-gradient-container.bg-white,
+      .mobile-nav-gradient-container.bg-transparent,
+      .dark .mobile-nav-gradient-container.dark\\:bg-background,
+      .dark .mobile-nav-gradient-container.dark\\:bg-card,
+      .dark .mobile-nav-gradient-container.dark\\:bg-\\[\\#191414\\],
+      .light .mobile-nav-gradient-container.bg-background,
       .mobile-nav-gradient-container * {
+        background-color: transparent !important;
+        background: transparent !important;
         --tw-bg-opacity: 0 !important;
       }
       
-      /* Override any Tailwind background utilities */
-      .mobile-nav-gradient-container .bg-background,
-      .mobile-nav-gradient-container .bg-black,
-      .mobile-nav-gradient-container .dark\\:bg-\\[\\#191414\\] {
+      /* Ensure child elements stay transparent except player */
+      .mobile-nav-gradient-container > *:not(.mobile-player-container),
+      .mobile-nav-gradient-container > * > *:not(.mobile-player-container *) {
         background-color: transparent !important;
         background: transparent !important;
       }
       
-      /* Ensure child elements don't inherit problematic backgrounds */
-      .mobile-nav-gradient-container > *:not(.mobile-player-container) {
-        background-color: transparent !important;
+      /* Keep hover states working */
+      .mobile-nav-gradient-container .hover\\:bg-white\\/5:hover,
+      .mobile-nav-gradient-container *:hover.hover\\:bg-white\\/5 {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        background: rgba(255, 255, 255, 0.05) !important;
       }
       
-      /* Hover states remain functional */
-      .mobile-nav-gradient-container .hover\\:bg-white\\/5:hover {
-        background-color: rgba(255, 255, 255, 0.05) !important;
+      /* Prevent scroll-based style changes */
+      .mobile-nav-gradient-container[style*="background"] {
+        background: linear-gradient(0deg, 
+          rgba(0, 0, 0, 0.95) 0%, 
+          rgba(0, 0, 0, 0.9) 10%, 
+          rgba(0, 0, 0, 0.8) 25%, 
+          rgba(0, 0, 0, 0.6) 40%, 
+          rgba(0, 0, 0, 0.4) 60%, 
+          rgba(0, 0, 0, 0.2) 75%, 
+          rgba(0, 0, 0, 0.1) 85%, 
+          transparent 95%, 
+          transparent 100%) !important;
       }
     `;
 
@@ -157,7 +214,28 @@ const MobileNav = () => {
         element.remove();
       }
     };
-  }, [location.pathname]); // Re-run on route changes
+  }, []); // Only run once, no dependencies to prevent re-runs
+
+  // Additional protection: Force style on scroll events
+  useEffect(() => {
+    const handleScroll = () => {
+      const navElement = document.querySelector('.mobile-nav-gradient-container') as HTMLElement;
+      if (navElement) {
+        // Force the gradient style on every scroll
+        navElement.style.background = 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)';
+        navElement.style.backgroundColor = 'transparent';
+      }
+    };
+
+    // Add scroll listener to force gradient on scroll
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -546,7 +624,14 @@ const MobileNav = () => {
           paddingTop: hasActiveSong ? '60px' : '40px',
           '--album-primary': albumColors.primary || '#1db954',
           '--album-secondary': albumColors.secondary || '#191414',
+          // Force these properties inline to override any CSS
+          position: 'fixed',
+          bottom: '0',
+          left: '0',
+          right: '0',
+          zIndex: '30',
         } as React.CSSProperties}
+        data-mobile-nav="true"
       >
         {/* Spotify Mobile Player - Floating Design */}
         {hasActiveSong && (
