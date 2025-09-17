@@ -86,61 +86,12 @@ const MobileNav = () => {
     };
   }, [currentSong, likedSongIds]);
 
-  // Always show gradient background - no solid black logic
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.innerHTML = `
-      /* Force transparent gradient - override any solid backgrounds */
-      .spotify-nav-container,
-      .spotify-nav-container   {
-        background: linear-gradient(0deg, 
-          rgba(0, 0, 0, 0.95) 0%, 
-          rgba(0, 0, 0, 0.9) 10%, 
-          rgba(0, 0, 0, 0.8) 25%, 
-          rgba(0, 0, 0, 0.6) 40%, 
-          rgba(0, 0, 0, 0.4) 60%, 
-          rgba(0, 0, 0, 0.2) 75%, 
-          rgba(0, 0, 0, 0.1) 85%, 
-          transparent 95%, 
-          transparent 100%
-        ) !important;
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        backdrop-filter: none !important;
-      }
-
-      /* Remove any potential solid backgrounds from child elements */
-      .spotify-nav-container > * {
-        background-color: transparent !important;
-      }
-
-      /* Navigation icons styling */
-      .nav-item {
-        transition: all 0.2s ease;
-        background-color: transparent !important;
-      }
-
-      .nav-item.active {
-        transform: scale(1.05);
-        background-color: transparent !important;
-      }
-
-      .nav-item:hover {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-      }
-
-      /* Force fill for active icons */
-      .nav-item.active svg {
-        fill: white !important;
-      }
-    `;
-    document.head.appendChild(style);
-
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
+  // Stable gradient background - no dynamic CSS injection
+  const gradientStyle = {
+    background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
+    border: 'none',
+    boxShadow: 'none',
+  };
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -522,10 +473,11 @@ const MobileNav = () => {
 
       {/* Bottom Navigation - Spotify Style with Gradient Background */}
       <div
-        className="spotify-nav-container fixed bottom-0 left-0 right-0 z-30 md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-30 md:hidden"
         style={{
+          ...gradientStyle,
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
-          paddingTop: hasActiveSong ? '60px' : '40px', // Extra space for gradient effect
+          paddingTop: hasActiveSong ? '60px' : '40px',
           '--album-primary': albumColors.primary || '#1db954',
           '--album-secondary': albumColors.secondary || '#191414',
         } as React.CSSProperties}
@@ -623,16 +575,16 @@ const MobileNav = () => {
         )}
 
         {/* Navigation Items - Positioned at bottom with proper contrast */}
-        <div className="relative z-10 grid grid-cols-4 h-20 px-2 pt-2">
+        <div className="relative z-10 grid grid-cols-4 h-20 px-2 pt-2 bg-transparent">
           {navItems.map(item => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                'nav-item flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all duration-300',
+                'flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all duration-300 bg-transparent',
                 isActive(item.path)
-                  ? 'active text-white'
-                  : 'text-white/70 hover:text-white'
+                  ? 'text-white scale-105'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
               )}
             >
               <div className={cn(
