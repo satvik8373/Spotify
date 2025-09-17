@@ -35,7 +35,7 @@ const MobileNav = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
-  const [isAtTop, setIsAtTop] = useState(true);
+
 
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
@@ -86,12 +86,10 @@ const MobileNav = () => {
     };
   }, [currentSong, likedSongIds]);
 
-  // Enhanced styling and background effects
+  // Always show gradient background - no solid black logic
   useEffect(() => {
     const style = document.createElement('style');
     style.innerHTML = `
-      
-
       /* Spotify-like gradient background effect - Consistent transparent gradient */
       .spotify-nav-container {
         background: linear-gradient(0deg, 
@@ -105,11 +103,23 @@ const MobileNav = () => {
           transparent 95%, 
           transparent 100%
         ) !important;
+        border: none !important;
+        box-shadow: none !important;
       }
 
-    
+      /* Navigation icons styling */
+      .nav-item {
+        transition: all 0.2s ease;
+      }
 
-      
+      .nav-item.active {
+        transform: scale(1.05);
+      }
+
+      /* Force fill for active icons */
+      .nav-item.active svg {
+        fill: white !important;
+      }
     `;
     document.head.appendChild(style);
 
@@ -145,13 +155,7 @@ const MobileNav = () => {
     }
   }, [currentTime, duration]);
 
-  // Track scroll to show header only when at top
-  useEffect(() => {
-    const handleScroll = () => setIsAtTop(window.scrollY <= 0);
-    handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+
 
   const navItems = [
     {
@@ -182,7 +186,7 @@ const MobileNav = () => {
     return false;
   };
 
-  // Show compact top header on specific routes when at top
+  // Show compact top header on specific routes
   const isLibraryRoute = location.pathname.startsWith('/library');
   const isSearchRoute = location.pathname.startsWith('/search');
   const isLikedRoute = location.pathname.startsWith('/liked-songs');
@@ -191,7 +195,7 @@ const MobileNav = () => {
     location.pathname === '/' ||
     isLibraryRoute ||
     isSearchRoute
-  ) && isAtTop;
+  );
 
 
 
