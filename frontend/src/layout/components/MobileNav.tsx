@@ -86,9 +86,61 @@ const MobileNav = () => {
     };
   }, [currentSong, likedSongIds]);
 
-  // Stable gradient background - no dynamic CSS injection
+  // Force gradient background with high specificity - override all conflicting styles
+  useEffect(() => {
+    // Create a unique style element for this component
+    const styleId = 'mobile-nav-gradient-override';
+    let styleElement = document.getElementById(styleId);
+    
+    if (!styleElement) {
+      styleElement = document.createElement('style');
+      styleElement.id = styleId;
+      document.head.appendChild(styleElement);
+    }
+    
+    // Apply the most specific CSS possible to override any conflicts
+    styleElement.textContent = `
+      .mobile-nav-gradient-container {
+        background: linear-gradient(0deg, 
+          rgba(0, 0, 0, 0.95) 0%, 
+          rgba(0, 0, 0, 0.9) 10%, 
+          rgba(0, 0, 0, 0.8) 25%, 
+          rgba(0, 0, 0, 0.6) 40%, 
+          rgba(0, 0, 0, 0.4) 60%, 
+          rgba(0, 0, 0, 0.2) 75%, 
+          rgba(0, 0, 0, 0.1) 85%, 
+          transparent 95%, 
+          transparent 100%) !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+      }
+      
+      .mobile-nav-gradient-container * {
+        background-color: transparent !important;
+      }
+      
+      .mobile-nav-gradient-container .bg-transparent {
+        background-color: transparent !important;
+      }
+      
+      .mobile-nav-gradient-container .hover\\:bg-white\\/5:hover {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+      }
+    `;
+    
+    return () => {
+      const element = document.getElementById(styleId);
+      if (element) {
+        element.remove();
+      }
+    };
+  }, []);
+
   const gradientStyle = {
     background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
+    backgroundColor: 'transparent',
     border: 'none',
     boxShadow: 'none',
   };
@@ -473,7 +525,7 @@ const MobileNav = () => {
 
       {/* Bottom Navigation - Spotify Style with Gradient Background */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 md:hidden"
+        className="mobile-nav-gradient-container fixed bottom-0 left-0 right-0 z-30 md:hidden"
         style={{
           ...gradientStyle,
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
