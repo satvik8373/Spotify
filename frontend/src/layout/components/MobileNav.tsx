@@ -92,8 +92,7 @@ const MobileNav = () => {
     style.innerHTML = `
       /* Force transparent gradient - override any solid backgrounds */
       .spotify-nav-container,
-      .spotify-nav-container::before,
-      .spotify-nav-container::after {
+      .spotify-nav-container   {
         background: linear-gradient(0deg, 
           rgba(0, 0, 0, 0.95) 0%, 
           rgba(0, 0, 0, 0.9) 10%, 
