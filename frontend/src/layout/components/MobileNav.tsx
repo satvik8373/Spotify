@@ -95,8 +95,54 @@ const MobileNav = () => {
         overscroll-behavior: none;
       }
 
-      /* Spotify-like gradient background effect - Consistent transparent gradient */
+      /* Mobile-specific fixes for scroll behavior */
+      @media (max-width: 768px) {
+        .spotify-nav-container {
+          -webkit-transform: translateZ(0);
+          transform: translateZ(0);
+          will-change: transform;
+          isolation: isolate;
+        }
+        
+        /* Prevent iOS Safari from adding solid backgrounds */
+        .spotify-nav-container,
+        .spotify-nav-container * {
+          -webkit-tap-highlight-color: transparent !important;
+          -webkit-touch-callout: none !important;
+          -webkit-user-select: none !important;
+        }
+      }
+
+      /* Spotify-like gradient background effect - Always transparent */
       .spotify-nav-container {
+        background: linear-gradient(0deg, 
+          rgba(0, 0, 0, 0.95) 0%, 
+          rgba(0, 0, 0, 0.9) 10%, 
+          rgba(0, 0, 0, 0.8) 25%, 
+          rgba(0, 0, 0, 0.6) 40%, 
+          rgba(0, 0, 0, 0.4) 60%, 
+          rgba(0, 0, 0, 0.2) 75%, 
+          rgba(0, 0, 0, 0.1) 85%, 
+          transparent 95%, 
+          transparent 100%
+        ) !important;
+        border: none !important;
+        border-bottom: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
+      /* Prevent any solid backgrounds during scroll */
+      .spotify-nav-container::before,
+      .spotify-nav-container::after {
+        display: none !important;
+      }
+
+      /* Force transparent on all states */
+      .spotify-nav-container:hover,
+      .spotify-nav-container:focus,
+      .spotify-nav-container:active {
         background: linear-gradient(0deg, 
           rgba(0, 0, 0, 0.95) 0%, 
           rgba(0, 0, 0, 0.9) 10%, 
