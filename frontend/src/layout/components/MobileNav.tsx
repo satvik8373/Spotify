@@ -90,10 +90,7 @@ const MobileNav = () => {
   useEffect(() => {
     const style = document.createElement('style');
     style.innerHTML = `
-      html, body {
-        touch-action: pan-x pan-y;
-        overscroll-behavior: none;
-      }
+      
 
       /* Spotify-like gradient background effect - Consistent transparent gradient */
       .spotify-nav-container {
@@ -110,31 +107,9 @@ const MobileNav = () => {
         ) !important;
       }
 
-      /* Mini player with album colors */
-      .mini-player-container {
-        background: linear-gradient(135deg, 
-          var(--album-primary, #1db954) 0%, 
-          var(--album-secondary, #191414) 100%
-        );
-      }
+    
 
-      /* Smooth transitions */
-      .nav-item {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-
-      .nav-item:hover {
-        transform: translateY(-2px);
-      }
-
-      .nav-item.active {
-        transform: scale(1.1);
-      }
-
-      /* Progress bar glow effect */
-      .progress-glow {
-        box-shadow: 0 0 10px rgba(29, 185, 84, 0.5);
-      }
+      
     `;
     document.head.appendChild(style);
 
