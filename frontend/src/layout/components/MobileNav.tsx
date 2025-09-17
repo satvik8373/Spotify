@@ -35,7 +35,7 @@ const MobileNav = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
-
+  const [isAtTop, setIsAtTop] = useState(true);
 
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
@@ -86,36 +86,54 @@ const MobileNav = () => {
     };
   }, [currentSong, likedSongIds]);
 
-  // Simple transparent background - no complex logic
+  // Enhanced styling and background effects
   useEffect(() => {
     const style = document.createElement('style');
     style.innerHTML = `
-      /* Always transparent gradient - no conditions */
-      .spotify-nav-container {
-        background: linear-gradient(0deg, 
-          rgba(0, 0, 0, 0.9) 0%, 
-          rgba(0, 0, 0, 0.7) 20%, 
-          rgba(0, 0, 0, 0.5) 40%, 
-          rgba(0, 0, 0, 0.3) 60%, 
-          rgba(0, 0, 0, 0.1) 80%, 
-          transparent 100%
-        ) !important;
-        border: none !important;
-        box-shadow: none !important;
+      html, body {
+        touch-action: pan-x pan-y;
+        overscroll-behavior: none;
       }
 
-      /* Navigation icons */
+      /* Spotify-like gradient background effect - Consistent transparent gradient */
+      .spotify-nav-container {
+        background: linear-gradient(0deg, 
+          rgba(0, 0, 0, 0.95) 0%, 
+          rgba(0, 0, 0, 0.9) 10%, 
+          rgba(0, 0, 0, 0.8) 25%, 
+          rgba(0, 0, 0, 0.6) 40%, 
+          rgba(0, 0, 0, 0.4) 60%, 
+          rgba(0, 0, 0, 0.2) 75%, 
+          rgba(0, 0, 0, 0.1) 85%, 
+          transparent 95%, 
+          transparent 100%
+        ) !important;
+      }
+
+      /* Mini player with album colors */
+      .mini-player-container {
+        background: linear-gradient(135deg, 
+          var(--album-primary, #1db954) 0%, 
+          var(--album-secondary, #191414) 100%
+        );
+      }
+
+      /* Smooth transitions */
       .nav-item {
-        transition: all 0.2s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .nav-item:hover {
+        transform: translateY(-2px);
       }
 
       .nav-item.active {
-        transform: scale(1.05);
+        transform: scale(1.1);
       }
 
-      /* Force fill for active icons */
-      .nav-item.active svg {
-        fill: white !important;
+      /* Progress bar glow effect */
+      .progress-glow {
+        box-shadow: 0 0 10px rgba(29, 185, 84, 0.5);
       }
     `;
     document.head.appendChild(style);
@@ -152,7 +170,13 @@ const MobileNav = () => {
     }
   }, [currentTime, duration]);
 
-
+  // Track scroll to show header only when at top
+  useEffect(() => {
+    const handleScroll = () => setIsAtTop(window.scrollY <= 0);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const navItems = [
     {
@@ -183,7 +207,7 @@ const MobileNav = () => {
     return false;
   };
 
-  // Show compact top header on specific routes
+  // Show compact top header on specific routes when at top
   const isLibraryRoute = location.pathname.startsWith('/library');
   const isSearchRoute = location.pathname.startsWith('/search');
   const isLikedRoute = location.pathname.startsWith('/liked-songs');
@@ -192,7 +216,7 @@ const MobileNav = () => {
     location.pathname === '/' ||
     isLibraryRoute ||
     isSearchRoute
-  );
+  ) && isAtTop;
 
 
 
