@@ -95,32 +95,19 @@ const MobileNav = () => {
         overscroll-behavior: none;
       }
 
-      /* Spotify-like gradient background effect - Bottom to Top fade */
+      /* Spotify-like gradient background effect - Consistent transparent gradient */
       .spotify-nav-container {
         background: linear-gradient(0deg, 
-          rgba(0, 0, 0, 1) 0%, 
-          rgba(0, 0, 0, 0.95) 5%, 
-          rgba(0, 0, 0, 0.85) 15%, 
-          rgba(0, 0, 0, 0.6) 30%, 
-          rgba(0, 0, 0, 0.3) 50%, 
-          rgba(0, 0, 0, 0.1) 70%, 
-          transparent 80%, 
+          rgba(0, 0, 0, 0.95) 0%, 
+          rgba(0, 0, 0, 0.9) 10%, 
+          rgba(0, 0, 0, 0.8) 25%, 
+          rgba(0, 0, 0, 0.6) 40%, 
+          rgba(0, 0, 0, 0.4) 60%, 
+          rgba(0, 0, 0, 0.2) 75%, 
+          rgba(0, 0, 0, 0.1) 85%, 
+          transparent 95%, 
           transparent 100%
-        );
-      }
-      
-      /* Dark theme gradient for better contrast */
-      .dark .spotify-nav-container {
-        background: linear-gradient(0deg, 
-          rgba(18, 18, 18, 1) 0%, 
-          rgba(18, 18, 18, 0.98) 5%, 
-          rgba(18, 18, 18, 0.9) 15%, 
-          rgba(18, 18, 18, 0.7) 35%, 
-          rgba(18, 18, 18, 0.4) 55%, 
-          rgba(18, 18, 18, 0.1) 75%, 
-          transparent 85%, 
-          transparent 100%
-        );
+        ) !important;
       }
 
       /* Mini player with album colors */
@@ -659,10 +646,13 @@ const MobileNav = () => {
                 'flex items-center justify-center h-7 w-7 mb-1 transition-all duration-300',
                 isActive(item.path) && 'scale-110'
               )}>
-                <item.icon className={cn(
-                  'h-6 w-6 transition-all duration-300',
-                  isActive(item.path) ? 'text-white' : 'text-current'
-                )} />
+                <item.icon
+                  className={cn(
+                    'h-5 w-5 transition-all duration-300',
+                    isActive(item.path) ? 'text-white' : 'text-current'
+                  )}
+                  fill={isActive(item.path) ? 'white' : 'none'}
+                />
               </div>
               <span className={cn(
                 "text-[10px] font-medium tracking-tight transition-all duration-300",
