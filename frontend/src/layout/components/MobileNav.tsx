@@ -23,13 +23,7 @@ import { MobileThemeToggle } from '@/components/MobileThemeToggle';
  * - Android: Enable background play in browser settings (Menu > Settings > Media > Background play)
  */
 
-// Format time helper function
-const formatTime = (seconds: number) => {
-  if (isNaN(seconds)) return "0:00";
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-};
+
 
 const MobileNav = () => {
   const location = useLocation();
@@ -42,13 +36,13 @@ const MobileNav = () => {
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
   const [isAtTop, setIsAtTop] = useState(true);
-  
+
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
-  
+
   // Check if current song is liked
   const isLiked = currentSong ? likedSongIds?.has((currentSong as any).id || currentSong._id) : false;
-  
+
   // State to track liked status independently
   const [songLiked, setSongLiked] = useState(isLiked);
 
@@ -61,16 +55,16 @@ const MobileNav = () => {
   useEffect(() => {
     const handleLikeUpdate = (e: Event) => {
       if (!currentSong) return;
-      
+
       const songId = (currentSong as any).id || currentSong._id;
-      
+
       // Check if this event includes details about which song was updated
       if (e instanceof CustomEvent && e.detail) {
         // If we have details and it's not for our current song, ignore
         if (e.detail.songId && e.detail.songId !== songId) {
           return;
         }
-        
+
         // If we have explicit like state in the event, use it
         if (typeof e.detail.isLiked === 'boolean') {
           setSongLiked(e.detail.isLiked);
@@ -92,14 +86,67 @@ const MobileNav = () => {
     };
   }, [currentSong, likedSongIds]);
 
-  // Disable pinch zoom using touch-action CSS property
+  // Enhanced styling and background effects
   useEffect(() => {
-    // Add touch-action CSS to prevent pinch-zoom
     const style = document.createElement('style');
     style.innerHTML = `
       html, body {
         touch-action: pan-x pan-y;
         overscroll-behavior: none;
+      }
+
+      /* Spotify-like gradient background effect - Bottom to Top fade */
+      .spotify-nav-container {
+        background: linear-gradient(0deg, 
+          rgba(0, 0, 0, 1) 0%, 
+          rgba(0, 0, 0, 0.95) 5%, 
+          rgba(0, 0, 0, 0.85) 15%, 
+          rgba(0, 0, 0, 0.6) 30%, 
+          rgba(0, 0, 0, 0.3) 50%, 
+          rgba(0, 0, 0, 0.1) 70%, 
+          transparent 80%, 
+          transparent 100%
+        );
+      }
+      
+      /* Dark theme gradient for better contrast */
+      .dark .spotify-nav-container {
+        background: linear-gradient(0deg, 
+          rgba(18, 18, 18, 1) 0%, 
+          rgba(18, 18, 18, 0.98) 5%, 
+          rgba(18, 18, 18, 0.9) 15%, 
+          rgba(18, 18, 18, 0.7) 35%, 
+          rgba(18, 18, 18, 0.4) 55%, 
+          rgba(18, 18, 18, 0.1) 75%, 
+          transparent 85%, 
+          transparent 100%
+        );
+      }
+
+      /* Mini player with album colors */
+      .mini-player-container {
+        background: linear-gradient(135deg, 
+          var(--album-primary, #1db954) 0%, 
+          var(--album-secondary, #191414) 100%
+        );
+      }
+
+      /* Smooth transitions */
+      .nav-item {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .nav-item:hover {
+        transform: translateY(-2px);
+      }
+
+      .nav-item.active {
+        transform: scale(1.1);
+      }
+
+      /* Progress bar glow effect */
+      .progress-glow {
+        box-shadow: 0 0 10px rgba(29, 185, 84, 0.5);
       }
     `;
     document.head.appendChild(style);
@@ -198,7 +245,7 @@ const MobileNav = () => {
       // Navigate to welcome page first for faster perceived performance
       setShowProfileMenu(false);
       navigate('/', { replace: true });
-      
+
       // Then perform the actual logout
       const result = await signOut();
       if (!result.success) {
@@ -212,17 +259,17 @@ const MobileNav = () => {
   };
 
   // (removed unused search click handler)
-  
+
   // Handle like toggle
   const handleLikeToggle = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent opening song details
     if (currentSong) {
       // Get the song ID consistently
       const songId = (currentSong as any).id || currentSong._id;
-      
+
       // Optimistically update UI
       setSongLiked(!songLiked);
-      
+
       // Perform the actual toggle with the correct song format
       toggleLikeSong({
         _id: songId,
@@ -235,9 +282,9 @@ const MobileNav = () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
-      
+
       // Also dispatch a direct event for immediate notification
-      document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
+      document.dispatchEvent(new CustomEvent('songLikeStateChanged', {
         detail: {
           songId,
           song: currentSong,
@@ -248,14 +295,15 @@ const MobileNav = () => {
       }));
     }
   };
-  
+
   // Handle song tap to open song details view
   const handleSongTap = () => {
     if (currentSong) {
-      // Open the song details modal instead of navigating
       setShowSongDetails(true);
     }
   };
+
+
 
   // Handle profile click
   const handleProfileClick = (e: React.MouseEvent) => {
@@ -266,16 +314,15 @@ const MobileNav = () => {
   // Calculate dropdown position to stay within viewport
   const getDropdownPosition = () => {
     if (typeof window === 'undefined') return 'right-0';
-    
+
     // Check if we're near the right edge of the screen
     const viewportWidth = window.innerWidth;
-    const dropdownWidth = 144; // w-36 = 144px
-    
+
     // If we're within 160px of the right edge, position dropdown to the left
     if (viewportWidth < 400) {
       return 'left-0';
     }
-    
+
     return 'right-0';
   };
 
@@ -296,11 +343,11 @@ const MobileNav = () => {
   return (
     <>
       {/* Song Details View */}
-      <SongDetailsView 
-        isOpen={showSongDetails} 
-        onClose={() => setShowSongDetails(false)} 
+      <SongDetailsView
+        isOpen={showSongDetails}
+        onClose={() => setShowSongDetails(false)}
       />
-      
+
       {/* Mobile Header - Spotify style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
         <div className="fixed top-0 left-0 right-0 z-30 bg-background dark:bg-[#191414] md:hidden">
@@ -309,7 +356,7 @@ const MobileNav = () => {
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={handleProfileClick}
                       aria-label="Profile"
                       className="p-1"
@@ -329,19 +376,19 @@ const MobileNav = () => {
                       )}
                     </button>
                     {showProfileMenu && (
-                      <div 
+                      <div
                         className={getDropdownStyles().className}
                         style={getDropdownStyles().style}
                       >
                         <div className="py-1">
-                          <Link 
-                            to="/profile" 
+                          <Link
+                            to="/profile"
                             className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                             onClick={() => setShowProfileMenu(false)}
                           >
                             Profile
                           </Link>
-                          <button 
+                          <button
                             onClick={handleLogout}
                             className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
                           >
@@ -353,7 +400,7 @@ const MobileNav = () => {
                     )}
                   </div>
                 ) : (
-                  <button 
+                  <button
                     onClick={handleLogin}
                     aria-label="Sign in"
                     className="p-1"
@@ -371,7 +418,7 @@ const MobileNav = () => {
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={handleProfileClick}
                       aria-label="Profile"
                       className="p-1"
@@ -391,19 +438,19 @@ const MobileNav = () => {
                       )}
                     </button>
                     {showProfileMenu && (
-                      <div 
+                      <div
                         className={getDropdownStyles().className}
                         style={getDropdownStyles().style}
                       >
                         <div className="py-1">
-                          <Link 
-                            to="/profile" 
+                          <Link
+                            to="/profile"
                             className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                             onClick={() => setShowProfileMenu(false)}
                           >
                             Profile
                           </Link>
-                          <button 
+                          <button
                             onClick={handleLogout}
                             className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
                           >
@@ -415,7 +462,7 @@ const MobileNav = () => {
                     )}
                   </div>
                 ) : (
-                  <button 
+                  <button
                     onClick={handleLogin}
                     aria-label="Sign in"
                     className="p-1"
@@ -432,7 +479,7 @@ const MobileNav = () => {
               <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={handleProfileClick}
                       aria-label="Profile"
                       className="p-1"
@@ -452,19 +499,19 @@ const MobileNav = () => {
                       )}
                     </button>
                     {showProfileMenu && (
-                      <div 
+                      <div
                         className={getDropdownStyles().className}
                         style={getDropdownStyles().style}
                       >
                         <div className="py-1">
-                          <Link 
-                            to="/profile" 
+                          <Link
+                            to="/profile"
                             className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                             onClick={() => setShowProfileMenu(false)}
                           >
                             Profile
                           </Link>
-                          <button 
+                          <button
                             onClick={handleLogout}
                             className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
                           >
@@ -476,7 +523,7 @@ const MobileNav = () => {
                     )}
                   </div>
                 ) : (
-                  <button 
+                  <button
                     onClick={handleLogin}
                     aria-label="Sign in"
                     className="p-1"
@@ -493,212 +540,136 @@ const MobileNav = () => {
         </div>
       )}
 
-      {/* Bottom Navigation */}
-              <div
-          className={cn(
-            "fixed bottom-0 left-0 right-0 z-30 md:hidden border-t border-border bg-background dark:bg-[#191414]",
-            hasActiveSong ? "player-active" : ""
-          )}
+      {/* Bottom Navigation - Spotify Style with Gradient Background */}
+      <div
+        className="spotify-nav-container fixed bottom-0 left-0 right-0 z-30 md:hidden"
         style={{
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
-          ...(hasActiveSong && {
-            backgroundColor: albumColors.isLight 
-              ? `${albumColors.primary}`
-              : `${albumColors.primary}`,
-          })
-        }}
+          paddingTop: hasActiveSong ? '60px' : '40px', // Extra space for gradient effect
+          '--album-primary': albumColors.primary || '#1db954',
+          '--album-secondary': albumColors.secondary || '#191414',
+        } as React.CSSProperties}
       >
-        {/* Add mini player when song is active */}
+        {/* Spotify Mobile Player - Floating Design */}
         {hasActiveSong && (
-          <div 
-            className="flex flex-col justify-between transition-colors duration-500"
-            style={{
-              backgroundColor: albumColors.isLight
-                ? `${albumColors.secondary}`
-                : `${albumColors.secondary}`,
-              color: albumColors.isLight ? '#000' : '#fff'
-            }}
-          >
-            <div className="flex items-center justify-between px-3 py-2">
-              <div 
-                className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-zinc-800/30 rounded-md py-1"
-                onClick={handleSongTap}
-              >
-                <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md shadow">
-                  <img 
-                    src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')} 
-                    alt={currentSong.title} 
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                    width="40"
-                    height="40"
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p 
-                    className={cn(
-                      "text-sm font-medium truncate",
-                      albumColors.isLight ? "text-black" : "text-white"
-                    )}
-                  >
-                    {currentSong.title}
-                  </p>
-                  <p 
-                    className={cn(
-                      "text-xs truncate",
-                      albumColors.isLight ? "text-black/80" : "text-white/80"
-                    )}
-                  >
-                    {currentSong.artist}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <button
-                  onClick={handleLikeToggle}
-                  className={cn(
-                    "mr-2 h-8 w-8 flex items-center justify-center flex-shrink-0 rounded-full transition-all duration-200 hover:scale-105",
-                    songLiked ? "text-green-500" : "text-foreground"
-                  )}
-                  style={{
-                    backgroundColor: albumColors.isLight 
-                      ? 'rgba(0, 0, 0, 0.15)' 
-                      : 'rgba(255, 255, 255, 0.15)',
-                    color: songLiked 
-                      ? '#22c55e' 
-                      : (albumColors.isLight ? '#000000' : '#ffffff')
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = albumColors.isLight 
-                      ? 'rgba(0, 0, 0, 0.25)' 
-                      : 'rgba(255, 255, 255, 0.25)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = albumColors.isLight 
-                      ? 'rgba(0, 0, 0, 0.15)' 
-                      : 'rgba(255, 255, 255, 0.15)';
-                  }}
-                  onTouchStart={(e) => {
-                    e.currentTarget.style.backgroundColor = albumColors.isLight 
-                      ? 'rgba(0, 0, 0, 0.25)' 
-                      : 'rgba(255, 255, 255, 0.25)';
-                  }}
-                  onTouchEnd={(e) => {
-                    e.currentTarget.style.backgroundColor = albumColors.isLight 
-                      ? 'rgba(0, 0, 0, 0.15)' 
-                      : 'rgba(255, 255, 255, 0.15)';
-                  }}
-                >
-                  <Heart className="h-4 w-4" fill={songLiked ? 'currentColor' : 'none'} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    usePlayerStore.getState().togglePlay();
-                  }}
-                  className={cn(
-                    "h-9 w-9 flex items-center justify-center flex-shrink-0 rounded-full transition-all duration-200 hover:scale-105"
-                  )}
-                  style={{
-                    backgroundColor: isPlaying 
-                      ? (albumColors.isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)')
-                      : '#22c55e',
-                    color: isPlaying 
-                      ? (albumColors.isLight ? '#000000' : '#ffffff')
-                      : '#000000'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (isPlaying) {
-                      e.currentTarget.style.backgroundColor = albumColors.isLight 
-                        ? 'rgba(0, 0, 0, 0.25)' 
-                        : 'rgba(255, 255, 255, 0.25)';
-                    } else {
-                      e.currentTarget.style.backgroundColor = '#16a34a'; // Darker green on hover
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (isPlaying) {
-                      e.currentTarget.style.backgroundColor = albumColors.isLight 
-                        ? 'rgba(0, 0, 0, 0.15)' 
-                        : 'rgba(255, 255, 255, 0.15)';
-                    } else {
-                      e.currentTarget.style.backgroundColor = '#22c55e'; // Restore original green
-                    }
-                  }}
-                  onTouchStart={(e) => {
-                    if (isPlaying) {
-                      e.currentTarget.style.backgroundColor = albumColors.isLight 
-                        ? 'rgba(0, 0, 0, 0.25)' 
-                        : 'rgba(255, 255, 255, 0.25)';
-                    } else {
-                      e.currentTarget.style.backgroundColor = '#16a34a'; // Darker green on touch
-                    }
-                  }}
-                  onTouchEnd={(e) => {
-                    if (isPlaying) {
-                      e.currentTarget.style.backgroundColor = albumColors.isLight 
-                        ? 'rgba(0, 0, 0, 0.15)' 
-                        : 'rgba(255, 255, 255, 0.15)';
-                    } else {
-                      e.currentTarget.style.backgroundColor = '#22c55e'; // Restore original green
-                    }
-                  }}
-                >
-                  {isPlaying ? (
-                    <Pause className={cn("h-4 w-4")} />
-                  ) : (
-                    <Play className={cn("h-4 w-4 translate-x-0.5")} />
-                  )}
-                </button>
-              </div>
-            </div>
-            
-            {/* Song progress bar */}
-            <div 
-              className="relative w-full"
-            >
-              <div 
-                className="h-[3px] w-full relative transition-colors duration-500"
+          <div className="px-2 pb-1">
+            <div className="relative rounded-xl overflow-hidden shadow-2xl mx-1">
+              {/* Main Player Container - Compact */}
+              <div
+                className="relative px-3 py-2"
                 style={{
-                  backgroundColor: albumColors.isLight 
-                    ? 'rgba(0, 0, 0, 0.8)' 
-                    : 'rgba(255, 255, 255, 0.8)'
+                  background: `linear-gradient(90deg, ${albumColors.primary || '#1a1a1a'} 0%, ${albumColors.secondary || '#121212'} 100%)`,
                 }}
               >
-                <div 
-                  className="h-full bg-green-500" 
-                  style={{ width: `${progress || 0}%` }}
-                />
+                {/* Player Content - Compact Layout */}
+                <div className="flex items-center justify-between">
+                  {/* Left: Album Art + Song Info */}
+                  <div
+                    className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
+                    onClick={handleSongTap}
+                  >
+                    {/* Album Artwork - Smaller */}
+                    <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md shadow-md">
+                      <img
+                        src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')}
+                        alt={currentSong.title}
+                        className="w-full h-full object-cover"
+                        loading="eager"
+                        decoding="async"
+                        width="40"
+                        height="40"
+                      />
+                    </div>
+
+                    {/* Song Info - Compact */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate leading-tight">
+                        {currentSong.title}
+                      </p>
+                      <p className="text-white/70 text-xs truncate leading-tight">
+                        {currentSong.artist}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right: Controls - Spotify Authentic */}
+                  <div className="flex items-center gap-2">
+                    {/* Like Button - Smaller */}
+                    <button
+                      onClick={handleLikeToggle}
+                      className="p-1 transition-transform duration-200 active:scale-90"
+                    >
+                      <Heart
+                        className={cn("h-4 w-4", songLiked ? "text-green-400" : "text-white/75")}
+                        fill={songLiked ? 'currentColor' : 'none'}
+                      />
+                    </button>
+
+                    {/* Play/Pause Button - White Filled Icons */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        usePlayerStore.getState().togglePlay();
+                      }}
+                      className="p-2 transition-transform duration-200 active:scale-90"
+                    >
+                      {isPlaying ? (
+                        <Pause
+                          className="h-5 w-5 text-white"
+                          fill="white"
+                        />
+                      ) : (
+                        <Play
+                          className="h-5 w-5 text-white ml-px"
+                          fill="white"
+                        />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ultra-thin Progress Bar - Floating Width */}
+              <div className="absolute bottom-0 left-0 right-0">
+                <div className="h-0.5 bg-white/20 relative">
+                  <div
+                    className="h-full bg-white absolute top-0 left-0 transition-all duration-100 ease-linear"
+                    style={{ width: `${progress || 0}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-4 h-16 bg-background dark:bg-[#191414] pb-safe">
+        {/* Navigation Items - Positioned at bottom with proper contrast */}
+        <div className="relative z-10 grid grid-cols-4 h-20 px-2 pt-2">
           {navItems.map(item => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                'flex flex-col items-center justify-center py-2 transition-colors',
-                isActive(item.path) 
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                'nav-item flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all duration-300',
+                isActive(item.path)
+                  ? 'active text-white'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
               )}
             >
-                <div className={cn('flex items-center justify-center h-8 w-8 mb-2')}>
-                  <item.icon className={cn(
-                    'h-5 w-5', 
-                    isActive(item.path) ? 'text-green-500' : 'text-muted-foreground'
-                  )} />
-                </div>
-                              <span className={cn(
-                  "text-[11px] font-medium tracking-tight",
-                  isActive(item.path) 
-                    ? "text-foreground" 
-                    : "text-muted-foreground"
-                )}>{item.label}</span>
+              <div className={cn(
+                'flex items-center justify-center h-7 w-7 mb-1 transition-all duration-300',
+                isActive(item.path) && 'scale-110'
+              )}>
+                <item.icon className={cn(
+                  'h-6 w-6 transition-all duration-300',
+                  isActive(item.path) ? 'text-white' : 'text-current'
+                )} />
+              </div>
+              <span className={cn(
+                "text-[10px] font-medium tracking-tight transition-all duration-300",
+                isActive(item.path) ? "text-white" : "text-white/70"
+              )}>
+                {item.label}
+              </span>
             </Link>
           ))}
         </div>

@@ -17,6 +17,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import axiosInstance from "@/lib/axios";
 import { Timestamp } from "firebase/firestore";
 
+
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 /**
@@ -200,8 +201,8 @@ async function syncWithBackend(idToken: string, firebaseUser: any) {
     // Set the auth token for API requests
     axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
     
-    // Sync user with backend
-    const response = await axiosInstance.post('/api/auth/firebase-login', {
+    // Sync user with backend (Firebase token verified server-side)
+    const response = await axiosInstance.post('/api/auth/firebase', {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
@@ -462,6 +463,13 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
     // Add select_account to force the account picker every time
     provider.setCustomParameters({ prompt: 'select_account' });
     
+    // If cross-origin isolated (COOP/COEP), prefer redirect flow immediately
+    if (typeof window !== 'undefined' && (window as any).crossOriginIsolated) {
+      try { sessionStorage.setItem('auth_redirect', '1'); } catch {}
+      await signInWithRedirect(auth, provider);
+      throw new Error('Redirecting to Google sign-in...');
+    }
+
     // If returning from redirect, handle it first
     const redirectCred = await getRedirectResult(auth);
     const userCredential = redirectCred ?? (await (async () => {
@@ -477,10 +485,7 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
           msg.includes('operation-not-supported') ||
           msg.includes('blocked')
         ) {
-          try { 
-            sessionStorage.setItem('auth_redirect', '1'); 
-            console.log('Popup blocked, falling back to redirect flow');
-          } catch {}
+          try { sessionStorage.setItem('auth_redirect', '1'); } catch {}
           await signInWithRedirect(auth, provider);
           // The page will navigate; throw to stop further processing
           throw new Error('Redirecting to Google sign-in...');
@@ -526,30 +531,16 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
           });
         }
         
-        // Synchronize with backend if available (non-blocking)
-        if (API_URL) {
-          try {
-            // Call backend API to sync user
-            const response = await fetch(`${API_URL}/api/auth/sync`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`
-              },
-              body: JSON.stringify({
-                email: user.email,
-                uid: user.uid,
-                displayName: user.displayName,
-                photoURL: user.photoURL
-              })
-            });
-            
-            if (!response.ok) {
-              console.warn('Failed to sync Google user with backend, but Firebase auth successful');
-            }
-          } catch (error) {
-            console.warn('Backend sync failed for Google login, but Firebase auth successful:', error);
-          }
+        // Synchronize with backend (non-blocking)
+        try {
+          axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
+          await axiosInstance.post('/api/auth/firebase', {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || user.email?.split('@')[0] || 'User',
+          });
+        } catch (_) {
+          // ignore; do not block UI on backend sync
         }
         
         // Migrate any liked songs from anonymous user
