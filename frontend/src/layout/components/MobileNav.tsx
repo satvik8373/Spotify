@@ -90,8 +90,10 @@ const MobileNav = () => {
   useEffect(() => {
     const style = document.createElement('style');
     style.innerHTML = `
-      /* Spotify-like gradient background effect - Consistent transparent gradient */
-      .spotify-nav-container {
+      /* Force transparent gradient - override any solid backgrounds */
+      .spotify-nav-container,
+      .spotify-nav-container::before,
+      .spotify-nav-container::after {
         background: linear-gradient(0deg, 
           rgba(0, 0, 0, 0.95) 0%, 
           rgba(0, 0, 0, 0.9) 10%, 
@@ -103,17 +105,30 @@ const MobileNav = () => {
           transparent 95%, 
           transparent 100%
         ) !important;
+        background-color: transparent !important;
         border: none !important;
         box-shadow: none !important;
+        backdrop-filter: none !important;
+      }
+
+      /* Remove any potential solid backgrounds from child elements */
+      .spotify-nav-container > * {
+        background-color: transparent !important;
       }
 
       /* Navigation icons styling */
       .nav-item {
         transition: all 0.2s ease;
+        background-color: transparent !important;
       }
 
       .nav-item.active {
         transform: scale(1.05);
+        background-color: transparent !important;
+      }
+
+      .nav-item:hover {
+        background-color: rgba(255, 255, 255, 0.05) !important;
       }
 
       /* Force fill for active icons */
@@ -618,7 +633,7 @@ const MobileNav = () => {
                 'nav-item flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all duration-300',
                 isActive(item.path)
                   ? 'active text-white'
-                  : 'text-white/70 hover:text-white hover:bg-white/5'
+                  : 'text-white/70 hover:text-white'
               )}
             >
               <div className={cn(

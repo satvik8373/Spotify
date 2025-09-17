@@ -1,5 +1,5 @@
 // Service Worker for Mavrixfy
-const CACHE_NAME = 'mavrixfy-v1.0.1';
+const CACHE_NAME = 'mavrixfy-v2.0.1';
 const STATIC_CACHE = 'mavrixfy-static-v1.0.1';
 const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.1';
 
