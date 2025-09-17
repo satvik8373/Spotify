@@ -86,19 +86,28 @@ const MobileNav = () => {
     };
   }, [currentSong, likedSongIds]);
 
-  // Force gradient background with high specificity - override all conflicting styles
+  // Stable gradient background with isolation and theme-aware fallbacks
+  const gradientStyle = React.useMemo(() => ({
+    background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
+    backgroundColor: 'transparent',
+    border: 'none',
+    boxShadow: 'none',
+    isolation: 'isolate',
+    zIndex: 30,
+  }), []);
+
+  // Force gradient override on theme changes and re-renders
   useEffect(() => {
-    // Create a unique style element for this component
     const styleId = 'mobile-nav-gradient-override';
-    let styleElement = document.getElementById(styleId);
-    
+    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+
     if (!styleElement) {
       styleElement = document.createElement('style');
       styleElement.id = styleId;
       document.head.appendChild(styleElement);
     }
-    
-    // Apply the most specific CSS possible to override any conflicts
+
+    // Ultra-specific CSS to prevent any overrides
     styleElement.textContent = `
       .mobile-nav-gradient-container {
         background: linear-gradient(0deg, 
@@ -114,36 +123,41 @@ const MobileNav = () => {
         background-color: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        backdrop-filter: none !important;
+        isolation: isolate !important;
       }
       
+      /* Prevent theme variables from affecting the nav */
+      .mobile-nav-gradient-container,
       .mobile-nav-gradient-container * {
+        --tw-bg-opacity: 0 !important;
+      }
+      
+      /* Override any Tailwind background utilities */
+      .mobile-nav-gradient-container .bg-background,
+      .mobile-nav-gradient-container .bg-black,
+      .mobile-nav-gradient-container .dark\\:bg-\\[\\#191414\\] {
+        background-color: transparent !important;
+        background: transparent !important;
+      }
+      
+      /* Ensure child elements don't inherit problematic backgrounds */
+      .mobile-nav-gradient-container > *:not(.mobile-player-container) {
         background-color: transparent !important;
       }
       
-      .mobile-nav-gradient-container .bg-transparent {
-        background-color: transparent !important;
-      }
-      
+      /* Hover states remain functional */
       .mobile-nav-gradient-container .hover\\:bg-white\\/5:hover {
         background-color: rgba(255, 255, 255, 0.05) !important;
       }
     `;
-    
+
     return () => {
       const element = document.getElementById(styleId);
       if (element) {
         element.remove();
       }
     };
-  }, []);
-
-  const gradientStyle = {
-    background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
-    backgroundColor: 'transparent',
-    border: 'none',
-    boxShadow: 'none',
-  };
+  }, [location.pathname]); // Re-run on route changes
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -525,7 +539,7 @@ const MobileNav = () => {
 
       {/* Bottom Navigation - Spotify Style with Gradient Background */}
       <div
-        className="mobile-nav-gradient-container fixed bottom-0 left-0 right-0 z-30 md:hidden"
+        className="mobile-nav-gradient-container fixed bottom-0 left-0 right-0 md:hidden"
         style={{
           ...gradientStyle,
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
@@ -537,7 +551,7 @@ const MobileNav = () => {
         {/* Spotify Mobile Player - Floating Design */}
         {hasActiveSong && (
           <div className="px-2 pb-1">
-            <div className="relative rounded-xl overflow-hidden shadow-2xl mx-1">
+            <div className="mobile-player-container relative rounded-xl overflow-hidden shadow-2xl mx-1">
               {/* Main Player Container - Compact */}
               <div
                 className="relative px-3 py-2"
@@ -627,7 +641,14 @@ const MobileNav = () => {
         )}
 
         {/* Navigation Items - Positioned at bottom with proper contrast */}
-        <div className="relative z-10 grid grid-cols-4 h-20 px-2 pt-2 bg-transparent">
+        <div
+          className="relative grid grid-cols-4 h-20 px-2 pt-2"
+          style={{
+            backgroundColor: 'transparent',
+            background: 'transparent',
+            zIndex: 10
+          }}
+        >
           {navItems.map(item => (
             <Link
               key={item.path}
