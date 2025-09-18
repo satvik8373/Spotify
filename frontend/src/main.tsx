@@ -4,6 +4,7 @@ import App from './App.tsx'
 import './index.css'
 import './styles/mobile-optimizations.css'
 import './styles/custom-utilities.css'
+import './styles/ios-fixes.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

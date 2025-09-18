@@ -378,11 +378,41 @@ const HomePage = () => {
     };
   }, []);
 
+  // iOS viewport fix
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    
+    if (isIOS || isSafari) {
+      // Fix iOS viewport height issues
+      const setViewportHeight = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        
+        // Ensure body background extends properly
+        document.body.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--background') || '#000000';
+        document.documentElement.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--background') || '#000000';
+      };
+
+      setViewportHeight();
+      window.addEventListener('resize', setViewportHeight);
+      window.addEventListener('orientationchange', setViewportHeight);
+
+      return () => {
+        window.removeEventListener('resize', setViewportHeight);
+        window.removeEventListener('orientationchange', setViewportHeight);
+      };
+    }
+  }, []);
+
 
   return (
-    <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] ">
+    <main 
+      className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414]"
+      data-main-content
+    >
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
-        <div className="pt-3 pb-6 max-w-full overflow-x-hidden px-[6px]">
+        <div className="pt-3 pb-[120px] max-w-full overflow-x-hidden px-[6px] scroll-content">
           {/* Offline banner */}
           {!isOnline && (
             <div className="px-2 sm:px-4 mb-3">
@@ -739,8 +769,8 @@ const HomePage = () => {
           {/* Indian Music Player Component */}
           <IndianMusicPlayer />
 
-          {/* Bottom padding for mobile player */}
-          <div className="h-2"></div>
+          {/* Bottom padding for mobile player - iOS safe area */}
+          <div className="h-20"></div>
         </div>
       </ScrollArea>
 

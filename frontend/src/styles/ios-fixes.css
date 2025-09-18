@@ -1,0 +1,95 @@
+/* iOS Specific Fixes for Bottom Black Area */
+
+/* iOS Safari and PWA viewport fixes */
+@supports (-webkit-touch-callout: none) {
+  html {
+    height: 100vh;
+    height: -webkit-fill-available;
+    background-color: var(--background, #000000);
+  }
+  
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    background-color: var(--background, #000000);
+  }
+  
+  #root {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    background-color: var(--background, #000000);
+  }
+  
+  /* Main content area fixes */
+  main[data-main-content] {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    background-color: var(--background, #000000);
+  }
+  
+  /* ScrollArea viewport fixes */
+  [data-radix-scroll-area-viewport] {
+    background-color: var(--background, #000000);
+    min-height: 100vh;
+  }
+  
+  /* Scroll content fixes */
+  .scroll-content {
+    background-color: var(--background, #000000);
+    min-height: calc(100vh + 200px);
+    padding-bottom: calc(140px + env(safe-area-inset-bottom, 20px));
+  }
+}
+
+/* Dark mode fixes for iOS */
+@supports (-webkit-touch-callout: none) {
+  .dark html,
+  .dark body,
+  .dark #root {
+    background-color: #191414 !important;
+  }
+  
+  .dark main[data-main-content] {
+    background-color: #191414 !important;
+  }
+  
+  .dark [data-radix-scroll-area-viewport] {
+    background-color: #191414 !important;
+  }
+  
+  .dark .scroll-content {
+    background-color: #191414 !important;
+  }
+}
+
+/* Mobile specific fixes */
+@media (max-width: 768px) {
+  @supports (-webkit-touch-callout: none) {
+    /* Ensure full height coverage */
+    html, body {
+      background-color: var(--background, #000000);
+      width: 100%;
+      overflow-x: hidden;
+    }
+    
+    .dark html,
+    .dark body {
+      background-color: #191414;
+    }
+    
+    /* Fix scroll content */
+    .scroll-content {
+      min-height: calc(100vh + 300px);
+      padding-bottom: calc(160px + env(safe-area-inset-bottom, 30px));
+    }
+  }
+}
+
+/* PWA specific fixes */
+@media (display-mode: standalone) {
+  @supports (-webkit-touch-callout: none) {
+    .scroll-content {
+      padding-bottom: calc(180px + env(safe-area-inset-bottom, 40px));
+    }
+  }
+}

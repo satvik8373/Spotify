@@ -86,7 +86,78 @@ const MobileNav = () => {
     };
   }, [currentSong, likedSongIds]);
 
+  // Stable gradient background with isolation and theme-aware fallbacks
+  const gradientStyle = React.useMemo(() => ({
+    background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
+    backgroundColor: 'transparent',
+    border: 'none',
+    boxShadow: 'none',
+    isolation: 'isolate',
+    zIndex: 30,
+  }), []);
 
+  // Force gradient override on theme changes and re-renders
+  useEffect(() => {
+    const styleId = 'mobile-nav-gradient-override';
+    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+
+    if (!styleElement) {
+      styleElement = document.createElement('style');
+      styleElement.id = styleId;
+      document.head.appendChild(styleElement);
+    }
+
+    // Ultra-specific CSS to prevent any overrides
+    styleElement.textContent = `
+      .mobile-nav-gradient-container {
+        background: linear-gradient(0deg, 
+          rgba(0, 0, 0, 0.95) 0%, 
+          rgba(0, 0, 0, 0.9) 10%, 
+          rgba(0, 0, 0, 0.8) 25%, 
+          rgba(0, 0, 0, 0.6) 40%, 
+          rgba(0, 0, 0, 0.4) 60%, 
+          rgba(0, 0, 0, 0.2) 75%, 
+          rgba(0, 0, 0, 0.1) 85%, 
+          transparent 95%, 
+          transparent 100%) !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        isolation: isolate !important;
+      }
+      
+      /* Prevent theme variables from affecting the nav */
+      .mobile-nav-gradient-container,
+      .mobile-nav-gradient-container * {
+        --tw-bg-opacity: 0 !important;
+      }
+      
+      /* Override any Tailwind background utilities */
+      .mobile-nav-gradient-container .bg-background,
+      .mobile-nav-gradient-container .bg-black,
+      .mobile-nav-gradient-container .dark\\:bg-\\[\\#191414\\] {
+        background-color: transparent !important;
+        background: transparent !important;
+      }
+      
+      /* Ensure child elements don't inherit problematic backgrounds */
+      .mobile-nav-gradient-container > *:not(.mobile-player-container) {
+        background-color: transparent !important;
+      }
+      
+      /* Hover states remain functional */
+      .mobile-nav-gradient-container .hover\\:bg-white\\/5:hover {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+      }
+    `;
+
+    return () => {
+      const element = document.getElementById(styleId);
+      if (element) {
+        element.remove();
+      }
+    };
+  }, [location.pathname]); // Re-run on route changes
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -468,12 +539,14 @@ const MobileNav = () => {
 
       {/* Bottom Navigation - Spotify Style with Gradient Background */}
       <div
-        className="mobile-nav-transparent fixed bottom-0 left-0 right-0 md:hidden"
+        className="mobile-nav-gradient-container fixed bottom-0 left-0 right-0 md:hidden"
         style={{
+          ...gradientStyle,
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
           paddingTop: hasActiveSong ? '60px' : '40px',
-          zIndex: 30,
-        }}
+          '--album-primary': albumColors.primary || '#1db954',
+          '--album-secondary': albumColors.secondary || '#191414',
+        } as React.CSSProperties}
       >
         {/* Spotify Mobile Player - Floating Design */}
         {hasActiveSong && (
@@ -568,7 +641,14 @@ const MobileNav = () => {
         )}
 
         {/* Navigation Items - Positioned at bottom with proper contrast */}
-        <div className="relative grid grid-cols-4 h-20 px-2 pt-2">
+        <div
+          className="relative grid grid-cols-4 h-20 px-2 pt-2"
+          style={{
+            backgroundColor: 'transparent',
+            background: 'transparent',
+            zIndex: 10
+          }}
+        >
           {navItems.map(item => (
             <Link
               key={item.path}
