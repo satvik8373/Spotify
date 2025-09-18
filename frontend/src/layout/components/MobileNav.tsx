@@ -515,7 +515,8 @@ const MobileNav = () => {
               <div
                 className="relative px-3 py-2"
                 style={{
-                  background: `linear-gradient(90deg, ${albumColors.primary || '#1a1a1a'} 0%, ${albumColors.secondary || '#121212'} 100%)`,
+                  backgroundColor: albumColors.primary || '#1a1a1a',
+                  transition: 'background-color 300ms ease, color 300ms ease',
                 }}
               >
                 {/* Player Content - Compact Layout */}
@@ -540,17 +541,17 @@ const MobileNav = () => {
 
                     {/* Song Info - Compact */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm font-medium truncate leading-tight">
+                      <p className="text-sm font-medium truncate leading-tight" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
                         {currentSong.title}
                       </p>
-                      <p className="text-white/70 text-xs truncate leading-tight">
+                      <p className="text-xs truncate leading-tight" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 30%)', transition: 'color 300ms ease' }}>
                         {currentSong.artist}
                       </p>
                     </div>
                   </div>
 
                   {/* Right: Controls - Spotify Authentic */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
                     {/* Like Button - Smaller */}
                     <button
                       onClick={handleLikeToggle}
@@ -572,13 +573,13 @@ const MobileNav = () => {
                     >
                       {isPlaying ? (
                         <Pause
-                          className="h-5 w-5 text-white"
-                          fill="white"
+                          className="h-5 w-5"
+                          fill="currentColor"
                         />
                       ) : (
                         <Play
-                          className="h-5 w-5 text-white ml-px"
-                          fill="white"
+                          className="h-5 w-5 ml-px"
+                          fill="currentColor"
                         />
                       )}
                     </button>
@@ -601,10 +602,10 @@ const MobileNav = () => {
 
         {/* Navigation Items - Positioned at bottom with proper contrast */}
         <div
-          className="relative grid grid-cols-4 h-14 px-2 pt-1"
+          className="relative grid grid-cols-4 h-14 px-2 pt-0 pb-2"
           style={{
-            
-            backgroundColor: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.88)',
+            background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
             border: 'none',
             boxShadow: 'none',
           }}
@@ -629,7 +630,7 @@ const MobileNav = () => {
                     'h-5 w-5 transition-all duration-300',
                     isActive(item.path) ? 'text-white' : 'text-current'
                   )}
-                  fill={isActive(item.path) ? 'white' : 'none'}
+                  strokeWidth={isActive(item.path) ? 2.5 : 2}
                 />
               </div>
               <span className={cn(
