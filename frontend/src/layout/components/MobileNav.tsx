@@ -92,7 +92,6 @@ const MobileNav = () => {
     backgroundColor: 'transparent',
     border: 'none',
     boxShadow: 'none',
-    isolation: 'isolate',
     zIndex: 30,
   }), []);
 
@@ -110,6 +109,20 @@ const MobileNav = () => {
     // Ultra-specific CSS to prevent any overrides + iOS fixes
     styleElement.textContent = `
       .mobile-nav-gradient-container {
+        /* Use a tiny alpha to stabilize compositing on iOS */
+        background-color: rgba(0, 0, 0, 0.001) !important;
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        position: fixed;
+      }
+
+      /* Render gradient via pseudo-element to avoid Safari flattening to solid */
+      .mobile-nav-gradient-container::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
         background: linear-gradient(0deg, 
           rgba(0, 0, 0, 0.95) 0%, 
           rgba(0, 0, 0, 0.9) 10%, 
@@ -120,21 +133,13 @@ const MobileNav = () => {
           rgba(0, 0, 0, 0.1) 85%, 
           transparent 95%, 
           transparent 100%) !important;
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        isolation: isolate !important;
-        /* iOS Safari specific fixes */
-        -webkit-transform: translateZ(0) !important;
-        transform: translateZ(0) !important;
-        -webkit-backface-visibility: hidden !important;
-        backface-visibility: hidden !important;
-        will-change: transform !important;
+        z-index: 0;
       }
+      .mobile-nav-gradient-container > * { position: relative; z-index: 1; }
       
       /* iOS Safari gradient rendering fix */
       @supports (-webkit-appearance: none) {
-        .mobile-nav-gradient-container {
+        .mobile-nav-gradient-container::before {
           background: linear-gradient(0deg, 
             rgba(0, 0, 0, 0.95) 0%, 
             rgba(0, 0, 0, 0.9) 10%, 
@@ -145,6 +150,8 @@ const MobileNav = () => {
             rgba(0, 0, 0, 0.1) 85%, 
             transparent 95%, 
             transparent 100%) !important;
+        }
+        .mobile-nav-gradient-container {
           -webkit-mask: linear-gradient(0deg, 
             rgba(0, 0, 0, 1) 0%, 
             rgba(0, 0, 0, 1) 10%, 
