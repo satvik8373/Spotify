@@ -1,7 +1,7 @@
 // Service Worker for Mavrixfy
-const CACHE_NAME = 'mavrixfy-v2.0.1';
-const STATIC_CACHE = 'mavrixfy-static-v1.0.1';
-const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.1';
+const CACHE_NAME = 'mavrixfy-v2mobil.0.2';
+const STATIC_CACHE = 'mavrixfy-static-v1.0.2';
+const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.2';
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -19,7 +19,8 @@ const STATIC_FILES = [
   '/apple-touch-icon-180.png',
   '/shortcut-liked-96.png',
   '/shortcut-search-96.png',
-  '/pwa-icon-fix.css'
+  '/pwa-icon-fix.css',
+  '/mobile-nav-fix.css'
 ];
 
 // Install event - cache static files
