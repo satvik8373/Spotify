@@ -252,6 +252,19 @@ const MobileNav = () => {
       .mobile-nav-gradient-container .hover\\:bg-white\\/5:hover {
         background-color: rgba(255, 255, 255, 0.05) !important;
       }
+
+      /* Force solid black fallback on iOS devices if gradients misbehave */
+      @supports (-webkit-touch-callout: none) {
+        .mobile-nav-gradient-container::before {
+          background-image: none !important;
+          background-color: rgba(0, 0, 0, 0.95) !important;
+        }
+        .mobile-nav-gradient-container {
+          background-color: rgba(0, 0, 0, 0.95) !important;
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+        }
+      }
     `;
 
     return () => {
