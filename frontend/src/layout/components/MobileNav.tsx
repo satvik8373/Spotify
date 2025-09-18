@@ -36,7 +36,6 @@ const MobileNav = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
-  const [navBgColor, setNavBgColor] = useState<string>('#121212');
 
 
   // Check if we have an active song to add padding to the bottom nav
@@ -91,8 +90,6 @@ const MobileNav = () => {
   // Stable gradient background with isolation and theme-aware fallbacks
   const gradientStyle = React.useMemo(() => ({
     background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
-    backgroundColor: 'transparent',
-    border: 'none',
     boxShadow: 'none',
     zIndex: 30,
   }), []);
@@ -108,7 +105,8 @@ const MobileNav = () => {
       document.head.appendChild(styleElement);
     }
 
-   
+    // Ultra-specific CSS to prevent any overrides + iOS fixes
+    
 
     return () => {
       const element = document.getElementById(styleId);
@@ -117,32 +115,6 @@ const MobileNav = () => {
       }
     };
   }, [location.pathname]); // Re-run on route changes
-
-  // Sync bottom nav to a solid background derived from page/theme
-  useEffect(() => {
-    try {
-      const root = document.documentElement;
-      const body = document.body;
-
-      // Prefer theme variable if available (Tailwind themes often store HSL in --background)
-      const varBg = getComputedStyle(root).getPropertyValue('--background').trim();
-      if (varBg) {
-        const candidate = varBg.includes(',') || varBg.includes('%') ? `hsl(${varBg})` : varBg;
-        setNavBgColor(candidate);
-        return;
-      }
-
-      // Fallback to body background color
-      const resolved = getComputedStyle(body).backgroundColor || '#121212';
-      if (!resolved || resolved === 'transparent' || resolved === 'rgba(0, 0, 0, 0)') {
-        setNavBgColor('#121212');
-      } else {
-        setNavBgColor(resolved);
-      }
-    } catch {
-      setNavBgColor('#121212');
-    }
-  }, [location.pathname]);
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -629,8 +601,8 @@ const MobileNav = () => {
         <div
           className="relative grid grid-cols-4 h-14 px-2 pt-1"
           style={{
-            backgroundColor: navBgColor,
-            background: navBgColor,
+            backgroundColor: 'transparent',
+            background: 'transparent',
             zIndex: 10
           }}
         >
