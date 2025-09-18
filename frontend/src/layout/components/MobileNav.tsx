@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -592,7 +593,7 @@ const MobileNav = () => {
         style={{
           ...gradientStyle,
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
-          paddingTop: hasActiveSong ? '60px' : '40px',
+          paddingTop: hasActiveSong ? '44px' : '32px',
           '--album-primary': albumColors.primary || '#1db954',
           '--album-secondary': albumColors.secondary || '#191414',
         } as React.CSSProperties}
@@ -691,7 +692,7 @@ const MobileNav = () => {
 
         {/* Navigation Items - Positioned at bottom with proper contrast */}
         <div
-          className="relative grid grid-cols-4 h-20 px-2 pt-2"
+          className="relative grid grid-cols-4 h-14 px-2 pt-1"
           style={{
             backgroundColor: 'transparent',
             background: 'transparent',
@@ -703,7 +704,7 @@ const MobileNav = () => {
               key={item.path}
               to={item.path}
               className={cn(
-                'flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all duration-300 bg-transparent',
+                'flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all duration-300 bg-transparent',
                 isActive(item.path)
                   ? 'text-white scale-105'
                   : 'text-white/70 hover:text-white hover:bg-white/5'

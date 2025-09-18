@@ -1,3 +1,12 @@
+// Node 16 compatibility: provide WebCrypto for Vite runtime that expects global crypto
+// Safe no-op on newer Node versions where globalThis.crypto already exists
+import { webcrypto as nodeWebCrypto } from 'crypto';
+
+if (!(globalThis as any).crypto && nodeWebCrypto) {
+  // Use 'typeof globalThis.crypto' to avoid TS error about 'Crypto' not being found
+  (globalThis as any).crypto = nodeWebCrypto;
+}
+
 import path from "path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
