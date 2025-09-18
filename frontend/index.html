@@ -52,9 +52,6 @@
 			}
 		</script>
 		
-		<!-- Mobile navigation fix CSS -->
-		<link rel="stylesheet" href="/mobile-nav-fix.css" />
-		
 		<!-- Critical CSS inline for mobile -->
 		<style>
 			/* Mobile-first critical CSS */
@@ -70,25 +67,6 @@
 			/* Mobile touch targets */
 			@media (max-width: 768px) {
 				button, a, input, select, textarea { min-width: 44px; min-height: 44px; }
-			}
-			
-			/* iOS specific fixes for black bottom area */
-			@supports (-webkit-touch-callout: none) {
-				html {
-					height: -webkit-fill-available !important;
-					background-color: var(--background, #000000) !important;
-				}
-				
-				body {
-					min-height: 100vh !important;
-					min-height: -webkit-fill-available !important;
-					background-color: var(--background, #000000) !important;
-				}
-				
-				#root {
-					min-height: 100vh !important;
-					min-height: -webkit-fill-available !important;
-				}
 			}
 		</style>
 	</head>

@@ -1,95 +1,145 @@
-/* iOS Specific Fixes for Bottom Black Area */
+/* iOS Specific Fixes for Bottom Black Area and Mobile Nav Transparency */
+
+/* Mobile Navigation Transparency Fix - Always Transparent */
+.mobile-nav-transparent,
+.mobile-nav-gradient-container {
+    background: transparent !important;
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Prevent any background overrides on mobile nav */
+.mobile-nav-gradient-container,
+.mobile-nav-gradient-container * {
+    --tw-bg-opacity: 0 !important;
+}
+
+.mobile-nav-gradient-container .bg-background,
+.mobile-nav-gradient-container .bg-black,
+.mobile-nav-gradient-container .dark\:bg-\[\#191414\] {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
+/* Navigation items container - keep transparent */
+.mobile-nav-gradient-container .grid {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
+/* Force transparency in all scenarios - Critical for iOS PWA */
+.mobile-nav-gradient-container {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* Ensure hover states work but don't add backgrounds */
+.mobile-nav-gradient-container .hover\:bg-white\/5:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Additional iOS PWA transparency fixes */
+@media (display-mode: standalone) {
+
+    .mobile-nav-gradient-container,
+    .mobile-nav-gradient-container * {
+        background: transparent !important;
+        background-color: transparent !important;
+    }
+
+    /* Except the mobile player container */
+    .mobile-nav-gradient-container .mobile-player-container {
+        background: initial !important;
+        background-color: initial !important;
+    }
+}
+
+/* iOS Safari specific transparency fixes */
+@supports (-webkit-touch-callout: none) {
+    .mobile-nav-gradient-container {
+        background: transparent !important;
+        background-color: transparent !important;
+    }
+
+    /* Force transparency on all child elements except player */
+    .mobile-nav-gradient-container>*:not(.mobile-player-container) {
+        background: transparent !important;
+        background-color: transparent !important;
+    }
+
+    /* Navigation grid transparency */
+    .mobile-nav-gradient-container .grid {
+        background: transparent !important;
+        background-color: transparent !important;
+    }
+}
 
 /* iOS Safari and PWA viewport fixes */
 @supports (-webkit-touch-callout: none) {
-  html {
-    height: 100vh;
-    height: -webkit-fill-available;
-    background-color: var(--background, #000000);
-  }
-  
-  body {
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    background-color: var(--background, #000000);
-  }
-  
-  #root {
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    background-color: var(--background, #000000);
-  }
-  
-  /* Main content area fixes */
-  main[data-main-content] {
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    background-color: var(--background, #000000);
-  }
-  
-  /* ScrollArea viewport fixes */
-  [data-radix-scroll-area-viewport] {
-    background-color: var(--background, #000000);
-    min-height: 100vh;
-  }
-  
-  /* Scroll content fixes */
-  .scroll-content {
-    background-color: var(--background, #000000);
-    min-height: calc(100vh + 200px);
-    padding-bottom: calc(140px + env(safe-area-inset-bottom, 20px));
-  }
+    html {
+        height: 100vh;
+        height: -webkit-fill-available;
+        background-color: var(--background, #000000);
+    }
+
+    body {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        background-color: var(--background, #000000);
+    }
+
+    #root {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        background-color: var(--background, #000000);
+    }
+
+    /* Main content area fixes */
+    main[data-main-content] {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        background-color: var(--background, #000000);
+    }
+
+    /* ScrollArea viewport fixes */
+    [data-radix-scroll-area-viewport] {
+        background-color: var(--background, #000000);
+        min-height: 100vh;
+    }
+
+    /* Scroll content fixes */
+    .scroll-content {
+        background-color: var(--background, #000000);
+        min-height: calc(100vh + 200px);
+        padding-bottom: calc(140px + env(safe-area-inset-bottom, 20px));
+    }
 }
 
 /* Dark mode fixes for iOS */
 @supports (-webkit-touch-callout: none) {
-  .dark html,
-  .dark body,
-  .dark #root {
-    background-color: #191414 !important;
-  }
-  
-  .dark main[data-main-content] {
-    background-color: #191414 !important;
-  }
-  
-  .dark [data-radix-scroll-area-viewport] {
-    background-color: #191414 !important;
-  }
-  
-  .dark .scroll-content {
-    background-color: #191414 !important;
-  }
-}
 
-/* Mobile specific fixes */
-@media (max-width: 768px) {
-  @supports (-webkit-touch-callout: none) {
-    /* Ensure full height coverage */
-    html, body {
-      background-color: var(--background, #000000);
-      width: 100%;
-      overflow-x: hidden;
-    }
-    
     .dark html,
-    .dark body {
-      background-color: #191414;
+    .dark body,
+    .dark #root {
+        background-color: #191414 !important;
     }
-    
-    /* Fix scroll content */
-    .scroll-content {
-      min-height: calc(100vh + 300px);
-      padding-bottom: calc(160px + env(safe-area-inset-bottom, 30px));
-    }
-  }
-}
 
-/* PWA specific fixes */
-@media (display-mode: standalone) {
-  @supports (-webkit-touch-callout: none) {
-    .scroll-content {
-      padding-bottom: calc(180px + env(safe-area-inset-bottom, 40px));
+    .dark main[data-main-content] {
+        background-color: #191414 !important;
     }
-  }
+
+    .dark [data-radix-scroll-area-viewport] {
+        background-color: #191414 !important;
+    }
+
+    .dark .scroll-content {
+        background-color: #191414 !important;
+    }
+
+    /* Keep mobile nav transparent in dark mode too */
+    .dark .mobile-nav-gradient-container {
+        background: transparent !important;
+        background-color: transparent !important;
+    }
 }
