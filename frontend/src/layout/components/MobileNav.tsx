@@ -89,7 +89,9 @@ const MobileNav = () => {
 
   // Stable gradient background with isolation and theme-aware fallbacks
   const gradientStyle = React.useMemo(() => ({
-    //background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
+    background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
+    backgroundColor: 'transparent',
+    border: 'none',
     boxShadow: 'none',
     zIndex: 30,
   }), []);
@@ -106,7 +108,35 @@ const MobileNav = () => {
     }
 
     // Ultra-specific CSS to prevent any overrides + iOS fixes
-    
+    styleElement.textContent = `
+      .mobile-nav-gradient-container {
+        /* Use a tiny alpha to stabilize compositing on iOS */
+        background-color: rgba(0, 0, 0, 0.001) !important;
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        position: fixed;
+      }
+
+      /* Render gradient via pseudo-element to avoid Safari flattening to solid */
+      .mobile-nav-gradient-container::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(0deg, 
+          rgba(0, 0, 0, 0.95) 0%, 
+          rgba(0, 0, 0, 0.9) 10%, 
+          rgba(0, 0, 0, 0.8) 25%, 
+          rgba(0, 0, 0, 0.6) 40%, 
+          rgba(0, 0, 0, 0.4) 60%, 
+          rgba(0, 0, 0, 0.2) 75%, 
+          rgba(0, 0, 0, 0.1) 85%, 
+          transparent 95%, 
+          transparent 100%) !important;
+        z-index: 0;
+      }
+    `;
 
     return () => {
       const element = document.getElementById(styleId);
