@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -35,46 +35,8 @@ const MobileNav = () => {
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [baseRgb, setBaseRgb] = useState<string>('0, 0, 0');
   const albumColors = useAlbumColors(currentSong?.imageUrl);
-  const navContainerRef = useRef<HTMLDivElement | null>(null);
-
-  // Compute and set the base RGB color from the homepage/background to match gradient
-  useEffect(() => {
-    const target = navContainerRef.current;
-    if (!target) return;
-
-    const root = document.documentElement;
-    const bodyStyle = window.getComputedStyle(document.body);
-
-    // Prefer CSS variable --background if present, else fallback to body background-color
-    const cssVarBackground = root.style.getPropertyValue('--background') ||
-      getComputedStyle(root).getPropertyValue('--background') || '';
-
-    // Helper to convert hsl(var(--background)) or color strings to rgb triplet
-    const toRgbTriplet = (color: string): string | null => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1; canvas.height = 1;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-      // Normalize hsl(var(--background)) forms
-      let normalized = color.trim();
-      if (normalized.includes('var(--background')) {
-        const resolved = getComputedStyle(root).getPropertyValue('--background').trim();
-        normalized = resolved ? `hsl(${resolved})` : normalized;
-      }
-      // Remove optional alpha if present for parsing
-      normalized = normalized.replace(/\/(\s*\d*\.?\d+\s*)\)/, ')');
-      ctx.fillStyle = '#000';
-      ctx.fillStyle = normalized;
-      const data = ctx.getImageData(0, 0, 1, 1).data; // [r,g,b,a]
-      return `${data[0]}, ${data[1]}, ${data[2]}`;
-    };
-
-    const rgbFromVar = cssVarBackground ? toRgbTriplet(`hsl(${cssVarBackground})`) : null;
-    const rgbFromBody = toRgbTriplet(bodyStyle.backgroundColor || 'rgb(0,0,0)');
-    const rgb = rgbFromVar || rgbFromBody || '0, 0, 0';
-    target.style.setProperty('--mobile-nav-bg-rgb', rgb);
-  }, [location.pathname]);
 
 
   // Check if we have an active song to add padding to the bottom nav
@@ -126,14 +88,55 @@ const MobileNav = () => {
     };
   }, [currentSong, likedSongIds]);
 
-  // Stable gradient background using matched homepage color via CSS variable
+  // Stable gradient background with isolation and theme-aware fallbacks
   const gradientStyle = React.useMemo(() => ({
-    background: 'linear-gradient(0deg, rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.95) 0%, rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.9) 10%, rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.8) 25%, rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.6) 40%, rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.4) 60%, rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.2) 75%, rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.1) 85%, rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0) 95%, rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0) 100%)',
+    background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
     backgroundColor: 'transparent',
     border: 'none',
     boxShadow: 'none',
     zIndex: 30,
   }), []);
+
+  // Resolve homepage/background color and expose as CSS var for gradient
+  useEffect(() => {
+    try {
+      const root = document.documentElement;
+      const body = document.body;
+
+      const resolveToRgbTriplet = (colorString: string): string | null => {
+        // Create a temp element to let the browser resolve any CSS color formats
+        const temp = document.createElement('div');
+        temp.style.position = 'absolute';
+        temp.style.left = '-9999px';
+        temp.style.top = '-9999px';
+        temp.style.width = '1px';
+        temp.style.height = '1px';
+        temp.style.background = colorString;
+        document.body.appendChild(temp);
+        const computed = getComputedStyle(temp).backgroundColor;
+        temp.remove();
+        const match = computed.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+        return match ? `${match[1]}, ${match[2]}, ${match[3]}` : null;
+      };
+
+      // Try CSS variable first: --background often used with HSL in Tailwind themes
+      const rawVar = getComputedStyle(root).getPropertyValue('--background').trim();
+      if (rawVar) {
+        const tripletFromVar = resolveToRgbTriplet(`hsl(${rawVar})`);
+        if (tripletFromVar) {
+          setBaseRgb(tripletFromVar);
+          return;
+        }
+      }
+
+      // Fallback to body background color
+      const bodyBg = getComputedStyle(body).backgroundColor || 'rgb(0, 0, 0)';
+      const tripletFromBody = resolveToRgbTriplet(bodyBg);
+      setBaseRgb(tripletFromBody || '0, 0, 0');
+    } catch {
+      setBaseRgb('0, 0, 0');
+    }
+  }, [location.pathname]);
 
   // Force gradient override on theme changes and re-renders
   useEffect(() => {
@@ -163,24 +166,9 @@ const MobileNav = () => {
         position: absolute;
         inset: 0;
         pointer-events: none;
-        background: linear-gradient(0deg,
-          rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.95) 0%,
-          rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.9) 10%,
-          rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.8) 25%,
-          rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.6) 40%,
-          rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.4) 60%,
-          rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.2) 75%,
-          rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.1) 85%,
-          rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0) 95%,
-          rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0) 100%) !important;
-        z-index: 0;
-      }
-      .mobile-nav-gradient-container > * { position: relative; z-index: 1; }
-      
-      /* iOS Safari gradient rendering fix */
-      @supports (-webkit-appearance: none) {
-        .mobile-nav-gradient-container::before {
-          background: linear-gradient(0deg,
+        /* Two-layer gradient: base page color + subtle black at the bottom for icon contrast */
+        background-image:
+          linear-gradient(0deg,
             rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.95) 0%,
             rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.9) 10%,
             rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.8) 25%,
@@ -188,8 +176,34 @@ const MobileNav = () => {
             rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.4) 60%,
             rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.2) 75%,
             rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.1) 85%,
-            rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0) 95%,
-            rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0) 100%) !important;
+            rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.0) 95%,
+            rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.0) 100%),
+          linear-gradient(0deg,
+            rgba(0, 0, 0, 0.20) 0%,
+            rgba(0, 0, 0, 0.00) 18%);
+        background-repeat: no-repeat, no-repeat;
+        background-size: 100% 100%, 100% 100%;
+        z-index: 0;
+      }
+      .mobile-nav-gradient-container > * { position: relative; z-index: 1; }
+      
+      /* iOS Safari gradient rendering fix */
+      @supports (-webkit-appearance: none) {
+        .mobile-nav-gradient-container::before {
+          background-image:
+            linear-gradient(0deg,
+              rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.95) 0%,
+              rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.9) 10%,
+              rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.8) 25%,
+              rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.6) 40%,
+              rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.4) 60%,
+              rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.2) 75%,
+              rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.1) 85%,
+              rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.0) 95%,
+              rgba(var(--mobile-nav-bg-rgb, 0, 0, 0), 0.0) 100%),
+            linear-gradient(0deg,
+              rgba(0, 0, 0, 0.20) 0%,
+              rgba(0, 0, 0, 0.00) 18%) !important;
         }
         .mobile-nav-gradient-container {
           -webkit-mask: linear-gradient(0deg, 
@@ -629,8 +643,9 @@ const MobileNav = () => {
       {/* Bottom Navigation - Spotify Style with Gradient Background */}
       <div
         className="mobile-nav-gradient-container fixed bottom-0 left-0 right-0 md:hidden"
-        style={{
-          ...gradientStyle,
+        // Expose the resolved base RGB to CSS for the pseudo-element
+        // Uses inline style var so it updates reactively with route/theme changes
+        style={{ ...(gradientStyle as any), ['--mobile-nav-bg-rgb' as any]: baseRgb,
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
           paddingTop: hasActiveSong ? '44px' : '32px',
           '--album-primary': albumColors.primary || '#1db954',
