@@ -36,6 +36,7 @@ const MobileNav = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
+  const [navBgColor, setNavBgColor] = useState<string>('#121212');
 
 
   // Check if we have an active song to add padding to the bottom nav
@@ -107,40 +108,7 @@ const MobileNav = () => {
       document.head.appendChild(styleElement);
     }
 
-    // Simplified: remove gradient overlay and keep container transparent
-    styleElement.textContent = `
-      .mobile-nav-gradient-container {
-        background-color: transparent !important;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        position: fixed;
-      }
-
-      .mobile-nav-gradient-container > * { position: relative; z-index: 1; }
-      
-      /* iOS no-op block retained intentionally */
-      @supports (-webkit-appearance: none) { }
-      
-      /* Prevent theme variables from affecting the nav */
-      .mobile-nav-gradient-container,
-      .mobile-nav-gradient-container * {
-        --tw-bg-opacity: 0 !important;
-      }
-      
-      /* Override any Tailwind background utilities */
-      .mobile-nav-gradient-container .bg-background,
-      .mobile-nav-gradient-container .bg-black,
-      .mobile-nav-gradient-container .dark\\:bg-\\[\\#191414\\] {
-        /* allow explicit backgrounds inside children */
-      }
-      
-      /* Ensure child elements don't inherit problematic backgrounds */
-      .mobile-nav-gradient-container > *:not(.mobile-player-container) {
-        background-color: transparent !important;
-      }
-      /* Hover states remain functional (no override needed) */
-    `;
+   
 
     return () => {
       const element = document.getElementById(styleId);
@@ -149,6 +117,32 @@ const MobileNav = () => {
       }
     };
   }, [location.pathname]); // Re-run on route changes
+
+  // Sync bottom nav to a solid background derived from page/theme
+  useEffect(() => {
+    try {
+      const root = document.documentElement;
+      const body = document.body;
+
+      // Prefer theme variable if available (Tailwind themes often store HSL in --background)
+      const varBg = getComputedStyle(root).getPropertyValue('--background').trim();
+      if (varBg) {
+        const candidate = varBg.includes(',') || varBg.includes('%') ? `hsl(${varBg})` : varBg;
+        setNavBgColor(candidate);
+        return;
+      }
+
+      // Fallback to body background color
+      const resolved = getComputedStyle(body).backgroundColor || '#121212';
+      if (!resolved || resolved === 'transparent' || resolved === 'rgba(0, 0, 0, 0)') {
+        setNavBgColor('#121212');
+      } else {
+        setNavBgColor(resolved);
+      }
+    } catch {
+      setNavBgColor('#121212');
+    }
+  }, [location.pathname]);
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -633,10 +627,10 @@ const MobileNav = () => {
 
         {/* Navigation Items - Positioned at bottom with proper contrast */}
         <div
-          className="relative grid grid-cols-4 h-14 px-2 pt-1 bg-black/95"
+          className="relative grid grid-cols-4 h-14 px-2 pt-1"
           style={{
-            backgroundColor: 'transparent',
-            background: 'transparent',
+            backgroundColor: navBgColor,
+            background: navBgColor,
             zIndex: 10
           }}
         >
