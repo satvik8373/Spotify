@@ -2,6 +2,7 @@
 // Safe no-op on newer Node versions where globalThis.crypto already exists
 import { webcrypto as nodeWebCrypto } from 'crypto';
 
+
 if (!(globalThis as any).crypto && nodeWebCrypto) {
   // Use 'typeof globalThis.crypto' to avoid TS error about 'Crypto' not being found
   (globalThis as any).crypto = nodeWebCrypto;
@@ -60,7 +61,7 @@ export default defineConfig(({ mode }) => {
 				},
 				manifest: {
 					name: 'Mavrixfy',
-					short_name: 'Music App',
+					short_name: 'Mavrixfy',
 					description: 'Discover, listen to, and organize music you love',
 					theme_color: '#1db954',
 					background_color: '#121212',
