@@ -1600,6 +1600,45 @@ const AudioPlayer = () => {
     }
   };
 
+  // Background-safe next track advancement: directly switch audio src and play
+  const forceAdvanceToNextTrack = () => {
+    const audio = audioRef.current;
+    const state = usePlayerStore.getState();
+    if (!audio || !state.currentSong || state.queue.length === 0) return;
+
+    const nextIndex = (state.currentIndex + 1) % state.queue.length;
+    const nextSong = state.queue[nextIndex];
+    if (!nextSong || !nextSong.audioUrl) {
+      state.playNext();
+      state.setIsPlaying(true);
+      return;
+    }
+
+    // Update store first to keep UI/stores in sync
+    usePlayerStore.setState({
+      currentIndex: nextIndex,
+      currentSong: nextSong,
+      currentTime: 0,
+      isPlaying: true,
+      hasUserInteracted: true,
+      skipRestoreUntilTs: Date.now() + 5000
+    });
+
+    // Then update the audio element source directly and play
+    try {
+      audio.src = nextSong.audioUrl;
+      audio.load();
+      const attempts = [0, 100, 300, 700, 1200];
+      attempts.forEach((delay) => {
+        setTimeout(() => {
+          if (audio.paused) {
+            audio.play().catch(() => {});
+          }
+        }, delay);
+      });
+    } catch (_e) {}
+  };
+
   // Volume UI is not used in this component variant
 
   const handleLikeToggle = (e: React.MouseEvent) => {
@@ -2327,6 +2366,7 @@ const AudioPlayer = () => {
       <audio
         ref={audioRef}
         src={currentSong?.audioUrl ? currentSong.audioUrl.replace(/^http:\/\//, 'https://') : undefined}
+        crossOrigin="anonymous"
         autoPlay={isPlaying}
         onLoadStart={() => {
           // Reset restoration flag when loading new audio
@@ -2382,39 +2422,39 @@ const AudioPlayer = () => {
                 }
               }
               
-              // Schedule next song to play when current song ends
+              // Schedule next song: prefer direct switch when app is in background
               setTimeout(() => {
-                if (usePlayerStore.getState().isRepeating) {
-                  // Reset the current song
+                const repeating = usePlayerStore.getState().isRepeating;
+                if (repeating) {
                   audio.currentTime = 0;
                   audio.play().catch(() => {});
                 } else {
-                  console.log("Auto advancing to next song near end");
-                  const state = usePlayerStore.getState();
-                  state.setUserInteracted();
-                  state.playNext();
-                  state.setIsPlaying(true);
-                  
-                  // For background/lock screen playback, we need to be more aggressive
-                  // in ensuring the audio element actually starts playing
-                  setTimeout(() => {
-                    const newAudio = document.querySelector('audio');
-                    if (newAudio && newAudio.paused) {
-                      // Try multiple times with increasing delays
-                      const playAttempts = [0, 100, 300, 700];
-                      playAttempts.forEach((delay) => {
-                        setTimeout(() => {
-                          if (newAudio.paused && !newAudio.ended) {
-                            newAudio.play().catch(() => {});
-                          }
-                        }, delay);
-                      });
-                    }
-                  }, 50);
+                  if (document.hidden) {
+                    // Background-safe path
+                    forceAdvanceToNextTrack();
+                  } else {
+                    // Foreground standard path
+                    const state = usePlayerStore.getState();
+                    state.setUserInteracted();
+                    state.playNext();
+                    state.setIsPlaying(true);
+                    setTimeout(() => {
+                      const newAudio = document.querySelector('audio') as HTMLAudioElement | null;
+                      if (newAudio && newAudio.paused) {
+                        const playAttempts = [0, 100, 300, 700];
+                        playAttempts.forEach((delay) => {
+                          setTimeout(() => {
+                            if (newAudio.paused && !newAudio.ended) {
+                              newAudio.play().catch(() => {});
+                            }
+                          }, delay);
+                        });
+                      }
+                    }, 50);
+                  }
                 }
-                // Reset flag after handling
                 (audio as any)._isHandlingEndOfSong = false;
-              }, 800); // Reduced from 1000ms to 800ms to start transition sooner
+              }, 500);
             }
           } else {
             // Reset the flag when not at the end
