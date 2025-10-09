@@ -2,7 +2,7 @@ import React from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Heart, SkipBack, SkipForward, Play, Pause, Shuffle, Bluetooth, Speaker, X } from 'lucide-react';
+import { Heart, SkipBack, SkipForward, Play, Pause, Shuffle, Repeat, Bluetooth, Speaker, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { Slider } from '@/components/ui/slider';
@@ -135,6 +135,7 @@ const AudioPlayer = () => {
   const [currentTime, setLocalCurrentTime] = useState(0);
   const [duration, setLocalDuration] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
+  const [volume, setVolume] = useState(75);
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
@@ -148,6 +149,8 @@ const AudioPlayer = () => {
     playNext, 
     setCurrentSong, 
     setIsPlaying,
+    currentTime: storeCurrentTime,
+    duration: storeDuration,
     isShuffled,
     toggleShuffle
   } = usePlayerStore();
@@ -465,7 +468,7 @@ const AudioPlayer = () => {
           const playPromise = updatedAudio.play();
           
           if (playPromise !== undefined) {
-          playPromise.catch(() => {
+            playPromise.catch(err => {
               // If initial play fails, try again with another delay
               setTimeout(() => {
                 const audio = audioRef.current || document.querySelector('audio');
@@ -996,7 +999,7 @@ const AudioPlayer = () => {
           // Try to restart the current song
           const currentTime = audio.currentTime;
           audio.currentTime = currentTime;
-          audio.play().catch(() => {
+          audio.play().catch(err => {
             // Error handling without logging
           });
         }, 2000);
@@ -1174,11 +1177,11 @@ const AudioPlayer = () => {
             .then(() => {
               isHandlingPlayback.current = false;
             })
-            .catch((err) => {
-              if (err && typeof err.message === 'string' && err.message.includes('interrupted')) {
+            .catch(error => {
+              if (error.message.includes('interrupted')) {
                 // If the error was due to interruption, try again after a short delay
                 setTimeout(() => {
-                  audioRef.current?.play().catch(() => {
+                  audioRef.current?.play().catch(e => {
                     setIsPlaying(false);
                   });
                 }, 300);
@@ -1262,7 +1265,7 @@ const AudioPlayer = () => {
               // Force a play attempt with the new URL
               if (isPlaying) {
                 audioRef.current?.load();
-                audioRef.current?.play().catch(() => {
+                audioRef.current?.play().catch(err => {
                   // Error handling without toast
                 });
               }
@@ -1356,14 +1359,14 @@ const AudioPlayer = () => {
                         }
                       }
                 })
-                .catch((err) => {
+                .catch(error => {
                       // Handle AbortError specifically
-                      if (err && err.name === 'AbortError') {
+                      if (error.name === 'AbortError') {
                         // Wait for any pending operations to complete
                         setTimeout(() => {
                           // Only attempt retry if we're still supposed to be playing
                           if (isPlaying && audioRef.current) {
-                            audioRef.current.play().catch(() => {
+                            audioRef.current.play().catch(retryError => {
                   setIsPlaying(false);
                             });
                           }
@@ -1419,7 +1422,7 @@ const AudioPlayer = () => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleError = (_e: ErrorEvent) => {
+    const handleError = (e: ErrorEvent) => {
       setIsLoading(false);
       setIsPlaying(false);
       isHandlingPlayback.current = false;
@@ -1504,7 +1507,7 @@ const AudioPlayer = () => {
   }, [currentSong]);
 
   // Handle audio element errors
-  const handleError = (_e: any) => {
+  const handleError = (e: any) => {
     // If the current song fails to load, try to play the next song
     if (currentSong) {
       setTimeout(() => playNext(), 1000);
@@ -1524,11 +1527,7 @@ const AudioPlayer = () => {
           if (savedState) {
             const { currentTime: savedTime, currentSong: savedSong } = JSON.parse(savedState);
             // Check if this is the same song and we have a valid saved time
-          const skipUntil = usePlayerStore.getState().skipRestoreUntilTs || 0;
-          const now = Date.now();
-          if (now < skipUntil) {
-            // Skip restoring position right after a track change
-          } else if (savedTime && savedTime > 0 && savedTime < duration && 
+            if (savedTime && savedTime > 0 && savedTime < duration && 
                 savedSong && currentSong && 
                 (savedSong._id === currentSong._id || 
                  (savedSong as any).id === (currentSong as any).id ||
@@ -1600,7 +1599,12 @@ const AudioPlayer = () => {
     }
   };
 
-  // Volume UI is not used in this component variant
+  const handleVolumeChange = (value: number[]) => {
+    setVolume(value[0]);
+    if (audioRef.current) {
+      audioRef.current.volume = value[0] / 100;
+    }
+  };
 
   const handleLikeToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -2435,11 +2439,7 @@ const AudioPlayer = () => {
                 const currentTime = audioRef.current.currentTime;
                 const duration = audioRef.current.duration;
                 
-                const skipUntil2 = usePlayerStore.getState().skipRestoreUntilTs || 0;
-                const now2 = Date.now();
-                if (now2 < skipUntil2) {
-                  // Skip restore while transitioning to a new track
-                } else if (savedTime && savedTime > 0 && savedTime < duration && 
+                if (savedTime && savedTime > 0 && savedTime < duration && 
                     savedSong && currentSong && 
                     (savedSong._id === currentSong._id || 
                      (savedSong as any).id === (currentSong as any).id ||
@@ -2547,11 +2547,7 @@ const AudioPlayer = () => {
                 const currentTime = audioRef.current.currentTime;
                 const duration = audioRef.current.duration;
                 
-                const skipUntil3 = usePlayerStore.getState().skipRestoreUntilTs || 0;
-                const now3 = Date.now();
-                if (now3 < skipUntil3) {
-                  // Skip restore while transitioning to a new track
-                } else if (savedTime && savedTime > 0 && savedTime < duration && 
+                if (savedTime && savedTime > 0 && savedTime < duration && 
                     savedSong && currentSong && 
                     (savedSong._id === currentSong._id || 
                      (savedSong as any).id === (currentSong as any).id ||

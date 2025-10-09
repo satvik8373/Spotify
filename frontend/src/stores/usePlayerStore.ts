@@ -18,7 +18,6 @@ export interface PlayerState {
   autoplayBlocked: boolean;
   wasPlayingBeforeInterruption: boolean;
   lastPlayNextTime: number;
-  skipRestoreUntilTs?: number;
   
   // Actions
   setCurrentSong: (song: Song) => void;
@@ -66,7 +65,6 @@ export const usePlayerStore = create<PlayerState>()(
       autoplayBlocked: false,
       wasPlayingBeforeInterruption: false,
       lastPlayNextTime: 0,
-      skipRestoreUntilTs: 0,
 
       setCurrentSong: (song) => {
         set({ currentSong: song });
@@ -80,7 +78,7 @@ export const usePlayerStore = create<PlayerState>()(
               timestamp: new Date().toISOString()
             };
             localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
+          } catch (error) {
             // Error handling without logging
           }
         };
@@ -111,7 +109,7 @@ export const usePlayerStore = create<PlayerState>()(
               timestamp: new Date().toISOString()
             };
             localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
+          } catch (error) {
             // Error handling without logging
           }
         };
@@ -153,7 +151,7 @@ export const usePlayerStore = create<PlayerState>()(
             timestamp: new Date().toISOString()
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
+        } catch (error) {
           // Error handling without logging
         }
       },
@@ -206,8 +204,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentTime: 0, // Reset time for new song
           hasUserInteracted: true,
           isPlaying: true, // Always ensure playback continues
-          lastPlayNextTime: now, // Track when we last called playNext
-          skipRestoreUntilTs: now + 5000 // prevent time restore for 5s on track change
+          lastPlayNextTime: now // Track when we last called playNext
         });
         
         // More reliable method to ensure the audio element updates
@@ -228,7 +225,7 @@ export const usePlayerStore = create<PlayerState>()(
             // Use a more forceful approach to ensure playback
             const playPromise = audio.play();
             if (playPromise !== undefined) {
-              playPromise.catch(() => {
+              playPromise.catch((error) => {
                 // Retry playing after a short delay
                 setTimeout(() => {
                   audio.play().catch(() => {
@@ -330,7 +327,7 @@ export const usePlayerStore = create<PlayerState>()(
             isPlaying: true // Include playback state explicitly
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
+        } catch (error) {
           // Error handling without logging
         }
       },
@@ -360,8 +357,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentIndex: newIndex,
           currentSong: queue[newIndex],
           hasUserInteracted: true,
-          isPlaying: true, // Always ensure playback continues
-          skipRestoreUntilTs: Date.now() + 5000
+          isPlaying: true // Always ensure playback continues
         });
         
         // Save to localStorage as a backup
@@ -373,7 +369,7 @@ export const usePlayerStore = create<PlayerState>()(
             timestamp: new Date().toISOString()
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
+        } catch (error) {
           // Error handling without logging
         }
       },
@@ -438,7 +434,7 @@ setTimeout(() => {
         store.setIsPlaying(true);
       }
     }
-} catch (_error) {
+  } catch (error) {
     // Error handling without logging
   }
 }, 0);
