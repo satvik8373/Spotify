@@ -1130,55 +1130,41 @@ const LikedSongsPage = () => {
               )}
             </div>
 
-            {/* Spotify sync buttons - moved to top with professional design */}
+            {/* Spotify sync section - Ultra Compact */}
             {(isSpotifyAuthValid) && (
-              <div className={cn("mb-6", isMobile ? "px-0" : "px-0")}> 
-                <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 backdrop-blur-sm rounded-xl border border-green-500/30 p-6 shadow-lg">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                          <Music2 className="w-4 h-4 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-lg text-foreground">Spotify Integration</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {upToDate ? '✅ Library is up to date' : '🔄 New songs available to sync'}
-                          </p>
-                        </div>
+              <div className={cn("mb-4", isMobile ? "px-0" : "px-0")}> 
+                <div className="bg-green-500/10 backdrop-blur-sm rounded-lg border border-green-500/20 p-3 hover:border-green-500/40 transition-all">
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Left - Icon & Status */}
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <div className="w-9 h-9 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Music2 className="w-5 h-5 text-white" />
                       </div>
-                      {/* Show connected account info */}
-                      {spotifyAccountName && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                          <span className="text-green-500 font-medium">Connected to: {spotifyAccountName}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-foreground">Spotify</span>
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                         </div>
-                      )}
-                      {/* Show sync status if available */}
-                      {syncStatus && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Last sync: {syncStatus.lastSync ? new Date(syncStatus.lastSync).toLocaleString() : 'Never'}
-                        </div>
-                      )}
+                        <p className="text-xs text-muted-foreground truncate">
+                          {spotifyAccountName || 'Connected'} · {upToDate ? 'Up to date' : 'New songs'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
+                    
+                    {/* Right - Buttons */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
                       <Button
                         disabled={syncingSpotify}
                         onClick={async () => {
                           setSyncingSpotify(true);
                           try {
                             const tracks = await fetchAllSpotifySavedTracks();
-                            
-                            // Sort tracks by addedAt date (most recent first) to match Spotify app order
                             const sortedTracks = tracks.sort((a: any, b: any) => {
                               const dateA = new Date(a.addedAt).getTime();
                               const dateB = new Date(b.addedAt).getTime();
-                              return dateB - dateA; // Most recent first
+                              return dateB - dateA;
                             });
-                            
-                            // Filter to only show new/unscanned tracks
                             const newTracks = await filterOnlyNewSpotifyTracks(sortedTracks);
-                            
                             setSpotifyTracks(newTracks);
                             const newCount = newTracks.length;
                             if (newCount === 0) {
@@ -1193,25 +1179,26 @@ const LikedSongsPage = () => {
                             setSyncingSpotify(false);
                           }
                         }}
-                        className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
+                        size="sm"
+                        className="h-8 bg-green-600 hover:bg-green-700 text-white text-xs px-3 rounded-md"
                       >
                         {syncingSpotify ? (
-                          <>Syncing...</>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                         ) : (
                           <>
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                            Sync Spotify
+                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                            Sync
                           </>
                         )}
                       </Button>
+                      
                       <Button
-                        variant="outline"
-                        size="default"
+                        variant="ghost"
+                        size="sm"
                         onClick={handleDisconnect}
-                        className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 font-medium px-6 py-2 rounded-lg transition-all duration-200"
+                        className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
                       >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Disconnect
+                        <LogOut className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -1219,31 +1206,27 @@ const LikedSongsPage = () => {
               </div>
             )}
 
-            {/* Connect Spotify button - moved to top with professional design */}
+            {/* Connect Spotify section - Ultra Compact */}
             {(!isSpotifyAuthValid) && (
-              <div className={cn("mb-6", isMobile ? "px-0" : "px-0")}> 
-                <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 backdrop-blur-sm rounded-xl border border-green-500/30 p-6 shadow-lg">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                          <Music2 className="w-4 h-4 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-lg text-foreground">Connect Spotify</h3>
-                          <p className="text-sm text-muted-foreground">
-                            🎵 Sync your Spotify liked songs with Mavrixfy
-                          </p>
-                        </div>
+              <div className={cn("mb-4", isMobile ? "px-0" : "px-0")}> 
+                <div className="bg-green-500/10 backdrop-blur-sm rounded-lg border border-green-500/20 p-3 hover:border-green-500/40 transition-all group">
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Left - Icon & Info */}
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <div className="w-9 h-9 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                        <Music2 className="w-5 h-5 text-white" />
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Import your favorite tracks and keep them synced
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-semibold text-foreground block">Connect Spotify</span>
+                        <p className="text-xs text-muted-foreground">Sync your liked songs</p>
+                      </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
+                    
+                    {/* Right - Connect Button */}
+                    <div className="flex-shrink-0">
                       <SpotifyLogin 
                         variant="default" 
-                        className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
+                        className="h-8 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 rounded-md"
                       />
                     </div>
                   </div>

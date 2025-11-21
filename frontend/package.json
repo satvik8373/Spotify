@@ -1,6 +1,6 @@
 {
-  "name": "spotify-clone-frontend",
-  "version": "1.0.0",
+  "name": "mavrixfy-frontend",
+  "version": "2.0.0",
   "description": "Mavrixfy Frontend",
   "main": "index.js",
   "type": "module",

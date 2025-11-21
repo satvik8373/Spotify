@@ -34,6 +34,8 @@ export default defineConfig(({ mode }) => {
 				registerType: 'autoUpdate',
 				workbox: {
 					globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,avif}'],
+					// Exclude audio files from precaching
+					globIgnores: ['**/*.{mp3,mp4,m4a,aac,ogg,wav,flac}'],
 					runtimeCaching: [
 						{
 							urlPattern: /^https:\/\/res\.cloudinary\.com\/.*/i,
@@ -56,6 +58,16 @@ export default defineConfig(({ mode }) => {
 									maxAgeSeconds: 60 * 60 * 5, // 5 hours
 								},
 							},
+						},
+						// Audio files - NetworkOnly (no caching for iOS compatibility)
+						{
+							urlPattern: /\.(mp3|mp4|m4a|aac|ogg|wav|flac)$/i,
+							handler: 'NetworkOnly',
+						},
+						// JioSaavn CDN - NetworkOnly for audio
+						{
+							urlPattern: /^https:\/\/aac\.saavncdn\.com\/.*/i,
+							handler: 'NetworkOnly',
 						},
 					],
 				},
@@ -102,11 +114,11 @@ export default defineConfig(({ mode }) => {
 				}
 			}),
 			compression({
-				algorithm: 'gzip',
+				algorithms: ['gzip'],
 				exclude: [/\.(br)$/, /\.(gz)$/],
 			}),
 			compression({
-				algorithm: 'brotliCompress',
+				algorithms: ['brotliCompress'],
 				exclude: [/\.(br)$/, /\.(gz)$/],
 			}),
 		],
