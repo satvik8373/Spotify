@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Base URL for JioSaavn unofficial API
-const JIOSAAVN_API_BASE_URL = 'https://saavn.dev/api';
+// Base URL for JioSaavn unofficial API - using working alternative
+const JIOSAAVN_API_BASE_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
 
 /**
  * Search for songs, albums, artists on JioSaavn

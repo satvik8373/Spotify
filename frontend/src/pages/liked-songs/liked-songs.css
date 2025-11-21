@@ -80,6 +80,31 @@
   margin-bottom: 0.25rem;
 }
 
+/* Play/Pause button animations */
+.group:hover .group-hover\:flex {
+  display: flex !important;
+}
+
+.group:hover .group-hover\:hidden {
+  display: none !important;
+}
+
+/* Smooth transitions for play button */
+.group button {
+  transition: all 0.2s ease-in-out;
+}
+
+.group:hover button {
+  opacity: 1;
+}
+
+/* Mobile play button styling */
+@media (max-width: 767px) {
+  .spotify-liked-song-row {
+    grid-template-columns: auto 1fr auto !important;
+  }
+}
+
 /* Ensure proper alignment of song details */
 @media (min-width: 768px) {
   .spotify-desktop-song-row > div:nth-child(2) {

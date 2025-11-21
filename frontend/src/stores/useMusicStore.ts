@@ -54,55 +54,82 @@ interface MusicStore {
 
 //
 
-// Lightweight request de-duplication + cache for Saavn endpoints
-const saavnRequestState = {
+// JioSaavn API - using backend proxy
+const musicRequestState = {
   inFlight: new Map<string, Promise<any>>(),
   cache: new Map<string, { ts: number; data: any }>(),
   activeKeys: new Set<string>(),
 };
 
-async function fetchSaavnJson(url: string, ttlMs: number = 5 * 60 * 1000, retries: number = 1): Promise<any> {
-  const cached = saavnRequestState.cache.get(url);
+async function fetchMusicJson(endpoint: string, params: Record<string, any> = {}, ttlMs: number = 5 * 60 * 1000): Promise<any> {
+  const cacheKey = `${endpoint}?${JSON.stringify(params)}`;
+  
+  const cached = musicRequestState.cache.get(cacheKey);
   if (cached && Date.now() - cached.ts < ttlMs) {
     return cached.data;
   }
 
-  const existing = saavnRequestState.inFlight.get(url);
+  const existing = musicRequestState.inFlight.get(cacheKey);
   if (existing) {
     return existing;
   }
 
   const doFetch = async () => {
-    let attempt = 0;
-    let backoffMs = 500;
-    while (true) {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Saavn request failed: ${response.status}`);
-        }
-        const data = await response.json();
-        saavnRequestState.cache.set(url, { ts: Date.now(), data });
-        return data;
-      } catch (error) {
-        if (attempt >= retries) {
-          throw error;
-        }
-        await new Promise(resolve => setTimeout(resolve, backoffMs));
-        backoffMs *= 2;
-        attempt++;
-      }
+    try {
+      const response = await axiosInstance.get(endpoint, { params });
+      const data = response.data;
+      musicRequestState.cache.set(cacheKey, { ts: Date.now(), data });
+      return data;
+    } catch (error) {
+      console.error('Music API request failed:', error);
+      throw error;
     }
   };
 
   const promise = doFetch();
-  saavnRequestState.inFlight.set(url, promise);
+  musicRequestState.inFlight.set(cacheKey, promise);
   try {
     const data = await promise;
     return data;
   } finally {
-    saavnRequestState.inFlight.delete(url);
+    musicRequestState.inFlight.delete(cacheKey);
   }
+}
+
+// Convert JioSaavn track to IndianSong format
+function convertSaavnTrack(item: any): IndianSong {
+  // Get the best quality download URL (prefer 320kbps, then 160kbps, then 96kbps)
+  let audioUrl = '';
+  if (item.downloadUrl && Array.isArray(item.downloadUrl)) {
+    // Try to get the highest quality available
+    const downloadUrl = item.downloadUrl.find((d: any) => d.quality === '320kbps') ||
+                       item.downloadUrl.find((d: any) => d.quality === '160kbps') ||
+                       item.downloadUrl.find((d: any) => d.quality === '96kbps') ||
+                       item.downloadUrl[item.downloadUrl.length - 1];
+    audioUrl = downloadUrl?.link || '';
+  }
+  
+  // Get the best quality image
+  let imageUrl = '';
+  if (item.image && Array.isArray(item.image)) {
+    const image = item.image.find((i: any) => i.quality === '500x500') ||
+                 item.image.find((i: any) => i.quality === '150x150') ||
+                 item.image[item.image.length - 1];
+    imageUrl = image?.link || '';
+  } else if (typeof item.image === 'string') {
+    imageUrl = item.image;
+  }
+  
+  return {
+    id: item.id,
+    title: item.name || item.title,
+    artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
+    album: item.album?.name || item.album,
+    year: item.year,
+    duration: item.duration,
+    image: imageUrl,
+    url: audioUrl,
+  };
 }
 
 export const useMusicStore = create<MusicStore>((set) => ({
@@ -216,27 +243,18 @@ export const useMusicStore = create<MusicStore>((set) => ({
     }
   },
 
-  // Indian Music API Methods
+  // Indian Music API Methods (using JioSaavn via backend proxy)
   fetchIndianTrendingSongs: async () => {
-    const url = 'https://saavn.dev/api/search/songs?query=latest%20hits&page=1&limit=10';
-    if (saavnRequestState.activeKeys.has(url)) return;
-    saavnRequestState.activeKeys.add(url);
+    const key = 'trending-10';
+    if (musicRequestState.activeKeys.has(key)) return;
+    musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      const data = await fetchMusicJson('/api/jiosaavn/trending', { limit: 10 });
       if (data?.data?.results && data.data.results.length > 0) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-          .map((item: any) => ({
-            id: item.id,
-            title: item.name,
-            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-            album: item.album.name,
-            year: item.year,
-            duration: item.duration,
-            image: item.image[2].url,
-            url: item.downloadUrl[4].url,
-          }));
+          .map((item: any) => convertSaavnTrack(item));
         set({ indianTrendingSongs: formattedResults });
       } else {
         set({ indianTrendingSongs: [] });
@@ -244,31 +262,22 @@ export const useMusicStore = create<MusicStore>((set) => ({
     } catch (error) {
       set({ indianTrendingSongs: [] });
     } finally {
-      saavnRequestState.activeKeys.delete(url);
+      musicRequestState.activeKeys.delete(key);
       set({ isIndianMusicLoading: false });
     }
   },
 
   fetchBollywoodSongs: async () => {
-    const url = 'https://saavn.dev/api/search/songs?query=bollywood%20hits&page=1&limit=15';
-    if (saavnRequestState.activeKeys.has(url)) return;
-    saavnRequestState.activeKeys.add(url);
+    const key = 'search-bollywood';
+    if (musicRequestState.activeKeys.has(key)) return;
+    musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      const data = await fetchMusicJson('/api/jiosaavn/search/songs', { query: 'bollywood hits', limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-          .map((item: any) => ({
-            id: item.id,
-            title: item.name,
-            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-            album: item.album.name,
-            year: item.year,
-            duration: item.duration,
-            image: item.image[2].url,
-            url: item.downloadUrl[4].url,
-          }));
+          .map((item: any) => convertSaavnTrack(item));
         set({ bollywoodSongs: formattedResults });
       } else {
         set({ bollywoodSongs: [] });
@@ -276,31 +285,22 @@ export const useMusicStore = create<MusicStore>((set) => ({
     } catch (error) {
       set({ bollywoodSongs: [] });
     } finally {
-      saavnRequestState.activeKeys.delete(url);
+      musicRequestState.activeKeys.delete(key);
       set({ isIndianMusicLoading: false });
     }
   },
 
   fetchHollywoodSongs: async () => {
-    const url = 'https://saavn.dev/api/search/songs?query=english%20top%20hits&page=1&limit=15';
-    if (saavnRequestState.activeKeys.has(url)) return;
-    saavnRequestState.activeKeys.add(url);
+    const key = 'search-hollywood';
+    if (musicRequestState.activeKeys.has(key)) return;
+    musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      const data = await fetchMusicJson('/api/jiosaavn/search/songs', { query: 'english top hits', limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-          .map((item: any) => ({
-            id: item.id,
-            title: item.name,
-            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-            album: item.album.name,
-            year: item.year,
-            duration: item.duration,
-            image: item.image[2].url,
-            url: item.downloadUrl[4].url,
-          }));
+          .map((item: any) => convertSaavnTrack(item));
         set({ hollywoodSongs: formattedResults });
       } else {
         set({ hollywoodSongs: [] });
@@ -308,31 +308,22 @@ export const useMusicStore = create<MusicStore>((set) => ({
     } catch (error) {
       set({ hollywoodSongs: [] });
     } finally {
-      saavnRequestState.activeKeys.delete(url);
+      musicRequestState.activeKeys.delete(key);
       set({ isIndianMusicLoading: false });
     }
   },
 
   fetchOfficialTrendingSongs: async () => {
-    const url = 'https://saavn.dev/api/search/songs?query=trending%20songs&page=1&limit=15';
-    if (saavnRequestState.activeKeys.has(url)) return;
-    saavnRequestState.activeKeys.add(url);
+    const key = 'trending-15';
+    if (musicRequestState.activeKeys.has(key)) return;
+    musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      const data = await fetchMusicJson('/api/jiosaavn/trending', { limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-          .map((item: any) => ({
-            id: item.id,
-            title: item.name,
-            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-            album: item.album.name,
-            year: item.year,
-            duration: item.duration,
-            image: item.image[2].url,
-            url: item.downloadUrl[4].url,
-          }));
+          .map((item: any) => convertSaavnTrack(item));
         set({ officialTrendingSongs: formattedResults });
       } else {
         set({ officialTrendingSongs: [] });
@@ -340,31 +331,22 @@ export const useMusicStore = create<MusicStore>((set) => ({
     } catch (error) {
       set({ officialTrendingSongs: [] });
     } finally {
-      saavnRequestState.activeKeys.delete(url);
+      musicRequestState.activeKeys.delete(key);
       set({ isIndianMusicLoading: false });
     }
   },
 
   fetchHindiSongs: async () => {
-    const url = 'https://saavn.dev/api/search/songs?query=hindi%20top%20songs&page=1&limit=15';
-    if (saavnRequestState.activeKeys.has(url)) return;
-    saavnRequestState.activeKeys.add(url);
+    const key = 'search-hindi';
+    if (musicRequestState.activeKeys.has(key)) return;
+    musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      const data = await fetchMusicJson('/api/jiosaavn/search/songs', { query: 'hindi top songs', limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-          .map((item: any) => ({
-            id: item.id,
-            title: item.name,
-            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-            album: item.album.name,
-            year: item.year,
-            duration: item.duration,
-            image: item.image[2].url,
-            url: item.downloadUrl[4].url,
-          }));
+          .map((item: any) => convertSaavnTrack(item));
         set({ hindiSongs: formattedResults });
       } else {
         set({ hindiSongs: [] });
@@ -372,31 +354,22 @@ export const useMusicStore = create<MusicStore>((set) => ({
     } catch (error) {
       set({ hindiSongs: [] });
     } finally {
-      saavnRequestState.activeKeys.delete(url);
+      musicRequestState.activeKeys.delete(key);
       set({ isIndianMusicLoading: false });
     }
   },
 
   fetchIndianNewReleases: async () => {
-    const url = 'https://saavn.dev/api/search/songs?query=new%20releases&page=1&limit=10';
-    if (saavnRequestState.activeKeys.has(url)) return;
-    saavnRequestState.activeKeys.add(url);
+    const key = 'new-releases';
+    if (musicRequestState.activeKeys.has(key)) return;
+    musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchSaavnJson(url, 5 * 60 * 1000, 1);
+      const data = await fetchMusicJson('/api/jiosaavn/new-releases', { limit: 10 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-          .map((item: any) => ({
-            id: item.id,
-            title: item.name,
-            artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-            album: item.album.name,
-            year: item.year,
-            duration: item.duration,
-            image: item.image[2].url,
-            url: item.downloadUrl[4].url,
-          }));
+          .map((item: any) => convertSaavnTrack(item));
         set({ indianNewReleases: formattedResults });
       } else {
         set({ indianNewReleases: [] });
@@ -404,7 +377,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     } catch (error) {
       set({ indianNewReleases: [] });
     } finally {
-      saavnRequestState.activeKeys.delete(url);
+      musicRequestState.activeKeys.delete(key);
       set({ isIndianMusicLoading: false });
     }
   },
@@ -412,77 +385,24 @@ export const useMusicStore = create<MusicStore>((set) => ({
   searchIndianSongs: async query => {
     if (!query || query.trim() === '') return;
 
-    const url = `https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&page=1&limit=20`;
-    if (saavnRequestState.activeKeys.has(url)) return;
-    saavnRequestState.activeKeys.add(url);
+    const key = `search-${query}`;
+    if (musicRequestState.activeKeys.has(key)) return;
+    musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      try {
-        const data = await fetchSaavnJson(url, 60 * 1000, 0); // shorter TTL for search
-        if (data.data && data.data.results) {
-          const penaltyWords = ['unknown', 'various', 'tribute', 'cover', 'karaoke', 'hits', 'best of', 'playlist', 'compilation'];
-          const remixWords = ['remix', 'sped up', 'slowed', 'reverb', 'mashup'];
-          const q = query.toLowerCase().trim();
-          const qTokens = q.split(/\s+/).filter(Boolean);
-
-          const score = (item: any): number => {
-            const title = (item?.name || '').toLowerCase();
-            const artist = (item?.primaryArtists || item?.singers || (item?.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || '').toLowerCase();
-            const album = (item?.album?.name || '').toLowerCase();
-            let s = 0;
-
-            if (artist === q) s += 120;
-            if (artist.includes(q)) s += 80;
-            if (title === q) s += 60;
-            if (title.includes(q)) s += 30;
-            const covered = qTokens.filter(t => title.includes(t)).length;
-            s += covered * 15;
-            if (covered >= Math.max(1, Math.ceil(qTokens.length * 0.7))) s += 25;
-
-            if (penaltyWords.some(w => artist.includes(w))) s -= 60;
-            if (penaltyWords.some(w => title.includes(w))) s -= 30;
-            if (penaltyWords.some(w => album.includes(w))) s -= 30;
-            if (remixWords.some(w => title.includes(w))) s -= 25;
-
-            const artistCovered = qTokens.filter(t => artist.includes(t)).length;
-            if (covered === 0 && artistCovered === 0) s -= 100;
-            return s;
-          };
-
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.name,
-              artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-              album: item.album.name,
-              year: item.year,
-              duration: item.duration,
-              image: item.image[2].url,
-              url: item.downloadUrl[4].url,
-            }))
-            // Sort by score and remove low-quality mismatches
-            .sort((a: any, b: any) => score(b) - score(a))
-            .filter((item: any, idx: number) => {
-              const t = (item.title || '').toLowerCase();
-              const a = (item.artist || '').toLowerCase();
-              const album = (item.album || '').toLowerCase();
-              const covered = qTokens.filter(token => t.includes(token)).length;
-              const artistCovered = qTokens.filter(token => a.includes(token)).length;
-              const goodMatch = covered > 0 || artistCovered > 0;
-              const notCompilation = !penaltyWords.some(w => t.includes(w) || album.includes(w));
-              return goodMatch && notCompilation;
-            });
-
-          set({ indianSearchResults: formattedResults });
-        }
-      } catch (error) {
-        // Silent error handling
+      const data = await fetchMusicJson('/api/jiosaavn/search/songs', { query, limit: 20 }, 60 * 1000);
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => convertSaavnTrack(item));
+        set({ indianSearchResults: formattedResults });
+      } else {
+        set({ indianSearchResults: [] });
       }
-    } catch (error: any) {
-      // Silent error handling
+    } catch (error) {
+      set({ indianSearchResults: [] });
     } finally {
-      saavnRequestState.activeKeys.delete(url);
+      musicRequestState.activeKeys.delete(key);
       set({ isIndianMusicLoading: false });
     }
   },

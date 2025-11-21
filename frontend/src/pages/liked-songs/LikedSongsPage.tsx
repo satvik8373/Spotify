@@ -31,12 +31,22 @@ import './liked-songs.css';
 
 // Convert liked song format to player song format
 const adaptToPlayerSong = (likedSong: any): Song => {
+  // Use the ID that exists on the song object
+  const songId = likedSong.id || likedSong._id;
+  
+  // Ensure we have a valid audio URL
+  const audioUrl = likedSong.audioUrl || likedSong.url || '';
+  
+  if (!audioUrl) {
+    console.warn('⚠️ Song has no audio URL:', likedSong.title, likedSong);
+  }
+  
   return {
-    _id: likedSong.id,
-    title: likedSong.title,
-    artist: likedSong.artist,
-    audioUrl: likedSong.audioUrl,
-    imageUrl: likedSong.imageUrl,
+    _id: songId,
+    title: likedSong.title || 'Unknown Title',
+    artist: likedSong.artist || 'Unknown Artist',
+    audioUrl: audioUrl,
+    imageUrl: likedSong.imageUrl || likedSong.image || '',
     duration: likedSong.duration || 0,
     albumId: null,
     createdAt: new Date().toISOString(),
@@ -172,6 +182,7 @@ const LikedSongsPage = () => {
   const parallelLoad = async () => {
     if (!isAuthenticated) {
       const anonymousSongs = await loadLikedSongs();
+      console.log('📥 Loaded anonymous songs:', anonymousSongs.length);
       startTransition(() => setLikedSongs(anonymousSongs));
       return;
     }
@@ -190,6 +201,16 @@ const LikedSongsPage = () => {
 
       if (status) setSyncStatus(status);
       const pick = Array.isArray(songs) && songs.length > 0 ? songs : await loadLikedSongs();
+      
+      console.log('📥 Loaded liked songs:', {
+        count: pick.length,
+        hasSpotifyAuth: hasValidSpotifyAuth,
+        sampleSong: pick[0] ? {
+          title: pick[0].title,
+          hasAudioUrl: !!pick[0].audioUrl,
+          audioUrlPreview: pick[0].audioUrl?.substring(0, 50)
+        } : null
+      });
       
       startTransition(() => {
         setLikedSongs(pick);
@@ -646,8 +667,25 @@ const LikedSongsPage = () => {
   // Filtered view for display
   const visibleSongs = useMemo(() => {
     const q = filterQuery.trim().toLowerCase();
-    if (!q) return likedSongs;
-    return likedSongs.filter((s) => `${s.title} ${s.artist}`.toLowerCase().includes(q));
+    const filtered = !q ? likedSongs : likedSongs.filter((s) => `${s.title} ${s.artist}`.toLowerCase().includes(q));
+    
+    // Log song data for debugging
+    if (filtered.length > 0) {
+      console.log('📋 Visible Songs Data:', {
+        totalSongs: filtered.length,
+        firstSong: {
+          title: filtered[0]?.title,
+          artist: filtered[0]?.artist,
+          id: filtered[0]?.id || filtered[0]?._id,
+          hasAudioUrl: !!filtered[0]?.audioUrl,
+          audioUrl: filtered[0]?.audioUrl?.substring(0, 50) + '...'
+        },
+        allSongsHaveAudio: filtered.every(s => !!s.audioUrl),
+        songsWithoutAudio: filtered.filter(s => !s.audioUrl).map(s => s.title)
+      });
+    }
+    
+    return filtered;
   }, [likedSongs, filterQuery]);
 
   // Manual sync function for retry button
@@ -727,31 +765,55 @@ const LikedSongsPage = () => {
   };
 
   // Handle playing a specific song from current view (respects filtering)
-  const playSong = (song: any, _index: number) => {
-    // Build the source list based on current filter state so queue matches the visible list
-    const sourceSongs = (filterQuery && filterQuery.trim()) ? visibleSongs : likedSongs;
-    // Find accurate index by id to avoid mismatch when filtering/sorting
-    const targetIndex = Math.max(0, sourceSongs.findIndex((s: any) => ((s as any).id || (s as any)._id) === song.id));
-    const playerSongs = sourceSongs.map(adaptToPlayerSong);
-
-    if (currentSong && currentSong._id === song.id) {
+  const playSong = (song: any, index: number) => {
+    // ALWAYS use visibleSongs as the source since that's what we're displaying
+    const sourceSongs = visibleSongs;
+    
+    // Get the song ID consistently
+    const songId = song.id || song._id;
+    
+    // If clicking the currently playing song, just toggle play/pause
+    if (currentSong && currentSong._id === songId) {
       togglePlay();
       return;
     }
+    
+    // Use the index directly from the map - it's already correct for visibleSongs
+    const validIndex = index;
+    
+    // Convert to player format
+    const playerSongs = sourceSongs.map(adaptToPlayerSong);
+    
+    console.log('🎵 Playing song:', {
+      clickedSong: song.title,
+      clickedArtist: song.artist,
+      clickedIndex: index,
+      validIndex: validIndex,
+      queueLength: playerSongs.length,
+      songToPlay: playerSongs[validIndex]?.title,
+      songToPlayArtist: playerSongs[validIndex]?.artist,
+      songId: songId,
+      playerSongId: playerSongs[validIndex]?._id,
+      audioUrl: song.audioUrl
+    });
 
-    usePlayerStore.getState().playAlbum(playerSongs, targetIndex >= 0 ? targetIndex : 0);
+    // Set up the queue and play from the correct index
+    usePlayerStore.getState().playAlbum(playerSongs, validIndex);
 
     // Force play state immediately to true regardless of autoplay setting
     setTimeout(() => {
       const store = usePlayerStore.getState();
       store.setIsPlaying(true);
       store.setUserInteracted();
-    }, 100);
+    }, 50);
   };
 
   // Check if a song is currently playing
   const isSongPlaying = (song: any) => {
-    return isPlaying && currentSong && currentSong._id === song.id;
+    if (!isPlaying || !currentSong) return false;
+    
+    const songId = song.id || song._id;
+    return currentSong._id === songId;
   };
 
   // Unlike a song
@@ -1293,9 +1355,13 @@ const LikedSongsPage = () => {
             <SkeletonLoader />
           ) : likedSongs.length > 0 ? (
             <div className={cn("pb-8", isMobile ? "pt-3 px-3" : "")}>
-              {visibleSongs.map((song, index) => (
+              {visibleSongs.map((song, index) => {
+                // Ensure song has an ID
+                const songKey = song.id || song._id || `song-${index}`;
+                
+                return (
                 <div 
-                  key={song.id}
+                  key={songKey}
                   onClick={() => playSong(song, index)}
                   className="cursor-pointer"
                 >
@@ -1304,18 +1370,64 @@ const LikedSongsPage = () => {
                     className="rounded-md"
                   >
                     <div className={cn(
-                      "group relative hover:bg-white/5 rounded-md",
+                      "group relative hover:bg-white/5 rounded-md transition-colors",
                       isMobile 
-                        ? "grid grid-cols-[1fr_auto] gap-3 p-2 spotify-liked-song-row" 
+                        ? "grid grid-cols-[auto_1fr_auto] gap-2 p-2 spotify-liked-song-row" 
                         : "grid grid-cols-[16px_4fr_2fr_1fr_auto] gap-4 p-2 px-4 spotify-desktop-song-row"
                     )}>
-                      {/* Index number - desktop only */}
+                      {/* Index number / Play button - desktop only */}
                       {!isMobile && (
                         <div className="flex items-center justify-center text-sm text-zinc-400 group-hover:text-white">
                           {isSongPlaying(song) ? (
-                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-green-500 hover:text-green-400 hover:scale-110 transition-all"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                togglePlay();
+                              }}
+                            >
+                              <Pause className="h-4 w-4 fill-current" />
+                            </Button>
                           ) : (
-                            index + 1
+                            <>
+                              <span className="group-hover:hidden">{index + 1}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hidden group-hover:flex hover:scale-110 transition-all"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playSong(song, index);
+                                }}
+                              >
+                                <Play className="h-4 w-4 fill-current" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Play/Pause icon for mobile - separate column */}
+                      {isMobile && (
+                        <div className="flex items-center justify-center">
+                          {isSongPlaying(song) ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-10 w-10 text-green-500 hover:text-green-400"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                togglePlay();
+                              }}
+                            >
+                              <Pause className="h-5 w-5 fill-current" />
+                            </Button>
+                          ) : (
+                            <div className="h-10 w-10 flex items-center justify-center">
+                              <span className="text-sm text-zinc-400">{index + 1}</span>
+                            </div>
                           )}
                         </div>
                       )}
@@ -1430,15 +1542,12 @@ const LikedSongsPage = () => {
                         </DropdownMenu>
                       </div>
 
-                      {isMobile && isSongPlaying(song) && (
-                        <div className="absolute right-12 flex items-center">
-                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                        </div>
-                      )}
+
                     </div>
                   </TouchRipple>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <EmptyState />

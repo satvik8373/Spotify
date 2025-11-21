@@ -382,10 +382,10 @@ const HomePage = () => {
   return (
     <main className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] ">
       <ScrollArea className="flex-1 h-full" ref={scrollRef}>
-        <div className="pt-3 pb-6 max-w-full overflow-x-hidden px-[6px]">
+        <div className="pt-3 pb-6 max-w-full overflow-x-hidden px-4 md:px-6">
           {/* Offline banner */}
           {!isOnline && (
-            <div className="px-2 sm:px-4 mb-3">
+            <div className="mb-3">
               <div className="bg-yellow-500/10 border border-yellow-600 text-yellow-200 text-xs sm:text-sm rounded-md px-3 py-2">
                 You are offline. Some features may be unavailable.
               </div>
@@ -394,7 +394,7 @@ const HomePage = () => {
 
           {/* Offline placeholder */}
           {!isOnline && (
-            <div className="px-2 sm:px-4 mb-4">
+            <div className="mb-4">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <WifiOff className="h-4 w-4 text-yellow-400" />
                 <span className="text-xs sm:text-sm">No internet connection</span>
@@ -404,7 +404,7 @@ const HomePage = () => {
 
           {/* Recently played section - render only when data exists and online */}
           {isOnline && getDisplayedItems().length > 0 && (
-          <div className="px-2 sm:px-4 mt-1">
+          <div className="mt-1">
             
             <div className="mb-5">
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 gap-1.5">
@@ -688,7 +688,7 @@ const HomePage = () => {
 
           {isOnline && hasTrending && (
           <div className="mb-5">
-                            <div className="px-2 sm:px-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
               {indianTrendingSongs.slice(0, 6).map(song => (
                 <div
                   key={song.id}

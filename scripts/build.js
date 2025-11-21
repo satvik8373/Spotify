@@ -1,5 +1,5 @@
 // Build script for Vercel deployment
-import fs from 'fs-extra';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
@@ -9,15 +9,32 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 console.log('Running custom build script...');
-console.log('Current directory:', process.cwd());
-console.log('Root directory:', rootDir);
+
+// Copy directory function that works cross-platform
+function copyDir(src, dest) {
+  // Create destination directory if it doesn't exist
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+  
+  // Get all files in source directory
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    
+    if (entry.isDirectory()) {
+      // Recursively copy directories
+      copyDir(srcPath, destPath);
+    } else {
+      // Copy files
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
 try {
-  // List directory contents to debug
-  console.log('Root directory contents:');
-  const rootContents = fs.readdirSync(rootDir);
-  console.log(rootContents);
-  
   const frontendDir = path.join(rootDir, 'frontend');
   
   if (fs.existsSync(frontendDir)) {
@@ -26,18 +43,19 @@ try {
     // Build the frontend
     execSync('npm run build', { 
       stdio: 'inherit',
-      cwd: frontendDir,
-      shell: true
+      cwd: frontendDir 
     });
     
-    // Create dist directory in root and empty it
+    // Create dist directory in root
     const distDir = path.join(rootDir, 'dist');
-    fs.emptyDirSync(distDir);
+    if (!fs.existsSync(distDir)) {
+      fs.mkdirSync(distDir, { recursive: true });
+    }
     
     // Copy the frontend build to the root dist directory
     console.log('Copying build files to root dist directory...');
     const frontendDistDir = path.join(frontendDir, 'dist');
-    fs.copySync(frontendDistDir, distDir);
+    copyDir(frontendDistDir, distDir);
     
     console.log('Build completed successfully!');
   } else {
