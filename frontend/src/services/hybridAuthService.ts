@@ -452,47 +452,59 @@ export const getCurrentUser = () => {
   return auth.currentUser;
 };
 
+// Helper to detect if running in PWA mode
+const isPWA = (): boolean => {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         (window.navigator as any).standalone === true ||
+         document.referrer.includes('android-app://');
+};
+
+// Helper to detect iOS
+const isIOS = (): boolean => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
+
 // Sign in with Google
 export const signInWithGoogle = async (): Promise<UserProfile> => {
   try {
-    // Cache check - prevent duplicate signins
-    // const cacheKey = `google:${Date.now()}`;
-    
     // Create a new GoogleAuthProvider instance with optimal settings
     const provider = new GoogleAuthProvider();
     // Add select_account to force the account picker every time
-    provider.setCustomParameters({ prompt: 'select_account' });
+    provider.setCustomParameters({ 
+      prompt: 'select_account',
+      // Add these for better PWA compatibility
+      display: 'popup'
+    });
     
-    // If cross-origin isolated (COOP/COEP), prefer redirect flow immediately
-    if (typeof window !== 'undefined' && (window as any).crossOriginIsolated) {
-      try { sessionStorage.setItem('auth_redirect', '1'); } catch {}
-      await signInWithRedirect(auth, provider);
-      throw new Error('Redirecting to Google sign-in...');
-    }
-
-    // If returning from redirect, handle it first
-    const redirectCred = await getRedirectResult(auth);
-    const userCredential = redirectCred ?? (await (async () => {
+    let userCredential;
+    
+    // Check if returning from redirect first
+    const redirectResult = await getRedirectResult(auth);
+    if (redirectResult) {
+      userCredential = redirectResult;
+    } else {
+      // Always try popup first (works best in PWA)
       try {
-        return await signInWithPopup(auth, provider);
-      } catch (e: any) {
-        const msg = String(e?.message || e);
-        // Fallback to redirect flow when COOP/COEP or popup policies interfere
+        userCredential = await signInWithPopup(auth, provider);
+      } catch (popupError: any) {
+        const errorMsg = String(popupError?.message || popupError);
+        console.warn('Popup sign-in failed:', errorMsg);
+        
+        // Only use redirect as last resort for specific errors
+        // Note: Redirect doesn't work well in PWA/WebView
         if (
-          msg.includes('Cross-Origin-Opener-Policy') ||
-          msg.includes('window.closed') ||
-          msg.includes('popup') ||
-          msg.includes('operation-not-supported') ||
-          msg.includes('blocked')
+          errorMsg.includes('popup-blocked') ||
+          errorMsg.includes('popup-closed-by-user')
         ) {
-          try { sessionStorage.setItem('auth_redirect', '1'); } catch {}
-          await signInWithRedirect(auth, provider);
-          // The page will navigate; throw to stop further processing
-          throw new Error('Redirecting to Google sign-in...');
+          // Show user-friendly message instead of redirect
+          throw new Error('Please allow popups for Google Sign-In to work. Check your browser settings.');
         }
-        throw e;
+        
+        // For other errors, just throw them
+        throw popupError;
       }
-    })());
+    }
     const user = userCredential.user;
     
     // Create a user profile object
