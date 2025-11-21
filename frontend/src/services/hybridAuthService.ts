@@ -472,39 +472,11 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
     const provider = new GoogleAuthProvider();
     // Add select_account to force the account picker every time
     provider.setCustomParameters({ 
-      prompt: 'select_account',
-      // Add these for better PWA compatibility
-      display: 'popup'
+      prompt: 'select_account'
     });
     
-    let userCredential;
-    
-    // Check if returning from redirect first
-    const redirectResult = await getRedirectResult(auth);
-    if (redirectResult) {
-      userCredential = redirectResult;
-    } else {
-      // Always try popup first (works best in PWA)
-      try {
-        userCredential = await signInWithPopup(auth, provider);
-      } catch (popupError: any) {
-        const errorMsg = String(popupError?.message || popupError);
-        console.warn('Popup sign-in failed:', errorMsg);
-        
-        // Only use redirect as last resort for specific errors
-        // Note: Redirect doesn't work well in PWA/WebView
-        if (
-          errorMsg.includes('popup-blocked') ||
-          errorMsg.includes('popup-closed-by-user')
-        ) {
-          // Show user-friendly message instead of redirect
-          throw new Error('Please allow popups for Google Sign-In to work. Check your browser settings.');
-        }
-        
-        // For other errors, just throw them
-        throw popupError;
-      }
-    }
+    // Use popup only - redirect causes "missing initial state" error in PWA/WebView
+    const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
     
     // Create a user profile object
