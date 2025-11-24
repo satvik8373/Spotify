@@ -185,48 +185,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setLoading(false);
         });
       }
-      
-      // Handle WebView auth completion
-      if (sessionStorage.getItem('from_auth') === '1') {
-        console.log('Detected auth completion from WebView');
-        sessionStorage.removeItem('from_auth');
-        // Force reload user data
-        setLoading(true);
-        loadUser(true).finally(() => {
-          setLoading(false);
-          // If we're on login page after auth, redirect to home
-          if (window.location.pathname === '/login') {
-            window.location.href = '/home';
-          }
-        });
-      }
-      
-      // Handle app auth completion
-      if (sessionStorage.getItem('app_authenticated') === '1') {
-        console.log('Detected app authentication');
-        sessionStorage.removeItem('app_authenticated');
-        // Force reload user data
-        setLoading(true);
-        loadUser(true).finally(() => {
-          setLoading(false);
-        });
-      }
-      
-      // Handle redirect result for WebView (signInWithRedirect)
-      import('@/services/hybridAuthService').then(({ handleRedirectResult }) => {
-        handleRedirectResult().then((userProfile) => {
-          if (userProfile) {
-            console.log('Redirect auth successful:', userProfile.email);
-            // Force reload user data
-            loadUser(true).finally(() => {
-              // Redirect to home
-              if (window.location.pathname === '/login') {
-                window.location.href = '/home';
-              }
-            });
-          }
-        });
-      });
     } catch {}
 
     // If cached user exists in auth store, use it immediately for smooth UX

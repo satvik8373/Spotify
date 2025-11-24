@@ -7,11 +7,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:mobile": "tsc && vite build && node scripts/add-cache-busting.js",
     "build:optimized": "node scripts/build-optimized.js",
     "vercel-build": "vite build",
     "preview": "vite preview",
     "start": "vite preview --port $PORT",
     "deploy": "vercel deploy --prod",
+    "deploy:mobile": "npm run build:mobile && npx cap sync",
     "analyze": "vite-bundle-analyzer dist/assets"
   },
   "keywords": [

@@ -6,9 +6,7 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult
+  signInWithPopup
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -16,6 +14,7 @@ import { auth, db, storage } from "@/lib/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import axiosInstance from "@/lib/axios";
 import { Timestamp } from "firebase/firestore";
+import { isWebView, clearAuthCache } from "@/utils/webViewDetection";
 
 
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -452,53 +451,49 @@ export const getCurrentUser = () => {
   return auth.currentUser;
 };
 
-// Helper to detect if running in WebView
-const isWebView = (): boolean => {
-  const ua = navigator.userAgent.toLowerCase();
-  // Check for WebView indicators
-  return ua.includes('wv') || 
-         (ua.includes('android') && !ua.includes('chrome')) ||
-         (ua.includes('iphone') && !ua.includes('safari')) ||
-         // Check if it's our Flutter app
-         ua.includes('flutter');
+// Helper to detect if running in PWA mode
+const isPWA = (): boolean => {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         (window.navigator as any).standalone === true ||
+         document.referrer.includes('android-app://');
+};
+
+// Helper to detect iOS
+const isIOS = (): boolean => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
 // Sign in with Google
 export const signInWithGoogle = async (): Promise<UserProfile> => {
   try {
-    // Clear any pending redirect state that might cause errors
-    try {
-      sessionStorage.removeItem('auth_redirect');
-      sessionStorage.removeItem('firebase:redirectUser');
-      // Clear any Firebase auth redirect state
-      const keys = Object.keys(sessionStorage);
-      keys.forEach(key => {
-        if (key.includes('firebase') && key.includes('redirect')) {
-          sessionStorage.removeItem(key);
-        }
-      });
-    } catch (e) {
-      // Ignore errors if sessionStorage is not accessible
-    }
+    // Clear auth cache especially in WebView to prevent stale state
+    clearAuthCache();
     
     // Create a new GoogleAuthProvider instance with optimal settings
     const provider = new GoogleAuthProvider();
-    // Add select_account to force the account picker every time
-    provider.setCustomParameters({ 
-      prompt: 'select_account'
-    });
     
-    // Use redirect for WebView, popup for web browsers
+    // Configure provider based on environment
     if (isWebView()) {
-      console.log('WebView detected, using signInWithRedirect');
-      await signInWithRedirect(auth, provider);
-      // Function will not continue after redirect
-      return {} as UserProfile; // TypeScript requirement
+      // WebView-specific configuration
+      provider.setCustomParameters({ 
+        prompt: 'select_account',
+        // Ensure popup mode works in WebView
+        display: 'popup'
+      });
+      console.log('🔧 Using WebView-optimized Google sign-in');
+    } else {
+      // Standard browser configuration
+      provider.setCustomParameters({ 
+        prompt: 'select_account'
+      });
     }
     
-    // Use popup for regular browsers
+    // Use popup only - redirect causes "missing initial state" error in PWA/WebView
+    console.log('🔐 Starting Google sign-in with popup...');
     const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
+    console.log('✅ Google sign-in successful:', user.email);
     
     // Create a user profile object
     const userProfile: UserProfile = {
@@ -599,47 +594,3 @@ export const refreshUserData = async (): Promise<UserProfile | null> => {
     return null;
   }
 }; 
-
-// Handle redirect result for WebView
-export const handleRedirectResult = async (): Promise<UserProfile | null> => {
-  try {
-    const result = await getRedirectResult(auth);
-    
-    if (result && result.user) {
-      console.log('Redirect result: User signed in', result.user.email);
-      
-      const user = result.user;
-      const userProfile: UserProfile = {
-        id: user.uid,
-        email: user.email,
-        name: user.displayName || user.email?.split('@')[0] || 'User',
-        picture: user.photoURL,
-      };
-      
-      // Update auth store
-      useAuthStore.getState().setAuthStatus(true, user.uid);
-      useAuthStore.getState().setUserProfile(
-        userProfile.name,
-        userProfile.picture || undefined
-      );
-      
-      // Create user in Firestore if needed
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (!userDoc.exists()) {
-        await setDoc(doc(db, "users", user.uid), {
-          email: user.email,
-          fullName: user.displayName,
-          imageUrl: user.photoURL,
-          createdAt: new Date().toISOString(),
-        });
-      }
-      
-      return userProfile;
-    }
-    
-    return null;
-  } catch (error: any) {
-    console.error('Error handling redirect result:', error);
-    return null;
-  }
-};

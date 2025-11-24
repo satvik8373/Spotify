@@ -1,0 +1,92 @@
+<!-- 
+  iOS Info.plist Additions for Mavrixfy
+  
+  Location: ios/App/App/Info.plist
+  
+  Add these entries to your Info.plist file to support Google OAuth in iOS WebView
+-->
+
+<!-- Allow app to query Google Chrome schemes -->
+<key>LSApplicationQueriesSchemes</key>
+<array>
+    <string>googlechrome</string>
+    <string>googlechromes</string>
+    <string>googlegmail</string>
+    <string>googlemail</string>
+</array>
+
+<!-- Allow arbitrary loads for OAuth (use with caution in production) -->
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+    <!-- Or use exception domains for better security -->
+    <key>NSExceptionDomains</key>
+    <dict>
+        <key>accounts.google.com</key>
+        <dict>
+            <key>NSIncludesSubdomains</key>
+            <true/>
+            <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+            <true/>
+        </dict>
+        <key>firebase.googleapis.com</key>
+        <dict>
+            <key>NSIncludesSubdomains</key>
+            <true/>
+            <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+            <true/>
+        </dict>
+        <key>firebaseapp.com</key>
+        <dict>
+            <key>NSIncludesSubdomains</key>
+            <true/>
+            <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+            <true/>
+        </dict>
+    </dict>
+</dict>
+
+<!-- Camera and photo library permissions (if needed for profile pictures) -->
+<key>NSCameraUsageDescription</key>
+<string>Mavrixfy needs access to your camera to take profile pictures</string>
+
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Mavrixfy needs access to your photo library to select profile pictures</string>
+
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Mavrixfy needs access to save photos to your library</string>
+
+<!-- Microphone permission (if needed for audio features) -->
+<key>NSMicrophoneUsageDescription</key>
+<string>Mavrixfy needs access to your microphone for audio features</string>
+
+<!-- Background modes (if needed) -->
+<key>UIBackgroundModes</key>
+<array>
+    <string>audio</string>
+    <string>fetch</string>
+</array>
+
+<!-- Status bar style -->
+<key>UIStatusBarStyle</key>
+<string>UIStatusBarStyleLightContent</string>
+
+<key>UIViewControllerBasedStatusBarAppearance</key>
+<false/>
+
+<!-- Orientation support -->
+<key>UISupportedInterfaceOrientations</key>
+<array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+</array>
+
+<key>UISupportedInterfaceOrientations~ipad</key>
+<array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+</array>

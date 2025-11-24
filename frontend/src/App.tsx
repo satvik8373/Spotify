@@ -3,6 +3,7 @@ import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
 import PerformanceMonitor from './components/PerformanceMonitor';
+import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
@@ -21,7 +22,6 @@ const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const AppAuthPage = lazy(() => import('./pages/app-auth/AppAuthPage'));
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
@@ -164,10 +164,6 @@ const router = createBrowserRouter(
 			element: <SpotifyCallback />
 		},
 		{
-			path: '/app-auth',
-			element: <AppAuthPage />
-		},
-		{
 			element: <MainLayout />, 
 			errorElement: <ErrorFallback />,
 			children: [
@@ -224,6 +220,9 @@ function AppContent() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
+				// Clear any Firebase auth redirect state to prevent errors
+				clearAuthRedirectState();
+				
 				// Initialize performance optimizations
 				performanceService.addResourceHints();
 				// Mobile performance service initializes automatically
