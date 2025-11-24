@@ -6,7 +6,9 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -450,6 +452,17 @@ export const getCurrentUser = () => {
   return auth.currentUser;
 };
 
+// Helper to detect if running in WebView
+const isWebView = (): boolean => {
+  const ua = navigator.userAgent.toLowerCase();
+  // Check for WebView indicators
+  return ua.includes('wv') || 
+         (ua.includes('android') && !ua.includes('chrome')) ||
+         (ua.includes('iphone') && !ua.includes('safari')) ||
+         // Check if it's our Flutter app
+         ua.includes('flutter');
+};
+
 // Sign in with Google
 export const signInWithGoogle = async (): Promise<UserProfile> => {
   try {
@@ -475,7 +488,15 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
       prompt: 'select_account'
     });
     
-    // Use popup only - redirect causes "missing initial state" error in PWA/WebView
+    // Use redirect for WebView, popup for web browsers
+    if (isWebView()) {
+      console.log('WebView detected, using signInWithRedirect');
+      await signInWithRedirect(auth, provider);
+      // Function will not continue after redirect
+      return {} as UserProfile; // TypeScript requirement
+    }
+    
+    // Use popup for regular browsers
     const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
     
@@ -578,3 +599,47 @@ export const refreshUserData = async (): Promise<UserProfile | null> => {
     return null;
   }
 }; 
+
+// Handle redirect result for WebView
+export const handleRedirectResult = async (): Promise<UserProfile | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+    
+    if (result && result.user) {
+      console.log('Redirect result: User signed in', result.user.email);
+      
+      const user = result.user;
+      const userProfile: UserProfile = {
+        id: user.uid,
+        email: user.email,
+        name: user.displayName || user.email?.split('@')[0] || 'User',
+        picture: user.photoURL,
+      };
+      
+      // Update auth store
+      useAuthStore.getState().setAuthStatus(true, user.uid);
+      useAuthStore.getState().setUserProfile(
+        userProfile.name,
+        userProfile.picture || undefined
+      );
+      
+      // Create user in Firestore if needed
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (!userDoc.exists()) {
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email,
+          fullName: user.displayName,
+          imageUrl: user.photoURL,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      
+      return userProfile;
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.error('Error handling redirect result:', error);
+    return null;
+  }
+};

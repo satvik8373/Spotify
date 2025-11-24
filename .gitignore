@@ -7,3 +7,6 @@ dist/
 # Environment Files
 .env
 .env.*
+
+# Flutter app
+mavrixfy_flutter/
