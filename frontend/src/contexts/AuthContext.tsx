@@ -201,6 +201,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
       
+      // Handle app auth completion
+      if (sessionStorage.getItem('app_authenticated') === '1') {
+        console.log('Detected app authentication');
+        sessionStorage.removeItem('app_authenticated');
+        // Force reload user data
+        setLoading(true);
+        loadUser(true).finally(() => {
+          setLoading(false);
+        });
+      }
+      
       // Handle redirect result for WebView (signInWithRedirect)
       import('@/services/hybridAuthService').then(({ handleRedirectResult }) => {
         handleRedirectResult().then((userProfile) => {

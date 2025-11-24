@@ -54,6 +54,15 @@ export default function AppAuthPage() {
     // Store in localStorage for app to read
     localStorage.setItem('app_auth_data', JSON.stringify(authData));
     
+    // Update auth store to ensure user is marked as authenticated
+    import('@/stores/useAuthStore').then(({ useAuthStore }) => {
+      useAuthStore.getState().setAuthStatus(true, userId);
+      useAuthStore.getState().setUserProfile(
+        authData.name || 'User',
+        authData.picture || undefined
+      );
+    });
+    
     // Mark as authenticated
     sessionStorage.setItem('app_authenticated', '1');
     
