@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { signInWithGoogle } from '@/services/hybridAuthService';
 import { auth } from '@/lib/firebase';
-import { useNavigate } from 'react-router-dom';
 
 export default function AppAuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -22,7 +20,7 @@ export default function AppAuthPage() {
     setError(null);
 
     try {
-      const userProfile = await signInWithGoogle();
+      await signInWithGoogle();
       
       // Get Firebase ID token
       const user = auth.currentUser;
