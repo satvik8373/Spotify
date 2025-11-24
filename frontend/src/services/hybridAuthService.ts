@@ -6,9 +6,7 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult
+  signInWithPopup
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -468,6 +466,21 @@ const isIOS = (): boolean => {
 // Sign in with Google
 export const signInWithGoogle = async (): Promise<UserProfile> => {
   try {
+    // Clear any pending redirect state that might cause errors
+    try {
+      sessionStorage.removeItem('auth_redirect');
+      sessionStorage.removeItem('firebase:redirectUser');
+      // Clear any Firebase auth redirect state
+      const keys = Object.keys(sessionStorage);
+      keys.forEach(key => {
+        if (key.includes('firebase') && key.includes('redirect')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch (e) {
+      // Ignore errors if sessionStorage is not accessible
+    }
+    
     // Create a new GoogleAuthProvider instance with optimal settings
     const provider = new GoogleAuthProvider();
     // Add select_account to force the account picker every time
