@@ -450,19 +450,6 @@ export const getCurrentUser = () => {
   return auth.currentUser;
 };
 
-// Helper to detect if running in PWA mode
-const isPWA = (): boolean => {
-  return window.matchMedia('(display-mode: standalone)').matches ||
-         (window.navigator as any).standalone === true ||
-         document.referrer.includes('android-app://');
-};
-
-// Helper to detect iOS
-const isIOS = (): boolean => {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-};
-
 // Sign in with Google
 export const signInWithGoogle = async (): Promise<UserProfile> => {
   try {

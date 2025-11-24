@@ -3,7 +3,6 @@ import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
 import PerformanceMonitor from './components/PerformanceMonitor';
-import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
@@ -220,9 +219,6 @@ function AppContent() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// Clear any Firebase auth redirect state to prevent errors
-				clearAuthRedirectState();
-				
 				// Initialize performance optimizations
 				performanceService.addResourceHints();
 				// Mobile performance service initializes automatically
