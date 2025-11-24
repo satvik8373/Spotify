@@ -21,6 +21,7 @@ const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const AppAuthPage = lazy(() => import('./pages/app-auth/AppAuthPage'));
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
@@ -161,6 +162,10 @@ const router = createBrowserRouter(
 		{
 			path: '/spotify-callback',
 			element: <SpotifyCallback />
+		},
+		{
+			path: '/app-auth',
+			element: <AppAuthPage />
 		},
 		{
 			element: <MainLayout />, 
