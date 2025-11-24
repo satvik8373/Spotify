@@ -5,6 +5,7 @@ import { auth } from '@/lib/firebase';
 export default function AppAuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -50,20 +51,30 @@ export default function AppAuthPage() {
     // Encode data
     const encodedData = btoa(JSON.stringify(authData));
     
+    // Store in localStorage for app to read
+    localStorage.setItem('app_auth_data', JSON.stringify(authData));
+    
+    // Mark as authenticated
+    sessionStorage.setItem('app_authenticated', '1');
+    
     // Try to communicate with app via custom URL scheme
     const appUrl = `mavrixfy://auth?data=${encodedData}`;
     
-    // Also store in localStorage for app to read
-    localStorage.setItem('app_auth_data', JSON.stringify(authData));
+    // Try to redirect to app (will fail in browser, that's ok)
+    try {
+      window.location.href = appUrl;
+    } catch (e) {
+      // Ignore error
+    }
     
-    // Try to redirect to app
-    window.location.href = appUrl;
+    // Show success message
+    setSuccess(true);
+    setLoading(false);
     
-    // Fallback: show success message
+    // Redirect to home page after a short delay
     setTimeout(() => {
-      setLoading(false);
-      // Show success message
-    }, 1000);
+      window.location.href = '/home';
+    }, 1500);
   };
 
   return (
@@ -96,9 +107,17 @@ export default function AppAuthPage() {
             </div>
           )}
 
+          {success && (
+            <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <p className="text-green-400 text-sm font-medium">
+                ✓ Successfully signed in! Redirecting...
+              </p>
+            </div>
+          )}
+
           <button
             onClick={handleGoogleSignIn}
-            disabled={loading}
+            disabled={loading || success}
             className="w-full bg-white hover:bg-gray-100 text-gray-900 font-semibold py-4 px-6 rounded-full transition-all duration-200 flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
