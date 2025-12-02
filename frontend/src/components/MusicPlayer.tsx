@@ -265,6 +265,7 @@ const MusicPlayer = () => {
                 className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white rounded-full"
                 onClick={() => toggleShuffle()}
                 title="Shuffle"
+                aria-label={isShuffled ? "Disable shuffle" : "Enable shuffle"}
               >
                 <Shuffle
                   className={cn('h-4 w-4 md:h-5 md:w-5', isShuffled ? 'text-green-500' : '')}
@@ -278,6 +279,7 @@ const MusicPlayer = () => {
                 onClick={playPrevious}
                 title="Previous"
                 disabled={queue.length <= 1}
+                aria-label="Previous song"
               >
                 <SkipBack className="h-4 w-4 md:h-5 md:w-5" />
               </Button>
@@ -288,6 +290,7 @@ const MusicPlayer = () => {
                 onClick={togglePlay}
                 className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-green-500 hover:bg-green-400 text-black transition"
                 title={isPlaying ? 'Pause' : 'Play'}
+                aria-label={isPlaying ? "Pause" : "Play"}
               >
                 {isPlaying ? (
                   <Pause className="h-4 w-4 md:h-5 md:w-5" />
@@ -303,6 +306,7 @@ const MusicPlayer = () => {
                 onClick={() => playNext()}
                 title="Next"
                 disabled={queue.length <= 1}
+                aria-label="Next song"
               >
                 <SkipForward className="h-4 w-4 md:h-5 md:w-5" />
               </Button>
@@ -313,6 +317,7 @@ const MusicPlayer = () => {
                 className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white rounded-full"
                 onClick={handleToggleRepeat}
                 title="Repeat"
+                aria-label={isRepeat ? "Disable repeat" : "Enable repeat"}
               >
                 <Repeat className={cn('h-4 w-4 md:h-5 md:w-5', isRepeat ? 'text-green-500' : '')} />
               </Button>
@@ -324,14 +329,14 @@ const MusicPlayer = () => {
                 {formatTime(currentTime)}
               </span>
               <div className="flex-1 relative py-1">
-              <Slider
-                value={[currentTime]}
-                min={0}
-                max={duration || 1}
-                step={0.1}
-                className="flex-1"
-                onValueChange={handleSeek}
-              />
+                <Slider
+                  value={[currentTime]}
+                  min={0}
+                  max={duration || 1}
+                  step={0.1}
+                  className="flex-1"
+                  onValueChange={handleSeek}
+                />
                 <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
               </div>
               <span className="text-xs text-zinc-500 w-8">{formatTime(duration)}</span>
@@ -346,18 +351,19 @@ const MusicPlayer = () => {
               className="h-8 w-8 text-zinc-400 hover:text-white rounded-full"
               onClick={handleToggleMute}
               title={isMuted ? 'Unmute' : 'Mute'}
+              aria-label={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume className="h-4 w-4" />}
             </Button>
             <div className="flex-1 relative py-1">
-            <Slider
-              value={[volume]}
-              min={0}
-              max={1}
-              step={0.01}
-              className="flex-1"
-              onValueChange={value => setVolume(value[0])}
-            />
+              <Slider
+                value={[volume]}
+                min={0}
+                max={1}
+                step={0.01}
+                className="flex-1"
+                onValueChange={value => setVolume(value[0])}
+              />
               <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-     import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Outlet, useLocation } from 'react-router-dom';
 import LeftSidebar from './components/LeftSidebar';
@@ -30,11 +30,11 @@ const MainLayout = () => {
       // Store viewport width as CSS variable
       document.documentElement.style.setProperty('--vw', `${window.innerWidth * 0.01}px`);
     };
-    
+
     setVw();
     window.addEventListener('resize', setVw);
     window.addEventListener('orientationchange', setVw);
-    
+
     return () => {
       window.removeEventListener('resize', setVw);
       window.removeEventListener('orientationchange', setVw);
@@ -59,12 +59,12 @@ const MainLayout = () => {
       <div className="hidden md:block">
         <Header />
       </div>
-      
+
       <ResizablePanelGroup
         direction="horizontal"
         className="flex-1 flex h-full overflow-hidden"
         style={{
-          height: isMobile 
+          height: isMobile
             ? `calc(100vh - ${mobileSubtractPx}px)`
             : hasActiveSong
               ? 'calc(100vh - 44px - 90px)' // Desktop header + player

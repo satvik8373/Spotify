@@ -142,7 +142,7 @@ export const getLyrics = async (id) => {
  */
 export const formatSongData = (song) => {
   if (!song) return null;
-  
+
   return {
     id: song.id,
     title: song.name,
@@ -150,8 +150,8 @@ export const formatSongData = (song) => {
     album: song.album ? song.album.name : '',
     year: song.year,
     duration: song.duration,
-    image: song.image && song.image.length > 2 ? song.image[2].url : '',
-    url: song.downloadUrl && song.downloadUrl.length > 4 ? song.downloadUrl[4].url : '',
+    image: song.image && song.image.length > 0 ? song.image[song.image.length - 1].url : '',
+    url: song.downloadUrl && song.downloadUrl.length > 0 ? song.downloadUrl[song.downloadUrl.length - 1].url : '',
     source: 'jiosaavn'
   };
 }; 

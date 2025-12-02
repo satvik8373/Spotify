@@ -51,102 +51,7 @@ interface TopPlaylist extends RecentPlaylist {
   isPublic?: boolean;
 }
 
-// Add this CSS to handle the horizontal scroll and Netflix-like effects
-const netflixRowStyles = `
-	.netflix-row {
-		position: relative;
-		padding: 12px 0;
-		scroll-behavior: smooth;
-		width: 100%;
-		overflow-x: hidden;
-	}
-	
-	.netflix-row:hover .handle {
-		opacity: 1;
-	}
-	
-	.netflix-slider {
-		display: flex;
-		overflow-x: scroll;
-		overflow-y: hidden;
-		scroll-snap-type: x mandatory;
-		gap: 12px;
-		-ms-overflow-style: none;
-		scrollbar-width: none;
-		padding: 10px 0;
-		padding-left: 16px;
-		padding-right: 20px;
-		margin-right: 4px;
-		width: calc(100% - 4px);
-		max-width: 100vw;
-	}
-	
-	.netflix-slider::-webkit-scrollbar {
-		display: none;
-	}
-	
-	.netflix-card {
-		flex: 0 0 calc(45% - 16px); /* Show 2 cards on mobile */
-		scroll-snap-align: start;
-		position: relative;
-		transition: all 0.3s ease;
-		transform-origin: center left;
-		z-index: 1;
-		max-width: 180px;
-	}
-	
-	@media (min-width: 640px) {
-		.netflix-card {
-			flex: 0 0 calc(33.333% - 16px); /* Show 3 cards on tablet */
-			max-width: 200px;
-		}
-	}
-	
-	@media (min-width: 1024px) {
-		.netflix-card {
-			flex: 0 0 220px; /* Fixed width on desktop */
-			max-width: 220px;
-		}
-		
-		.netflix-card:hover {
-			transform: scale(1.07);
-			z-index: 10;
-		}
-		
-		.netflix-card:hover ~ .netflix-card {
-			transform: translateX(20px);
-		}
-	}
-	
-	.netflix-rank {
-		position: absolute;
-		left: -16px;
-		top: 50%;
-		transform: translateY(-50%);
-		font-size: 100px;
-		font-weight: 800;
-		opacity: 0.9;
-		text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
-		-webkit-text-stroke: 2px hsl(var(--foreground));
-		color: transparent;
-		z-index: 2;
-		line-height: 1;
-	}
-	
-	@media (min-width: 640px) {
-		.netflix-rank {
-			left: -20px;
-			font-size: 120px;
-		}
-	}
-	
-	@media (min-width: 1024px) {
-		.netflix-rank {
-			left: -25px;
-			font-size: 140px;
-		}
-	}
-`;
+
 
 const HomePage = () => {
   const {
@@ -368,15 +273,7 @@ const HomePage = () => {
 
   // Handle share
 
-  // Add style tag for Netflix-like effects
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = netflixRowStyles;
-    document.head.appendChild(style);
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
+
 
 
   return (
@@ -491,6 +388,7 @@ const HomePage = () => {
                         slider.scrollBy({ left: -180, behavior: 'smooth' });
                       }
                     }}
+                    aria-label="Scroll left"
                   >
                     <div className="flex items-center justify-center h-10 w-10 bg-black/50 backdrop-blur-sm rounded-full">
                       <ChevronRight className="h-5 w-5 rotate-180" />
@@ -546,6 +444,7 @@ const HomePage = () => {
                                   e.stopPropagation();
                                   handlePlaylistClick(playlist);
                                 }}
+                                aria-label={`Play ${playlist.name}`}
                               >
                                 <PlayCircle className="h-5 w-5" />
                               </Button>
@@ -568,6 +467,7 @@ const HomePage = () => {
                                   );
                                   toast.success(`${playlist.isLiked ? 'Removed from' : 'Added to'} your Liked Playlists`);
                                 }}
+                                aria-label={playlist.isLiked ? "Remove from Liked Playlists" : "Add to Liked Playlists"}
                               >
                                 <Heart className={`h-3.5 w-3.5 ${playlist.isLiked ? 'fill-white text-white' : ''}`} />
                               </Button>
@@ -585,6 +485,7 @@ const HomePage = () => {
                         slider.scrollBy({ left: 180, behavior: 'smooth' });
                       }
                     }}
+                    aria-label="Scroll right"
                   >
                     <div className="flex items-center justify-center h-10 w-10 bg-black/50 backdrop-blur-sm rounded-full">
                       <ChevronRight className="h-5 w-5" />
