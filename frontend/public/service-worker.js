@@ -1,7 +1,7 @@
 // Service Worker for Mavrixfy
-const CACHE_NAME = 'mavrixfy-v2.0.1';
-const STATIC_CACHE = 'mavrixfy-static-v1.0.1';
-const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.1';
+const CACHE_NAME = 'mavrixfy-v2.0.2';
+const STATIC_CACHE = 'mavrixfy-static-v1.0.2';
+const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.2';
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -69,6 +69,25 @@ self.addEventListener('fetch', (event) => {
 
   // Handle different types of requests
   if (url.origin === self.location.origin) {
+    // Check if this is a JioSaavn API request through our backend
+    if (url.pathname.startsWith('/api/jiosaavn/')) {
+      // For JioSaavn API requests, use network-only strategy without fallback
+      // This prevents 504 errors from being returned when the API is slow or unavailable
+      event.respondWith(
+        fetch(request).catch((error) => {
+          // Return a proper error response instead of 504
+          return new Response(JSON.stringify({ 
+            error: 'Network error', 
+            message: 'Unable to reach the music API. Please check your connection.' 
+          }), {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'application/json' }
+          });
+        })
+      );
+      return;
+    }
     // Same-origin requests
     event.respondWith(handleSameOriginRequest(request));
   } else if (url.hostname === 'res.cloudinary.com') {

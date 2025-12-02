@@ -76,13 +76,20 @@ async function fetchMusicJson(endpoint: string, params: Record<string, any> = {}
 
   const doFetch = async () => {
     try {
-      const response = await axiosInstance.get(endpoint, { params });
+      const response = await axiosInstance.get(endpoint, { 
+        params,
+        timeout: 15000, // Increase timeout to 15 seconds
+      });
       const data = response.data;
       musicRequestState.cache.set(cacheKey, { ts: Date.now(), data });
       return data;
-    } catch (error) {
-      console.error('Music API request failed:', error);
-      throw error;
+    } catch (error: any) {
+      // Only log errors that aren't network timeouts or 504s
+      if (error.response?.status !== 504 && error.code !== 'ECONNABORTED') {
+        console.error('Music API request failed:', error.message || error);
+      }
+      // Return empty data structure instead of throwing to prevent UI breaks
+      return { data: { results: [] } };
     }
   };
 

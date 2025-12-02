@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { RecentlyPlayed } from '@/components/RecentlyPlayed';
+import { MusicNewsCarousel } from '@/components/MusicNewsCarousel';
 //
 
 // Suggested genres
@@ -298,6 +299,9 @@ const HomePage = () => {
               </div>
             </div>
           )}
+
+          {/* Music News and Latest Releases Carousel */}
+          {isOnline && <MusicNewsCarousel />}
 
           {/* Recently played section - render only when data exists and online */}
           {isOnline && getDisplayedItems().length > 0 && (

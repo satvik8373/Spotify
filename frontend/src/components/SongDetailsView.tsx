@@ -3,15 +3,15 @@ import { usePlayerStore } from '@/stores/usePlayerStore';
 import { Button } from './ui/button';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { ShareSong } from './ShareSong';
-import { 
-  ChevronDown, 
-  Heart, 
-  MoreHorizontal, 
-  Share2, 
-  SkipBack, 
-  Play, 
-  Pause, 
-  SkipForward, 
+import {
+  ChevronDown,
+  Heart,
+  MoreHorizontal,
+  Share2,
+  SkipBack,
+  Play,
+  Pause,
+  SkipForward,
   ListMusic,
   Plus,
   Trash2,
@@ -42,31 +42,31 @@ const AutoScrollMarquee = ({ text, className }: { text: string, className?: stri
   const [shouldScroll, setShouldScroll] = useState(false);
   const [scrollDistance, setScrollDistance] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // Detect mobile devices
   useEffect(() => {
     const checkMobile = () => {
       // Check for mobile devices based on screen width and touch capability
-      const isMobileDevice = window.innerWidth < 768 || 
-        ('ontouchstart' in window) || 
+      const isMobileDevice = window.innerWidth < 768 ||
+        ('ontouchstart' in window) ||
         (navigator.maxTouchPoints > 0);
       setIsMobile(isMobileDevice);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-  
+
   // Check if text is overflowing and needs animation
   useEffect(() => {
     if (containerRef.current && textRef.current) {
       const container = containerRef.current;
       const textEl = textRef.current;
-      
+
       // Check if text overflows its container
       const isOverflowing = textEl.scrollWidth > container.clientWidth;
-      
+
       // Calculate scroll distance if needed
       if (isOverflowing) {
         const distance = -(textEl.scrollWidth - container.clientWidth + 16); // Added small padding
@@ -77,18 +77,18 @@ const AutoScrollMarquee = ({ text, className }: { text: string, className?: stri
       }
     }
   }, [text]);
-  
+
   return (
-    <div 
+    <div
       ref={containerRef}
       className={cn(
-        "text-auto-scroll", 
-        "song-title-container", 
+        "text-auto-scroll",
+        "song-title-container",
         shouldScroll && "has-mask",
         className
       )}
-      style={{ 
-        maxWidth: '100%', 
+      style={{
+        maxWidth: '100%',
         overflow: 'hidden',
         whiteSpace: 'nowrap',
         textOverflow: 'ellipsis',
@@ -131,17 +131,17 @@ const AutoScrollMarquee = ({ text, className }: { text: string, className?: stri
 };
 
 const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
-  const { 
-    currentSong, 
-    isPlaying, 
-    togglePlay, 
-    playNext, 
+  const {
+    currentSong,
+    isPlaying,
+    togglePlay,
+    playNext,
     playPrevious,
     currentTime: storeCurrentTime,
     duration: storeDuration,
     setCurrentTime: setStoreCurrentTime
   } = usePlayerStore();
-  
+
   const { likedSongIds, toggleLikeSong, loadLikedSongs } = useLikedSongsStore();
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -149,7 +149,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
-  
+
   // Swipe handling
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number | null>(null);
@@ -159,18 +159,18 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const [swipingDirection, setSwipingDirection] = useState<'none' | 'vertical' | 'horizontal'>('none');
   const [swipeOffset, setSwipeOffset] = useState({ x: 0, y: 0 });
   const [swipeSource, setSwipeSource] = useState<'albumArt' | 'container' | 'progressBar'>('container');
-  
+
   // Options menu state
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  
+
   // Close options menu when song details view closes
   useEffect(() => {
     if (!isOpen) {
       setShowOptionsMenu(false);
     }
   }, [isOpen]);
-  
+
   // Handle click outside to close the menu
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -178,47 +178,47 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         setShowOptionsMenu(false);
       }
     };
-    
+
     if (showOptionsMenu) {
       // Delay the event listener to prevent immediate closing
       setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
       }, 10);
     }
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showOptionsMenu]);
-  
+
   // Handle touch start for swipe detection
   const handleTouchStart = (e: React.TouchEvent, source: 'albumArt' | 'container' | 'progressBar') => {
     if (!isOpen) return;
-    
+
     // Store the touch source to handle different behaviors
     setSwipeSource(source);
-    
+
     touchStartY.current = e.touches[0].clientY;
     touchStartX.current = e.touches[0].clientX;
     setSwipingDirection('none');
-    
+
     // Removed preventDefault to avoid passive event listener error
   };
-  
+
   // Handle touch move for swipe detection
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isOpen || touchStartY.current === null || touchStartX.current === null) return;
-    
+
     const touchY = e.touches[0].clientY;
     const touchX = e.touches[0].clientX;
     const deltaY = touchY - touchStartY.current;
     const deltaX = touchX - touchStartX.current;
-    
+
     // For progress bar, don't handle horizontal swipes
     if (swipeSource === 'progressBar') {
       return;
     }
-    
+
     // Determine swipe direction if not already set
     if (swipingDirection === 'none') {
       if (Math.abs(deltaY) > Math.abs(deltaX) + 10) {
@@ -227,7 +227,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         setSwipingDirection('horizontal');
       }
     }
-    
+
     // Apply appropriate transformations based on swipe direction and source
     if (swipingDirection === 'vertical') {
       // Only allow downward swipes to close
@@ -241,11 +241,11 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       }
     }
   };
-  
+
   // Handle touch end for swipe completion
   const handleTouchEnd = () => {
     if (!isOpen || touchStartY.current === null || touchStartX.current === null) return;
-    
+
     if (swipingDirection === 'vertical') {
       // If swiped down more than 150px, close the view
       if (swipeOffset.y > 150) {
@@ -259,7 +259,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         playPrevious();
       }
     }
-    
+
     // Reset swipe state
     touchStartY.current = null;
     touchStartX.current = null;
@@ -271,21 +271,21 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   useEffect(() => {
     loadLikedSongs();
   }, [loadLikedSongs]);
-  
+
   // Update like status whenever the current song or likedSongIds changes
   useEffect(() => {
     if (!currentSong) return;
-    
+
     // Check if the song is liked by checking both possible ID formats
     const songId = (currentSong as any).id || currentSong._id;
     const liked = songId ? likedSongIds?.has(songId) : false;
-    
+
     setIsLiked(liked);
   }, [currentSong, likedSongIds]);
 
   useEffect(() => {
     audioRef.current = document.querySelector("audio");
-    
+
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -297,7 +297,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       setCurrentTime(audio.currentTime);
       if (setStoreCurrentTime) setStoreCurrentTime(audio.currentTime);
     };
-    
+
     const updateDuration = () => {
       if (!isNaN(audio.duration)) {
         setDuration(audio.duration);
@@ -317,31 +317,31 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   useEffect(() => {
     const handleLikeUpdate = (e: Event) => {
       if (!currentSong) return;
-      
+
       const songId = (currentSong as any).id || currentSong._id;
-      
+
       // Check if this event includes details about which song was updated
       if (e instanceof CustomEvent && e.detail) {
         // If we have details and it's not for our current song, ignore
         if (e.detail.songId && e.detail.songId !== songId) {
           return;
         }
-        
+
         // If we have explicit like state in the event, use it
         if (typeof e.detail.isLiked === 'boolean') {
           setIsLiked(e.detail.isLiked);
           return;
         }
       }
-      
+
       // Otherwise do a fresh check from the store
       const freshCheck = songId ? likedSongIds?.has(songId) : false;
       setIsLiked(freshCheck);
     };
-    
+
     document.addEventListener('likedSongsUpdated', handleLikeUpdate);
     document.addEventListener('songLikeStateChanged', handleLikeUpdate);
-    
+
     return () => {
       document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
       document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
@@ -358,13 +358,13 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
   const handleLikeToggle = () => {
     if (!currentSong) return;
-    
+
     // Get the song ID consistently
     const songId = (currentSong as any).id || currentSong._id;
-    
+
     // Optimistically update the UI immediately
     setIsLiked(!isLiked);
-    
+
     // Perform the actual toggle with the correct song format
     toggleLikeSong({
       _id: songId,
@@ -377,9 +377,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
-    
+
     // Also dispatch a direct event for immediate notification
-    document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
+    document.dispatchEvent(new CustomEvent('songLikeStateChanged', {
       detail: {
         songId,
         song: currentSong,
@@ -404,9 +404,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         'fixed inset-0 z-50 transition-transform duration-500 flex flex-col',
         isOpen ? 'translate-y-0' : 'translate-y-full'
       )}
-      style={{ 
-        transform: isOpen 
-          ? `translateY(${swipeOffset.y}px)` 
+      style={{
+        transform: isOpen
+          ? `translateY(${swipeOffset.y}px)`
           : 'translateY(100%)',
         background: albumColors.isLight
           ? `linear-gradient(to bottom, ${albumColors.primary}, ${albumColors.secondary})`
@@ -427,9 +427,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           <ChevronDown className="h-6 w-6" />
         </Button>
         <span className="text-[13px] font-medium text-white/80 uppercase tracking-wide">Now Playing</span>
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className="rounded-full text-white/70 hover:text-white"
           onClick={(e) => {
             e.stopPropagation();
@@ -438,10 +438,10 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         >
           <MoreHorizontal className="h-5 w-5" />
         </Button>
-        
+
         {/* Options Menu */}
         {showOptionsMenu && (
-          <div 
+          <div
             ref={menuRef}
             className="absolute top-16 right-4 w-64 bg-[#282828] rounded-md shadow-xl z-50 overflow-hidden"
             onTouchStart={(e) => e.stopPropagation()}
@@ -450,25 +450,25 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           >
             {/* Song info at top of menu */}
             <div className="flex items-center gap-3 p-3 border-b border-white/10">
-              <img 
-                src={currentSong.imageUrl} 
+              <img
+                src={currentSong.imageUrl}
                 alt={currentSong.title}
-                className="h-10 w-10 object-cover rounded-sm" 
+                className="h-10 w-10 object-cover rounded-sm"
               />
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-medium text-white truncate">{currentSong.title}</h4>
                 <p className="text-xs text-white/60 truncate">{currentSong.artist}</p>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-8 w-8 text-white/60 hover:bg-white/10"
                 onClick={() => setShowOptionsMenu(false)}
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            
+
             <div className="p-1">
               <button
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
@@ -479,7 +479,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 <Plus className="h-5 w-5 text-white/60" />
                 <span>Add to playlist</span>
               </button>
-              
+
               <button
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
                 onClick={() => {
@@ -489,7 +489,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 <Trash2 className="h-5 w-5 text-white/60" />
                 <span>Remove from this playlist</span>
               </button>
-              
+
               <button
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
                 onClick={() => {
@@ -499,7 +499,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 <ListMusic className="h-5 w-5 text-white/60" />
                 <span>Add to queue</span>
               </button>
-              
+
               <button
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
                 onClick={() => {
@@ -509,7 +509,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 <User className="h-5 w-5 text-white/60" />
                 <span>Go to artist</span>
               </button>
-              
+
               <ShareSong
                 song={currentSong}
                 trigger={
@@ -519,7 +519,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                   </button>
                 }
               />
-              
+
               <button
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
                 onClick={() => {
@@ -538,7 +538,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       <div className="flex-1 flex flex-col px-6 overflow-hidden">
         {/* Album Art with swipe gestures */}
         <div className="mt-2 flex-shrink-0">
-          <div 
+          <div
             ref={albumArtRef}
             className={cn(
               "rounded-md aspect-square w-full overflow-hidden shadow-2xl relative transition-all duration-300 touch-none",
@@ -546,7 +546,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             )}
             style={{
               transform: swipingDirection === 'horizontal' && swipeSource === 'albumArt'
-                ? `translateX(${swipeOffset.x}px)` 
+                ? `translateX(${swipeOffset.x}px)`
                 : 'translateX(0)'
             }}
             onTouchStart={(e) => {
@@ -590,7 +590,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20"></div>
-            
+
             {/* Down swipe indicator */}
             {swipingDirection === 'vertical' && swipeOffset.y > 30 && (
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-3 z-10 rounded-full bg-white/10 hover:bg-white/20">
@@ -609,7 +609,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 text={currentSong.title || 'Unknown Title'}
                 className="text-2xl md:text-3xl font-bold mb-1 single-line-marquee"
               />
-              
+
               {/* Artist name with marquee effect */}
               <AutoScrollMarquee
                 text={currentSong.artist || 'Unknown Artist'}
@@ -759,10 +759,10 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               </Button>
             </div>
           </div>
-          
+
           {/* Spacer to push bottom controls down */}
           <div className="flex-1 min-h-[60px]"></div>
-          
+
           {/* Additional Controls - Fixed to bottom */}
           <div className="flex justify-around pb-8 pt-4 w-full">
             <ShareSong
@@ -778,10 +778,10 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 </Button>
               }
             />
-            
+
             <Button
               variant="ghost"
-              size="sm" 
+              size="sm"
               className="rounded-full text-white/70 hover:text-white flex flex-col items-center gap-1"
             >
               <ListMusic className="h-5 w-5" />

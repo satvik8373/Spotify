@@ -11,7 +11,7 @@ const formatTime = (seconds: number) => {
 	if (isNaN(seconds)) return "0:00";
 	const minutes = Math.floor(seconds / 60);
 	const remainingSeconds = Math.floor(seconds % 60);
-	return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;	
+	return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
 
 export const PlaybackControls = () => {
@@ -42,10 +42,10 @@ export const PlaybackControls = () => {
 	// Get liked state from the liked songs store if possible
 	useEffect(() => {
 		if (!currentSong) return;
-		
+
 		const songId = (currentSong as any).id || currentSong._id;
 		const isCurrentSongLiked = songId ? likedSongIds?.has(songId) : false;
-		
+
 		setIsLiked(isCurrentSongLiked);
 	}, [currentSong, likedSongIds]);
 
@@ -94,31 +94,31 @@ export const PlaybackControls = () => {
 	useEffect(() => {
 		const handleLikeUpdate = (e: Event) => {
 			if (!currentSong) return;
-			
+
 			const songId = (currentSong as any).id || currentSong._id;
-			
+
 			// Check if this event includes details about which song was updated
 			if (e instanceof CustomEvent && e.detail) {
 				// If we have details and it's not for our current song, ignore
 				if (e.detail.songId && e.detail.songId !== songId) {
 					return;
 				}
-				
+
 				// If we have explicit like state in the event, use it
 				if (typeof e.detail.isLiked === 'boolean') {
 					setIsLiked(e.detail.isLiked);
 					return;
 				}
 			}
-			
+
 			// Otherwise do a fresh check from the store
 			const freshCheck = songId ? likedSongIds?.has(songId) : false;
 			setIsLiked(freshCheck);
 		};
-		
+
 		document.addEventListener('likedSongsUpdated', handleLikeUpdate);
 		document.addEventListener('songLikeStateChanged', handleLikeUpdate);
-		
+
 		return () => {
 			document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
 			document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
@@ -149,7 +149,7 @@ export const PlaybackControls = () => {
 
 		window.addEventListener('focus', handleFocus);
 		window.addEventListener('pageshow', handleFocus);
-		
+
 		return () => {
 			window.removeEventListener('focus', handleFocus);
 			window.removeEventListener('pageshow', handleFocus);
@@ -178,23 +178,23 @@ export const PlaybackControls = () => {
 	// 		setCurrentTime(newTime);
 	// 	}
 	// };
-	
+
 	const handleLikeToggle = (e: React.MouseEvent) => {
 		// Stop event propagation to prevent the song details view from opening
 		e.stopPropagation();
-		
+
 		if (!currentSong) return;
-		
+
 		const songId = (currentSong as any).id || currentSong._id;
-		
+
 		// Optimistically update UI
 		setIsLiked(!isLiked);
-		
+
 		// Actually toggle the like status
 		toggleLikeSong(currentSong);
-		
+
 		// Also dispatch a direct event for immediate notification
-		document.dispatchEvent(new CustomEvent('songLikeStateChanged', { 
+		document.dispatchEvent(new CustomEvent('songLikeStateChanged', {
 			detail: {
 				songId,
 				song: currentSong,
@@ -204,19 +204,19 @@ export const PlaybackControls = () => {
 			}
 		}));
 	};
-	
+
 	const toggleRepeat = () => {
 		setIsRepeating(!isRepeating);
 	};
 
 	if (!currentSong) return null;
-	
+
 	return (
 		<>
 			<SongDetailsView isOpen={showSongDetails} onClose={() => setShowSongDetails(false)} />
-			
+
 			{/* Desktop Player */}
-			<footer 
+			<footer
 				ref={playerRef}
 				className="h-[90px] border-t border-border px-4 hidden sm:block transition-opacity duration-300 bg-background text-foreground"
 				style={{ opacity: isTransitioning ? 0.95 : 1 }}
@@ -281,12 +281,12 @@ export const PlaybackControls = () => {
 								onClick={togglePlay}
 								disabled={!currentSong}
 							>
-								{isPlaying ? 
-									<Pause className="h-4 w-4" /> : 
+								{isPlaying ?
+									<Pause className="h-4 w-4" /> :
 									<Play className="h-4 w-4 ml-[1px]" />
 								}
 							</Button>
-							
+
 							<Button
 								size="icon"
 								variant="ghost"
@@ -296,7 +296,7 @@ export const PlaybackControls = () => {
 							>
 								<SkipForward className="h-4 w-4" />
 							</Button>
-							
+
 							<Button
 								size="icon"
 								variant="ghost"
@@ -392,7 +392,7 @@ export const PlaybackControls = () => {
 							</div>
 						</div>
 					</div>
-					
+
 					{/* volume controls */}
 					<div className="flex items-center gap-4 min-w-[180px] w-[30%] justify-end">
 						<div className="flex items-center gap-2">
@@ -407,15 +407,15 @@ export const PlaybackControls = () => {
 							</Button>
 						</div>
 
-						<div 
-							className="flex items-center gap-2 relative" 
+						<div
+							className="flex items-center gap-2 relative"
 							ref={volumeControlRef}
 							onMouseEnter={() => setShowVolumeSlider(true)}
 							onMouseLeave={() => setShowVolumeSlider(false)}
 						>
-							<Button 
-								size="icon" 
-								variant="ghost" 
+							<Button
+								size="icon"
+								variant="ghost"
 								className="hover:text-foreground text-muted-foreground h-8 w-8"
 								onClick={() => setVolume(volume === 0 ? 75 : 0)}
 							>
@@ -423,7 +423,7 @@ export const PlaybackControls = () => {
 							</Button>
 
 							<div className={cn(
-								"transition-all duration-200 overflow-hidden", 
+								"transition-all duration-200 overflow-hidden",
 								showVolumeSlider ? "w-24 opacity-100" : "w-0 opacity-0"
 							)}>
 								<Slider
@@ -445,7 +445,7 @@ export const PlaybackControls = () => {
 			</footer>
 
 			{/* Mobile Player */}
-			<div 
+			<div
 				className="fixed bottom-14 left-0 right-0 bg-background border-t border-border h-16 z-40 sm:hidden transition-all duration-300"
 				style={{ opacity: isTransitioning ? 0.95 : 1 }}
 				onClick={() => setShowSongDetails(true)}
@@ -517,11 +517,11 @@ export const PlaybackControls = () => {
 						</Button>
 					</div>
 				</div>
-				
+
 				{/* Progress bar for mobile */}
 				<div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/20">
-					<div 
-						className="h-full bg-primary" 
+					<div
+						className="h-full bg-primary"
 						style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
 					/>
 				</div>

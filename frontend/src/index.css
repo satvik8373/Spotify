@@ -477,6 +477,10 @@ a.button {
 :focus {
   outline: none;
   outline-offset: 0px;
+}
+
+/* Only show focus ring for keyboard navigation */
+:focus-visible {
   box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.5);
 }
 
