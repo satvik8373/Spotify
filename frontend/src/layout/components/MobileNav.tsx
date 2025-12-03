@@ -9,7 +9,7 @@ import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import SongDetailsView from '@/components/SongDetailsView';
 import { signOut } from '@/services/hybridAuthService';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
-import { MobileThemeToggle } from '@/components/MobileThemeToggle';
+
 
 /**
  * Mobile Navigation with Profile Menu and Lockscreen Controls
@@ -108,7 +108,7 @@ const MobileNav = () => {
     }
 
     // Ultra-specific CSS to prevent any overrides + iOS fixes
-    
+
 
     return () => {
       const element = document.getElementById(styleId);
@@ -306,16 +306,16 @@ const MobileNav = () => {
 
       {/* Mobile Header - Spotify style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
-        <div className="fixed top-0 left-0 right-0 z-30 bg-background dark:bg-[#191414] md:hidden">
+        <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden">
           {isLibraryRoute ? (
-            <div className="flex items-center justify-between px-3 py-1">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between px-4 h-12">
+              <div className="flex items-center gap-2.5">
                 {isAuthenticated ? (
                   <div className="relative">
                     <button
                       onClick={handleProfileClick}
                       aria-label="Profile"
-                      className="p-1"
+                      className="p-0.5"
                     >
                       {user?.picture ? (
                         <img
@@ -323,12 +323,12 @@ const MobileNav = () => {
                           alt={user.name || 'User'}
                           loading="lazy"
                           decoding="async"
-                          width="24"
-                          height="24"
-                          className="rounded-full object-cover h-6 w-6"
+                          width="28"
+                          height="28"
+                          className="rounded-full object-cover h-7 w-7"
                         />
                       ) : (
-                        <User className="h-5 w-5 text-muted-foreground" />
+                        <User className="h-6 w-6 text-muted-foreground" />
                       )}
                     </button>
                     {showProfileMenu && (
@@ -361,23 +361,23 @@ const MobileNav = () => {
                     aria-label="Sign in"
                     className="p-1"
                   >
-                    <LogIn className="h-4 w-4 text-foreground" />
+                    <LogIn className="h-5 w-5 text-foreground" />
                   </button>
                 )}
-                <h2 className="text-sm font-semibold text-foreground">Your Library</h2>
+                <h2 className="text-base font-bold text-foreground">Your Library</h2>
               </div>
               <div className="flex items-center gap-2">
               </div>
             </div>
           ) : isSearchRoute ? (
-            <div className="flex items-center justify-between px-3 py-1">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between px-4 h-12">
+              <div className="flex items-center gap-2.5">
                 {isAuthenticated ? (
                   <div className="relative">
                     <button
                       onClick={handleProfileClick}
                       aria-label="Profile"
-                      className="p-1"
+                      className="p-0.5"
                     >
                       {user?.picture ? (
                         <img
@@ -385,12 +385,12 @@ const MobileNav = () => {
                           alt={user.name || 'User'}
                           loading="lazy"
                           decoding="async"
-                          width="24"
-                          height="24"
-                          className="rounded-full object-cover h-6 w-6"
+                          width="28"
+                          height="28"
+                          className="rounded-full object-cover h-7 w-7"
                         />
                       ) : (
-                        <User className="h-5 w-5 text-muted-foreground" />
+                        <User className="h-6 w-6 text-muted-foreground" />
                       )}
                     </button>
                     {showProfileMenu && (
@@ -423,22 +423,22 @@ const MobileNav = () => {
                     aria-label="Sign in"
                     className="p-1"
                   >
-                    <LogIn className="h-4 w-4 text-foreground" />
+                    <LogIn className="h-5 w-5 text-foreground" />
                   </button>
                 )}
-                <h2 className="text-sm font-semibold text-foreground">Search</h2>
+                <h2 className="text-base font-bold text-foreground">Search</h2>
               </div>
               <div className="flex items-center gap-2" />
             </div>
           ) : (
-            <div className="flex items-center justify-between px-3 py-1">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between px-4 h-12">
+              <div className="flex items-center gap-2.5">
                 {isAuthenticated ? (
                   <div className="relative">
                     <button
                       onClick={handleProfileClick}
                       aria-label="Profile"
-                      className="p-1"
+                      className="p-0.5"
                     >
                       {user?.picture ? (
                         <img
@@ -446,12 +446,12 @@ const MobileNav = () => {
                           alt={user.name || 'User'}
                           loading="lazy"
                           decoding="async"
-                          width="24"
-                          height="24"
-                          className="rounded-full object-cover h-6 w-6"
+                          width="28"
+                          height="28"
+                          className="rounded-full object-cover h-7 w-7"
                         />
                       ) : (
-                        <User className="h-5 w-5 text-muted-foreground" />
+                        <User className="h-6 w-6 text-muted-foreground" />
                       )}
                     </button>
                     {showProfileMenu && (
@@ -482,14 +482,13 @@ const MobileNav = () => {
                   <button
                     onClick={handleLogin}
                     aria-label="Sign in"
-                    className="p-1"
+                    className="p-0.5"
                   >
-                    <LogIn className="h-4 w-4 text-foreground" />
+                    <LogIn className="h-5 w-5 text-foreground" />
                   </button>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <MobileThemeToggle />
               </div>
             </div>
           )}
@@ -513,7 +512,7 @@ const MobileNav = () => {
             <div className="mobile-player-container relative rounded-xl overflow-hidden shadow-2xl mx-1">
               {/* Main Player Container - Compact */}
               <div
-                className="relative px-3 py-2"
+                className="relative px-3 py-1"
                 style={{
                   backgroundColor: albumColors.primary || '#1a1a1a',
                   transition: 'background-color 300ms ease, color 300ms ease',
@@ -527,15 +526,15 @@ const MobileNav = () => {
                     onClick={handleSongTap}
                   >
                     {/* Album Artwork - Smaller */}
-                    <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md shadow-md">
+                    <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-md shadow-md">
                       <img
                         src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')}
                         alt={currentSong.title}
                         className="w-full h-full object-cover"
                         loading="eager"
                         decoding="async"
-                        width="40"
-                        height="40"
+                        width="32"
+                        height="32"
                       />
                     </div>
 

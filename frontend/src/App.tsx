@@ -26,7 +26,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
 import { SpotifyProvider } from './contexts/SpotifyContext';
-import { ThemeProvider } from './components/ThemeProvider';
+
 
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
@@ -55,89 +55,89 @@ const ErrorFallback = () => (
 
 // Auth gate that redirects to login if not authenticated
 const AuthGate = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading } = useAuth();
-  const location = useLocation();
-  
-  // Check if we previously saved auth info in localStorage as a quick check
-  // before the full authentication process completes
-  const hasCachedAuth = Boolean(
-    localStorage.getItem('auth-store') && 
-    JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
-  );
+	const { isAuthenticated, loading } = useAuth();
+	const location = useLocation();
 
-  // Check if we're coming from a login redirect (smooth transition)
-  const isFromLoginRedirect = sessionStorage.getItem('auth_redirect') === '1';
+	// Check if we previously saved auth info in localStorage as a quick check
+	// before the full authentication process completes
+	const hasCachedAuth = Boolean(
+		localStorage.getItem('auth-store') &&
+		JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
+	);
 
-  // Don't redirect while auth is still loading
-  if (loading) {
-    // If we have cached auth, render children optimistically for smooth UX
-    if (hasCachedAuth) {
-      return <>{children}</>;
-    }
-    
-    // If coming from login redirect, show minimal loading
-    if (isFromLoginRedirect) {
-      return (
-        <div className="flex items-center justify-center h-screen bg-background">
-          <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-        </div>
-      );
-    }
-    
-    // Otherwise show loading indicator with smoother animation
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+	// Check if we're coming from a login redirect (smooth transition)
+	const isFromLoginRedirect = sessionStorage.getItem('auth_redirect') === '1';
 
-  // If not authenticated, redirect to login with return URL
-  if (!isAuthenticated) {
-    // Store the redirect path so we can redirect back after login
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
-  }
+	// Don't redirect while auth is still loading
+	if (loading) {
+		// If we have cached auth, render children optimistically for smooth UX
+		if (hasCachedAuth) {
+			return <>{children}</>;
+		}
 
-  // User is authenticated, render children
-  return <>{children}</>;
+		// If coming from login redirect, show minimal loading
+		if (isFromLoginRedirect) {
+			return (
+				<div className="flex items-center justify-center h-screen bg-background">
+					<div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+				</div>
+			);
+		}
+
+		// Otherwise show loading indicator with smoother animation
+		return (
+			<div className="flex items-center justify-center h-screen bg-background">
+				<div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+			</div>
+		);
+	}
+
+	// If not authenticated, redirect to login with return URL
+	if (!isAuthenticated) {
+		// Store the redirect path so we can redirect back after login
+		return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+	}
+
+	// User is authenticated, render children
+	return <>{children}</>;
 };
 
 // Landing page router redirector - checks auth status and redirects accordingly
 const LandingRedirector = () => {
-  const { isAuthenticated, loading } = useAuth();
-  const hasCachedAuth = Boolean(
-    localStorage.getItem('auth-store') && 
-    JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
-  );
-  
-  // Check if we're coming from a login redirect (smooth transition)
-  const isFromLoginRedirect = sessionStorage.getItem('auth_redirect') === '1';
-  
-  // If we have cached auth or are authenticated, redirect to home immediately
-  if (hasCachedAuth || isAuthenticated) {
-    return <Navigate to="/home" replace />;
-  }
-  
-  // Still loading, but no cached auth - show loading indicator
-  if (loading && !hasCachedAuth) {
-    // Smaller spinner for login redirects
-    if (isFromLoginRedirect) {
-      return (
-        <div className="flex items-center justify-center h-screen bg-background">
-          <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-  
-  // Not authenticated, go to login
-  return <Navigate to="/login" replace />;
+	const { isAuthenticated, loading } = useAuth();
+	const hasCachedAuth = Boolean(
+		localStorage.getItem('auth-store') &&
+		JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
+	);
+
+	// Check if we're coming from a login redirect (smooth transition)
+	const isFromLoginRedirect = sessionStorage.getItem('auth_redirect') === '1';
+
+	// If we have cached auth or are authenticated, redirect to home immediately
+	if (hasCachedAuth || isAuthenticated) {
+		return <Navigate to="/home" replace />;
+	}
+
+	// Still loading, but no cached auth - show loading indicator
+	if (loading && !hasCachedAuth) {
+		// Smaller spinner for login redirects
+		if (isFromLoginRedirect) {
+			return (
+				<div className="flex items-center justify-center h-screen bg-background">
+					<div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+				</div>
+			);
+		}
+
+		return (
+			<div className="flex items-center justify-center h-screen bg-background">
+				<div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+			</div>
+		);
+	}
+
+	// Not authenticated, go to login
+	return <Navigate to="/login" replace />;
 };
 
 // Configure the router with React Router v6
@@ -164,7 +164,7 @@ const router = createBrowserRouter(
 			element: <SpotifyCallback />
 		},
 		{
-			element: <MainLayout />, 
+			element: <MainLayout />,
 			errorElement: <ErrorFallback />,
 			children: [
 				{
@@ -215,24 +215,24 @@ const router = createBrowserRouter(
 function AppContent() {
 	const [showSplash, setShowSplash] = useState(true);
 	const [initialized, setInitialized] = useState(false);
-	
+
 	// Initialize Firestore data and check if user is already logged in
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
 				// Clear any Firebase auth redirect state to prevent errors
 				clearAuthRedirectState();
-				
+
 				// Initialize performance optimizations
 				performanceService.addResourceHints();
 				// Mobile performance service initializes automatically
-				
+
 				// Check for cached authentication
 				const hasCachedAuth = Boolean(
-					localStorage.getItem('auth-store') && 
+					localStorage.getItem('auth-store') &&
 					JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
 				);
-				
+
 				const fromAuthRedirect = (() => { try { return sessionStorage.getItem('auth_redirect') === '1'; } catch { return false; } })();
 
 				// Reduce splash screen time for logged-in users or after auth redirect
@@ -252,7 +252,7 @@ function AppContent() {
 				setInitialized(true);
 			}
 		};
-		
+
 		initializeApp();
 	}, []);
 
@@ -274,20 +274,20 @@ function AppContent() {
 			import('./pages/search/SearchPage');
 		});
 	}, []);
-	
+
 	// Always show splash screen on initial load until initialization completes
 	if (showSplash || !initialized) {
 		return <SplashScreen onComplete={() => initialized && setShowSplash(false)} />;
 	}
-	
+
 	// Always show main app content, login will be handled in the header
 	return (
 		<>
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
 			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div></div>}>
-				<RouterProvider 
-					router={router} 
-					future={{ v7_startTransition: true }} 
+				<RouterProvider
+					router={router}
+					future={{ v7_startTransition: true }}
 				/>
 			</Suspense>
 			<Toaster />
@@ -319,9 +319,7 @@ function App() {
 	return (
 		<AuthProvider>
 			<SpotifyProvider>
-				<ThemeProvider>
-					<AppContent />
-				</ThemeProvider>
+				<AppContent />
 			</SpotifyProvider>
 		</AuthProvider>
 	);

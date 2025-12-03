@@ -98,7 +98,7 @@ const Topbar = () => {
   };
 
   return (
-    <header className="sticky top-0 z-10 bg-zinc-900/90 backdrop-blur-sm border-b border-zinc-800">
+    <header className="sticky top-0 z-10 bg-[#121212] dark:bg-[#121212] border-b border-border">
       <div className="px-4 flex h-16 items-center justify-between">
         {/* Search Box */}
         <form ref={searchFormRef} className="relative w-full max-w-md" onSubmit={handleSearch}>

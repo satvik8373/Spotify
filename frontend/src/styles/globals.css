@@ -29,42 +29,43 @@
   }
 
   .dark {
-    /* Spotify dark: #191414 */
-    --background: 0 0% 8%;
+    /* Spotify exact colors */
+    /* Main background: #121212 */
+    --background: 0 0% 7.1%;
     --foreground: 0 0% 100%;
 
-    /* Cards/popovers match background subtly */
-    --card: 0 0% 8%;
+    /* Cards/elevated surfaces: #181818 */
+    --card: 0 0% 9.4%;
     --card-foreground: 0 0% 100%;
-    --popover: 0 0% 8%;
+    --popover: 0 0% 9.4%;
     --popover-foreground: 0 0% 100%;
 
     /* Spotify Green #1DB954 ~ hsl(141 73% 42%) */
     --primary: 141 73% 42%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary/muted surfaces slightly lighter than bg */
-    --secondary: 0 0% 12%;
+    /* Secondary/muted surfaces: #181818 */
+    --secondary: 0 0% 9.4%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 12%;
-    /* Secondary text ~ #B3B3B3 */
+    --muted: 0 0% 9.4%;
+    /* Secondary text: #B3B3B3 */
     --muted-foreground: 0 0% 70%;
 
-    /* Accent uses Spotify Green as well for active chips/buttons */
+    /* Accent uses Spotify Green */
     --accent: 141 73% 42%;
     --accent-foreground: 0 0% 100%;
 
-    /* Destructive/border/input tuned for dark surfaces */
+    /* Destructive */
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    /* Border ~ #2A2A2A */
-    --border: 0 0% 16%;
-    --input: 0 0% 16%;
+    --destructive-foreground: 0 0% 100%;
+    /* Border: #282828 */
+    --border: 0 0% 15.7%;
+    --input: 0 0% 15.7%;
 
     /* Focus ring follows primary */
     --ring: 141 73% 42%;
 
-    /* Charts can remain as defaults or be tuned later */
+    /* Charts */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;

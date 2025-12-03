@@ -69,7 +69,7 @@ export function PlaylistCard({
         onClick={handleCardClick}
       >
         {/* Cover Image */}
-        <div className={cn("relative overflow-hidden rounded-md", styles.imageWrapper)}>
+        <div className={cn("relative overflow-hidden rounded-sm", styles.imageWrapper)}>
           <div className="w-full h-0 pb-[100%] relative">
             <img
               src={playlist.imageUrl || '/default-playlist.jpg'}

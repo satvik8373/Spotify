@@ -10,7 +10,7 @@ import SearchSuggestions from '@/components/SearchSuggestions';
 import { useAuth } from '../contexts/AuthContext';
 import { signOut } from '@/services/hybridAuthService';
 import { debounce } from 'lodash';
-import { ThemeToggle } from '@/components/ThemeToggle';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,7 +97,7 @@ const Header = ({ className }: HeaderProps) => {
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    
+
     if (query.trim().length >= 2) {
       debouncedSearch(query);
       setShowSearchSuggestions(true);
@@ -121,7 +121,7 @@ const Header = ({ className }: HeaderProps) => {
     try {
       // Navigate to welcome page first for faster perceived performance
       navigate('/', { replace: true });
-      
+
       // Then perform the actual logout
       const result = await signOut();
       if (!result.success) {
@@ -135,7 +135,7 @@ const Header = ({ className }: HeaderProps) => {
   };
 
   return (
-    <header className={`bg-background/95 py-4 px-6 z-50 sticky top-0 border-b border-border ${className}`}>
+    <header className={`bg-[#121212] dark:bg-[#121212] py-4 px-6 z-50 sticky top-0 border-b border-border ${className}`}>
       <div className="max-w-[1800px] mx-auto flex items-center justify-between">
         {/* Logo and Brand */}
         <Link to={user ? "/home" : "/"} className="flex items-center gap-3 hover:opacity-90 transition-opacity min-w-[200px]">
@@ -153,9 +153,9 @@ const Header = ({ className }: HeaderProps) => {
         </Link>
 
         {/* Centered Search Bar */}
-        <form 
-          ref={searchFormRef} 
-          className="flex-1 max-w-[600px] mx-auto relative px-4" 
+        <form
+          ref={searchFormRef}
+          className="flex-1 max-w-[600px] mx-auto relative px-4"
           onSubmit={handleSearch}
         >
           <div className="relative">
@@ -193,12 +193,12 @@ const Header = ({ className }: HeaderProps) => {
 
         {/* User Profile and Theme Toggle */}
         <div className="min-w-[200px] flex justify-end items-center gap-2">
-          <ThemeToggle />
+
           {!authLoading && (
             user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
+                  <Button
                     className="rounded-full bg-muted hover:bg-muted/80 text-foreground border-none flex items-center gap-2 py-1.5 px-2"
                   >
                     <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
@@ -213,15 +213,15 @@ const Header = ({ className }: HeaderProps) => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="min-w-[200px]" align="end" sideOffset={8}>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    className="cursor-pointer" 
+                  <DropdownMenuItem
+                    className="cursor-pointer"
                     onClick={() => navigate('/profile')}
                   >
                     <User className="h-4 w-4 mr-2" />
                     Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className="cursor-pointer text-destructive" 
+                  <DropdownMenuItem
+                    className="cursor-pointer text-destructive"
                     onClick={handleLogout}
                   >
                     <LogOut className="h-4 w-4 mr-2" />
@@ -230,7 +230,7 @@ const Header = ({ className }: HeaderProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button 
+              <Button
                 className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8"
                 onClick={() => navigate('/login')}
               >
