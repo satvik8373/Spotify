@@ -33,7 +33,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '../../components/ui/dropdown-menu';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { EditPlaylistDialog } from '../../components/playlist/EditPlaylistDialog';
 import { formatTime } from '../../utils/formatTime';
 import { SharePlaylist } from '../../components/SharePlaylist';
@@ -949,21 +949,10 @@ export function PlaylistPage() {
                     console.log('Swipe triggered for:', song.title);
                     usePlayerStore.getState().playNextInQueue(song);
                     toast.success(
-                      <div className="flex flex-col gap-1">
-                        <span className="font-medium">Play next in queue</span>
-                        <span className="text-xs text-muted-foreground">{song.title}</span>
-                      </div>,
+                      `Added "${song.title}" to play next`,
                       {
                         duration: 2000,
-                        action: {
-                          label: 'View Queue',
-                          onClick: () => {
-                            const queueButton = document.querySelector('[data-queue-button]') as HTMLElement;
-                            if (queueButton) {
-                              queueButton.click();
-                            }
-                          }
-                        }
+                        icon: '🎵',
                       }
                     );
                   }}
@@ -1047,21 +1036,10 @@ export function PlaylistPage() {
                             console.log('Add to queue clicked for:', song.title);
                             usePlayerStore.getState().playNextInQueue(song);
                             toast.success(
-                              <div className="flex flex-col gap-1">
-                                <span className="font-medium">Play next in queue</span>
-                                <span className="text-xs text-muted-foreground">{song.title}</span>
-                              </div>,
+                              `Added "${song.title}" to play next`,
                               {
                                 duration: 2000,
-                                action: {
-                                  label: 'View Queue',
-                                  onClick: () => {
-                                    const queueButton = document.querySelector('[data-queue-button]') as HTMLElement;
-                                    if (queueButton) {
-                                      queueButton.click();
-                                    }
-                                  }
-                                }
+                                icon: '🎵',
                               }
                             );
                           }}

@@ -22,6 +22,7 @@ const SwipeableSongItem: React.FC<SwipeableSongItemProps> = ({
     const [isTouchDevice, setIsTouchDevice] = useState(false);
 
     const isDragging = useRef(false);
+    const dragStartX = useRef(0);
 
     // Detect if device supports touch (mobile/tablet)
     useEffect(() => {
@@ -67,12 +68,13 @@ const SwipeableSongItem: React.FC<SwipeableSongItemProps> = ({
         }
     };
 
-    const handleDragStart = () => {
-        console.log('🎯 Drag started!');
+    const handleDragStart = (_: any, info: PanInfo) => {
+        console.log('🎯 Drag started at X:', info.point.x);
+        dragStartX.current = info.point.x;
         isDragging.current = true;
         // Visual feedback
         if (containerRef.current) {
-            containerRef.current.style.opacity = '0.8';
+            containerRef.current.style.opacity = '0.9';
         }
     };
 
@@ -84,46 +86,52 @@ const SwipeableSongItem: React.FC<SwipeableSongItemProps> = ({
             containerRef.current.style.opacity = '1';
         }
         
-        if (info.offset.x > dynamicThreshold) {
+        const dragDistance = info.offset.x;
+        const wasDragged = Math.abs(dragDistance) > 5; // Consider it a drag if moved more than 5px
+        
+        if (dragDistance > dynamicThreshold) {
             console.log('✅ Threshold exceeded! Calling onSwipeRight');
             onSwipeRight();
             // Haptic feedback on success
             safeVibrate(50);
         } else {
-            console.log('❌ Threshold not met. Needed:', dynamicThreshold, 'Got:', info.offset.x);
+            console.log('❌ Threshold not met. Needed:', dynamicThreshold, 'Got:', dragDistance);
         }
         
         // Reset position smoothly
         x.set(0);
         setIsTriggered(false);
 
-        // Reset dragging state after a short delay to block subsequent click
+        // Reset dragging state after a delay - longer if actually dragged
         setTimeout(() => {
             isDragging.current = false;
-        }, 100);
+        }, wasDragged ? 200 : 50);
     };
 
     const handleDrag = (_: any, info: PanInfo) => {
-        console.log('Dragging... Offset X:', info.offset.x);
-        if (info.offset.x > dynamicThreshold && !isTriggered) {
-            console.log('Threshold crossed!');
+        const dragDistance = info.offset.x;
+        console.log('📍 Dragging... Offset X:', dragDistance, 'Threshold:', dynamicThreshold);
+        
+        if (dragDistance > dynamicThreshold && !isTriggered) {
+            console.log('✨ Threshold crossed!');
             setIsTriggered(true);
             // Light haptic feedback when threshold crossed
             safeVibrate(10);
-        } else if (info.offset.x <= dynamicThreshold && isTriggered) {
+        } else if (dragDistance <= dynamicThreshold && isTriggered) {
             setIsTriggered(false);
         }
     };
 
-    const handleClickCapture = (e: React.MouseEvent) => {
+    const handleClickCapture = (e: React.MouseEvent | React.TouchEvent) => {
         if (isDragging.current) {
+            console.log('🚫 Blocking click/touch - drag in progress');
             e.stopPropagation();
             e.preventDefault();
         }
     };
 
     return (
-        <div className={`relative overflow-hidden ${className}`} ref={containerRef} style={{ touchAction: 'pan-y' }}>
+        <div className={`relative overflow-hidden ${className}`} ref={containerRef}>
             {/* Background Action Layer - Only show on touch devices */}
             {isTouchDevice && (
                 <motion.div
@@ -146,11 +154,14 @@ const SwipeableSongItem: React.FC<SwipeableSongItemProps> = ({
                 dragConstraints={{ left: 0, right: 200 }}
                 dragElastic={{ left: 0, right: 0.3 }}
                 dragMomentum={false}
+                dragDirectionLock={true}
+                dragPropagation={false}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
                 onDrag={handleDrag}
                 onClickCapture={handleClickCapture}
-                style={{ x, touchAction: 'pan-y' }}
+                onTouchStartCapture={handleClickCapture}
+                style={{ x }}
                 className="relative z-10 bg-background"
             >
                 {children}

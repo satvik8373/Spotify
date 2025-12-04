@@ -294,11 +294,13 @@ function AppContent() {
 				position="bottom-center"
 				toastOptions={{
 					style: {
-						background: '#333',
-						color: '#fff',
+						background: '#fff',
+						color: '#000',
 						borderRadius: '8px',
 						fontSize: '14px',
 						padding: '12px 16px',
+						boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+						fontWeight: '500',
 					},
 					success: {
 						iconTheme: {
@@ -306,6 +308,7 @@ function AppContent() {
 							secondary: 'white',
 						},
 					},
+					duration: 3000,
 				}}
 			/>
 			<PWAInstallPrompt />

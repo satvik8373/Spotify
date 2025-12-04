@@ -12,7 +12,7 @@ import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Song } from '@/types';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService, deleteAllLikedSongs, migrateLikedSongsStructure } from '@/services/syncedLikedSongsService';
 import SpotifySyncPermissionModal from '@/components/SpotifySyncPermissionModal';
@@ -413,7 +413,7 @@ const LikedSongsPage = () => {
         await loadAndSetLikedSongs();
         setUpToDate(true);
       } else {
-        toast.info('No new songs were added');
+        toast('No new songs were added');
       }
     } catch (error) {
       console.error('Error syncing selected songs:', error);
@@ -1350,22 +1350,10 @@ const LikedSongsPage = () => {
                       const playerSong = adaptToPlayerSong(song);
                       usePlayerStore.getState().playNextInQueue(playerSong);
                       toast.success(
-                        <div className="flex flex-col gap-1">
-                          <span className="font-medium">Play next in queue</span>
-                          <span className="text-xs text-muted-foreground">{song.title}</span>
-                        </div>,
+                        `Added "${song.title}" to play next`,
                         {
                           duration: 2000,
-                          action: {
-                            label: 'View Queue',
-                            onClick: () => {
-                              // Navigate to queue or open queue modal
-                              const queueButton = document.querySelector('[data-queue-button]') as HTMLElement;
-                              if (queueButton) {
-                                queueButton.click();
-                              }
-                            }
-                          }
+                          icon: '🎵',
                         }
                       );
                     }}
@@ -1531,21 +1519,10 @@ const LikedSongsPage = () => {
                                   const playerSong = adaptToPlayerSong(song);
                                   usePlayerStore.getState().playNextInQueue(playerSong);
                                   toast.success(
-                                    <div className="flex flex-col gap-1">
-                                      <span className="font-medium">Play next in queue</span>
-                                      <span className="text-xs text-muted-foreground">{song.title}</span>
-                                    </div>,
+                                    `Added "${song.title}" to play next`,
                                     {
                                       duration: 2000,
-                                      action: {
-                                        label: 'View Queue',
-                                        onClick: () => {
-                                          const queueButton = document.querySelector('[data-queue-button]') as HTMLElement;
-                                          if (queueButton) {
-                                            queueButton.click();
-                                          }
-                                        }
-                                      }
+                                      icon: '🎵',
                                     }
                                   );
                                 }}>
