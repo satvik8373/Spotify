@@ -121,7 +121,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const offsetX = clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
     const newTime = percentage * duration;
-    
+
     if (audioRef.current) {
       audioRef.current.currentTime = newTime;
       setCurrentTime(newTime);
@@ -133,7 +133,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     if (!currentSong) return;
     const songId = (currentSong as any).id || currentSong._id;
     setIsLiked(!isLiked);
-    
+
     toggleLikeSong({
       _id: songId,
       title: currentSong.title,
@@ -160,31 +160,31 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       )}
       style={{
         transform: isOpen ? `translateY(${swipeOffset}px)` : 'translateY(100%)',
-        background: `linear-gradient(180deg, ${albumColors.primary} 0%, ${albumColors.secondary} 100%)`,
+        background: `linear-gradient(180deg, ${albumColors.primary} 0%, ${albumColors.secondary} 50%, ${albumColors.accent} 100%)`,
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-2">
+      <div className="flex items-center justify-between px-4 pt-6 pb-4">
         <button
           onClick={onClose}
-          className="p-2 -ml-2 text-white active:scale-95 transition-transform"
+          className="p-2 -ml-2 text-white/90 active:scale-95 transition-transform"
         >
-          <ChevronDown className="h-6 w-6" strokeWidth={2.5} />
+          <ChevronDown className="h-7 w-7" strokeWidth={2.5} />
         </button>
-        <span className="text-sm font-semibold text-white">
-          Now Playing
+        <span className="text-sm font-medium text-white/90">
+          {currentSong.artist}
         </span>
-        <button className="p-2 -mr-2 text-white active:scale-95 transition-transform">
-          <MoreHorizontal className="h-5 w-5" strokeWidth={2.5} />
+        <button className="p-2 -mr-2 text-white/90 active:scale-95 transition-transform">
+          <MoreHorizontal className="h-6 w-6" strokeWidth={2.5} />
         </button>
       </div>
 
-      {/* Album Art - Compact */}
-      <div className="px-8 mt-4">
-        <div className="aspect-square w-full max-w-[360px] mx-auto rounded-lg overflow-hidden shadow-2xl">
+      {/* Album Art - Large and centered */}
+      <div className="px-6 mt-8">
+        <div className="aspect-square w-full max-w-[400px] mx-auto rounded-lg overflow-hidden shadow-2xl">
           <img
             src={currentSong.imageUrl}
             alt={currentSong.title}
@@ -193,23 +193,23 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         </div>
       </div>
 
-      {/* Song Info - Compact */}
-      <div className="px-6 mt-6">
-        <div className="flex items-start justify-between gap-3">
+      {/* Song Info */}
+      <div className="px-6 mt-8">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-white mb-1 leading-tight">
+            <h1 className="text-3xl font-bold text-white mb-2 leading-tight">
               {currentSong.title}
             </h1>
-            <p className="text-base text-white/70">
+            <p className="text-lg text-white/70 font-medium">
               {currentSong.artist}
             </p>
           </div>
           <button
             onClick={handleLikeToggle}
-            className="mt-0.5 active:scale-90 transition-transform"
+            className="mt-1 active:scale-90 transition-transform"
           >
             <Heart
-              className="h-7 w-7"
+              className="h-8 w-8"
               fill={isLiked ? '#1ed760' : 'none'}
               stroke={isLiked ? '#1ed760' : 'white'}
               strokeWidth={2}
@@ -219,29 +219,29 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       </div>
 
       {/* Progress Bar */}
-      <div className="px-6 mt-6">
+      <div className="px-6 mt-8">
         <div
-          className="relative w-full h-1 bg-white/25 rounded-full cursor-pointer"
+          className="relative w-full h-1.5 bg-white/20 rounded-full cursor-pointer"
           onClick={handleSeek}
           onTouchStart={handleSeek}
         >
           <div
-            className="absolute h-full bg-white rounded-full"
+            className="absolute h-full bg-white rounded-full transition-all"
             style={{ width: `${progress}%` }}
           />
           <div
-            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg"
-            style={{ left: `calc(${progress}% - 6px)` }}
+            className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-lg transition-all"
+            style={{ left: `calc(${progress}% - 7px)` }}
           />
         </div>
-        <div className="flex justify-between mt-2 text-xs text-white/60 font-medium">
+        <div className="flex justify-between mt-3 text-sm text-white/60 font-medium">
           <span>{formatTime(currentTime)}</span>
           <span>-{formatTime(Math.max(0, duration - currentTime))}</span>
         </div>
       </div>
 
-      {/* Controls - Compact */}
-      <div className="px-4 mt-6">
+      {/* Playback Controls */}
+      <div className="px-6 mt-8">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             onClick={toggleShuffle}
@@ -250,24 +250,24 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               isShuffled ? "text-[#1ed760]" : "text-white/70"
             )}
           >
-            <Shuffle className="h-5 w-5" strokeWidth={2} />
+            <Shuffle className="h-6 w-6" strokeWidth={2} />
           </button>
 
           <button
             onClick={playPrevious}
             className="p-1 text-white active:scale-90 transition-transform"
           >
-            <SkipBack className="h-8 w-8" fill="white" strokeWidth={0} />
+            <SkipBack className="h-9 w-9" strokeWidth={2.5} />
           </button>
 
           <button
             onClick={togglePlay}
-            className="w-16 h-16 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform shadow-xl"
+            className="w-20 h-20 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform shadow-2xl"
           >
             {isPlaying ? (
-              <Pause className="h-7 w-7 text-black" fill="black" strokeWidth={0} />
+              <Pause className="h-9 w-9 text-black" fill="black" strokeWidth={0} />
             ) : (
-              <Play className="h-7 w-7 text-black ml-0.5" fill="black" strokeWidth={0} />
+              <Play className="h-9 w-9 text-black ml-1" fill="black" strokeWidth={0} />
             )}
           </button>
 
@@ -275,7 +275,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             onClick={playNext}
             className="p-1 text-white active:scale-90 transition-transform"
           >
-            <SkipForward className="h-8 w-8" fill="white" strokeWidth={0} />
+            <SkipForward className="h-9 w-9" strokeWidth={2.5} />
           </button>
 
           <button
@@ -285,23 +285,17 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               isRepeating ? "text-[#1ed760]" : "text-white/70"
             )}
           >
-            <Repeat className="h-5 w-5" strokeWidth={2} />
+            <Repeat className="h-6 w-6" strokeWidth={2} />
           </button>
         </div>
       </div>
 
-      {/* Bottom Actions - Working buttons */}
-      <div className="px-8 mt-8 pb-8 flex items-center justify-between max-w-sm mx-auto">
-        <button className="p-2 text-white/70 active:scale-95 transition-all">
-          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
-          </svg>
-        </button>
-
+      {/* Bottom Actions */}
+      <div className="px-6 mt-10 pb-10 flex items-center justify-center gap-8 max-w-md mx-auto">
         <ShareSong
           song={currentSong}
           trigger={
-            <button className="p-2 text-white/70 active:scale-95 transition-all">
+            <button className="p-2 text-white/70 hover:text-white active:scale-95 transition-all">
               <Share2 className="h-5 w-5" strokeWidth={2} />
             </button>
           }
@@ -312,7 +306,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             // Open queue drawer
             window.dispatchEvent(new CustomEvent('openQueue'));
           }}
-          className="p-2 text-white/70 active:scale-95 transition-all"
+          className="p-2 text-white/70 hover:text-white active:scale-95 transition-all"
         >
           <ListMusic className="h-5 w-5" strokeWidth={2} />
         </button>
