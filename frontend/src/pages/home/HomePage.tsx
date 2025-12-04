@@ -309,11 +309,11 @@ const HomePage = () => {
                     <div
                       key={item._id || item.id}
                       onClick={() => handlePlaylistClick(item)}
-                      className="group relative h-[43px] rounded overflow-hidden transition-all duration-300 cursor-pointer border border-border/60"
+                      className="group relative h-[45px] rounded overflow-hidden transition-all duration-300 cursor-pointer border border-border/60"
                     >
                       <div className="absolute inset-0 bg-muted/95 dark:bg-[#292929] scale-110" />
                       <div className="relative flex items-center h-full">
-                        <div className="w-[43px] h-full flex-shrink-0 rounded overflow-hidden">
+                        <div className="w-[45px] h-full flex-shrink-0 rounded overflow-hidden">
                           {item.image || item.imageUrl ? (
                             <img
                               src={item.image || item.imageUrl}
