@@ -290,7 +290,24 @@ function AppContent() {
 					future={{ v7_startTransition: true }}
 				/>
 			</Suspense>
-			<Toaster />
+			<Toaster
+				position="bottom-center"
+				toastOptions={{
+					style: {
+						background: '#333',
+						color: '#fff',
+						borderRadius: '8px',
+						fontSize: '14px',
+						padding: '12px 16px',
+					},
+					success: {
+						iconTheme: {
+							primary: '#1ed760',
+							secondary: 'white',
+						},
+					},
+				}}
+			/>
 			<PWAInstallPrompt />
 			<AndroidPWAHelper />
 		</>

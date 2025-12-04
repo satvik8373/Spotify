@@ -32,6 +32,9 @@ export interface PlayerState {
   toggleShuffle: () => void;
   toggleRepeat: () => void;
   setUserInteracted: () => void;
+  addToQueue: (song: Song) => void;
+  playNextInQueue: (song: Song) => void;
+  removeFromQueue: (index: number) => void;
 }
 
 // Helper to get a random index that's different from the current one
@@ -388,6 +391,25 @@ export const usePlayerStore = create<PlayerState>()(
 
       setUserInteracted: () => {
         set({ hasUserInteracted: true });
+      },
+
+      addToQueue: (song: Song) => {
+        const { queue } = get();
+        set({ queue: [...queue, song] });
+      },
+
+      playNextInQueue: (song: Song) => {
+        const { queue, currentIndex } = get();
+        const newQueue = [...queue];
+        newQueue.splice(currentIndex + 1, 0, song);
+        set({ queue: newQueue });
+      },
+
+      removeFromQueue: (index: number) => {
+        const { queue } = get();
+        const newQueue = [...queue];
+        newQueue.splice(index, 1);
+        set({ queue: newQueue });
       }
     }),
     {

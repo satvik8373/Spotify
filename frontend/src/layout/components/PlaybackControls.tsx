@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import SongDetailsView from "@/components/SongDetailsView";
 import { cn } from "@/lib/utils";
 import { useLikedSongsStore } from "@/stores/useLikedSongsStore";
+import QueueDrawer from "@/components/QueueDrawer";
 
 const formatTime = (seconds: number) => {
 	if (isNaN(seconds)) return "0:00";
@@ -26,6 +27,7 @@ export const PlaybackControls = () => {
 	const [isRepeating, setIsRepeating] = useState(false);
 	const [isLiked, setIsLiked] = useState(false);
 	const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+	const [showQueue, setShowQueue] = useState(false);
 	const audioRef = useRef<HTMLAudioElement | null>(null);
 	const playerRef = useRef<HTMLDivElement>(null);
 	const volumeControlRef = useRef<HTMLDivElement>(null);
@@ -214,6 +216,7 @@ export const PlaybackControls = () => {
 	return (
 		<>
 			<SongDetailsView isOpen={showSongDetails} onClose={() => setShowSongDetails(false)} />
+			<QueueDrawer isOpen={showQueue} onClose={() => setShowQueue(false)} />
 
 			{/* Desktop Player */}
 			<footer
@@ -399,7 +402,20 @@ export const PlaybackControls = () => {
 							<Button size="icon" variant="ghost" className="hover:text-foreground text-muted-foreground h-8 w-8">
 								<Mic2 className="h-4 w-4" />
 							</Button>
-							<Button size="icon" variant="ghost" className="hover:text-foreground text-muted-foreground h-8 w-8">
+							<Button
+								size="icon"
+								variant="ghost"
+								className="hover:text-foreground h-8 w-8 text-muted-foreground"
+								onClick={() => {
+									// Dispatch event to toggle queue in MainLayout
+									window.dispatchEvent(new Event('toggleQueue'));
+									// Also keep the mobile drawer for mobile devices
+									if (window.innerWidth < 768) {
+										setShowQueue(true);
+									}
+								}}
+								data-queue-button
+							>
 								<ListMusic className="h-4 w-4" />
 							</Button>
 							<Button size="icon" variant="ghost" className="hover:text-foreground text-muted-foreground h-8 w-8">

@@ -22,7 +22,8 @@ import {
   Pause,
   Music2,
   Image as ImageIcon,
-  ChevronLeft
+  ChevronLeft,
+  ListPlus
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
@@ -48,6 +49,7 @@ import {
 import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import SwipeableSongItem from '@/components/SwipeableSongItem';
 import { SongFileUploader } from '../../components/playlist/SongFileUploader';
 import { updatePlaylistCoverFromSongs } from '../../services/playlistService';
 
@@ -941,10 +943,35 @@ export function PlaylistPage() {
                 const isThisSongPlaying = isCurrentSong && playerIsPlaying;
                 
                 return (
-                <div
+                <SwipeableSongItem
                   key={song._id}
-                  className={cn(
-                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)] items-center py-2 px-4 mx-[-16px] rounded-md group',
+                  onSwipeRight={() => {
+                    console.log('Swipe triggered for:', song.title);
+                    usePlayerStore.getState().playNextInQueue(song);
+                    toast.success(
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium">Play next in queue</span>
+                        <span className="text-xs text-muted-foreground">{song.title}</span>
+                      </div>,
+                      {
+                        duration: 2000,
+                        action: {
+                          label: 'View Queue',
+                          onClick: () => {
+                            const queueButton = document.querySelector('[data-queue-button]') as HTMLElement;
+                            if (queueButton) {
+                              queueButton.click();
+                            }
+                          }
+                        }
+                      }
+                    );
+                  }}
+                  className="mx-[-16px]"
+                >
+                  <div
+                    className={cn(
+                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)] items-center py-2 px-4 rounded-md group',
                       'hover:bg-white/10 transition-colors duration-200',
                       isCurrentSong && 'bg-white/10',
                       !song.audioUrl && 'opacity-60'
@@ -1009,6 +1036,41 @@ export function PlaylistPage() {
                     
                     {/* Duration and actions */}
                     <div className="flex items-center justify-end gap-2 sm:gap-4 text-muted-foreground">
+                      {/* Add to Queue button - visible on desktop */}
+                      <div className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log('Add to queue clicked for:', song.title);
+                            usePlayerStore.getState().playNextInQueue(song);
+                            toast.success(
+                              <div className="flex flex-col gap-1">
+                                <span className="font-medium">Play next in queue</span>
+                                <span className="text-xs text-muted-foreground">{song.title}</span>
+                              </div>,
+                              {
+                                duration: 2000,
+                                action: {
+                                  label: 'View Queue',
+                                  onClick: () => {
+                                    const queueButton = document.querySelector('[data-queue-button]') as HTMLElement;
+                                    if (queueButton) {
+                                      queueButton.click();
+                                    }
+                                  }
+                                }
+                              }
+                            );
+                          }}
+                          title="Add to queue"
+                        >
+                          <ListPlus className="h-4 w-4" />
+                        </Button>
+                      </div>
+
                     {isOwner && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
@@ -1042,6 +1104,7 @@ export function PlaylistPage() {
                       <span className="text-sm">{formatTime(song.duration)}</span>
                     </div>
                   </div>
+                </SwipeableSongItem>
                 );
               })}
             </div>

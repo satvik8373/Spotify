@@ -7,12 +7,24 @@ import { PlaybackControls } from './components/PlaybackControls';
 import MobileNav from './components/MobileNav';
 import Header from '@/components/Header';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import QueuePanel from '@/components/QueuePanel';
 
 const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
   const { currentSong } = usePlayerStore();
   const hasActiveSong = !!currentSong;
   const location = useLocation();
+
+  // Listen for queue toggle events
+  useEffect(() => {
+    const handleToggleQueue = () => {
+      setShowQueue(prev => !prev);
+    };
+
+    window.addEventListener('toggleQueue', handleToggleQueue);
+    return () => window.removeEventListener('toggleQueue', handleToggleQueue);
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -87,12 +99,31 @@ const MainLayout = () => {
 
         {!isMobile && <ResizableHandle className="w-1 bg-border rounded-lg transition-colors hover:bg-primary/20" />}
 
-        {/* Main content - full width on mobile */}
-        <ResizablePanel defaultSize={isMobile ? 100 : 80} className="overflow-hidden flex flex-col max-w-full">
+        {/* Main content - adjusts based on queue visibility */}
+        <ResizablePanel 
+          defaultSize={isMobile ? 100 : (showQueue ? 60 : 80)} 
+          minSize={isMobile ? 100 : (showQueue ? 40 : 60)}
+          className="overflow-hidden flex flex-col transition-all duration-300 ease-out"
+        >
           <div className="flex-1 overflow-y-auto overflow-x-hidden mobile-scroll-fix pb-safe">
             <Outlet />
           </div>
         </ResizablePanel>
+
+        {/* Queue Panel - Desktop only */}
+        {!isMobile && showQueue && (
+          <>
+            <ResizableHandle className="w-1 bg-border rounded-lg transition-all duration-200 hover:bg-primary/20 hover:w-1.5" />
+            <ResizablePanel 
+              defaultSize={20} 
+              minSize={15}
+              maxSize={30}
+              className="overflow-hidden h-full transition-all duration-300 ease-out"
+            >
+              <QueuePanel onClose={() => setShowQueue(false)} />
+            </ResizablePanel>
+          </>
+        )}
       </ResizablePanelGroup>
 
       {/* Playback controls - visible on desktop only when there's a song */}
