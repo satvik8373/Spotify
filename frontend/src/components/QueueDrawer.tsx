@@ -13,6 +13,10 @@ interface QueueDrawerProps {
 const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
     const { queue, currentSong, currentIndex, removeFromQueue, playAlbum } = usePlayerStore();
     const [isMobile, setIsMobile] = React.useState(false);
+    const [drawerHeight, setDrawerHeight] = React.useState(50); // Start at 50%
+    const [isDragging, setIsDragging] = React.useState(false);
+    const [startY, setStartY] = React.useState(0);
+    const [startHeight, setStartHeight] = React.useState(50);
 
     // Detect mobile/desktop
     React.useEffect(() => {
@@ -23,6 +27,70 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+
+    // Reset height when opening
+    React.useEffect(() => {
+        if (isOpen) {
+            setDrawerHeight(50); // Reset to 50% when opening
+        }
+    }, [isOpen]);
+
+    // Handle drag start
+    const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
+        setIsDragging(true);
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        setStartY(clientY);
+        setStartHeight(drawerHeight);
+    };
+
+    // Handle drag move
+    const handleDragMove = React.useCallback((e: TouchEvent | MouseEvent) => {
+        if (!isDragging) return;
+
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        const deltaY = startY - clientY;
+        const windowHeight = window.innerHeight;
+        const deltaPercent = (deltaY / windowHeight) * 100;
+        
+        let newHeight = startHeight + deltaPercent;
+        // Constrain between 30% and 90%
+        newHeight = Math.max(30, Math.min(90, newHeight));
+        
+        setDrawerHeight(newHeight);
+    }, [isDragging, startY, startHeight]);
+
+    // Handle drag end
+    const handleDragEnd = React.useCallback(() => {
+        if (!isDragging) return;
+        
+        setIsDragging(false);
+        
+        // Snap to nearest position
+        if (drawerHeight < 40) {
+            onClose(); // Close if dragged down too much
+        } else if (drawerHeight < 65) {
+            setDrawerHeight(50); // Snap to 50%
+        } else {
+            setDrawerHeight(85); // Snap to 85%
+        }
+    }, [isDragging, drawerHeight, onClose]);
+
+    // Add event listeners for drag
+    React.useEffect(() => {
+        if (isDragging) {
+            window.addEventListener('touchmove', handleDragMove);
+            window.addEventListener('mousemove', handleDragMove);
+            window.addEventListener('touchend', handleDragEnd);
+            window.addEventListener('mouseup', handleDragEnd);
+        }
+
+        return () => {
+            window.removeEventListener('touchmove', handleDragMove);
+            window.removeEventListener('mousemove', handleDragMove);
+            window.removeEventListener('touchend', handleDragEnd);
+            window.removeEventListener('mouseup', handleDragEnd);
+        };
+    }, [isDragging, handleDragMove, handleDragEnd]);
 
     // Filter out songs that have already played (optional, but standard queue behavior usually shows upcoming)
     // For now, let's show the whole queue but highlight current
@@ -55,16 +123,28 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
                         initial={isMobile ? { y: '100%' } : { x: '100%' }}
                         animate={isMobile ? { y: 0 } : { x: 0 }}
                         exit={isMobile ? { y: '100%' } : { x: '100%' }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        transition={{ 
+                            type: 'tween',
+                            duration: 0.25,
+                            ease: 'easeOut'
+                        }}
                         className={
                             isMobile
-                                ? "fixed bottom-0 left-0 right-0 h-[85vh] bg-background border-t border-border rounded-t-[20px] z-50 flex flex-col shadow-2xl"
+                                ? "fixed bottom-0 left-0 right-0 bg-background border-t border-border rounded-t-[20px] z-50 flex flex-col shadow-2xl"
                                 : "fixed top-0 right-0 bottom-0 w-[400px] bg-background border-l border-border z-50 flex flex-col shadow-2xl"
                         }
+                        style={isMobile ? { 
+                            height: `${drawerHeight}vh`,
+                            transition: isDragging ? 'none' : 'height 0.2s ease-out'
+                        } : undefined}
                     >
                         {/* Handle bar for visual cue - only on mobile */}
                         {isMobile && (
-                            <div className="w-full flex justify-center pt-3 pb-1" onClick={onClose}>
+                            <div 
+                                className="w-full flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing"
+                                onTouchStart={handleDragStart}
+                                onMouseDown={handleDragStart}
+                            >
                                 <div className="w-12 h-1.5 bg-muted rounded-full" />
                             </div>
                         )}

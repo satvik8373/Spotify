@@ -1,12 +1,13 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, ListMusic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import SongDetailsView from '@/components/SongDetailsView';
+import QueueDrawer from '@/components/QueueDrawer';
 import { signOut } from '@/services/hybridAuthService';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 
@@ -34,6 +35,7 @@ const MobileNav = () => {
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
 
@@ -304,6 +306,12 @@ const MobileNav = () => {
         onClose={() => setShowSongDetails(false)}
       />
 
+      {/* Queue Drawer */}
+      <QueueDrawer
+        isOpen={showQueue}
+        onClose={() => setShowQueue(false)}
+      />
+
       {/* Mobile Header - Spotify style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
         <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden">
@@ -550,18 +558,7 @@ const MobileNav = () => {
                   </div>
 
                   {/* Right: Controls - Spotify Authentic */}
-                  <div className="flex items-center gap-2" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
-                    {/* Like Button - Smaller */}
-                    <button
-                      onClick={handleLikeToggle}
-                      className="p-1 transition-transform duration-200 active:scale-90"
-                    >
-                      <Heart
-                        className={cn("h-4 w-4", songLiked ? "text-green-400" : "text-white/75")}
-                        fill={songLiked ? 'currentColor' : 'none'}
-                      />
-                    </button>
-
+                  <div className="flex items-center gap-1" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
                     {/* Play/Pause Button - White Filled Icons */}
                     <button
                       onClick={(e) => {
@@ -581,6 +578,18 @@ const MobileNav = () => {
                           fill="currentColor"
                         />
                       )}
+                    </button>
+
+                    {/* Queue Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowQueue(true);
+                      }}
+                      className="p-1.5 transition-transform duration-200 active:scale-90"
+                      aria-label="Open queue"
+                    >
+                      <ListMusic className="h-4 w-4" />
                     </button>
                   </div>
                 </div>

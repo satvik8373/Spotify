@@ -1,27 +1,22 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
-import { Button } from './ui/button';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { ShareSong } from './ShareSong';
 import {
   ChevronDown,
   Heart,
   MoreHorizontal,
-  Share2,
   SkipBack,
   Play,
   Pause,
   SkipForward,
   ListMusic,
-  Plus,
-  Trash2,
-  User,
-  Radio,
-  X
+  Shuffle,
+  Repeat,
+  Share2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
-import { toast } from 'sonner';
 
 interface SongDetailsViewProps {
   isOpen: boolean;
@@ -35,101 +30,6 @@ const formatTime = (seconds: number) => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
 
-// Create a new component for marquee text animation with automatic scrolling
-const AutoScrollMarquee = ({ text, className }: { text: string, className?: string }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
-  const [shouldScroll, setShouldScroll] = useState(false);
-  const [scrollDistance, setScrollDistance] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Detect mobile devices
-  useEffect(() => {
-    const checkMobile = () => {
-      // Check for mobile devices based on screen width and touch capability
-      const isMobileDevice = window.innerWidth < 768 ||
-        ('ontouchstart' in window) ||
-        (navigator.maxTouchPoints > 0);
-      setIsMobile(isMobileDevice);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Check if text is overflowing and needs animation
-  useEffect(() => {
-    if (containerRef.current && textRef.current) {
-      const container = containerRef.current;
-      const textEl = textRef.current;
-
-      // Check if text overflows its container
-      const isOverflowing = textEl.scrollWidth > container.clientWidth;
-
-      // Calculate scroll distance if needed
-      if (isOverflowing) {
-        const distance = -(textEl.scrollWidth - container.clientWidth + 16); // Added small padding
-        setScrollDistance(distance);
-        setShouldScroll(true);
-      } else {
-        setShouldScroll(false);
-      }
-    }
-  }, [text]);
-
-  return (
-    <div
-      ref={containerRef}
-      className={cn(
-        "text-auto-scroll",
-        "song-title-container",
-        shouldScroll && "has-mask",
-        className
-      )}
-      style={{
-        maxWidth: '100%',
-        overflow: 'hidden',
-        whiteSpace: 'nowrap',
-        textOverflow: 'ellipsis',
-        position: 'relative'
-      }}
-    >
-      <div
-        ref={textRef}
-        className={cn(
-          "text-auto-scroll-inner",
-          "song-title",
-          shouldScroll && "overflow",
-          shouldScroll && (isMobile ? true : "hover:scrolling") && "scrolling"
-        )}
-        style={{
-          ...shouldScroll ? {
-            '--max-scroll': `${scrollDistance}px`,
-            display: 'inline-block',
-            whiteSpace: 'nowrap',
-            textOverflow: 'clip',
-            paddingRight: '24px' // Add extra padding for better scroll appearance
-          } as React.CSSProperties : {
-            display: 'inline-block',
-            whiteSpace: 'nowrap',
-            textOverflow: 'ellipsis',
-          },
-          width: 'auto'
-        }}
-      >
-        {text}
-      </div>
-      {shouldScroll && (
-        <>
-          <div className="marquee-mask-left" />
-          <div className="marquee-mask-right" />
-        </>
-      )}
-    </div>
-  );
-};
-
 const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const {
     currentSong,
@@ -137,159 +37,40 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     togglePlay,
     playNext,
     playPrevious,
+    toggleShuffle,
+    isShuffled,
     currentTime: storeCurrentTime,
     duration: storeDuration,
     setCurrentTime: setStoreCurrentTime
   } = usePlayerStore();
 
-  const { likedSongIds, toggleLikeSong, loadLikedSongs } = useLikedSongsStore();
+  const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [albumArtLoaded, setAlbumArtLoaded] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const [isRepeating, setIsRepeating] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
 
   // Swipe handling
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number | null>(null);
-  const touchStartX = useRef<number | null>(null);
-  const albumArtRef = useRef<HTMLDivElement>(null);
-  const progressBarRef = useRef<HTMLDivElement>(null);
-  const [swipingDirection, setSwipingDirection] = useState<'none' | 'vertical' | 'horizontal'>('none');
-  const [swipeOffset, setSwipeOffset] = useState({ x: 0, y: 0 });
-  const [swipeSource, setSwipeSource] = useState<'albumArt' | 'container' | 'progressBar'>('container');
+  const [swipeOffset, setSwipeOffset] = useState(0);
 
-  // Options menu state
-  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close options menu when song details view closes
-  useEffect(() => {
-    if (!isOpen) {
-      setShowOptionsMenu(false);
-    }
-  }, [isOpen]);
-
-  // Handle click outside to close the menu
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowOptionsMenu(false);
-      }
-    };
-
-    if (showOptionsMenu) {
-      // Delay the event listener to prevent immediate closing
-      setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-      }, 10);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showOptionsMenu]);
-
-  // Handle touch start for swipe detection
-  const handleTouchStart = (e: React.TouchEvent, source: 'albumArt' | 'container' | 'progressBar') => {
-    if (!isOpen) return;
-
-    // Store the touch source to handle different behaviors
-    setSwipeSource(source);
-
-    touchStartY.current = e.touches[0].clientY;
-    touchStartX.current = e.touches[0].clientX;
-    setSwipingDirection('none');
-
-    // Removed preventDefault to avoid passive event listener error
-  };
-
-  // Handle touch move for swipe detection
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isOpen || touchStartY.current === null || touchStartX.current === null) return;
-
-    const touchY = e.touches[0].clientY;
-    const touchX = e.touches[0].clientX;
-    const deltaY = touchY - touchStartY.current;
-    const deltaX = touchX - touchStartX.current;
-
-    // For progress bar, don't handle horizontal swipes
-    if (swipeSource === 'progressBar') {
-      return;
-    }
-
-    // Determine swipe direction if not already set
-    if (swipingDirection === 'none') {
-      if (Math.abs(deltaY) > Math.abs(deltaX) + 10) {
-        setSwipingDirection('vertical');
-      } else if (Math.abs(deltaX) > Math.abs(deltaY) + 10) {
-        setSwipingDirection('horizontal');
-      }
-    }
-
-    // Apply appropriate transformations based on swipe direction and source
-    if (swipingDirection === 'vertical') {
-      // Only allow downward swipes to close
-      if (deltaY > 0) {
-        setSwipeOffset({ x: 0, y: deltaY });
-      }
-    } else if (swipingDirection === 'horizontal') {
-      // Only allow horizontal swipes on the album art
-      if (swipeSource === 'albumArt') {
-        setSwipeOffset({ x: deltaX, y: 0 });
-      }
-    }
-  };
-
-  // Handle touch end for swipe completion
-  const handleTouchEnd = () => {
-    if (!isOpen || touchStartY.current === null || touchStartX.current === null) return;
-
-    if (swipingDirection === 'vertical') {
-      // If swiped down more than 150px, close the view
-      if (swipeOffset.y > 150) {
-        onClose();
-      }
-    } else if (swipingDirection === 'horizontal' && swipeSource === 'albumArt') {
-      // If swiped left/right more than a threshold, change the song
-      if (swipeOffset.x < -80) {
-        playNext();
-      } else if (swipeOffset.x > 80) {
-        playPrevious();
-      }
-    }
-
-    // Reset swipe state
-    touchStartY.current = null;
-    touchStartX.current = null;
-    setSwipeOffset({ x: 0, y: 0 });
-    setSwipingDirection('none');
-  };
-
-  // Make sure liked songs are loaded
-  useEffect(() => {
-    loadLikedSongs();
-  }, [loadLikedSongs]);
-
-  // Update like status whenever the current song or likedSongIds changes
+  // Update like status
   useEffect(() => {
     if (!currentSong) return;
-
-    // Check if the song is liked by checking both possible ID formats
     const songId = (currentSong as any).id || currentSong._id;
     const liked = songId ? likedSongIds?.has(songId) : false;
-
     setIsLiked(liked);
   }, [currentSong, likedSongIds]);
 
+  // Audio element sync
   useEffect(() => {
     audioRef.current = document.querySelector("audio");
-
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Initial values
     setCurrentTime(storeCurrentTime || audio.currentTime);
     setDuration(storeDuration || audio.duration);
 
@@ -313,59 +94,46 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     };
   }, [currentSong, storeCurrentTime, storeDuration, setStoreCurrentTime]);
 
-  // Listen for like updates from other components
-  useEffect(() => {
-    const handleLikeUpdate = (e: Event) => {
-      if (!currentSong) return;
+  // Swipe to close
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
 
-      const songId = (currentSong as any).id || currentSong._id;
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return;
+    const deltaY = e.touches[0].clientY - touchStartY.current;
+    if (deltaY > 0) {
+      setSwipeOffset(deltaY);
+    }
+  };
 
-      // Check if this event includes details about which song was updated
-      if (e instanceof CustomEvent && e.detail) {
-        // If we have details and it's not for our current song, ignore
-        if (e.detail.songId && e.detail.songId !== songId) {
-          return;
-        }
+  const handleTouchEnd = () => {
+    if (swipeOffset > 150) {
+      onClose();
+    }
+    setSwipeOffset(0);
+    touchStartY.current = null;
+  };
 
-        // If we have explicit like state in the event, use it
-        if (typeof e.detail.isLiked === 'boolean') {
-          setIsLiked(e.detail.isLiked);
-          return;
-        }
-      }
-
-      // Otherwise do a fresh check from the store
-      const freshCheck = songId ? likedSongIds?.has(songId) : false;
-      setIsLiked(freshCheck);
-    };
-
-    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
-    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
-
-    return () => {
-      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
-      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
-    };
-  }, [currentSong, likedSongIds]);
-
-  const handleSeek = (value: number[]) => {
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const offsetX = clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+    const newTime = percentage * duration;
+    
     if (audioRef.current) {
-      audioRef.current.currentTime = value[0];
-      setCurrentTime(value[0]);
-      if (setStoreCurrentTime) setStoreCurrentTime(value[0]);
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+      if (setStoreCurrentTime) setStoreCurrentTime(newTime);
     }
   };
 
   const handleLikeToggle = () => {
     if (!currentSong) return;
-
-    // Get the song ID consistently
     const songId = (currentSong as any).id || currentSong._id;
-
-    // Optimistically update the UI immediately
     setIsLiked(!isLiked);
-
-    // Perform the actual toggle with the correct song format
+    
     toggleLikeSong({
       _id: songId,
       title: currentSong.title,
@@ -377,424 +145,180 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
-
-    // Also dispatch a direct event for immediate notification
-    document.dispatchEvent(new CustomEvent('songLikeStateChanged', {
-      detail: {
-        songId,
-        song: currentSong,
-        isLiked: !isLiked,
-        timestamp: Date.now(),
-        source: 'SongDetails'
-      }
-    }));
   };
-
-  // ShareSong component will handle sharing functionality
 
   if (!currentSong) return null;
 
   const progress = (currentTime / duration) * 100 || 0;
-  // removed unused vibrantColor
 
   return (
     <div
       ref={containerRef}
       className={cn(
-        'fixed inset-0 z-50 transition-transform duration-500 flex flex-col',
+        'fixed inset-0 z-50 transition-transform duration-300',
         isOpen ? 'translate-y-0' : 'translate-y-full'
       )}
       style={{
-        transform: isOpen
-          ? `translateY(${swipeOffset.y}px)`
-          : 'translateY(100%)',
-        background: albumColors.isLight
-          ? `linear-gradient(to bottom, ${albumColors.primary}, ${albumColors.secondary})`
-          : `linear-gradient(to bottom, ${albumColors.primary}, ${albumColors.secondary})`,
+        transform: isOpen ? `translateY(${swipeOffset}px)` : 'translateY(100%)',
+        background: `linear-gradient(180deg, ${albumColors.primary} 0%, ${albumColors.secondary} 100%)`,
       }}
-      onTouchStart={(e) => handleTouchStart(e, 'container')}
+      onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       {/* Header */}
-      <div className="safe-area-top flex items-center justify-between p-4 pt-6 relative z-20">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full text-white/70 hover:text-white"
+      <div className="flex items-center justify-between px-4 pt-6 pb-2">
+        <button
           onClick={onClose}
+          className="p-2 -ml-2 text-white active:scale-95 transition-transform"
         >
-          <ChevronDown className="h-6 w-6" />
-        </Button>
-        <span className="text-[13px] font-medium text-white/80 uppercase tracking-wide">Now Playing</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full text-white/70 hover:text-white"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowOptionsMenu(!showOptionsMenu);
-          }}
-        >
-          <MoreHorizontal className="h-5 w-5" />
-        </Button>
-
-        {/* Options Menu */}
-        {showOptionsMenu && (
-          <div
-            ref={menuRef}
-            className="absolute top-16 right-4 w-64 bg-[#282828] rounded-md shadow-xl z-50 overflow-hidden"
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchMove={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
-          >
-            {/* Song info at top of menu */}
-            <div className="flex items-center gap-3 p-3 border-b border-white/10">
-              <img
-                src={currentSong.imageUrl}
-                alt={currentSong.title}
-                className="h-10 w-10 object-cover rounded-sm"
-              />
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-white truncate">{currentSong.title}</h4>
-                <p className="text-xs text-white/60 truncate">{currentSong.artist}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-white/60 hover:bg-white/10"
-                onClick={() => setShowOptionsMenu(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="p-1">
-              <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
-                onClick={() => {
-                  setShowOptionsMenu(false);
-                }}
-              >
-                <Plus className="h-5 w-5 text-white/60" />
-                <span>Add to playlist</span>
-              </button>
-
-              <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
-                onClick={() => {
-                  setShowOptionsMenu(false);
-                }}
-              >
-                <Trash2 className="h-5 w-5 text-white/60" />
-                <span>Remove from this playlist</span>
-              </button>
-
-              <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
-                onClick={() => {
-                  setShowOptionsMenu(false);
-                }}
-              >
-                <ListMusic className="h-5 w-5 text-white/60" />
-                <span>Add to queue</span>
-              </button>
-
-              <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
-                onClick={() => {
-                  setShowOptionsMenu(false);
-                }}
-              >
-                <User className="h-5 w-5 text-white/60" />
-                <span>Go to artist</span>
-              </button>
-
-              <ShareSong
-                song={currentSong}
-                trigger={
-                  <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm">
-                    <Share2 className="h-5 w-5 text-white/60" />
-                    <span>Share</span>
-                  </button>
-                }
-              />
-
-              <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-white/10 text-left rounded-sm"
-                onClick={() => {
-                  setShowOptionsMenu(false);
-                }}
-              >
-                <Radio className="h-5 w-5 text-white/60" />
-                <span>Start radio</span>
-              </button>
-            </div>
-          </div>
-        )}
+          <ChevronDown className="h-6 w-6" strokeWidth={2.5} />
+        </button>
+        <span className="text-sm font-semibold text-white">
+          Now Playing
+        </span>
+        <button className="p-2 -mr-2 text-white active:scale-95 transition-transform">
+          <MoreHorizontal className="h-5 w-5" strokeWidth={2.5} />
+        </button>
       </div>
 
-      {/* Content area with flex to ensure proper spacing */}
-      <div className="flex-1 flex flex-col px-6 overflow-hidden">
-        {/* Album Art with swipe gestures */}
-        <div className="mt-2 flex-shrink-0">
-          <div
-            ref={albumArtRef}
-            className={cn(
-              "rounded-md aspect-square w-full overflow-hidden shadow-2xl relative transition-all duration-300 touch-none",
-              albumArtLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
-            )}
-            style={{
-              transform: swipingDirection === 'horizontal' && swipeSource === 'albumArt'
-                ? `translateX(${swipeOffset.x}px)`
-                : 'translateX(0)'
-            }}
-            onTouchStart={(e) => {
-              // Stop propagation to prevent container's touch handler
-              e.stopPropagation();
-              handleTouchStart(e, 'albumArt');
-            }}
-            onTouchMove={(e) => {
-              e.stopPropagation();
-              handleTouchMove(e);
-            }}
-            onTouchEnd={(e) => {
-              e.stopPropagation();
-              handleTouchEnd();
-            }}
+      {/* Album Art - Compact */}
+      <div className="px-8 mt-4">
+        <div className="aspect-square w-full max-w-[360px] mx-auto rounded-lg overflow-hidden shadow-2xl">
+          <img
+            src={currentSong.imageUrl}
+            alt={currentSong.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      </div>
+
+      {/* Song Info - Compact */}
+      <div className="px-6 mt-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold text-white mb-1 leading-tight">
+              {currentSong.title}
+            </h1>
+            <p className="text-base text-white/70">
+              {currentSong.artist}
+            </p>
+          </div>
+          <button
+            onClick={handleLikeToggle}
+            className="mt-0.5 active:scale-90 transition-transform"
           >
-            {/* Left/Right swipe indicators */}
-            {swipingDirection === 'horizontal' && swipeSource === 'albumArt' && (
-              <>
-                {swipeOffset.x > 50 && (
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 p-3 z-10 rounded-full bg-white/10 hover:bg-white/20">
-                    <SkipBack className="h-6 w-6 text-white" />
-                  </div>
-                )}
-                {swipeOffset.x < -50 && (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 p-3 z-10 rounded-full bg-white/10 hover:bg-white/20">
-                    <SkipForward className="h-6 w-6 text-white" />
-                  </div>
-                )}
-              </>
-            )}
-
-            <img
-              src={currentSong.imageUrl}
-              alt={currentSong.title}
-              className="w-full h-full object-cover"
-              onLoad={() => setAlbumArtLoaded(true)}
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
-                setAlbumArtLoaded(true);
-              }}
+            <Heart
+              className="h-7 w-7"
+              fill={isLiked ? '#1ed760' : 'none'}
+              stroke={isLiked ? '#1ed760' : 'white'}
+              strokeWidth={2}
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20"></div>
+          </button>
+        </div>
+      </div>
 
-            {/* Down swipe indicator */}
-            {swipingDirection === 'vertical' && swipeOffset.y > 30 && (
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-3 z-10 rounded-full bg-white/10 hover:bg-white/20">
-                <ChevronDown className="h-6 w-6 text-white" />
-              </div>
+      {/* Progress Bar */}
+      <div className="px-6 mt-6">
+        <div
+          className="relative w-full h-1 bg-white/25 rounded-full cursor-pointer"
+          onClick={handleSeek}
+          onTouchStart={handleSeek}
+        >
+          <div
+            className="absolute h-full bg-white rounded-full"
+            style={{ width: `${progress}%` }}
+          />
+          <div
+            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg"
+            style={{ left: `calc(${progress}% - 6px)` }}
+          />
+        </div>
+        <div className="flex justify-between mt-2 text-xs text-white/60 font-medium">
+          <span>{formatTime(currentTime)}</span>
+          <span>-{formatTime(Math.max(0, duration - currentTime))}</span>
+        </div>
+      </div>
+
+      {/* Controls - Compact */}
+      <div className="px-4 mt-6">
+        <div className="flex items-center justify-between max-w-md mx-auto">
+          <button
+            onClick={toggleShuffle}
+            className={cn(
+              "p-2 active:scale-90 transition-all",
+              isShuffled ? "text-[#1ed760]" : "text-white/70"
             )}
-          </div>
+          >
+            <Shuffle className="h-5 w-5" strokeWidth={2} />
+          </button>
+
+          <button
+            onClick={playPrevious}
+            className="p-1 text-white active:scale-90 transition-transform"
+          >
+            <SkipBack className="h-8 w-8" fill="white" strokeWidth={0} />
+          </button>
+
+          <button
+            onClick={togglePlay}
+            className="w-16 h-16 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform shadow-xl"
+          >
+            {isPlaying ? (
+              <Pause className="h-7 w-7 text-black" fill="black" strokeWidth={0} />
+            ) : (
+              <Play className="h-7 w-7 text-black ml-0.5" fill="black" strokeWidth={0} />
+            )}
+          </button>
+
+          <button
+            onClick={playNext}
+            className="p-1 text-white active:scale-90 transition-transform"
+          >
+            <SkipForward className="h-8 w-8" fill="white" strokeWidth={0} />
+          </button>
+
+          <button
+            onClick={() => setIsRepeating(!isRepeating)}
+            className={cn(
+              "p-2 active:scale-90 transition-all",
+              isRepeating ? "text-[#1ed760]" : "text-white/70"
+            )}
+          >
+            <Repeat className="h-5 w-5" strokeWidth={2} />
+          </button>
         </div>
+      </div>
 
-        {/* Song Info */}
-        <div className="mt-6 flex-1 flex flex-col min-h-0">
-          <div className="flex justify-between items-start w-full">
-            <div className="flex-1 min-w-0 pr-2 max-w-full overflow-hidden">
-              {/* Song title with marquee effect for long titles */}
-              <AutoScrollMarquee
-                text={currentSong.title || 'Unknown Title'}
-                className="text-2xl md:text-3xl font-bold mb-1 single-line-marquee"
-              />
+      {/* Bottom Actions - Working buttons */}
+      <div className="px-8 mt-8 pb-8 flex items-center justify-between max-w-sm mx-auto">
+        <button className="p-2 text-white/70 active:scale-95 transition-all">
+          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+          </svg>
+        </button>
 
-              {/* Artist name with marquee effect */}
-              <AutoScrollMarquee
-                text={currentSong.artist || 'Unknown Artist'}
-                className="text-lg text-white/70 single-line-marquee"
-              />
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full text-white/80 hover:text-white flex-shrink-0"
-              onClick={handleLikeToggle}
-            >
-              <Heart
-                className="h-5 w-5"
-                fill={isLiked ? '#1ed760' : 'none'}
-                color={isLiked ? '#1ed760' : 'white'}
-              />
-            </Button>
-          </div>
+        <ShareSong
+          song={currentSong}
+          trigger={
+            <button className="p-2 text-white/70 active:scale-95 transition-all">
+              <Share2 className="h-5 w-5" strokeWidth={2} />
+            </button>
+          }
+        />
 
-          {/* Progress Bar - Spotify mobile style */}
-          <div className="mt-6">
-            <div
-              ref={progressBarRef}
-              className="relative w-full group/progress"
-              role="slider"
-              aria-label="Seek position"
-              aria-valuemin={0}
-              aria-valuemax={isNaN(duration) ? 0 : duration}
-              aria-valuenow={isNaN(currentTime) ? 0 : currentTime}
-              onClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const offsetX = e.clientX - rect.left;
-                const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
-                const newTime = percentage * duration;
-                handleSeek([newTime]);
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                handleTouchStart(e, 'progressBar');
-                const rect = e.currentTarget.getBoundingClientRect();
-                const touch = e.touches[0];
-                if (!touch) return;
-                const offsetX = touch.clientX - rect.left;
-                const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
-                const newTime = percentage * duration;
-                handleSeek([newTime]);
-              }}
-              onTouchMove={(e) => {
-                const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                const touch = e.touches[0];
-                if (!touch) return;
-                const offsetX = Math.max(0, Math.min(rect.width, touch.clientX - rect.left));
-                const percentage = offsetX / rect.width;
-                const newTime = percentage * duration;
-                handleSeek([newTime]);
-              }}
-            >
-              {/* Expanded hit area for easier touch interaction */}
-              <div className="absolute left-0 right-0 -top-3 -bottom-3" />
-              {/* Track */}
-              <div className="h-[3px] w-full bg-white/25 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#1ed760] rounded-full"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              {/* Knob */}
-              <div
-                className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-white shadow-md ring-2 ring-[#1ed760] transition-transform duration-150 ease-out group-hover/progress:scale-100 scale-95"
-                style={{ left: `calc(${progress}% - 6px)` }}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  const containerEl = e.currentTarget.parentElement as HTMLDivElement | null;
-                  const handleMouseMove = (moveEvent: MouseEvent) => {
-                    const rect = containerEl?.getBoundingClientRect();
-                    if (!rect) return;
-                    const offsetX = Math.max(0, Math.min(rect.width, moveEvent.clientX - rect.left));
-                    const percentage = offsetX / rect.width;
-                    const newTime = percentage * duration;
-                    handleSeek([newTime]);
-                  };
-                  const handleMouseUp = () => {
-                    document.removeEventListener('mousemove', handleMouseMove);
-                    document.removeEventListener('mouseup', handleMouseUp);
-                  };
-                  document.addEventListener('mousemove', handleMouseMove);
-                  document.addEventListener('mouseup', handleMouseUp);
-                }}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  const containerEl = e.currentTarget.parentElement as HTMLDivElement | null;
-                  const handleTouchMove = (touchEvent: TouchEvent) => {
-                    if (touchEvent.cancelable) touchEvent.preventDefault();
-                    const rect = containerEl?.getBoundingClientRect();
-                    if (!rect || touchEvent.touches.length === 0) return;
-                    const touch = touchEvent.touches[0];
-                    const offsetX = Math.max(0, Math.min(rect.width, touch.clientX - rect.left));
-                    const percentage = offsetX / rect.width;
-                    const newTime = percentage * duration;
-                    handleSeek([newTime]);
-                  };
-                  const handleTouchEnd = () => {
-                    document.removeEventListener('touchmove', handleTouchMove as any);
-                    document.removeEventListener('touchend', handleTouchEnd as any);
-                  };
-                  document.addEventListener('touchmove', handleTouchMove as any, { passive: false });
-                  document.addEventListener('touchend', handleTouchEnd as any);
-                }}
-              />
-            </div>
-            <div className="flex justify-between mt-2">
-              <span className="text-xs text-white/60">{formatTime(currentTime)}</span>
-              <span className="text-xs text-white/60">{formatTime(duration)}</span>
-            </div>
-          </div>
-
-          {/* Playback Controls */}
-          <div className="mt-6">
-            <div className="flex items-center justify-center gap-10">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full text-white"
-                onClick={playPrevious}
-              >
-                <SkipBack className="h-7 w-7" />
-              </Button>
-              <Button
-                size="icon"
-                className="h-14 w-14 rounded-full bg-green-500 hover:bg-green-400 text-black flex items-center justify-center"
-                onClick={togglePlay}
-              >
-                {isPlaying ? (
-                  <Pause className="h-7 w-7" />
-                ) : (
-                  <Play className="h-7 w-7 translate-x-0.5" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full text-white"
-                onClick={playNext}
-              >
-                <SkipForward className="h-7 w-7" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Spacer to push bottom controls down */}
-          <div className="flex-1 min-h-[60px]"></div>
-
-          {/* Additional Controls - Fixed to bottom */}
-          <div className="flex justify-around pb-8 pt-4 w-full">
-            <ShareSong
-              song={currentSong}
-              trigger={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full text-white/70 hover:text-white flex flex-col items-center gap-1"
-                >
-                  <Share2 className="h-5 w-5" />
-                  <span className="text-[11px] font-medium">Share</span>
-                </Button>
-              }
-            />
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-full text-white/70 hover:text-white flex flex-col items-center gap-1"
-            >
-              <ListMusic className="h-5 w-5" />
-              <span className="text-[11px] font-medium">Queue</span>
-            </Button>
-          </div>
-
-          {/* Safe Area for iOS devices */}
-          <div className="h-safe-area-bottom"></div>
-        </div>
+        <button
+          onClick={() => {
+            // Open queue drawer
+            window.dispatchEvent(new CustomEvent('openQueue'));
+          }}
+          className="p-2 text-white/70 active:scale-95 transition-all"
+        >
+          <ListMusic className="h-5 w-5" strokeWidth={2} />
+        </button>
       </div>
     </div>
   );
 };
 
-export default SongDetailsView; 
+export default SongDetailsView;
