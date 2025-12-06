@@ -221,11 +221,16 @@ export const usePlayerStore = create<PlayerState>()(
             // Reset ending flag to prevent conflicts
             audio.dataset.ending = 'false';
 
+            // CRITICAL: Reset currentTime to 0 immediately
+            audio.currentTime = 0;
+
             // Ensure the audio element has the latest src and is playing
             const newAudioUrl = queue[newIndex].audioUrl || (queue[newIndex] as any).url;
             if (audio.src !== newAudioUrl && newAudioUrl) {
               audio.src = newAudioUrl;
               audio.load(); // Important for mobile browsers
+              // Reset currentTime again after load
+              audio.currentTime = 0;
             }
 
             // Use a more forceful approach to ensure playback
@@ -362,10 +367,23 @@ export const usePlayerStore = create<PlayerState>()(
         set({
           currentIndex: newIndex,
           currentSong: queue[newIndex],
+          currentTime: 0, // Reset time for new song
           hasUserInteracted: true,
           isPlaying: true, // Always ensure playback continues
           skipRestoreUntilTs: Date.now() + 5000
         });
+
+        // CRITICAL: Reset audio currentTime immediately
+        if (audio) {
+          audio.currentTime = 0;
+          const newAudioUrl = queue[newIndex].audioUrl || (queue[newIndex] as any).url;
+          if (audio.src !== newAudioUrl && newAudioUrl) {
+            audio.src = newAudioUrl;
+            audio.load();
+            audio.currentTime = 0;
+          }
+          audio.play().catch(() => { });
+        }
 
         // Save to localStorage as a backup
         try {

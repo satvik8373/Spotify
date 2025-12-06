@@ -53,27 +53,40 @@ function applyPremiumTone(base: number[]): number[] {
   const neutral = [30, 30, 30];
   if (L >= 0.82) {
     // Very light -> darken more
-    return blend(base, neutral, 0.45);
+    return blend(base, neutral, 0.50);
   }
   if (L >= 0.68) {
     // Moderately light -> darken a bit
-    return blend(base, neutral, 0.30);
+    return blend(base, neutral, 0.35);
   }
   if (L <= 0.06) {
     // Extremely dark -> lift slightly to avoid pure black
-    return blend(base, [255, 255, 255], 0.12);
+    return blend(base, [255, 255, 255], 0.15);
   }
   return base;
 }
 
-function adjustForContrast(baseInput: number[]): { bg: number[]; text: string; overlay: string; accent: string; secondary: number[] } {
-  const base = applyPremiumTone(baseInput);
+function adjustForContrast(baseInput: number[], isLikedSongs: boolean = false): { bg: number[]; text: string; overlay: string; accent: string; secondary: number[] } {
+  let base = applyPremiumTone(baseInput);
+  
+  // Special processing for Liked Songs: iconic purple-blue gradient
+  if (isLikedSongs) {
+    // Spotify Liked Songs signature color: vibrant purple-blue
+    base = [80, 56, 160]; // Rich purple base
+  }
+  
   const white = [255, 255, 255];
   const black = [0, 0, 0];
 
   // Derive secondary by shifting slightly towards black or white depending on base lightness
   const isBaseLight = luminance(base[0], base[1], base[2]) > 0.5;
-  const secondary = isBaseLight ? blend(base, black, 0.25) : blend(base, white, 0.18);
+  let secondary = isBaseLight ? blend(base, black, 0.30) : blend(base, white, 0.20);
+  
+  // For Liked Songs, create the signature gradient transition
+  if (isLikedSongs) {
+    // Transition to a darker, more saturated blue-purple
+    secondary = [45, 30, 90]; // Darker purple for gradient end
+  }
 
   // Choose text color by contrast
   const contrastWithWhite = contrastRatio(base, white);
@@ -100,7 +113,7 @@ function adjustForContrast(baseInput: number[]): { bg: number[]; text: string; o
   return { bg: adjusted, text, overlay, accent, secondary };
 }
 
-export const useAlbumColors = (imageUrl: string | undefined): AlbumColors => {
+export const useAlbumColors = (imageUrl: string | undefined, isLikedSongs: boolean = false): AlbumColors => {
   const [colors, setColors] = useState<AlbumColors>({
     primary: 'rgb(24, 24, 27)',
     secondary: 'rgb(39, 39, 42)',
@@ -125,11 +138,12 @@ export const useAlbumColors = (imageUrl: string | undefined): AlbumColors => {
         const dominant = colorThief.getColor(img) as number[]; // [r,g,b]
         const palette = colorThief.getPalette(img, 6) as number[][]; // up to 6 colors
 
-        const { bg, text, overlay, accent, secondary } = adjustForContrast(dominant);
+        const { bg, text, overlay, accent, secondary } = adjustForContrast(dominant, isLikedSongs);
 
         const primaryCss = rgbToCss(bg);
         const secondaryCss = rgbToCss(secondary);
-        const gradient = `linear-gradient(90deg, ${primaryCss} 0%, ${secondaryCss} 100%)`;
+        // Create Spotify-style gradient: 180deg (top to bottom) with smooth color transition
+        const gradient = `linear-gradient(180deg, ${primaryCss} 0%, ${secondaryCss} 100%)`;
 
         // Pick accent from palette with highest contrast vs background if available
         let accentCss = accent;

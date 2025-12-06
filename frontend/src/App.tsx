@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
+import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
@@ -26,6 +27,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
 import { SpotifyProvider } from './contexts/SpotifyContext';
+
 
 
 // Simple fallback pages for routes with import issues
@@ -60,13 +62,10 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 
 	// Check if we previously saved auth info in localStorage as a quick check
 	// before the full authentication process completes
-	const hasCachedAuth = Boolean(
-		localStorage.getItem('auth-store') &&
-		JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
-	);
+	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 
 	// Check if we're coming from a login redirect (smooth transition)
-	const isFromLoginRedirect = sessionStorage.getItem('auth_redirect') === '1';
+	const isFromLoginRedirect = getSessionStorage('auth_redirect') === '1';
 
 	// Don't redirect while auth is still loading
 	if (loading) {
@@ -102,16 +101,12 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 	return <>{children}</>;
 };
 
-// Landing page router redirector - checks auth status and redirects accordingly
 const LandingRedirector = () => {
 	const { isAuthenticated, loading } = useAuth();
-	const hasCachedAuth = Boolean(
-		localStorage.getItem('auth-store') &&
-		JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
-	);
+	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 
 	// Check if we're coming from a login redirect (smooth transition)
-	const isFromLoginRedirect = sessionStorage.getItem('auth_redirect') === '1';
+	const isFromLoginRedirect = getSessionStorage('auth_redirect') === '1';
 
 	// If we have cached auth or are authenticated, redirect to home immediately
 	if (hasCachedAuth || isAuthenticated) {
@@ -228,12 +223,9 @@ function AppContent() {
 				// Mobile performance service initializes automatically
 
 				// Check for cached authentication
-				const hasCachedAuth = Boolean(
-					localStorage.getItem('auth-store') &&
-					JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
-				);
+				const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 
-				const fromAuthRedirect = (() => { try { return sessionStorage.getItem('auth_redirect') === '1'; } catch { return false; } })();
+				const fromAuthRedirect = getSessionStorage('auth_redirect') === '1';
 
 				// Reduce splash screen time for logged-in users or after auth redirect
 				if (hasCachedAuth || fromAuthRedirect) {

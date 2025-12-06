@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, XCircle, LogOut, User } from 'lucide-react';
+import { Search, XCircle, LogOut, User, Home, Bell } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useMusicStore } from '@/stores/useMusicStore';
 import SearchSuggestions from '@/components/SearchSuggestions';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { signOut } from '@/services/hybridAuthService';
 import { debounce } from 'lodash';
+import { WhatsNewDialog } from './WhatsNewDialog';
 
 import {
   DropdownMenu,
@@ -32,6 +32,7 @@ const Header = ({ className }: HeaderProps) => {
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const searchFormRef = useRef<HTMLFormElement>(null);
   const authProcessedRef = useRef(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
 
   // Extract search query from URL when navigating to search page
   useEffect(() => {
@@ -135,103 +136,126 @@ const Header = ({ className }: HeaderProps) => {
   };
 
   return (
-    <header className={`bg-[#121212] dark:bg-[#121212] py-4 px-6 z-50 sticky top-0 border-b border-border ${className}`}>
-      <div className="max-w-[1800px] mx-auto flex items-center justify-between">
-        {/* Logo and Brand */}
-        <Link to={user ? "/home" : "/"} className="flex items-center gap-3 hover:opacity-90 transition-opacity min-w-[200px]">
-          <div className="flex items-center">
-            <svg viewBox="0 0 16 16" className="h-10 w-10 text-[#1DB954]" aria-label="Spotify">
-              <path
-                fill="currentColor"
-                d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.669 11.538a.498.498 0 0 1-.686.165c-1.879-1.147-4.243-1.407-7.028-.77a.499.499 0 0 1-.222-.973c3.048-.696 5.662-.397 7.77.892a.5.5 0 0 1 .166.686zm.979-2.178a.624.624 0 0 1-.858.205c-2.15-1.321-5.428-1.704-7.972-.932a.625.625 0 0 1-.362-1.194c2.905-.881 6.517-.454 8.986 1.063a.624.624 0 0 1 .206.858zm.084-2.268C10.154 5.56 5.9 5.419 3.438 6.166a.748.748 0 1 1-.434-1.432c2.825-.857 7.523-.692 10.492 1.07a.747.747 0 1 1-.764 1.288z"
-              />
-            </svg>
-            <span className="text-foreground font-bold text-2xl ml-3 tracking-tight">
-              MAVRIXFY
-            </span>
-          </div>
+    <header
+      className={`bg-black flex items-center px-4 relative z-[100]${className ? ` ${className}` : ''}`}
+      style={{ height: '64px' }}
+    >
+      <div className="w-full flex items-center justify-between">
+        {/* Left: Logo */}
+        <Link to={user ? "/home" : "/"} className="flex-shrink-0">
+          <svg viewBox="0 0 16 16" className="h-8 w-8 text-white" aria-label="Spotify">
+            <path
+              fill="currentColor"
+              d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.669 11.538a.498.498 0 0 1-.686.165c-1.879-1.147-4.243-1.407-7.028-.77a.499.499 0 0 1-.222-.973c3.048-.696 5.662-.397 7.77.892a.5.5 0 0 1 .166.686zm.979-2.178a.624.624 0 0 1-.858.205c-2.15-1.321-5.428-1.704-7.972-.932a.625.625 0 0 1-.362-1.194c2.905-.881 6.517-.454 8.986 1.063a.624.624 0 0 1 .206.858zm.084-2.268C10.154 5.56 5.9 5.419 3.438 6.166a.748.748 0 1 1-.434-1.432c2.825-.857 7.523-.692 10.492 1.07a.747.747 0 1 1-.764 1.288z"
+            />
+          </svg>
         </Link>
 
-        {/* Centered Search Bar */}
-        <form
-          ref={searchFormRef}
-          className="flex-1 max-w-[600px] mx-auto relative px-4"
-          onSubmit={handleSearch}
-        >
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
-            <Input
-              id="header-search-input"
-              type="search"
-              placeholder="Search for songs, artists, or albums"
-              value={searchQuery}
-              onChange={handleQueryChange}
-              onClick={() => {
-                if (searchQuery.trim().length >= 2) {
-                  setShowSearchSuggestions(true);
-                }
-              }}
-              className="w-full rounded-full bg-muted text-foreground pl-12 pr-12 h-12 focus:outline-none focus:ring-2 focus:ring-primary/20 border-none placeholder:text-muted-foreground hover:bg-muted/80 transition-colors"
+        {/* Center: Home Button and Search Bar */}
+        <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-2 z-[100]">
+          {/* Home Button */}
+          <Link
+            to="/home"
+            className="flex items-center justify-center rounded-full bg-[#1f1f1f] hover:bg-[#2a2a2a] hover:scale-105 transition-all"
+            style={{ width: '48px', height: '48px' }}
+          >
+            <Home size={24} className="text-white" />
+          </Link>
+
+          {/* Search Bar */}
+          <form
+            ref={searchFormRef}
+            className="relative z-[100]"
+            style={{ width: '380px' }}
+            onSubmit={handleSearch}
+          >
+            <div className="relative flex items-center">
+              <div className="absolute left-4 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-[#a7a7a7]" />
+              </div>
+              <Input
+                id="header-search-input"
+                type="search"
+                placeholder="What do you want to play?"
+                value={searchQuery}
+                onChange={handleQueryChange}
+                onClick={() => {
+                  if (searchQuery.trim().length >= 2) {
+                    setShowSearchSuggestions(true);
+                  }
+                }}
+                className="w-full rounded-full bg-[#242424] hover:bg-[#2a2a2a] hover:ring-1 hover:ring-[#535353] text-white pl-12 pr-10 border-none placeholder:text-[#a7a7a7] text-sm transition-all focus:ring-2 focus:ring-white"
+                style={{ height: '48px' }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="absolute right-4 text-[#a7a7a7] hover:text-white"
+                >
+                  <XCircle size={18} />
+                </button>
+              )}
+            </div>
+
+            <SearchSuggestions
+              isVisible={showSearchSuggestions}
+              query={searchQuery}
+              onSelectSong={handleSelectSong}
             />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <XCircle size={20} />
-              </button>
-            )}
-          </div>
+          </form>
+        </div>
 
-          <SearchSuggestions
-            isVisible={showSearchSuggestions}
-            query={searchQuery}
-            onSelectSong={handleSelectSong}
-          />
-        </form>
+        {/* Right: Spacer for balance */}
+        <div className="flex-shrink-0" style={{ width: '32px' }} />
 
-        {/* User Profile and Theme Toggle */}
-        <div className="min-w-[200px] flex justify-end items-center gap-2">
-
+        {/* Right: User Profile & Bell */}
+        <div className="flex items-center gap-3 flex-shrink-0">
           {!authLoading && (
             user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    className="rounded-full bg-muted hover:bg-muted/80 text-foreground border-none flex items-center gap-2 py-1.5 px-2"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+              <>
+                <button
+                  className="w-8 h-8 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
+                  onClick={() => setShowWhatsNew(true)}
+                >
+                  <Bell size={20} className="text-[#a7a7a7] hover:text-white transition-colors" />
+                </button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="w-8 h-8 rounded-full bg-[#1f1f1f] hover:scale-105 flex items-center justify-center overflow-hidden transition-transform">
                       {user.picture ? (
                         <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
                       ) : (
-                        <User className="h-5 w-5 text-muted-foreground" />
+                        <User className="h-5 w-5 text-[#a7a7a7]" />
                       )}
-                    </div>
-                    <span className="text-sm font-medium truncate max-w-[100px]">{user.name || 'User'}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="min-w-[200px]" align="end" sideOffset={8}>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onClick={() => navigate('/profile')}
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="cursor-pointer text-destructive"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="min-w-[200px] bg-[#282828] border-none" align="end" sideOffset={8}>
+                    <DropdownMenuItem
+                      className="cursor-pointer text-white hover:bg-white/10"
+                      onClick={() => navigate('/profile')}
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-white/10" />
+                    <DropdownMenuItem
+                      className="cursor-pointer text-white hover:bg-white/10"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <WhatsNewDialog open={showWhatsNew} onOpenChange={setShowWhatsNew} />
+              </>
             ) : (
               <Button
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8"
+                className="rounded-full bg-white hover:bg-white/90 hover:scale-105 text-black font-bold px-8 text-sm transition-all"
+                style={{ height: '48px' }}
                 onClick={() => navigate('/login')}
               >
                 Log in

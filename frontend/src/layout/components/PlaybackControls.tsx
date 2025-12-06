@@ -221,7 +221,7 @@ export const PlaybackControls = () => {
 			{/* Desktop Player */}
 			<footer
 				ref={playerRef}
-				className="h-[90px] border-t border-border px-4 hidden sm:block transition-opacity duration-300 bg-background text-foreground"
+				className="h-[72px] px-4 hidden sm:block transition-opacity duration-300 bg-black text-foreground"
 				style={{ opacity: isTransitioning ? 0.95 : 1 }}
 			>
 				<div className="flex justify-between items-center h-full max-w-[1800px] mx-auto">

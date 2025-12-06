@@ -78,21 +78,21 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
     if (recentSearches.length === 0) return null;
 
     return (
-      <div className="absolute top-full left-0 right-0 mt-1 bg-card rounded-md shadow-lg overflow-hidden z-20 border border-border">
-        <div className="p-2">
-          <h3 className="text-xs font-semibold text-muted-foreground mb-2">Recent Searches</h3>
-          <div className="space-y-1">
+      <div className="absolute top-full left-0 right-0 mt-2 bg-[#2a2a2a] rounded-lg shadow-2xl overflow-hidden z-[100] max-h-[400px] overflow-y-auto">
+        <div className="p-3">
+          <h3 className="text-sm font-semibold text-white mb-3 px-2">Recent searches</h3>
+          <div className="space-y-0">
             {recentSearches.map((search: string, index: number) => (
               <div
                 key={`${search}-${index}`}
-                className="flex items-center p-2 hover:bg-accent rounded cursor-pointer"
+                className="flex items-center px-3 py-2.5 hover:bg-[#3a3a3a] rounded-md cursor-pointer transition-colors"
                 onClick={() => {
                   onSelectSong(search);
                   saveSearchTerm(search);
                 }}
               >
-                <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="text-sm truncate">{search}</span>
+                <Clock className="h-4 w-4 mr-3 text-[#b3b3b3] flex-shrink-0" />
+                <span className="text-sm text-white truncate">{search}</span>
               </div>
             ))}
           </div>
@@ -104,8 +104,8 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
   // If query exists but no specific results to show yet
   if (query.length < 2) {
     return (
-      <div className="absolute top-full left-0 right-0 mt-1 bg-card rounded-md shadow-lg p-2 z-20 border border-border">
-        <p className="text-muted-foreground text-xs p-2">
+      <div className="absolute top-full left-0 right-0 mt-2 bg-[#2a2a2a] rounded-lg shadow-2xl p-4 z-[100]">
+        <p className="text-[#b3b3b3] text-sm text-center">
           Type at least 2 characters to search
         </p>
       </div>
@@ -115,8 +115,8 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
   // Loading state
   if (isSearching && playlistResults.length === 0 && indianSearchResults.length === 0) {
     return (
-      <div className="absolute top-full left-0 right-0 mt-1 bg-card rounded-md shadow-lg p-4 z-20 border border-border">
-        <p className="text-muted-foreground text-xs text-center">Searching...</p>
+      <div className="absolute top-full left-0 right-0 mt-2 bg-[#2a2a2a] rounded-lg shadow-2xl p-4 z-[100]">
+        <p className="text-[#b3b3b3] text-sm text-center">Searching...</p>
       </div>
     );
   }
@@ -124,41 +124,41 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
   // No results state
   if (!isSearching && playlistResults.length === 0 && indianSearchResults.length === 0) {
     return (
-      <div className="absolute top-full left-0 right-0 mt-1 bg-card rounded-md shadow-lg p-4 z-20 border border-border">
-        <p className="text-muted-foreground text-xs text-center">No results found</p>
+      <div className="absolute top-full left-0 right-0 mt-2 bg-[#2a2a2a] rounded-lg shadow-2xl p-4 z-[100]">
+        <p className="text-[#b3b3b3] text-sm text-center">No results found</p>
       </div>
     );
   }
 
   // Show search results with songs and playlists
   return (
-    <div className="absolute top-full left-0 right-0 mt-1 bg-card rounded-md shadow-lg overflow-hidden z-20 border border-border">
+    <div className="absolute top-full left-0 right-0 mt-2 bg-[#2a2a2a] rounded-lg shadow-2xl overflow-hidden z-[100] max-h-[400px] overflow-y-auto">
       {/* Songs section */}
       {indianSearchResults.length > 0 && (
-        <div className="p-2">
-          <h3 className="text-xs font-semibold text-muted-foreground mb-2">Songs</h3>
-          <div className="space-y-1">
+        <div className="p-3">
+          <h3 className="text-sm font-semibold text-white mb-3 px-2">Songs</h3>
+          <div className="space-y-0">
             {indianSearchResults.slice(0, 3).map((song: SearchItem, index: number) => (
               <div
                 key={`${song.id || index}`}
-                className="flex items-center gap-2 p-2 hover:bg-accent rounded cursor-pointer"
+                className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#3a3a3a] rounded-md cursor-pointer transition-colors"
                 onClick={() => {
                   onSelectSong(song.title);
                   saveSearchTerm(song.title);
                 }}
               >
-                <div className="h-8 w-8 rounded overflow-hidden flex-shrink-0">
+                <div className="h-10 w-10 rounded overflow-hidden flex-shrink-0">
                   <img
                     src={song.image || '/images/default-album.png'}
                     alt={song.title}
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <div className="overflow-hidden flex-1">
-                  <p className="text-sm font-medium truncate text-foreground">{song.title}</p>
-                  <p className="text-xs text-muted-foreground truncate">{song.artist || 'Unknown Artist'}</p>
+                <div className="overflow-hidden flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate text-white">{song.title}</p>
+                  <p className="text-xs text-[#b3b3b3] truncate">{song.artist || 'Unknown Artist'}</p>
                 </div>
-                <Music className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <Music className="h-4 w-4 text-[#b3b3b3] flex-shrink-0" />
               </div>
             ))}
           </div>
@@ -167,32 +167,32 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
 
       {/* Playlists section */}
       {playlistResults.length > 0 && onSelectPlaylist && (
-        <div className="p-2 border-t border-border">
-          <h3 className="text-xs font-semibold text-muted-foreground mb-2">Playlists</h3>
-          <div className="space-y-1">
+        <div className="p-3 border-t border-[#3a3a3a]">
+          <h3 className="text-sm font-semibold text-white mb-3 px-2">Playlists</h3>
+          <div className="space-y-0">
             {playlistResults.slice(0, 3).map((playlist: Playlist, index: number) => (
               <div
                 key={`playlist-${playlist._id || index}`}
-                className="flex items-center gap-2 p-2 hover:bg-accent rounded cursor-pointer"
+                className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#3a3a3a] rounded-md cursor-pointer transition-colors"
                 onClick={() => {
                   onSelectPlaylist(playlist._id);
                   saveSearchTerm(playlist.name);
                 }}
               >
-                <div className="h-8 w-8 rounded overflow-hidden flex-shrink-0">
+                <div className="h-10 w-10 rounded overflow-hidden flex-shrink-0">
                   <img
                     src={playlist.imageUrl || '/images/default-playlist.jpg'}
                     alt={playlist.name}
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <div className="overflow-hidden flex-1">
-                  <p className="text-sm font-medium truncate text-foreground">{playlist.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
+                <div className="overflow-hidden flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate text-white">{playlist.name}</p>
+                  <p className="text-xs text-[#b3b3b3] truncate">
                     {playlist.songs.length} songs • {playlist.createdBy?.fullName || 'Unknown User'}
                   </p>
                 </div>
-                <ListMusic className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <ListMusic className="h-4 w-4 text-[#b3b3b3] flex-shrink-0" />
               </div>
             ))}
           </div>
@@ -201,9 +201,9 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
 
       {/* View all results link */}
       {(indianSearchResults.length > 3 || playlistResults.length > 3) && (
-        <div className="p-2 border-t border-border">
+        <div className="p-3 border-t border-[#3a3a3a]">
           <div 
-            className="p-2 hover:bg-accent rounded cursor-pointer text-center text-sm text-muted-foreground hover:text-foreground"
+            className="px-3 py-2.5 hover:bg-[#3a3a3a] rounded-md cursor-pointer text-center text-sm text-[#b3b3b3] hover:text-white transition-colors"
             onClick={() => {
               onSelectSong(query);
               saveSearchTerm(query);

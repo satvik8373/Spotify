@@ -5,11 +5,11 @@ import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Play, 
-  Loader, 
-  Search, 
-  XCircle, 
+import {
+  Play,
+  Loader,
+  Search,
+  XCircle,
   Instagram,
   Mic,
   ExternalLink
@@ -78,7 +78,7 @@ const SearchPage = () => {
   const { searchPlaylists, searchResults: playlistResults } = usePlaylistStore();
   const { isAuthenticated, user } = useAuth();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
+
   // Recent searches state
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
@@ -86,24 +86,24 @@ const SearchPage = () => {
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
   const [speechSupported, setSpeechSupported] = useState(false);
-  
+
   // Check if speech recognition is supported
   useEffect(() => {
-    const SpeechRecognition = (window as unknown as Window).SpeechRecognition || 
-                              (window as unknown as Window).webkitSpeechRecognition;
-    
+    const SpeechRecognition = (window as unknown as Window).SpeechRecognition ||
+      (window as unknown as Window).webkitSpeechRecognition;
+
     if (SpeechRecognition) {
       const recognitionInstance = new SpeechRecognition();
       recognitionInstance.continuous = false;
       recognitionInstance.interimResults = false;
       recognitionInstance.lang = 'en-US';
-      
+
       setRecognition(recognitionInstance);
       setSpeechSupported(true);
     } else {
       setSpeechSupported(false);
     }
-    
+
     return () => {
       if (recognition) {
         recognition.onresult = null;
@@ -119,16 +119,16 @@ const SearchPage = () => {
       }
     };
   }, []);
-  
+
   // Toggle speech recognition
   const toggleListening = useCallback(() => {
     if (!recognition) return;
-    
+
     if (isListening) {
       recognition.stop();
       return;
     }
-    
+
     // Set up recognition event handlers
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = event.results[0][0].transcript;
@@ -139,17 +139,17 @@ const SearchPage = () => {
         }, 500);
       }
     };
-    
+
     recognition.onend = () => {
       setIsListening(false);
     };
-    
+
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error', event.error);
       setIsListening(false);
       toast.error('Speech recognition error', { description: event.error });
     };
-    
+
     // Start listening
     try {
       recognition.start();
@@ -168,7 +168,7 @@ const SearchPage = () => {
     document.addEventListener('toggleVoiceSearch', handler);
     return () => document.removeEventListener('toggleVoiceSearch', handler);
   }, [toggleListening]);
-  
+
   // Load recent searches from localStorage on component mount
   useEffect(() => {
     const savedSearches = localStorage.getItem('recentSearches');
@@ -181,33 +181,33 @@ const SearchPage = () => {
       }
     }
   }, []);
-  
+
   // Save recent search when performing a search
   const saveRecentSearch = (query: string) => {
     if (!query.trim()) return;
-    
+
     // Create new array with current query at the beginning, removing duplicates
     const updatedSearches = [
       query,
       ...recentSearches.filter(item => item.toLowerCase() !== query.toLowerCase())
     ].slice(0, MAX_RECENT_SEARCHES);
-    
+
     setRecentSearches(updatedSearches);
     localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
   };
-  
+
   // Remove a specific recent search
   const removeRecentSearch = (searchToRemove: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click event
-    
+
     const updatedSearches = recentSearches.filter(
       search => search !== searchToRemove
     );
-    
+
     setRecentSearches(updatedSearches);
     localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
   };
-  
+
   // Clear all recent searches
   const clearAllRecentSearches = () => {
     setRecentSearches([]);
@@ -219,13 +219,13 @@ const SearchPage = () => {
     if (query) {
       setSearchQuery(query);
       saveRecentSearch(query);
-      
+
       // Create an array of promises for all search operations
       const searchPromises = [
         searchIndianSongs(query),
         searchPlaylists(query)
       ];
-      
+
       // Wait for all searches to complete
       Promise.all(searchPromises)
         .then(() => {
@@ -246,10 +246,10 @@ const SearchPage = () => {
   // Handle auto-playing specific song when songId is provided
   useEffect(() => {
     if (songId && indianSearchResults.length > 0) {
-      const targetSong = indianSearchResults.find((s: any) => 
+      const targetSong = indianSearchResults.find((s: any) =>
         s._id === songId || (s as any).id === songId
       );
-      
+
       if (targetSong) {
         // Batch state updates to reduce re-renders
         usePlayerStore.setState({
@@ -257,7 +257,7 @@ const SearchPage = () => {
           hasUserInteracted: true,
           isPlaying: true
         });
-        
+
         // Show success message with slight delay to avoid blocking UI
         setTimeout(() => {
           toast.success(`Now playing: ${targetSong.title}`);
@@ -338,11 +338,11 @@ const SearchPage = () => {
     setSearchQuery('');
     navigate('/search');
   };
-  
+
   const clickRecentSearch = (searchTerm: string) => {
     navigate(`/search?q=${encodeURIComponent(searchTerm)}`);
   };
-  
+
   const openInstagram = (url: string) => {
     window.open(url, '_blank');
   };
@@ -353,9 +353,9 @@ const SearchPage = () => {
       {recentSearches.length > 0 && (
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-foreground">Recent searches</h2>
-            <Button 
-              variant="ghost" 
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Recent searches</h2>
+            <Button
+              variant="ghost"
               size="sm"
               onClick={clearAllRecentSearches}
               className="text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -363,10 +363,10 @@ const SearchPage = () => {
               Clear all
             </Button>
           </div>
-          
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {recentSearches.map((search, index) => (
-              <div 
+              <div
                 key={index}
                 onClick={() => clickRecentSearch(search)}
                 className="bg-card hover:bg-accent rounded-md p-4 cursor-pointer transition-colors group relative border border-border"
@@ -380,7 +380,7 @@ const SearchPage = () => {
                     <p className="text-xs text-muted-foreground">Recent search</p>
                   </div>
                 </div>
-                
+
                 {/* Delete button that appears on hover */}
                 <button
                   onClick={(e) => removeRecentSearch(search, e)}
@@ -393,13 +393,13 @@ const SearchPage = () => {
           </div>
         </div>
       )}
-      
+
       {/* Follow on Instagram Section */}
       <div>
-        <h2 className="text-xl font-bold text-foreground mb-4">Follow Us</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground mb-4">Follow Us</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* First Instagram Account */}
-          <div 
+          <div
             onClick={() => openInstagram(INSTAGRAM_URL)}
             className="bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-lg overflow-hidden p-6 relative cursor-pointer transition-transform hover:scale-[1.02] flex items-center"
           >
@@ -409,8 +409,8 @@ const SearchPage = () => {
                 <h3 className="text-xl font-bold text-white">{INSTAGRAM_HANDLE}</h3>
               </div>
               <p className="text-white/80 mb-4 text-sm">Music updates and news</p>
-              <Button 
-                className="bg-white hover:bg-white/90 text-black font-medium rounded-full px-6 flex items-center" 
+              <Button
+                className="bg-white hover:bg-white/90 text-black font-medium rounded-full px-6 flex items-center"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -429,7 +429,7 @@ const SearchPage = () => {
           </div>
 
           {/* Second Instagram Account */}
-          <div 
+          <div
             onClick={() => openInstagram(INSTAGRAM_URL_TRADING)}
             className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-400 rounded-lg overflow-hidden p-6 relative cursor-pointer transition-transform hover:scale-[1.02] flex items-center"
           >
@@ -439,8 +439,8 @@ const SearchPage = () => {
                 <h3 className="text-xl font-bold text-white">{INSTAGRAM_HANDLE_TRADING}</h3>
               </div>
               <p className="text-white/80 mb-4 text-sm">Trading insights and analytics</p>
-              <Button 
-                className="bg-white hover:bg-white/90 text-black font-medium rounded-full px-6 flex items-center" 
+              <Button
+                className="bg-white hover:bg-white/90 text-black font-medium rounded-full px-6 flex items-center"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -464,13 +464,13 @@ const SearchPage = () => {
 
   const renderPlaylistResults = () => {
     if (playlistResults.length === 0) return null;
-    
+
     return (
       <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">Playlists</h2>
+        <h2 className="text-2xl font-bold tracking-tight mb-4">Playlists</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
           {playlistResults.map((playlist: Playlist) => (
-            <PlaylistCard 
+            <PlaylistCard
               key={playlist._id}
               playlist={playlist}
               size="small"
@@ -484,11 +484,12 @@ const SearchPage = () => {
   };
 
   return (
-    <main className="rounded-md overflow-hidden h-full px-[6px] bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] text-foreground" >
-      <ScrollArea className="h-[calc(100vh-180px)]">
-        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+    <div className="h-full overflow-hidden bg-[#121212]">
+      <ScrollArea className="h-full">
+        <div className="pt-6 pb-24 w-full max-w-[1950px] mx-auto px-3 md:px-8 box-border">
           {/* Search Box - Spotify-style white design with speech recognition */}
-          <form onSubmit={handleSearch} className="flex-1 max-w-xl flex items-center">
+          <div className="mb-6">
+            <form onSubmit={handleSearch} className="flex-1 max-w-xl flex items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -508,13 +509,13 @@ const SearchPage = () => {
                 </button>
               )}
             </div>
-            <Button 
+            <Button
               type="submit"
               className="h-12 rounded-none bg-card hover:bg-accent text-foreground font-medium px-5 border border-border"
             >
               Search
             </Button>
-            
+
             {/* Speech recognition button */}
             {speechSupported && (
               <Button
@@ -534,7 +535,7 @@ const SearchPage = () => {
               </Button>
             )}
           </form>
-        </div>
+          </div>
 
         {isInitialLoad ? (
           <div className="flex justify-center py-12">
@@ -545,15 +546,15 @@ const SearchPage = () => {
             {/* Top Results - Featured Section */}
             {(sortedIndianResults.length > 0 || playlistResults.length > 0) && (
               <div className="mb-8">
-                <h2 className="text-xl font-bold mb-4">Top Result</h2>
+                <h2 className="text-2xl font-bold tracking-tight mb-4">Top Result</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Top Result Card */}
                   {sortedIndianResults.length > 0 && (
                     <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
                       <div className="flex flex-col h-full">
                         <div className="mb-4">
-                          <img 
-                            src={sortedIndianResults[0].image} 
+                          <img
+                            src={sortedIndianResults[0].image}
                             alt={sortedIndianResults[0].title}
                             className="w-24 h-24 shadow-md rounded-md"
                           />
@@ -563,7 +564,7 @@ const SearchPage = () => {
                           {resolveArtist(sortedIndianResults[0])}
                         </p>
                         <div className="mt-auto">
-                          <Button 
+                          <Button
                             className="rounded-full h-12 w-12 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
                             size="icon"
                             onClick={() => usePlayerStore.getState().setCurrentSong(sortedIndianResults[0] as any)}
@@ -578,7 +579,7 @@ const SearchPage = () => {
                   {/* Alternative Top Result - Playlist */}
                   {indianSearchResults.length === 0 && playlistResults.length > 0 && (
                     <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
-                      <PlaylistCard 
+                      <PlaylistCard
                         playlist={playlistResults[0]}
                         size="large"
                         showDescription={true}
@@ -589,18 +590,18 @@ const SearchPage = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Playlist Results */}
             {renderPlaylistResults()}
-            
+
             {/* Song Results */}
             {sortedIndianResults.length > 0 && (
-              <div>
-                <h2 className="text-xl font-bold mb-4">Songs</h2>
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold tracking-tight mb-4">Songs</h2>
                 <IndianMusicPlayer />
               </div>
             )}
-            
+
             {/* Show message if no results */}
             {sortedIndianResults.length === 0 && playlistResults.length === 0 && (
               <div className="py-16 text-center bg-card rounded-lg border border-border">
@@ -617,8 +618,9 @@ const SearchPage = () => {
           // Empty state with recent searches and Instagram follow
           renderEmptyState()
         )}
+        </div>
       </ScrollArea>
-    </main>
+    </div>
   );
 };
 

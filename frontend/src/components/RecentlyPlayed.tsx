@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Music, Clock } from 'lucide-react';
+import { Play, Music } from 'lucide-react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { cn } from '@/lib/utils';
 
@@ -84,21 +84,6 @@ export function RecentlyPlayed() {
       navigate(`/albums/${item.id}`);
     }
   };
-  
-  // Format the time since item was played
-  const getTimeAgo = (timestamp: number): string => {
-    const now = Date.now();
-    const seconds = Math.floor((now - timestamp) / 1000);
-    
-    if (seconds < 60) return 'now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d`;
-    return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  };
 
   if (recentItems.length === 0) return null;
 
@@ -116,22 +101,25 @@ export function RecentlyPlayed() {
         )}
       </div>
       
-      <div className="grid grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-3 sm:gap-x-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+      {/* Rectangular cards matching Spotify design - thumbnail on left, text on right */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-1.5">
         {recentItems.map(item => (
           <div
             key={item.id}
-            className="group relative overflow-hidden rounded-md bg-muted/50 cursor-pointer transition-all duration-200 hover:bg-muted/60"
+            className="group relative h-[64px] rounded overflow-hidden transition-all duration-300 cursor-pointer border border-border/60 hover:border-border/80"
             onClick={() => handleItemClick(item)}
             onMouseEnter={() => setHoveredItemId(item.id)}
             onMouseLeave={() => setHoveredItemId(null)}
           >
-            <div className="p-2 flex flex-col h-full">
-              <div className="liquid-glass-album relative mb-1.5 aspect-square overflow-hidden shadow-md">
+            <div className="absolute inset-0 bg-muted/95 dark:bg-[#292929] scale-110 group-hover:scale-100 transition-transform duration-300" />
+            <div className="relative flex items-center h-full">
+              {/* Square thumbnail on the left */}
+              <div className="w-[64px] h-full flex-shrink-0 rounded overflow-hidden">
                 {item.imageUrl ? (
                   <img
                     src={item.imageUrl}
                     alt={item.title}
-                    className="object-cover w-full h-full"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                     loading="lazy"
                     onError={e => {
                       (e.target as HTMLImageElement).src =
@@ -139,40 +127,32 @@ export function RecentlyPlayed() {
                     }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Music className="h-10 w-10 text-muted-foreground" />
+                  <div className="w-full h-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center">
+                    <Music className="h-6 w-6 text-white/70" />
                   </div>
                 )}
-                <button
-                  className={cn(
-                    'absolute right-1.5 bottom-1.5 p-1.5 bg-green-500 hover:bg-green-400 text-black rounded-full shadow-lg z-10 transition-all duration-300',
-                    hoveredItemId === item.id
-                      ? 'opacity-100 translate-y-0'
-                      : 'opacity-0 translate-y-3'
-                  )}
-                  onClick={e => {
-                    e.stopPropagation();
-                    handleItemClick(item);
-                  }}
-                >
-                  <Play className="h-3.5 w-3.5 text-white" />
-                </button>
               </div>
-              <div className="min-h-[40px] flex flex-col justify-between">
-                <h3 
-                  className="font-medium text-foreground text-xs leading-tight line-clamp-2" 
-                  title={item.title}
-                >
+              {/* Text on the right */}
+              <div className="flex-1 min-w-0 px-2.5">
+                <h3 className="font-medium text-sm leading-snug line-clamp-2 text-foreground group-hover:text-white transition-colors">
                   {item.title}
                 </h3>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-[10px] text-muted-foreground capitalize leading-none">{item.type}</p>
-                  <p className="text-[10px] text-muted-foreground/70 flex items-center gap-0.5 leading-none">
-                    <Clock className="h-2.5 w-2.5" />
-                    {getTimeAgo(item.date)}
-                  </p>
-                </div>
               </div>
+              {/* Play button appears on hover */}
+              <button
+                className={cn(
+                  'absolute right-2 p-2 bg-green-500 hover:bg-green-400 text-black rounded-full shadow-lg z-10 transition-all duration-200 ease-out',
+                  hoveredItemId === item.id
+                    ? 'opacity-100 translate-y-0 scale-100'
+                    : 'opacity-0 translate-y-2 scale-90'
+                )}
+                onClick={e => {
+                  e.stopPropagation();
+                  handleItemClick(item);
+                }}
+              >
+                <Play className="h-3.5 w-3.5 text-black fill-black" />
+              </button>
             </div>
           </div>
         ))}

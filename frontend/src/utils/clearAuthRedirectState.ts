@@ -1,3 +1,5 @@
+import { removeSessionStorage, removeLocalStorage, getSessionStorageKeys, getLocalStorageKeys } from './storageUtils';
+
 /**
  * Clear any Firebase auth redirect state that might cause
  * "missing initial state" errors in PWA/WebView
@@ -10,38 +12,26 @@ export const clearAuthRedirectState = () => {
       'firebase:redirectUser',
       'firebase:pendingRedirect'
     ];
-    
+
     sessionKeys.forEach(key => {
-      try {
-        sessionStorage.removeItem(key);
-      } catch (e) {
-        // Ignore if sessionStorage is not accessible
+      removeSessionStorage(key);
+    });
+
+    // Clear any Firebase auth redirect state from sessionStorage
+    const keys = getSessionStorageKeys();
+    keys.forEach(key => {
+      if (key.includes('firebase') && (key.includes('redirect') || key.includes('pending'))) {
+        removeSessionStorage(key);
       }
     });
-    
-    // Clear any Firebase auth redirect state from sessionStorage
-    try {
-      const keys = Object.keys(sessionStorage);
-      keys.forEach(key => {
-        if (key.includes('firebase') && (key.includes('redirect') || key.includes('pending'))) {
-          sessionStorage.removeItem(key);
-        }
-      });
-    } catch (e) {
-      // Ignore errors
-    }
-    
+
     // Also clear from localStorage if present
-    try {
-      const localKeys = Object.keys(localStorage);
-      localKeys.forEach(key => {
-        if (key.includes('firebase') && key.includes('redirect')) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch (e) {
-      // Ignore errors
-    }
+    const localKeys = getLocalStorageKeys();
+    localKeys.forEach(key => {
+      if (key.includes('firebase') && key.includes('redirect')) {
+        removeLocalStorage(key);
+      }
+    });
   } catch (error) {
     console.warn('Could not clear auth redirect state:', error);
   }

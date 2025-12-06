@@ -87,7 +87,6 @@ const SwipeableSongItem: React.FC<SwipeableSongItemProps> = ({
         }
         
         const dragDistance = info.offset.x;
-        const wasDragged = Math.abs(dragDistance) > 5; // Consider it a drag if moved more than 5px
         
         if (dragDistance > dynamicThreshold) {
             console.log('✅ Threshold exceeded! Calling onSwipeRight');
@@ -98,14 +97,12 @@ const SwipeableSongItem: React.FC<SwipeableSongItemProps> = ({
             console.log('❌ Threshold not met. Needed:', dynamicThreshold, 'Got:', dragDistance);
         }
         
-        // Reset position smoothly
+        // Reset position immediately
         x.set(0);
         setIsTriggered(false);
-
-        // Reset dragging state after a delay - longer if actually dragged
-        setTimeout(() => {
-            isDragging.current = false;
-        }, wasDragged ? 200 : 50);
+        
+        // Reset dragging state immediately for next interaction
+        isDragging.current = false;
     };
 
     const handleDrag = (_: any, info: PanInfo) => {
@@ -161,7 +158,9 @@ const SwipeableSongItem: React.FC<SwipeableSongItemProps> = ({
                 onDrag={handleDrag}
                 onClickCapture={handleClickCapture}
                 onTouchStartCapture={handleClickCapture}
+                animate={{ x: 0 }}
                 style={{ x }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 className="relative z-10 bg-background"
             >
                 {children}

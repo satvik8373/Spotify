@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  Loader, 
-  Library, 
-  Heart, 
-  Music, 
+import {
+  Loader,
+  Library,
+  Heart,
+  Music,
   ListMusic,
   Pin,
   PinOff,
@@ -26,12 +26,12 @@ const LibraryPage = () => {
   const [isLibraryLoading, setIsLibraryLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { userPlaylists, fetchUserPlaylists } = usePlaylistStore();
-  
+
   // Scroll management
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  
+
   // View options
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [pinnedPlaylists, setPinnedPlaylists] = useState<string[]>([]);
@@ -44,13 +44,13 @@ const LibraryPage = () => {
       if (savedPinned) {
         setPinnedPlaylists(JSON.parse(savedPinned));
       }
-      
+
       // Load saved view mode
       const savedViewMode = localStorage.getItem('mavrix-library-view-mode');
       if (savedViewMode && (savedViewMode === 'grid' || savedViewMode === 'list')) {
         setViewMode(savedViewMode as 'grid' | 'list');
       }
-      
+
       // Load saved scroll position
       const savedScrollPosition = sessionStorage.getItem('mavrix-library-scroll');
       if (savedScrollPosition) {
@@ -67,14 +67,14 @@ const LibraryPage = () => {
       console.error('Error loading saved library preferences', error);
     }
   }, []);
-  
+
   // Save pinned playlists when they change
   useEffect(() => {
     if (pinnedPlaylists.length > 0) {
       localStorage.setItem('mavrix-pinned-playlists', JSON.stringify(pinnedPlaylists));
     }
   }, [pinnedPlaylists]);
-  
+
   // Save view mode when it changes
   useEffect(() => {
     localStorage.setItem('mavrix-library-view-mode', viewMode);
@@ -85,11 +85,11 @@ const LibraryPage = () => {
     const currentPos = e.currentTarget.scrollTop;
     setScrollPosition(currentPos);
     setShowScrollTop(currentPos > 300);
-    
+
     // Save scroll position to session storage
     sessionStorage.setItem('mavrix-library-scroll', currentPos.toString());
   };
-  
+
   // Scroll to top function
   const scrollToTop = () => {
     if (scrollAreaRef.current) {
@@ -102,7 +102,7 @@ const LibraryPage = () => {
 
   // Filtered playlists
   const filteredPlaylists = userPlaylists;
-  
+
   // Toggle pin status for a playlist
   const togglePinned = (playlistId: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -146,15 +146,15 @@ const LibraryPage = () => {
 
     loadData();
   }, [isAuthenticated, fetchUserPlaylists, user]);
-  
+
   // Debug logging
   useEffect(() => {
     console.log('LibraryPage: Auth state changed:', { isAuthenticated, loading, user: user?.id });
   }, [isAuthenticated, loading, user]);
-  
+
   // Debug playlist store state
   useEffect(() => {
-    console.log('LibraryPage: Playlist store state changed:', { 
+    console.log('LibraryPage: Playlist store state changed:', {
       userPlaylistsCount: userPlaylists.length,
       userPlaylists: userPlaylists.map(p => ({ id: p._id, name: p.name }))
     });
@@ -164,10 +164,10 @@ const LibraryPage = () => {
   useEffect(() => {
     console.log('LibraryPage: Auth state changed:', { isAuthenticated, loading, user: user?.id });
   }, [isAuthenticated, loading, user]);
-  
+
   // Debug playlist store state
   useEffect(() => {
-    console.log('LibraryPage: Playlist store state changed:', { 
+    console.log('LibraryPage: Playlist store state changed:', {
       userPlaylistsCount: userPlaylists.length,
       userPlaylists: userPlaylists.map(p => ({ id: p._id, name: p.name }))
     });
@@ -178,30 +178,30 @@ const LibraryPage = () => {
     <main className="h-full overflow-hidden px-[6px] bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] text-foreground">
       <div className="h-full flex flex-col">
         {/* Library content */}
-        <div 
+        <div
           ref={scrollAreaRef}
           className="flex-1 pb-24 overflow-y-auto"
           onScroll={handleScroll}
         >
           <div className="p-2 sm:p-4 pt-4">
-          {isLibraryLoading || loading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : !isAuthenticated ? (
-            <div className="bg-card border border-border rounded-lg p-8 text-center">
-              <Library className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h2 className="text-xl font-semibold mb-2">Sign in to view your library</h2>
-              <p className="text-muted-foreground mb-6">
-                Create an account or sign in to save and access your favorite music
-              </p>
-              <Button
-                onClick={() => navigate('/')}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                Sign In
-              </Button>
-            </div>
+            {isLibraryLoading || loading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : !isAuthenticated ? (
+              <div className="bg-card border border-border rounded-lg p-8 text-center">
+                <Library className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h2 className="text-xl font-semibold mb-2">Sign in to view your library</h2>
+                <p className="text-muted-foreground mb-6">
+                  Create an account or sign in to save and access your favorite music
+                </p>
+                <Button
+                  onClick={() => navigate('/')}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  Sign In
+                </Button>
+              </div>
             ) : userPlaylists.length === 0 ? (
               <div className="bg-card border border-border rounded-xl p-8 text-center">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
@@ -250,7 +250,7 @@ const LibraryPage = () => {
 
                 {/* Liked Songs Card - Always at top */}
                 <div className="mb-4">
-                  <div 
+                  <div
                     className="flex items-center gap-3 p-3 hover:bg-accent rounded-md cursor-pointer transition-colors"
                     onClick={() => navigate('/liked-songs')}
                   >
@@ -279,13 +279,13 @@ const LibraryPage = () => {
                     {viewMode === 'list' ? (
                       <div className="space-y-1">
                         {pinnedItems.map(playlist => (
-                          <div 
+                          <div
                             key={playlist._id}
                             className="flex items-center gap-3 p-3 hover:bg-accent rounded-md cursor-pointer group transition-colors"
                             onClick={() => navigateToPlaylist(playlist._id)}
                           >
-                            <img 
-                              src={playlist.imageUrl || '/default-playlist.jpg'} 
+                            <img
+                              src={playlist.imageUrl || '/default-playlist.jpg'}
                               alt={playlist.name}
                               className="w-12 h-12 object-cover rounded-md"
                               loading="lazy"
@@ -293,11 +293,11 @@ const LibraryPage = () => {
                             <div className="flex-1 min-w-0">
                               <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
                               <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                <ListMusic className="h-3 w-3" /> 
+                                <ListMusic className="h-3 w-3" />
                                 Playlist • <span className="flex items-center gap-1"><User className="h-3 w-3" /> {playlist.createdBy.fullName}</span>
                               </p>
                             </div>
-                            <button 
+                            <button
                               className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-accent transition-all"
                               onClick={(e) => togglePinned(playlist._id, e)}
                               title="Unpin"
@@ -310,20 +310,20 @@ const LibraryPage = () => {
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                         {pinnedItems.map(playlist => (
-                          <div 
+                          <div
                             key={playlist._id}
                             className="bg-card border border-border rounded-lg p-4 hover:bg-accent transition-colors cursor-pointer group relative"
                             onClick={() => navigateToPlaylist(playlist._id)}
                           >
                             <div className="aspect-square mb-4 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
-                              <img 
-                                src={playlist.imageUrl || '/default-playlist.jpg'} 
+                              <img
+                                src={playlist.imageUrl || '/default-playlist.jpg'}
                                 alt={playlist.name}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
                               />
                               <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              <button 
+                              <button
                                 className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 bg-background/80 text-foreground p-1.5 rounded-full hover:bg-background hover:scale-105 transition-all border border-border"
                                 onClick={(e) => togglePinned(playlist._id, e)}
                                 title="Unpin"
@@ -337,11 +337,11 @@ const LibraryPage = () => {
                             </p>
                           </div>
                         ))}
-                </div>
+                      </div>
                     )}
-              </div>
+                  </div>
                 )}
-                
+
                 {/* Main Playlist List */}
                 {unpinnedItems.length > 0 && (
                   <div>
@@ -350,17 +350,17 @@ const LibraryPage = () => {
                         Your Playlists
                       </div>
                     )}
-                    
+
                     {viewMode === 'list' ? (
                       <div className="space-y-1">
                         {unpinnedItems.map(playlist => (
-                          <div 
+                          <div
                             key={playlist._id}
                             className="flex items-center gap-3 p-3 hover:bg-accent rounded-md cursor-pointer group transition-colors"
                             onClick={() => navigateToPlaylist(playlist._id)}
                           >
-                            <img 
-                              src={playlist.imageUrl || '/default-playlist.jpg'} 
+                            <img
+                              src={playlist.imageUrl || '/default-playlist.jpg'}
                               alt={playlist.name}
                               className="w-12 h-12 object-cover rounded-md"
                               loading="lazy"
@@ -368,11 +368,11 @@ const LibraryPage = () => {
                             <div className="flex-1 min-w-0">
                               <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
                               <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                <ListMusic className="h-3 w-3" /> 
+                                <ListMusic className="h-3 w-3" />
                                 Playlist • <span className="flex items-center gap-1"><User className="h-3 w-3" /> {playlist.createdBy.fullName}</span>
                               </p>
                             </div>
-                            <button 
+                            <button
                               className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-accent transition-all"
                               onClick={(e) => togglePinned(playlist._id, e)}
                               title="Pin"
@@ -385,14 +385,14 @@ const LibraryPage = () => {
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                         {unpinnedItems.map(playlist => (
-                          <div 
-                        key={playlist._id}
+                          <div
+                            key={playlist._id}
                             className="bg-card border border-border rounded-lg p-4 hover:bg-accent transition-colors cursor-pointer group relative"
                             onClick={() => navigateToPlaylist(playlist._id)}
                           >
                             <div className="aspect-square mb-4 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
-                              <img 
-                                src={playlist.imageUrl || '/default-playlist.jpg'} 
+                              <img
+                                src={playlist.imageUrl || '/default-playlist.jpg'}
                                 alt={playlist.name}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
@@ -411,7 +411,7 @@ const LibraryPage = () => {
                 )}
               </div>
             )}
-            </div>
+          </div>
         </div>
       </div>
 
@@ -436,12 +436,12 @@ function LikedPlaylistsSection() {
   let likedIds: string[] = [];
   try {
     likedIds = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
-  } catch {}
+  } catch { }
 
   const { playlists } = usePlaylistStore();
   const navigate = useNavigate();
   const favs = playlists.filter(p => likedIds.includes(p._id)).slice(0, 6);
-  
+
   if (favs.length === 0) return null;
 
   return (
@@ -451,13 +451,13 @@ function LikedPlaylistsSection() {
       </div>
       <div className="space-y-1">
         {favs.map((playlist) => (
-          <div 
+          <div
             key={`fav-${playlist._id}`}
             className="flex items-center gap-3 p-3 hover:bg-accent rounded-md cursor-pointer group transition-colors"
             onClick={() => navigate(`/playlist/${playlist._id}`)}
           >
-            <img 
-              src={playlist.imageUrl || '/default-playlist.jpg'} 
+            <img
+              src={playlist.imageUrl || '/default-playlist.jpg'}
               alt={playlist.name}
               className="w-12 h-12 object-cover rounded-md"
               loading="lazy"
@@ -465,7 +465,7 @@ function LikedPlaylistsSection() {
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Heart className="h-3 w-3" /> 
+                <Heart className="h-3 w-3" />
                 Favourite • {playlist.createdBy?.fullName || 'Unknown'}
               </p>
             </div>

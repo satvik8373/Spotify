@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, ListMusic } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, ListMusic, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,7 @@ import SongDetailsView from '@/components/SongDetailsView';
 import QueueDrawer from '@/components/QueueDrawer';
 import { signOut } from '@/services/hybridAuthService';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
+import { WhatsNewDialog } from '@/components/WhatsNewDialog';
 
 
 /**
@@ -36,6 +37,7 @@ const MobileNav = () => {
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
 
@@ -300,6 +302,8 @@ const MobileNav = () => {
 
   return (
     <>
+      <WhatsNewDialog open={showWhatsNew} onOpenChange={setShowWhatsNew} />
+
       {/* Song Details View */}
       <SongDetailsView
         isOpen={showSongDetails}
@@ -497,6 +501,13 @@ const MobileNav = () => {
                 )}
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowWhatsNew(true)}
+                  className="w-8 h-8 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
+                  aria-label="What's New"
+                >
+                  <Bell size={20} className="text-white transition-colors" />
+                </button>
               </div>
             </div>
           )}

@@ -43,7 +43,7 @@ export const fetchAllSpotifySavedTracks = async (): Promise<FirestoreSong[]> => 
       if ((it as any)?.added_at) {
         try {
           (song as any).addedAt = (it as any).added_at;
-        } catch {}
+        } catch { }
       }
       if (song?.id) songs.push(song);
     }
@@ -66,13 +66,13 @@ export const fetchAllSpotifySavedTracks = async (): Promise<FirestoreSong[]> => 
 // Get existing song IDs from Firestore
 const getExistingSongIds = async (): Promise<Set<string>> => {
   const existingIds = new Set<string>();
-  
+
   try {
     if (!auth.currentUser) return existingIds;
-    
+
     const likedSongsRef = collection(db, 'users', auth.currentUser.uid, 'likedSongs');
     const snapshot = await getDocs(likedSongsRef);
-    
+
     snapshot.forEach(doc => {
       const data = doc.data();
       if (data.songId) {
@@ -82,7 +82,7 @@ const getExistingSongIds = async (): Promise<Set<string>> => {
   } catch (error) {
     console.error('Error getting existing song IDs from Firestore:', error);
   }
-  
+
   return existingIds;
 };
 
@@ -111,7 +111,7 @@ export const syncSpotifyLikedSongsToMavrixfy = async (tracks: FirestoreSong[]): 
 
   try {
     localStorage.setItem(SPOTIFY_LAST_SYNC_TS, Date.now().toString());
-  } catch {}
+  } catch { }
 
   return { fetchedCount, syncedCount };
 };
@@ -119,18 +119,18 @@ export const syncSpotifyLikedSongsToMavrixfy = async (tracks: FirestoreSong[]): 
 export const countNewSpotifyTracks = async (tracks: FirestoreSong[]): Promise<number> => {
   const existingIds = await getExistingSongIds();
   let newCount = 0;
-  
+
   for (const t of tracks) {
     if (t?.id && !existingIds.has(t.id)) newCount += 1;
   }
-  
+
   return newCount;
 };
 
 // Filter only new/unscanned Spotify tracks that aren't already in Mavrixfy
 export const filterOnlyNewSpotifyTracks = async (tracks: FirestoreSong[]): Promise<FirestoreSong[]> => {
   const existingIds = await getExistingSongIds();
-  
+
   return tracks.filter(track => track?.id && !existingIds.has(track.id));
 };
 

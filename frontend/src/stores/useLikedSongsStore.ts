@@ -79,13 +79,13 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
       loadLikedSongs: async () => {
         // Skip if already loading
         if (get().isLoading) return;
-        
+
         set({ isLoading: true });
-        
+
         try {
           let songs: Song[] = [];
           const isAuthenticated = useAuthStore.getState().isAuthenticated;
-          
+
           // Try Firestore first if user is authenticated
           if (isAuthenticated) {
             try {
@@ -101,7 +101,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
             // Use local storage for anonymous users
             songs = localLikedSongsService.getLikedSongs();
           }
-          
+
           // Build songIds set for efficient lookups
           const songIds = new Set<string>();
           songs.forEach((song: any) => {
@@ -111,10 +111,10 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
 
           // Only update state if songs actually changed
           const existingSongs = get().likedSongs;
-          const hasChanged = 
-            existingSongs.length !== songs.length || 
+          const hasChanged =
+            existingSongs.length !== songs.length ||
             existingSongs.some((existing, i) => existing._id !== songs[i]?._id);
-            
+
           if (hasChanged) {
             console.log(`Store loaded ${songs.length} liked songs, ${songIds.size} unique IDs`);
             set({ likedSongs: songs, likedSongIds: songIds });
@@ -132,29 +132,29 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
                 count: get().likedSongs.length
               }
             }));
-          } catch {}
+          } catch { }
         }
       },
 
       addLikedSong: async (song: Song) => {
         // Skip if already in progress
         if (get().isSaving) return;
-        
+
         try {
           // Get the song ID consistently
           const songId = song._id;
           if (!songId) {
             return;
           }
-          
+
           // First check if it's already liked
           if (get().likedSongIds.has(songId)) {
             console.log(`Song ${songId} is already liked, skipping`);
             return;
           }
-          
+
           set({ isSaving: true });
-          
+
           // Optimistically update local state immediately for better UX
           const updatedSongs = [song, ...get().likedSongs];
           const updatedSongIds = new Set(get().likedSongIds);
@@ -162,16 +162,16 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           updatedSongIds.add(songId);
           const altId = (song as any).id;
           if (altId) updatedSongIds.add(altId);
-          
+
           // Update local state before Firestore to make UI response instant
-          set({ 
+          set({
             likedSongs: updatedSongs,
             likedSongIds: updatedSongIds
           });
-          
+
           // Always update local storage as a backup
           localLikedSongsService.addLikedSong(song);
-          
+
           // Update Firestore if user is authenticated - don't await to prevent UI blocking
           const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
@@ -187,10 +187,10 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
               // Error handled silently
             });
           }
-          
+
           // Notify listeners through event
           document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
-          
+
           // Success without notification
         } catch (error) {
           // Error handled silently
@@ -202,10 +202,10 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
       removeLikedSong: async (songId: string) => {
         // Skip if already in progress
         if (get().isSaving) return;
-        
+
         try {
           set({ isSaving: true });
-          
+
           // Optimistically update local state immediately for better UX
           const updatedSongs = get().likedSongs.filter(song => song._id !== songId);
           const updatedSongIds = new Set(get().likedSongIds);
@@ -222,16 +222,16 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
             }
           });
           altIdsToRemove.forEach(id => updatedSongIds.delete(id));
-          
+
           // Update local state before Firestore to make UI response instant
-          set({ 
+          set({
             likedSongs: updatedSongs,
             likedSongIds: updatedSongIds
           });
-          
+
           // Always update local storage as a backup
           localLikedSongsService.removeLikedSong(songId);
-          
+
           // Update Firestore if user is authenticated - don't await to prevent UI blocking
           const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
@@ -239,10 +239,10 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
               // Error handled silently
             });
           }
-          
+
           // Notify listeners through event
           document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
-          
+
           // Success without notification
         } catch (error) {
           // Error handled silently
@@ -256,19 +256,19 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
         if (!songId) {
           return;
         }
-        
+
         // Skip if already in progress
         if (get().isSaving) return;
-        
+
         const isLiked = get().likedSongIds.has(songId);
-        
+
         try {
           if (isLiked) {
             await get().removeLikedSong(songId);
           } else {
             await get().addLikedSong(song);
           }
-          
+
           // Dispatch a CustomEvent with detailed information for better listener handling
           const detail = {
             songId,
@@ -315,7 +315,7 @@ try {
       }
     }));
   }
-} catch {}
+} catch { }
 
 // Initialize the store by loading liked songs
 // This must be done outside of any component to ensure it's only called once

@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { TouchRipple } from '@/components/ui/touch-ripple';
+import { getLocalStorage, getSessionStorage, setLocalStorage, setSessionStorage, removeSessionStorage, getSessionStorageJSON, setSessionStorageJSON } from '@/utils/storageUtils';
 
 // Add CSS for desktop view
 import './liked-songs.css';
@@ -98,9 +99,9 @@ const LikedSongsPage = () => {
 
     // Check Spotify auth status immediately
     const checkSpotifyAuth = () => {
-      const accessToken = localStorage.getItem('spotify_access_token');
-      const refreshToken = localStorage.getItem('spotify_refresh_token');
-      const expiresAt = localStorage.getItem('spotify_expires_at');
+      const accessToken = getLocalStorage('spotify_access_token');
+      const refreshToken = getLocalStorage('spotify_refresh_token');
+      const expiresAt = getLocalStorage('spotify_expires_at');
 
       if (accessToken && refreshToken && expiresAt) {
         const now = Date.now();
@@ -123,9 +124,9 @@ const LikedSongsPage = () => {
     // Check auth first
     const isAuthValid = checkSpotifyAuth();
 
-    try {
-      const cachedRaw = sessionStorage.getItem('liked_songs_cache_v1');
-      if (cachedRaw) {
+    const cachedRaw = getSessionStorage('liked_songs_cache_v1');
+    if (cachedRaw) {
+      try {
         const cached = JSON.parse(cachedRaw) as { t: number; songs: any[]; userId?: string; hasSpotifyAuth?: boolean };
 
         // Validate cache: check if it's for the same user and auth state
@@ -150,11 +151,11 @@ const LikedSongsPage = () => {
             console.log('Cache expired, age:', Math.round(cacheAge / 1000), 'seconds');
           }
         }
+      } catch (error) {
+        console.log('Cache validation failed:', error);
+        // Clear invalid cache
+        removeSessionStorage('liked_songs_cache_v1');
       }
-    } catch (error) {
-      console.log('Cache validation failed:', error);
-      // Clear invalid cache
-      try { sessionStorage.removeItem('liked_songs_cache_v1'); } catch { }
     }
 
     // Load data immediately if auth is valid, otherwise wait for auth
@@ -219,14 +220,12 @@ const LikedSongsPage = () => {
       });
 
       // Cache the results for instant loading on next visit
-      try {
-        sessionStorage.setItem('liked_songs_cache_v1', JSON.stringify({
-          t: Date.now(),
-          songs: pick,
-          userId: user.id,
-          hasSpotifyAuth: hasValidSpotifyAuth
-        }));
-      } catch { }
+      setSessionStorageJSON('liked_songs_cache_v1', {
+        t: Date.now(),
+        songs: pick,
+        userId: user.id,
+        hasSpotifyAuth: hasValidSpotifyAuth
+      });
 
     } catch (e) {
       console.error('Error in parallelLoad:', e);
@@ -240,9 +239,9 @@ const LikedSongsPage = () => {
 
   // Enhanced Spotify auth check that considers token validity
   const isSpotifyAuthenticatedEnhanced = useCallback(() => {
-    const accessToken = localStorage.getItem('spotify_access_token');
-    const refreshToken = localStorage.getItem('spotify_refresh_token');
-    const expiresAt = localStorage.getItem('spotify_expires_at');
+    const accessToken = getLocalStorage('spotify_access_token');
+    const refreshToken = getLocalStorage('spotify_refresh_token');
+    const expiresAt = getLocalStorage('spotify_expires_at');
 
     if (!accessToken || !expiresAt) {
       return false;
@@ -286,7 +285,7 @@ const LikedSongsPage = () => {
 
   // Load Spotify account name on mount
   useEffect(() => {
-    const accountName = localStorage.getItem('spotify_account_name');
+    const accountName = getLocalStorage('spotify_account_name');
     if (accountName) {
       setSpotifyAccountName(accountName);
     }
@@ -428,59 +427,60 @@ const LikedSongsPage = () => {
 
   // After Spotify auth callback, show sync prompt
   useEffect(() => {
-    try {
-      const shouldPrompt = sessionStorage.getItem('spotify_sync_prompt') === '1';
-      if (shouldPrompt) {
-        sessionStorage.removeItem('spotify_sync_prompt');
+    const shouldPrompt = getSessionStorage('spotify_sync_prompt') === '1';
+    if (shouldPrompt) {
+      removeSessionStorage('spotify_sync_prompt');
 
-        // Auto-detect Spotify account and show user info
-        autoDetectSpotifyAccount();
+      // Auto-detect Spotify account and show user info
+      autoDetectSpotifyAccount();
 
-        // Kick off prefetch to know how many tracks
-        setSyncingSpotify(true);
-        fetchAllSpotifySavedTracks()
-          .then(async (tracks) => {
-            // Sort tracks by addedAt date (most recent first) to match Spotify app order
-            const sortedTracks = tracks.sort((a: any, b: any) => {
-              const dateA = new Date(a.addedAt).getTime();
-              const dateB = new Date(b.addedAt).getTime();
-              return dateB - dateA; // Most recent first
-            });
+      // Kick off prefetch to know how many tracks
+      setSyncingSpotify(true);
+      fetchAllSpotifySavedTracks()
+        .then(async (tracks) => {
+          // Sort tracks by addedAt date (most recent first) to match Spotify app order
+          const sortedTracks = tracks.sort((a: any, b: any) => {
+            const dateA = new Date(a.addedAt).getTime();
+            const dateB = new Date(b.addedAt).getTime();
+            return dateB - dateA; // Most recent first
+          });
 
-            // Filter to only show new/unscanned tracks
-            const newTracks = await filterOnlyNewSpotifyTracks(sortedTracks);
+          // Filter to only show new/unscanned tracks
+          const newTracks = await filterOnlyNewSpotifyTracks(sortedTracks);
 
-            setSpotifyTracks(newTracks);
-            const newCount = newTracks.length;
-            if (newCount > 0) {
-              setShowPermissionModal(true);
-            } else {
-              setUpToDate(true);
-            }
-          })
-          .catch((error) => {
-            console.error('Failed to fetch Spotify tracks:', error);
-            // Handle authentication failure gracefully
-            if (error.response?.status === 401 || error.response?.status === 403) {
-              toast.error('Spotify authentication failed. Please reconnect.');
-              // Clear invalid tokens
-              spotifyLogout();
-            } else {
-              setShowPermissionModal(true);
-            }
-          })
-          .finally(() => setSyncingSpotify(false));
-      }
-    } catch { }
+          setSpotifyTracks(newTracks);
+          const newCount = newTracks.length;
+          if (newCount > 0) {
+            setShowPermissionModal(true);
+          } else {
+            setUpToDate(true);
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to fetch Spotify tracks:', error);
+          // Handle authentication failure gracefully
+          if (error.response?.status === 401 || error.response?.status === 403) {
+            toast.error('Spotify authentication failed. Please reconnect.');
+            // Clear invalid tokens
+            spotifyLogout();
+          } else {
+            setShowPermissionModal(true);
+          }
+        })
+        .finally(() => setSyncingSpotify(false));
+    }
   }, []);
 
   // Auto-detect Spotify account information
   const autoDetectSpotifyAccount = async () => {
     try {
       // Get user profile from Spotify
+      const accessToken = getLocalStorage('spotify_access_token');
+      if (!accessToken) return;
+
       const response = await fetch('https://api.spotify.com/v1/me', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('spotify_access_token')}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
@@ -490,8 +490,8 @@ const LikedSongsPage = () => {
 
         // Store account info for display
         const accountName = userProfile.display_name || userProfile.id;
-        localStorage.setItem('spotify_account_name', accountName);
-        localStorage.setItem('spotify_account_id', userProfile.id);
+        setLocalStorage('spotify_account_name', accountName);
+        setLocalStorage('spotify_account_id', userProfile.id);
         setSpotifyAccountName(accountName);
 
         toast.success(`Connected to Spotify: ${accountName}`);
@@ -510,9 +510,9 @@ const LikedSongsPage = () => {
 
     // Background token refresh check
     const checkAndRefreshToken = async () => {
-      const accessToken = localStorage.getItem('spotify_access_token');
-      const refreshToken = localStorage.getItem('spotify_refresh_token');
-      const expiresAt = localStorage.getItem('spotify_expires_at');
+      const accessToken = getLocalStorage('spotify_access_token');
+      const refreshToken = getLocalStorage('spotify_refresh_token');
+      const expiresAt = getLocalStorage('spotify_expires_at');
 
       if (accessToken && refreshToken && expiresAt) {
         const now = Date.now();
@@ -550,7 +550,7 @@ const LikedSongsPage = () => {
     const handleVisibilityChange = () => {
       if (!document.hidden && isAuthenticated && user?.id && isSpotifyAuthValid) {
         // Component became visible, refresh data if needed
-        const cachedRaw = sessionStorage.getItem('liked_songs_cache_v1');
+        const cachedRaw = getSessionStorage('liked_songs_cache_v1');
         if (cachedRaw) {
           try {
             const cached = JSON.parse(cachedRaw);
