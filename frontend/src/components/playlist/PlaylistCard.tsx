@@ -9,23 +9,19 @@ import { Play } from 'lucide-react';
 
 interface PlaylistCardProps {
   playlist: Playlist;
-  size?: 'small' | 'medium' | 'large';
   showDescription?: boolean;
   className?: string;
 }
 
 export function PlaylistCard({ 
   playlist, 
-  size = 'medium',
   showDescription = true,
   className
 }: PlaylistCardProps) {
   const navigate = useNavigate();
-  const { isPlaying, currentSong } = usePlayerStore();
+  const { setCurrentSong, setIsPlaying } = usePlayerStore();
   const [showEditDialog, setShowEditDialog] = useState(false);
-
-  const isCurrentPlaylist = isPlaying && 
-    playlist.songs.some(song => song._id === currentSong?._id);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleCardClick = () => {
     if (playlist.songs.length === 0) {
@@ -35,84 +31,109 @@ export function PlaylistCard({
     navigate(`/playlist/${playlist._id}`);
   };
 
-  const sizeStyles = {
-    small: {
-      container: "w-full",
-      imageWrapper: "aspect-square",
-      title: "text-[14px] font-medium mt-2 leading-tight line-clamp-2",
-      description: "text-[13px] text-muted-foreground mt-1 line-clamp-1",
-    },
-    medium: {
-      container: "w-full",
-      imageWrapper: "aspect-square",
-      title: "text-[14px] font-medium mt-2 leading-tight line-clamp-2",
-      description: "text-[13px] text-muted-foreground mt-1 line-clamp-2",
-    },
-    large: {
-      container: "w-full",
-      imageWrapper: "aspect-square", 
-      title: "text-[14px] font-medium mt-2 leading-tight line-clamp-2",
-      description: "text-[13px] text-muted-foreground mt-1 line-clamp-2",
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (playlist.songs.length === 0) {
+      toast.error('This playlist has no songs');
+      return;
     }
+    // Play first song in playlist
+    setCurrentSong(playlist.songs[0]);
+    setIsPlaying(true);
   };
-
-  const styles = sizeStyles[size];
 
   return (
     <>
+      {/* Spotify-style playlist card - minimal design matching Figma */}
       <div 
         className={cn(
-          "group transition-all duration-300",
-          "cursor-pointer flex flex-col",
-          styles.container,
+          "group relative",
+          "w-full",
+          "rounded-sm md:rounded-md",
+          "transition-colors duration-200",
+          "cursor-pointer",
+          "p-3",
           className
         )}
         onClick={handleCardClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Cover Image */}
-        <div className={cn("relative overflow-hidden rounded-md bg-muted", styles.imageWrapper)}>
-          <div className="w-full h-0 pb-[100%] relative">
+        {/* Hover background - smaller width */}
+        <div 
+          className={cn(
+            "absolute inset-0",
+            "bg-[#1a1a1a] rounded-sm md:rounded-md",
+            "transition-opacity duration-200",
+            "pointer-events-none",
+            isHovered ? "opacity-100" : "opacity-0"
+          )}
+        />
+        
+        {/* Content wrapper - relative positioning */}
+        <div className="relative">
+          {/* Album Art Container */}
+          <div className="relative w-full aspect-square mb-1">
+          {/* Album Image */}
+          <div className="w-full h-full rounded-none md:rounded overflow-hidden shadow-lg">
             <img
               src={playlist.imageUrl || '/default-playlist.jpg'}
               alt={playlist.name}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="w-full h-full object-cover"
               onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
               loading="lazy"
             />
-            {/* Hover play button - Spotify style */}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCardClick();
-                }}
-                className="bg-[#1db954] hover:bg-[#1ed760] rounded-full p-3 shadow-2xl transform translate-y-2 group-hover:translate-y-0 transition-all duration-200"
-              >
-                <Play className="h-5 w-5 text-black ml-0.5" />
-              </button>
-            </div>
+          </div>
+
+          {/* Play Button - Spotify Green - Desktop Only */}
+          <div 
+            className={cn(
+              "hidden md:block",
+              "absolute bottom-2 right-2",
+              "transition-all duration-300 ease-in-out",
+              isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+            )}
+          >
+            <button
+              onClick={handlePlayClick}
+              className={cn(
+                "w-12 h-12 rounded-full",
+                "bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105",
+                "flex items-center justify-center",
+                "shadow-2xl",
+                "transition-all duration-200"
+              )}
+              aria-label="Play playlist"
+            >
+              <Play 
+                className="w-5 h-5 ml-0.5" 
+                fill="black"
+                stroke="none"
+              />
+            </button>
           </div>
         </div>
 
-        {/* Playlist Info */}
-        <div className="flex-1 flex flex-col pt-2 min-h-[60px]">
-          <h3 className={cn("text-foreground hover:underline cursor-pointer", styles.title)}>
-            {playlist.name}
-          </h3>
-
+        {/* Playlist Info - Fixed height for consistent hover background */}
+        <div className="px-0 mt-2 w-full overflow-hidden h-[40px] flex items-start">
+          {/* Playlist Title - using description styling */}
           {showDescription && (
-            <p className={cn(styles.description)}>
-              {playlist.description || (
-                <>
-                  {playlist.createdBy?.fullName || 'Unknown'}
-                </>
+            <p 
+              className={cn(
+                "text-[#b3b3b3] text-xs font-normal",
+                "line-clamp-2",
+                "leading-snug",
+                "break-words"
               )}
+            >
+              {playlist.name}
             </p>
           )}
         </div>
+        </div>
       </div>
 
-      {/* Optional: edit dialog if you want to trigger it elsewhere */}
+      {/* Edit Dialog */}
       {showEditDialog && (
         <EditPlaylistDialog
           playlist={playlist}

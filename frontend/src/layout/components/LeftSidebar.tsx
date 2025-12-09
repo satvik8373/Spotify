@@ -167,7 +167,9 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                     <>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">{playlist.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">Created by you</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {playlist.createdBy?.fullName ? `By ${playlist.createdBy.fullName}` : 'Playlist'}
+                        </p>
                       </div>
                       <ChevronRight size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </>
@@ -225,7 +227,9 @@ function FavouritePlaylists() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-foreground truncate">{playlist.name}</p>
-            <p className="text-xs text-muted-foreground truncate">Favourite</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {playlist.createdBy?.fullName ? `By ${playlist.createdBy.fullName}` : 'Favourite'}
+            </p>
           </div>
         </Link>
       ))}

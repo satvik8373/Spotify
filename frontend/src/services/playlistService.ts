@@ -51,6 +51,13 @@ export const convertFirestorePlaylistToPlaylist = (data: any): Playlist => {
   // Type cast to handle the incompatible types
   const firestorePlaylist = castFirestorePlaylist(data);
   
+  // Safely extract createdBy information with fallbacks
+  const createdBy = firestorePlaylist.createdBy || {};
+  const createdById = createdBy.id || createdBy._id || createdBy.uid || 'unknown';
+  const createdByUid = createdBy.uid || createdBy.id || createdBy._id || 'unknown';
+  const createdByName = createdBy.fullName || createdBy.displayName || 'Unknown User';
+  const createdByImage = createdBy.imageUrl || createdBy.photoURL || '';
+  
   return {
     _id: firestorePlaylist.id,
     name: firestorePlaylist.name,
@@ -62,10 +69,10 @@ export const convertFirestorePlaylistToPlaylist = (data: any): Playlist => {
     createdAt: firestorePlaylist.createdAt,
     updatedAt: firestorePlaylist.updatedAt,
     createdBy: {
-      _id: firestorePlaylist.createdBy.id || 'unknown',
-              uid: firestorePlaylist.createdBy.uid,
-      fullName: firestorePlaylist.createdBy.fullName,
-      imageUrl: firestorePlaylist.createdBy.imageUrl || ''
+      _id: createdById,
+      uid: createdByUid,
+      fullName: createdByName,
+      imageUrl: createdByImage
     }
   };
 };

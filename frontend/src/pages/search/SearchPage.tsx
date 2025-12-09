@@ -581,7 +581,6 @@ const SearchPage = () => {
                     <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
                       <PlaylistCard
                         playlist={playlistResults[0]}
-                        size="large"
                         showDescription={true}
                         className="bg-transparent hover:bg-transparent"
                       />

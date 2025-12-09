@@ -115,20 +115,22 @@ export function RecentlyPlayedCard({
         </div>
 
         {/* Action buttons */}
-        <div className="hidden md:flex items-center gap-1 pr-2">
-          {/* Play button */}
+        <div className="hidden md:flex items-center gap-1 pr-3">
+          {/* Play button - Perfect Spotify design */}
           <button
             className={cn(
-              'p-2 bg-green-500 hover:bg-green-400 text-black rounded-full shadow-lg',
-              'transition-all duration-400 ease-in-out z-20',
+              'w-12 h-12 flex items-center justify-center rounded-full',
+              'bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105',
+              'shadow-[0_8px_24px_rgba(0,0,0,0.5)]',
+              'transition-all duration-300 ease-in-out z-20',
               isHovered
-                ? 'opacity-100 translate-y-0 scale-100'
-                : 'opacity-0 translate-y-2 scale-90'
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 translate-y-2'
             )}
             onClick={handlePlayClick}
             aria-label="Play"
           >
-            <Play className="h-3 w-3 fill-black" />
+            <Play className="h-5 w-5 ml-0.5" fill="black" stroke="none" />
           </button>
         </div>
       </div>

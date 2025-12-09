@@ -379,70 +379,61 @@ const IndianMusicPlayer = () => {
   const renderSongCard = (song: Song) => (
     <div 
       key={song.id}
-      className="relative rounded-md overflow-hidden hover:bg-accent transition-colors p-4 group flex flex-col"
+      className="group relative w-full rounded-md transition-colors duration-200 cursor-pointer p-3"
     >
-      <div 
-                    className="relative aspect-square w-full overflow-hidden rounded-md mb-4 bg-muted"
-        onClick={() => playSong(song)}
-      >
-        {song.image ? (
-          <img 
-            src={song.image} 
-            alt={song.title}
-            className="object-cover w-full h-full transition-all"
-            onError={(e) => {
-              // Set a default placeholder image if the original URL fails to load
-              e.currentTarget.src = generateFallbackImage(song.title);
-              // Remove the error handler to prevent infinite loops if the fallback also fails
-              e.currentTarget.onerror = null;
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <img 
-              src={generateFallbackImage(song.title)}
-              alt={song.title}
-              className="object-cover w-full h-full"
-            />
+      {/* Hover background */}
+      <div className="absolute inset-0 bg-[#1a1a1a] rounded-md transition-opacity duration-200 pointer-events-none opacity-0 group-hover:opacity-100" />
+      
+      <div className="relative">
+        {/* Song Image */}
+        <div className="relative w-full aspect-square mb-1">
+          <div className="w-full h-full rounded overflow-hidden shadow-lg">
+            {song.image ? (
+              <img 
+                src={song.image} 
+                alt={song.title}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.src = generateFallbackImage(song.title);
+                  e.currentTarget.onerror = null;
+                }}
+              />
+            ) : (
+              <img 
+                src={generateFallbackImage(song.title)}
+                alt={song.title}
+                className="w-full h-full object-cover"
+              />
+            )}
           </div>
-        )}
-        <div 
-          className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-        >
-          {isSongPlaying(song) ? (
-            <button 
-              className="h-10 w-10 rounded-full bg-white flex items-center justify-center"
-              aria-label="Pause"
-              onClick={(e) => {
-                e.stopPropagation();
-                usePlayerStore.getState().togglePlay();
-              }}
-            >
-              <Pause className="h-5 w-5 text-black" />
-              <span className="sr-only">Pause</span>
-            </button>
-          ) : (
-            <button 
-              className="h-10 w-10 rounded-full bg-white flex items-center justify-center"
-              aria-label="Play"
+
+          {/* Play Button - Spotify Green */}
+          <div className="absolute bottom-2 right-2 transition-all duration-300 ease-in-out opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0">
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 playSong(song);
               }}
+              className="w-12 h-12 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 flex items-center justify-center shadow-2xl transition-all duration-200"
+              aria-label={isSongPlaying(song) ? "Pause" : "Play"}
             >
-              <Play className="h-5 w-5 text-black ml-0.5" />
-              <span className="sr-only">Play</span>
+              {isSongPlaying(song) ? (
+                <Pause className="w-5 h-5" fill="black" stroke="none" />
+              ) : (
+                <Play className="w-5 h-5 ml-0.5" fill="black" stroke="none" />
+              )}
             </button>
-          )}
+          </div>
+        </div>
+
+        {/* Song Info - Fixed height */}
+        <div className="px-0 mt-2 w-full overflow-hidden h-[40px] flex items-start">
+          <p className="text-[#b3b3b3] text-xs font-normal line-clamp-2 leading-snug break-words">
+            {song.title}
+          </p>
         </div>
       </div>
-      <h3 
-        className="text-[13px] font-medium leading-snug line-clamp-2 cursor-pointer text-foreground"
-        onClick={() => playSong(song)}
-      >
-        {song.title}
-      </h3>
-      <p className="text-[11px] text-muted-foreground truncate">{resolveArtist(song)}</p>
     </div>
   );
 
@@ -521,7 +512,7 @@ const IndianMusicPlayer = () => {
     
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -541,7 +532,7 @@ const IndianMusicPlayer = () => {
           </Button>
         </div>
         
-        <div className="flex flex-col items-center justify-center mb-6">
+        <div className="flex flex-col items-center justify-center mb-4">
                       <div className="w-56 h-56 rounded-lg overflow-hidden bg-muted mb-4 shadow-xl">
             {selectedSong.image ? (
               <img 
@@ -660,7 +651,7 @@ const IndianMusicPlayer = () => {
           </div>
           
           <h2 className="text-xl font-bold mb-2">Sign in to continue</h2>
-          <p className="text-muted-foreground text-center mb-6">
+          <p className="text-muted-foreground text-center mb-4">
             Sign in to like songs, create playlists, and access all features.
           </p>
           
@@ -708,7 +699,7 @@ const IndianMusicPlayer = () => {
       
       {/* Search Results */}
       {location.pathname.includes('/search') && indianSearchResults.length > 0 && (
-        <div className="mb-6">
+        <div className="mb-4">
           <SectionHeader title="Search Results" />
           <div className="space-y-0.5">
             {indianSearchResults.map(song => renderSongRow(song))}
@@ -723,55 +714,58 @@ const IndianMusicPlayer = () => {
         </div>
       )}
       
-      {/* Trending Songs Section */}
+      {/* Trending Songs Section - Horizontal Slider */}
       {indianTrendingSongs.length > 0 && (
-        <div className="mb-6 px-1">
+        <section className="mb-4">
           <SectionHeader title="Most Popular Songs" />
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
-            {indianTrendingSongs.slice(0, visibleCounts.trending).map(song => renderSongCard(song))}
-          </div>
-          {indianTrendingSongs.length > visibleCounts.trending && (
-            <div className="mt-3 flex justify-center">
-              <Button variant="ghost" className="text-xs h-8" onClick={() => loadMore('trending')}>
-                Load More
-              </Button>
+          <div className="relative -mx-3 md:-mx-8">
+            <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+              <div className="flex gap-0">
+                {indianTrendingSongs.map(song => (
+                  <div key={song.id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
+                    {renderSongCard(song)}
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        </section>
       )}
       
-      {/* Bollywood Songs */}
+      {/* Bollywood Songs - Horizontal Slider */}
       {bollywoodSongs.length > 0 && (
-        <div className="mb-6 px-1">
+        <section className="mb-4">
           <SectionHeader title="Bollywood Hits" />
-          <div className="space-y-0.5 rounded-lg overflow-hidden bg-muted/30">
-            {bollywoodSongs.slice(0, visibleCounts.bollywood).map(song => renderSongRow(song))}
-          </div>
-          {bollywoodSongs.length > visibleCounts.bollywood && (
-            <div className="mt-3 flex justify-center">
-              <Button variant="ghost" className="text-xs h-8" onClick={() => loadMore('bollywood')}>
-                Load More
-              </Button>
+          <div className="relative -mx-3 md:-mx-8">
+            <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+              <div className="flex gap-0">
+                {bollywoodSongs.map(song => (
+                  <div key={song.id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
+                    {renderSongCard(song)}
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        </section>
       )}
       
-      {/* Hollywood Songs */}
+      {/* Hollywood Songs - Horizontal Slider */}
       {hollywoodSongs.length > 0 && (
-        <div className="mb-6 px-1">
+        <section className="mb-4">
           <SectionHeader title="International Hits" />
-          <div className="space-y-0.5 rounded-lg overflow-hidden bg-muted/30">
-            {hollywoodSongs.slice(0, visibleCounts.hollywood).map(song => renderSongRow(song))}
-          </div>
-          {hollywoodSongs.length > visibleCounts.hollywood && (
-            <div className="mt-3 flex justify-center">
-              <Button variant="ghost" className="text-xs h-8" onClick={() => loadMore('hollywood')}>
-                Load More
-              </Button>
+          <div className="relative -mx-3 md:-mx-8">
+            <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+              <div className="flex gap-0">
+                {hollywoodSongs.map(song => (
+                  <div key={song.id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
+                    {renderSongCard(song)}
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        </section>
       )}
     </div>
   );

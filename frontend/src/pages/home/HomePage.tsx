@@ -5,7 +5,7 @@ import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { PlaylistCard } from '../../components/playlist/PlaylistCard';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useAuth } from '@/contexts/AuthContext';
-import { WifiOff, PlayCircle } from 'lucide-react';
+import { WifiOff, Play } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useMusicStore } from '@/stores/useMusicStore';
@@ -46,6 +46,7 @@ const HomePage = () => {
   const {
     featuredPlaylists,
     publicPlaylists,
+    userPlaylists,
     fetchFeaturedPlaylists,
     fetchUserPlaylists,
     fetchPublicPlaylists,
@@ -53,7 +54,7 @@ const HomePage = () => {
   } = usePlaylistStore();
   const { isAuthenticated, userId } = useAuthStore();
   const navigate = useNavigate();
-  const { isOnline } = useAuth();
+  const { isOnline, user } = useAuth();
   const [showCreatePlaylistDialog, setShowCreatePlaylistDialog] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistDesc, setNewPlaylistDesc] = useState('');
@@ -353,167 +354,203 @@ const HomePage = () => {
               </div>
             )}
 
-            {/* Public Playlists Section */}
-            {isOnline && publicPlaylists.length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold tracking-tight">Public Playlists</h2>
-                  <Button
-                    variant="ghost"
-                    className="text-sm text-muted-foreground hover:text-foreground font-bold h-auto px-0 hover:underline"
+            {/* Made For User - User's Created Playlists */}
+            {isOnline && isAuthenticated && userPlaylists.length > 0 && (
+              <section className="mb-4">
+                {/* Custom Header with Spotify-style "Made For" design */}
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-white text-sm font-normal mb-1">Made For</p>
+                    <h2 className="text-white text-2xl md:text-[32px] font-bold tracking-tight leading-none">
+                      {user?.name || 'You'}
+                    </h2>
+                  </div>
+                  <button
                     onClick={() => navigate('/library')}
+                    className="text-[#adadad] text-sm md:text-base font-bold tracking-wider uppercase hover:underline transition-all"
                   >
-                    Show all
-                  </Button>
+                    SHOW ALL
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6">
-                  {publicPlaylists
-                    .filter(playlist => playlist.isPublic !== false)
-                    .map(playlist => (
-                      <PlaylistCard
-                        key={playlist._id}
-                        playlist={playlist}
-                      />
-                    ))}
+
+                {/* Horizontal Scrollable Playlist Slider - Shows 5.5 cards */}
+                <div className="relative -mx-3 md:-mx-8">
+                  <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+                    <div className="flex gap-0">
+                      {userPlaylists
+                        .filter(playlist => playlist.createdBy?.uid === userId)
+                        .map((playlist) => (
+                          <div key={playlist._id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
+                            <PlaylistCard
+                              playlist={playlist}
+                              showDescription={true}
+                            />
+                          </div>
+                        ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </section>
             )}
+
 
 
             {/* Featured Playlists Section */}
             {featuredPlaylists.length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold tracking-tight">Featured Playlists</h2>
-                  <Button
-                    variant="ghost"
-                    className="text-sm text-muted-foreground hover:text-foreground font-bold h-auto px-0 hover:underline"
+              <section className="mb-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-white text-2xl md:text-[30px] font-bold tracking-tight leading-none">
+                    Made For You
+                  </h2>
+                  <button
                     onClick={() => navigate('/library')}
+                    className="text-[#adadad] text-sm md:text-base font-bold tracking-wider uppercase hover:underline transition-all"
                   >
-                    Show all
-                  </Button>
+                    SHOW ALL
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6">
-                  {featuredPlaylists.map(playlist => (
-                    <PlaylistCard
-                      key={playlist._id}
-                      playlist={playlist}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
 
-            {/* Today's Hits Section - only when trending available */}
-            {hasTrending && (
-              <div className="mb-5">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
-                  {indianTrendingSongs.slice(0, 6).map((song, index) => (
-                    <div
-                      key={song.id || index}
-                      className="group flex items-center gap-2 p-1.5 rounded hover:bg-muted/70 dark:hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => {
-                        const songToPlay = useMusicStore.getState().convertIndianSongToAppSong(song);
-                        setCurrentSong(songToPlay);
-
-                        // Add to recently played
-                        try {
-                          const recentItem = {
-                            id: song.id,
-                            title: song.title,
-                            imageUrl: song.image,
-                            type: 'song',
-                            date: Date.now(),
-                            data: songToPlay,
-                          };
-
-                          const savedItems = localStorage.getItem('recently_played');
-                          let items = savedItems ? JSON.parse(savedItems) : [];
-                          items = items.filter((i: any) => i.id !== song.id);
-                          items.unshift(recentItem);
-                          if (items.length > 20) items = items.slice(0, 20);
-                          localStorage.setItem('recently_played', JSON.stringify(items));
-                          document.dispatchEvent(new Event('recentlyPlayedUpdated'));
-                        } catch (error) {
-                          console.error('Error updating recently played:', error);
-                        }
-                      }}
-                    >
-                      <div className="relative w-9 h-9 rounded overflow-hidden flex-shrink-0">
-                        <img
-                          src={song.image}
-                          alt={song.title}
-                          className="object-cover w-full h-full"
-                          loading="lazy"
-                          onError={e =>
-                          ((e.target as HTMLImageElement).src =
-                            'https://placehold.co/400x400/1f1f1f/959595?text=No+Image')
-                          }
-                        />
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <PlayCircle className="h-4 w-4 text-white" />
+                <div className="relative -mx-3 md:-mx-8">
+                  <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+                    <div className="flex gap-0">
+                      {featuredPlaylists.map((playlist) => (
+                        <div key={playlist._id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
+                          <PlaylistCard
+                            playlist={playlist}
+                            showDescription={true}
+                          />
                         </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium leading-tight truncate">{song.title}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">
-                          {song.artist || 'Unknown Artist'}
-                        </p>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
+              </section>
             )}
 
+            {/* All Public Playlists */}
+            {isOnline && publicPlaylists.length > 0 && (
+              <section className="mb-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-white text-2xl md:text-[30px] font-bold tracking-tight leading-none">
+                    Popular Playlists
+                  </h2>
+                  <button
+                    onClick={() => navigate('/library')}
+                    className="text-[#adadad] text-sm md:text-base font-bold tracking-wider uppercase hover:underline transition-all"
+                  >
+                    SHOW ALL
+                  </button>
+                </div>
+
+                <div className="relative -mx-3 md:-mx-8">
+                  <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+                    <div className="flex gap-0">
+                      {publicPlaylists.map((playlist) => (
+                        <div key={playlist._id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
+                          <PlaylistCard
+                            playlist={playlist}
+                            showDescription={true}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Trending Songs Section - Horizontal Slider */}
             {isOnline && hasTrending && (
-              <div className="mb-5">
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
-                  {indianTrendingSongs.slice(0, 6).map(song => (
-                    <div
-                      key={song.id}
-                      className="flex flex-col rounded-md overflow-hidden cursor-pointer group transition-all duration-300 bg-muted/50 dark:bg-muted/30 hover:bg-muted/80 dark:hover:bg-muted/50 border border-border/60"
-                      onClick={() => {
-                        // Convert IndianSong to Song format (only if valid data exists)
-                        if (!song.id || !song.title) return;
-
-                        const convertedSong = {
-                          _id: song.id,
-                          title: song.title,
-                          artist: song.artist || '',
-                          albumId: null,
-                          imageUrl: song.image || '',
-                          audioUrl: song.url || '',
-                          duration: song.duration || '',
-                          createdAt: new Date().toISOString(),
-                          updatedAt: new Date().toISOString(),
-                        };
-                        setCurrentSong(convertedSong as any);
-                      }}
-                    >
-                      <div className="aspect-square relative overflow-hidden">
-                        <img
-                          src={song.image || '/placeholder-song.png'}
-                          alt={song.title}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                        <div className="absolute bottom-1 right-1 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="bg-green-500 rounded-full p-1 text-black shadow-md">
-                            <PlayCircle size={16} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="p-1.5">
-                        <h3 className="text-[11px] font-medium leading-snug line-clamp-2">{song.title}</h3>
-                        <p className="text-[10px] text-muted-foreground truncate">
-                          {song.artist || 'Unknown Artist'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+              <section className="mb-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-white text-2xl md:text-[30px] font-bold tracking-tight leading-none">
+                    Trending Songs
+                  </h2>
                 </div>
-              </div>
+
+                <div className="relative -mx-3 md:-mx-8">
+                  <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+                    <div className="flex gap-0">
+                      {indianTrendingSongs.map((song, index) => (
+                        <div key={song.id || index} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
+                          <div
+                            className="group relative w-full rounded-md transition-colors duration-200 cursor-pointer p-3"
+                            onClick={() => {
+                              const songToPlay = useMusicStore.getState().convertIndianSongToAppSong(song);
+                              setCurrentSong(songToPlay);
+
+                              // Add to recently played
+                              try {
+                                const recentItem = {
+                                  id: song.id,
+                                  title: song.title,
+                                  imageUrl: song.image,
+                                  type: 'song',
+                                  date: Date.now(),
+                                  data: songToPlay,
+                                };
+
+                                const savedItems = localStorage.getItem('recently_played');
+                                let items = savedItems ? JSON.parse(savedItems) : [];
+                                items = items.filter((i: any) => i.id !== song.id);
+                                items.unshift(recentItem);
+                                if (items.length > 20) items = items.slice(0, 20);
+                                localStorage.setItem('recently_played', JSON.stringify(items));
+                                document.dispatchEvent(new Event('recentlyPlayedUpdated'));
+                              } catch (error) {
+                                console.error('Error updating recently played:', error);
+                              }
+                            }}
+                          >
+                            {/* Hover background */}
+                            <div className="absolute inset-0 bg-[#1a1a1a] rounded-md transition-opacity duration-200 pointer-events-none opacity-0 group-hover:opacity-100" />
+                            
+                            <div className="relative">
+                              {/* Song Image */}
+                              <div className="relative w-full aspect-square mb-1">
+                                <div className="w-full h-full rounded overflow-hidden shadow-lg">
+                                  <img
+                                    src={song.image || '/placeholder-song.png'}
+                                    alt={song.title}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                    onError={e =>
+                                      ((e.target as HTMLImageElement).src =
+                                        'https://placehold.co/400x400/1f1f1f/959595?text=No+Image')
+                                    }
+                                  />
+                                </div>
+
+                                {/* Play Button */}
+                                <div className="absolute bottom-2 right-2 transition-all duration-300 ease-in-out opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const songToPlay = useMusicStore.getState().convertIndianSongToAppSong(song);
+                                      setCurrentSong(songToPlay);
+                                    }}
+                                    className="w-12 h-12 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 flex items-center justify-center shadow-2xl transition-all duration-200"
+                                    aria-label="Play song"
+                                  >
+                                    <Play className="w-5 h-5 ml-0.5" fill="black" stroke="none" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Song Info - Fixed height */}
+                              <div className="px-0 mt-2 w-full overflow-hidden h-[40px] flex items-start">
+                                <p className="text-[#b3b3b3] text-xs font-normal line-clamp-2 leading-snug break-words">
+                                  {song.title}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
             )}
 
             {/* Indian Music Player Component */}

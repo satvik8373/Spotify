@@ -294,7 +294,7 @@ const LibraryPage = () => {
                               <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
                               <p className="text-sm text-muted-foreground flex items-center gap-1">
                                 <ListMusic className="h-3 w-3" />
-                                Playlist • <span className="flex items-center gap-1"><User className="h-3 w-3" /> {playlist.createdBy.fullName}</span>
+                                Playlist • <span className="flex items-center gap-1"><User className="h-3 w-3" /> {playlist.createdBy?.fullName || 'Unknown'}</span>
                               </p>
                             </div>
                             <button
@@ -333,7 +333,7 @@ const LibraryPage = () => {
                             </div>
                             <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
                             <p className="text-sm text-muted-foreground truncate mt-1">
-                              Playlist • {playlist.createdBy.fullName}
+                              Playlist • {playlist.createdBy?.fullName || 'Unknown'}
                             </p>
                           </div>
                         ))}
@@ -369,7 +369,7 @@ const LibraryPage = () => {
                               <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
                               <p className="text-sm text-muted-foreground flex items-center gap-1">
                                 <ListMusic className="h-3 w-3" />
-                                Playlist • <span className="flex items-center gap-1"><User className="h-3 w-3" /> {playlist.createdBy.fullName}</span>
+                                Playlist • <span className="flex items-center gap-1"><User className="h-3 w-3" /> {playlist.createdBy?.fullName || 'Unknown'}</span>
                               </p>
                             </div>
                             <button
@@ -401,7 +401,7 @@ const LibraryPage = () => {
                             </div>
                             <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
                             <p className="text-sm text-muted-foreground truncate mt-1">
-                              Playlist • {playlist.createdBy.fullName}
+                              Playlist • {playlist.createdBy?.fullName || 'Unknown'}
                             </p>
                           </div>
                         ))}
