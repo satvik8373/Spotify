@@ -242,6 +242,25 @@ const Header = ({ className }: HeaderProps) => {
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem
                       className="cursor-pointer text-white hover:bg-white/10"
+                      onClick={() => navigate('/about')}
+                    >
+                      About
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer text-white hover:bg-white/10"
+                      onClick={() => navigate('/privacy')}
+                    >
+                      Privacy Policy
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer text-white hover:bg-white/10"
+                      onClick={() => navigate('/terms')}
+                    >
+                      Terms of Service
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-white/10" />
+                    <DropdownMenuItem
+                      className="cursor-pointer text-white hover:bg-white/10"
                       onClick={handleLogout}
                     >
                       <LogOut className="h-4 w-4 mr-2" />

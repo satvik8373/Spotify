@@ -141,6 +141,25 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-zinc-800" />
             <DropdownMenuItem 
+              className="hover:bg-zinc-800 cursor-pointer focus:bg-zinc-800"
+              onClick={() => navigate('/about')}
+            >
+              <span>About</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              className="hover:bg-zinc-800 cursor-pointer focus:bg-zinc-800"
+              onClick={() => navigate('/privacy')}
+            >
+              <span>Privacy Policy</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              className="hover:bg-zinc-800 cursor-pointer focus:bg-zinc-800"
+              onClick={() => navigate('/terms')}
+            >
+              <span>Terms of Service</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-zinc-800" />
+            <DropdownMenuItem 
               className="hover:bg-zinc-800 cursor-pointer focus:bg-zinc-800" 
               onClick={handleLogout}
             >

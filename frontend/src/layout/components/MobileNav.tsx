@@ -11,6 +11,7 @@ import QueueDrawer from '@/components/QueueDrawer';
 import { signOut } from '@/services/hybridAuthService';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { WhatsNewDialog } from '@/components/WhatsNewDialog';
+import ProfileDropdown from '@/components/ProfileDropdown';
 
 
 /**
@@ -343,29 +344,13 @@ const MobileNav = () => {
                         <User className="h-6 w-6 text-muted-foreground" />
                       )}
                     </button>
-                    {showProfileMenu && (
-                      <div
-                        className={getDropdownStyles().className}
-                        style={getDropdownStyles().style}
-                      >
-                        <div className="py-1">
-                          <Link
-                            to="/profile"
-                            className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
-                            onClick={() => setShowProfileMenu(false)}
-                          >
-                            Profile
-                          </Link>
-                          <button
-                            onClick={handleLogout}
-                            className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
-                          >
-                            <LogOut className="h-3.5 w-3.5 mr-2" />
-                            Sign out
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    <ProfileDropdown
+                      isOpen={showProfileMenu}
+                      onClose={() => setShowProfileMenu(false)}
+                      onLogout={handleLogout}
+                      className={getDropdownStyles().className}
+                      style={getDropdownStyles().style}
+                    />
                   </div>
                 ) : (
                   <button
@@ -405,29 +390,13 @@ const MobileNav = () => {
                         <User className="h-6 w-6 text-muted-foreground" />
                       )}
                     </button>
-                    {showProfileMenu && (
-                      <div
-                        className={getDropdownStyles().className}
-                        style={getDropdownStyles().style}
-                      >
-                        <div className="py-1">
-                          <Link
-                            to="/profile"
-                            className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
-                            onClick={() => setShowProfileMenu(false)}
-                          >
-                            Profile
-                          </Link>
-                          <button
-                            onClick={handleLogout}
-                            className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
-                          >
-                            <LogOut className="h-3.5 w-3.5 mr-2" />
-                            Sign out
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    <ProfileDropdown
+                      isOpen={showProfileMenu}
+                      onClose={() => setShowProfileMenu(false)}
+                      onLogout={handleLogout}
+                      className={getDropdownStyles().className}
+                      style={getDropdownStyles().style}
+                    />
                   </div>
                 ) : (
                   <button
@@ -466,29 +435,13 @@ const MobileNav = () => {
                         <User className="h-6 w-6 text-muted-foreground" />
                       )}
                     </button>
-                    {showProfileMenu && (
-                      <div
-                        className={getDropdownStyles().className}
-                        style={getDropdownStyles().style}
-                      >
-                        <div className="py-1">
-                          <Link
-                            to="/profile"
-                            className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
-                            onClick={() => setShowProfileMenu(false)}
-                          >
-                            Profile
-                          </Link>
-                          <button
-                            onClick={handleLogout}
-                            className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
-                          >
-                            <LogOut className="h-3.5 w-3.5 mr-2" />
-                            Sign out
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    <ProfileDropdown
+                      isOpen={showProfileMenu}
+                      onClose={() => setShowProfileMenu(false)}
+                      onLogout={handleLogout}
+                      className={getDropdownStyles().className}
+                      style={getDropdownStyles().style}
+                    />
                   </div>
                 ) : (
                   <button
