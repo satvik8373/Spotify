@@ -20,6 +20,6 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "FRONTEND_URL": "https://www.mavrixfilms.live"
+    "FRONTEND_URL": "https://www.mavrixfy.site"
   }
 } 

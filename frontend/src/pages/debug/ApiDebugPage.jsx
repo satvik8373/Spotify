@@ -191,7 +191,7 @@ const ApiDebugPage = () => {
       <Button 
         variant="outlined" 
         color="secondary" 
-        onClick={() => window.open('https://mavrixfilms.live', '_blank')}
+        onClick={() => window.open('https://mavrixfy.site', '_blank')}
         sx={{ mr: 2 }}
       >
         Go to Frontend

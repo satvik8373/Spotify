@@ -8,13 +8,13 @@ import axios from "axios";
 const RAW_API_URL = import.meta.env.VITE_API_URL || "";
 
 // Determine if we're in production
-const isProduction = window.location.hostname === 'mavrixfilms.live' || 
-                     window.location.hostname === 'www.mavrixfilms.live';
+const isProduction = window.location.hostname === 'mavrixfy.site' || 
+                     window.location.hostname === 'www.mavrixfy.site';
 
 // Prefer explicit VITE_API_URL; otherwise fallback by environment
 const FINAL_API_URL = RAW_API_URL
   ? RAW_API_URL
-  : (isProduction ? 'https://mavrixfilms.live' : 'http://localhost:5000');
+  : (isProduction ? 'https://mavrixfy.site' : 'http://localhost:5000');
 
 // Remove trailing slash and ensure proper formatting
 const cleanApiUrl = FINAL_API_URL.replace(/\/$/, '');

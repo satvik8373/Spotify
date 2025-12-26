@@ -56,9 +56,9 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       if (!clientId) {
         setConfigError('Spotify CLIENT_ID is not configured');
         console.error('❌ Spotify CLIENT_ID is missing in environment variables');
-      } else if (window.location.hostname === 'mavrixfilms.live' && !redirectUri) {
+      } else if (window.location.hostname === 'mavrixfy.site' && !redirectUri) {
         setConfigError('Production redirect URI not configured');
-        console.error('❌ Production redirect URI not set for mavrixfilms.live');
+        console.error('❌ Production redirect URI not set for mavrixfy.site');
       } else {
         setConfigError(null);
         console.log('✅ Spotify configuration looks good');
@@ -74,8 +74,8 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       console.log('🔄 Spotify login button clicked');
       
       // Check environment
-      const isProduction = window.location.hostname === 'mavrixfilms.live' || 
-                          window.location.hostname === 'www.mavrixfilms.live';
+      const isProduction = window.location.hostname === 'mavrixfy.site' || 
+                          window.location.hostname === 'www.mavrixfy.site';
       console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
       console.log('📍 Current URL:', window.location.href);
       
