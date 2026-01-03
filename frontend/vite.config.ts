@@ -2,7 +2,6 @@
 // Safe no-op on newer Node versions where globalThis.crypto already exists
 import { webcrypto as nodeWebCrypto } from 'crypto';
 
-
 if (!(globalThis as any).crypto && nodeWebCrypto) {
   // Use 'typeof globalThis.crypto' to avoid TS error about 'Crypto' not being found
   (globalThis as any).crypto = nodeWebCrypto;
@@ -11,8 +10,6 @@ if (!(globalThis as any).crypto && nodeWebCrypto) {
 import path from "path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
-import { VitePWA } from 'vite-plugin-pwa';
-import { compression } from 'vite-plugin-compression2';
 
 export default defineConfig(({ mode }) => {
 	// Load environment variables
@@ -23,104 +20,18 @@ export default defineConfig(({ mode }) => {
 	const cloudinaryKey = env.REACT_APP_CLOUDINARY_API_KEY || '';
 	const cloudinarySecret = env.REACT_APP_CLOUDINARY_API_SECRET || '';
 	
-	console.log(`Mode: ${mode}`);
-	console.log(`API URL: ${apiUrl}`);
-	console.log(`Cloudinary Cloud Name: ${cloudinaryName}`);
+	const isProduction = mode === 'production';
 	
 	return {
 		plugins: [
-			react(),
-			VitePWA({
-				registerType: 'autoUpdate',
-				workbox: {
-					globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,avif}'],
-					// Exclude audio files from precaching
-					globIgnores: ['**/*.{mp3,mp4,m4a,aac,ogg,wav,flac}'],
-					runtimeCaching: [
-						{
-							urlPattern: /^https:\/\/res\.cloudinary\.com\/.*/i,
-							handler: 'CacheFirst',
-							options: {
-								cacheName: 'cloudinary-images',
-								expiration: {
-									maxEntries: 100,
-									maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-								},
-							},
-						},
-						{
-							urlPattern: /^https:\/\/api\.spotify\.com\/.*/i,
-							handler: 'NetworkFirst',
-							options: {
-								cacheName: 'spotify-api',
-								expiration: {
-									maxEntries: 50,
-									maxAgeSeconds: 60 * 60 * 5, // 5 hours
-								},
-							},
-						},
-						// Audio files - NetworkOnly (no caching for iOS compatibility)
-						{
-							urlPattern: /\.(mp3|mp4|m4a|aac|ogg|wav|flac)$/i,
-							handler: 'NetworkOnly',
-						},
-						// JioSaavn CDN - NetworkOnly for audio
-						{
-							urlPattern: /^https:\/\/aac\.saavncdn\.com\/.*/i,
-							handler: 'NetworkOnly',
-						},
-					],
-				},
-				manifest: {
-					name: 'Mavrixfy',
-					short_name: 'Mavrixfy',
-					description: 'Discover, listen to, and organize music you love',
-					theme_color: '#1db954',
-					background_color: '#121212',
-					display: 'standalone',
-					orientation: 'portrait',
-					scope: '/',
-					start_url: '/',
-					icons: [
-						{
-							src: '/spotify-icons/spotify-icon-maskable-192.png',
-							sizes: '192x192',
-							type: 'image/png',
-							purpose: 'any maskable'
-						},
-						{
-							src: '/spotify-icons/spotify-icon-maskable-512.png',
-							sizes: '512x512',
-							type: 'image/png',
-							purpose: 'any maskable'
-						}
-					],
-					shortcuts: [
-						{
-							name: 'Liked Songs',
-							short_name: 'Liked',
-							description: 'View your liked songs',
-							url: '/liked-songs',
-							icons: [{ src: '/shortcut-liked-96.png', sizes: '96x96' }]
-						},
-						{
-							name: 'Search',
-							short_name: 'Search',
-							description: 'Search for music',
-							url: '/search',
-							icons: [{ src: '/shortcut-search-96.png', sizes: '96x96' }]
-						}
+			react({
+				// Optimize React plugin for production
+				babel: isProduction ? {
+					plugins: [
+						['babel-plugin-react-remove-properties', { properties: ['data-testid'] }]
 					]
-				}
-			}),
-			compression({
-				algorithms: ['gzip'],
-				exclude: [/\.(br)$/, /\.(gz)$/],
-			}),
-			compression({
-				algorithms: ['brotliCompress'],
-				exclude: [/\.(br)$/, /\.(gz)$/],
-			}),
+				} : undefined
+			})
 		],
 		base: '/',
 		resolve: {
@@ -130,7 +41,6 @@ export default defineConfig(({ mode }) => {
 		},
 		server: {
 			port: 3000,
-		
 			hmr: {
 				overlay: false,
 			},
@@ -160,23 +70,46 @@ export default defineConfig(({ mode }) => {
 			sourcemap: false,
 			minify: 'esbuild',
 			cssCodeSplit: true,
-			modulePreload: { polyfill: true },
-			target: 'es2018',
-			commonjsOptions: { transformMixedEsModules: true },
+			modulePreload: { polyfill: false }, // Disable for faster builds
+			target: 'es2020', // More modern target for smaller bundles
+			commonjsOptions: { 
+				transformMixedEsModules: true,
+				include: [/node_modules/]
+			},
 			rollupOptions: {
 				output: {
-					manualChunks: {
-						vendor: [
-							'react', 
-							'react-dom', 
-							'react-router-dom',
-							'zustand'
-						]
-					}
+					manualChunks: (id) => {
+						// More aggressive chunking for better caching
+						if (id.includes('node_modules')) {
+							if (id.includes('react') || id.includes('react-dom')) {
+								return 'react-vendor';
+							}
+							if (id.includes('@radix-ui') || id.includes('@mui')) {
+								return 'ui-vendor';
+							}
+							if (id.includes('firebase') || id.includes('axios')) {
+								return 'api-vendor';
+							}
+							if (id.includes('framer-motion') || id.includes('gsap')) {
+								return 'animation-vendor';
+							}
+							return 'vendor';
+						}
+					},
+					chunkFileNames: 'assets/[name]-[hash].js',
+					entryFileNames: 'assets/[name]-[hash].js',
+					assetFileNames: 'assets/[name]-[hash].[ext]'
+				},
+				// Reduce bundle analysis time
+				treeshake: {
+					preset: 'recommended'
 				}
 			},
 			chunkSizeWarningLimit: 1000,
-			assetsInlineLimit: 4096, // Inline small assets as base64
+			assetsInlineLimit: 2048, // Smaller inline limit for faster builds
+			// Optimize for build speed
+			reportCompressedSize: false, // Skip gzip size reporting
+			emptyOutDir: true
 		},
 		define: {
 			'process.env.VITE_API_URL': JSON.stringify(apiUrl),
@@ -186,7 +119,27 @@ export default defineConfig(({ mode }) => {
 			'process.env.REACT_APP_CLOUDINARY_API_SECRET': JSON.stringify(cloudinarySecret)
 		},
 		esbuild: {
-			drop: ['console', 'debugger']
+			// Optimize esbuild for production
+			drop: isProduction ? ['console', 'debugger'] : [],
+			legalComments: 'none',
+			treeShaking: true
+		},
+		// Optimize dependency pre-bundling
+		optimizeDeps: {
+			include: [
+				'react',
+				'react-dom',
+				'react-router-dom',
+				'axios',
+				'zustand',
+				'firebase/app',
+				'firebase/auth',
+				'firebase/firestore'
+			],
+			exclude: [
+				// Exclude heavy dependencies that don't need pre-bundling
+				'@mui/icons-material'
+			]
 		}
 	}
 });

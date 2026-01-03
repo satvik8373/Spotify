@@ -25,6 +25,40 @@ try {
 // JioSaavn API configuration
 const JIOSAAVN_API_BASE_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
 
+// Helper function to convert HTTP URLs to HTTPS for mixed content security
+const convertToHttps = (url) => {
+  if (typeof url === 'string' && url.startsWith('http://')) {
+    return url.replace('http://', 'https://');
+  }
+  return url;
+};
+
+// Helper function to process JioSaavn response and fix URLs
+const processJioSaavnResponse = (data) => {
+  if (data && data.data && data.data.results) {
+    data.data.results = data.data.results.map(song => {
+      // Convert image URLs to HTTPS
+      if (song.image && Array.isArray(song.image)) {
+        song.image = song.image.map(img => ({
+          ...img,
+          link: convertToHttps(img.link)
+        }));
+      }
+      
+      // Convert download URLs to HTTPS
+      if (song.downloadUrl && Array.isArray(song.downloadUrl)) {
+        song.downloadUrl = song.downloadUrl.map(download => ({
+          ...download,
+          link: convertToHttps(download.link)
+        }));
+      }
+      
+      return song;
+    });
+  }
+  return data;
+};
+
 // Create Express app
 const app = express();
 
@@ -109,7 +143,8 @@ app.get('/api/jiosaavn/search/songs', async (req, res) => {
       }
     });
     
-    res.json(response.data);
+    const processedData = processJioSaavnResponse(response.data);
+    res.json(processedData);
   } catch (error) {
     console.error('Search songs error:', error);
     res.status(500).json({ error: 'Failed to search songs' });
@@ -128,7 +163,8 @@ app.get('/api/jiosaavn/trending', async (req, res) => {
       }
     });
     
-    res.json(response.data);
+    const processedData = processJioSaavnResponse(response.data);
+    res.json(processedData);
   } catch (error) {
     console.error('Get trending songs error:', error);
     res.status(500).json({ error: 'Failed to get trending songs' });
@@ -147,7 +183,8 @@ app.get('/api/jiosaavn/new-releases', async (req, res) => {
       }
     });
     
-    res.json(response.data);
+    const processedData = processJioSaavnResponse(response.data);
+    res.json(processedData);
   } catch (error) {
     console.error('Get new releases error:', error);
     res.status(500).json({ error: 'Failed to get new releases' });
@@ -162,7 +199,8 @@ app.get('/api/jiosaavn/songs/:id', async (req, res) => {
       params: { id }
     });
     
-    res.json(response.data);
+    const processedData = processJioSaavnResponse(response.data);
+    res.json(processedData);
   } catch (error) {
     console.error('Get song details error:', error);
     res.status(500).json({ error: 'Failed to get song details' });
