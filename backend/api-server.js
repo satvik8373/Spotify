@@ -25,7 +25,7 @@ try {
 // Spotify API configuration
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
-const SPOTIFY_REDIRECT_URI = 'https://mavrixfy.site/spotify-callback'; // Use existing web callback
+const SPOTIFY_REDIRECT_URI = 'https://spotify-api-drab.vercel.app/api/spotify/mobile-callback'; // Web callback that redirects to mobile
 
 // JioSaavn API configuration
 const JIOSAAVN_API_BASE_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
