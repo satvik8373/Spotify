@@ -1,12 +1,11 @@
 import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom';
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
-import { performanceService } from './services/performanceService';
-import PerformanceMonitor from './components/PerformanceMonitor';
-import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
+import SplashScreen from './components/SplashScreen';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SpotifyProvider } from './contexts/SpotifyContext';
+import { useLocation } from 'react-router-dom';
 import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
-import { ErrorBoundary } from 'react-error-boundary';
-import { reportReactError } from './utils/errorReporting';
 
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
@@ -21,22 +20,14 @@ const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const About = lazy(() => import('./pages/About'));
-// import SharedSongPage from './pages/SharedSongPage';
-import SplashScreen from './components/SplashScreen';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-// @ts-ignore
-const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-import PWAInstallPrompt from './components/PWAInstallPrompt';
-import AndroidPWAHelper from './components/AndroidPWAHelper';
-import { useLocation } from 'react-router-dom';
-import { SpotifyProvider } from './contexts/SpotifyContext';
+// @ts-ignore
+const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
 
 
-
-// Simple fallback pages for routes with import issues
+// Simple fallback pages
 const NotFoundFallback = () => (
 	<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
 		<div className="text-center max-w-md">
@@ -49,7 +40,6 @@ const NotFoundFallback = () => (
 	</div>
 );
 
-// Error page for when something goes wrong
 const ErrorFallback = () => (
 	<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
 		<div className="text-center max-w-md">
@@ -57,6 +47,12 @@ const ErrorFallback = () => (
 			<p className="text-muted-foreground mb-8">
 				We're sorry, but there was an error loading this page. Please try refreshing.
 			</p>
+			<button
+				onClick={() => window.location.reload()}
+				className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+			>
+				Reload Page
+			</button>
 		</div>
 	</div>
 );
@@ -66,30 +62,7 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 	const { isAuthenticated, loading } = useAuth();
 	const location = useLocation();
 
-	// Check if we previously saved auth info in localStorage as a quick check
-	// before the full authentication process completes
-	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
-
-	// Check if we're coming from a login redirect (smooth transition)
-	const isFromLoginRedirect = getSessionStorage('auth_redirect') === '1';
-
-	// Don't redirect while auth is still loading
 	if (loading) {
-		// If we have cached auth, render children optimistically for smooth UX
-		if (hasCachedAuth) {
-			return <>{children}</>;
-		}
-
-		// If coming from login redirect, show minimal loading
-		if (isFromLoginRedirect) {
-			return (
-				<div className="flex items-center justify-center h-screen bg-background">
-					<div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-				</div>
-			);
-		}
-
-		// Otherwise show loading indicator with smoother animation
 		return (
 			<div className="flex items-center justify-center h-screen bg-background">
 				<div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
@@ -97,39 +70,17 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 		);
 	}
 
-	// If not authenticated, redirect to login with return URL
 	if (!isAuthenticated) {
-		// Store the redirect path so we can redirect back after login
 		return <Navigate to="/login" state={{ from: location.pathname }} replace />;
 	}
 
-	// User is authenticated, render children
 	return <>{children}</>;
 };
 
 const LandingRedirector = () => {
 	const { isAuthenticated, loading } = useAuth();
-	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 
-	// Check if we're coming from a login redirect (smooth transition)
-	const isFromLoginRedirect = getSessionStorage('auth_redirect') === '1';
-
-	// If we have cached auth or are authenticated, redirect to home immediately
-	if (hasCachedAuth || isAuthenticated) {
-		return <Navigate to="/home" replace />;
-	}
-
-	// Still loading, but no cached auth - show loading indicator
-	if (loading && !hasCachedAuth) {
-		// Smaller spinner for login redirects
-		if (isFromLoginRedirect) {
-			return (
-				<div className="flex items-center justify-center h-screen bg-background">
-					<div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-				</div>
-			);
-		}
-
+	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-screen bg-background">
 				<div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
@@ -137,146 +88,107 @@ const LandingRedirector = () => {
 		);
 	}
 
-	// Not authenticated, go to login
+	if (isAuthenticated) {
+		return <Navigate to="/home" replace />;
+	}
+
 	return <Navigate to="/login" replace />;
 };
 
 // Configure the router with React Router v6
-const router = createBrowserRouter(
-	[
-		{
-			path: '/',
-			element: <LandingRedirector />,
-			errorElement: <ErrorFallback />
-		},
-		{
-			path: '/login',
-			element: <Login />,
-			errorElement: <ErrorFallback />
-		},
-		{
-			path: '/register',
-			element: <Register />,
-			errorElement: <ErrorFallback />
-		},
-		{
-			path: '/reset-password',
-			element: <ResetPassword />,
-			errorElement: <ErrorFallback />
-		},
-		{
-			path: '/spotify-callback',
-			element: <SpotifyCallback />,
-			errorElement: <ErrorFallback />
-		},
-		{
-			element: <MainLayout />,
-			errorElement: <ErrorFallback />,
-			children: [
-				{
-					path: '/home',
-					element: <AuthGate><HomePage /></AuthGate>,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/albums/:albumId',
-					element: <AuthGate><AlbumPage /></AuthGate>,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/library',
-					element: <AuthGate><LibraryPage /></AuthGate>,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/liked-songs',
-					element: <AuthGate><LikedSongsPage /></AuthGate>,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/search',
-					element: <AuthGate><SearchPage /></AuthGate>,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/profile',
-					element: <AuthGate><ProfilePage /></AuthGate>,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/playlist/:id',
-					element: <AuthGate><PlaylistPage /></AuthGate>,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/song/:songId',
-					element: <AuthGate><SongPage /></AuthGate>,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/debug/api',
-					element: <ApiDebugPage />,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/privacy',
-					element: <PrivacyPolicy />,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/terms',
-					element: <TermsOfService />,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '/about',
-					element: <About />,
-					errorElement: <ErrorFallback />
-				},
-				{
-					path: '*',
-					element: <NotFoundFallback />,
-					errorElement: <ErrorFallback />
-				}
-			]
-		}
-	]
-);
+const router = createBrowserRouter([
+	{
+		path: '/',
+		element: <LandingRedirector />
+	},
+	{
+		path: '/login',
+		element: <Login />
+	},
+	{
+		path: '/register',
+		element: <Register />
+	},
+	{
+		path: '/reset-password',
+		element: <ResetPassword />
+	},
+	{
+		path: '/spotify-callback',
+		element: <SpotifyCallback />
+	},
+	{
+		element: <MainLayout />,
+		children: [
+			{
+				path: '/home',
+				element: <AuthGate><HomePage /></AuthGate>
+			},
+			{
+				path: '/albums/:albumId',
+				element: <AuthGate><AlbumPage /></AuthGate>
+			},
+			{
+				path: '/library',
+				element: <AuthGate><LibraryPage /></AuthGate>
+			},
+			{
+				path: '/liked-songs',
+				element: <AuthGate><LikedSongsPage /></AuthGate>
+			},
+			{
+				path: '/search',
+				element: <AuthGate><SearchPage /></AuthGate>
+			},
+			{
+				path: '/profile',
+				element: <AuthGate><ProfilePage /></AuthGate>
+			},
+			{
+				path: '/playlist/:id',
+				element: <AuthGate><PlaylistPage /></AuthGate>
+			},
+			{
+				path: '/song/:songId',
+				element: <AuthGate><SongPage /></AuthGate>
+			},
+			{
+				path: '/debug/api',
+				element: <ApiDebugPage />
+			},
+			{
+				path: '/privacy',
+				element: <PrivacyPolicy />
+			},
+			{
+				path: '/terms',
+				element: <TermsOfService />
+			},
+			{
+				path: '/about',
+				element: <About />
+			},
+			{
+				path: '*',
+				element: <NotFoundFallback />
+			}
+		]
+	}
+]);
 
 function AppContent() {
 	const [showSplash, setShowSplash] = useState(true);
 	const [initialized, setInitialized] = useState(false);
 
-	// Initialize Firestore data and check if user is already logged in
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// Clear any Firebase auth redirect state to prevent errors
-				clearAuthRedirectState();
-
-				// Initialize performance optimizations
-				performanceService.addResourceHints();
-				// Mobile performance service initializes automatically
-
-				// Check for cached authentication
-				const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
-
-				const fromAuthRedirect = getSessionStorage('auth_redirect') === '1';
-
-				// Reduce splash screen time for logged-in users or after auth redirect
-				if (hasCachedAuth || fromAuthRedirect) {
-					// Skip delay entirely for authenticated users
+				// Simple initialization
+				setTimeout(() => {
 					setInitialized(true);
-					setShowSplash(false); // Skip splash screen completely
-				} else {
-					// For new visitors, keep the normal timing
-					setTimeout(() => {
-						setInitialized(true);
-					}, 1000);
-				}
+				}, 1000);
 			} catch (error) {
 				console.error("Error initializing app:", error);
-				// Continue anyway in case of initialization errors
 				setInitialized(true);
 			}
 		};
@@ -284,57 +196,14 @@ function AppContent() {
 		initializeApp();
 	}, []);
 
-	// Prefetch critical lazy routes to reduce render delay for first navigation
-	useEffect(() => {
-		// Only prefetch after first paint to avoid blocking FCP
-		const idle = (cb: () => void) => {
-			if ('requestIdleCallback' in window) {
-				(window as any).requestIdleCallback(cb, { timeout: 1500 });
-			} else {
-				setTimeout(cb, 800);
-			}
-		};
-
-		idle(() => {
-			// Warm important route chunks
-			import('./layout/MainLayout');
-			import('./pages/home/HomePage');
-			import('./pages/search/SearchPage');
-		});
-	}, []);
-
-	// Always show splash screen on initial load until initialization completes
 	if (showSplash || !initialized) {
 		return <SplashScreen onComplete={() => initialized && setShowSplash(false)} />;
 	}
 
-	// Always show main app content, login will be handled in the header
 	return (
-		<ErrorBoundary
-			fallback={<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-				<div className="text-center max-w-md">
-					<h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
-					<p className="text-muted-foreground mb-8">
-						We're sorry, but there was an error loading this page. Please try refreshing.
-					</p>
-					<button
-						onClick={() => window.location.reload()}
-						className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
-					>
-						Reload Page
-					</button>
-				</div>
-			</div>}
-			onError={(error, errorInfo) => {
-				reportReactError(error, errorInfo);
-			}}
-		>
-			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
+		<>
 			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div></div>}>
-				<RouterProvider
-					router={router}
-					future={{ v7_startTransition: true }}
-				/>
+				<RouterProvider router={router} />
 			</Suspense>
 			<Toaster
 				position="bottom-center"
@@ -357,9 +226,7 @@ function AppContent() {
 					duration: 3000,
 				}}
 			/>
-			<PWAInstallPrompt />
-			<AndroidPWAHelper />
-		</ErrorBoundary>
+		</>
 	);
 }
 
@@ -371,7 +238,6 @@ function App() {
 			document.documentElement.style.setProperty('--vh', `${vh}px`);
 		};
 
-		// Set initially and on resize
 		setVh();
 		window.addEventListener('resize', setVh);
 		window.addEventListener('orientationchange', setVh);
@@ -383,31 +249,11 @@ function App() {
 	}, []);
 
 	return (
-		<ErrorBoundary
-			fallback={<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-				<div className="text-center max-w-md">
-					<h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
-					<p className="text-muted-foreground mb-8">
-						We're sorry, but there was an error loading this page. Please try refreshing.
-					</p>
-					<button
-						onClick={() => window.location.reload()}
-						className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
-					>
-						Reload Page
-					</button>
-				</div>
-			</div>}
-			onError={(error, errorInfo) => {
-				reportReactError(error, errorInfo);
-			}}
-		>
-			<AuthProvider>
-				<SpotifyProvider>
-					<AppContent />
-				</SpotifyProvider>
-			</AuthProvider>
-		</ErrorBoundary>
+		<AuthProvider>
+			<SpotifyProvider>
+				<AppContent />
+			</SpotifyProvider>
+		</AuthProvider>
 	);
 }
 
