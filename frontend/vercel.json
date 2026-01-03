@@ -6,8 +6,7 @@
   "installCommand": "npm ci",
   "build": {
     "env": {
-      "NODE_OPTIONS": "--max-old-space-size=4096",
-      "NODE_ENV": "production"
+      "NODE_OPTIONS": "--max-old-space-size=4096"
     }
   },
   "rewrites": [
@@ -27,15 +26,6 @@
       ]
     },
     {
-      "source": "/index.html",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
-      ]
-    },
-    {
       "source": "/(.*)",
       "headers": [
         {
@@ -49,13 +39,8 @@
         {
           "key": "X-XSS-Protection",
           "value": "1; mode=block"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
         }
       ]
     }
-  ],
-  "trailingSlash": false
+  ]
 }
