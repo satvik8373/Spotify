@@ -22,7 +22,7 @@ const SpotifyCallback: React.FC = () => {
 
         // Check if this is a mobile request by looking for mobile user agent or state parameter
         const isMobileRequest = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                               state?.includes('mobile') ||
+                               (state && state.includes('mobile')) ||
                                params.get('mobile') === 'true';
 
         console.log('Callback processing:', {
@@ -102,30 +102,31 @@ const SpotifyCallback: React.FC = () => {
     processAuth();
   }, [location, user?.id]);
 
-  if (isLoading) {
-    const params = new URLSearchParams(location.search);
-    const isMobileRequest = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                           params.get('state')?.includes('mobile') ||
-                           params.get('mobile') === 'true';
-    
-    if (isMobileRequest && params.get('code')) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-          <div className="bg-green-900/20 border border-green-500/50 p-6 rounded-lg mb-6 max-w-md text-center">
-            <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
-            <h2 className="text-xl font-semibold text-green-400 mb-2">Authentication Successful!</h2>
-            <p className="text-sm text-gray-300 mb-4">Redirecting you back to Mavrixfy app...</p>
-            <div className="flex justify-center">
-              <Loader className="animate-spin h-6 w-6 text-[#1DB954]" />
-            </div>
+  // Mobile redirect UI
+  const params = new URLSearchParams(location.search);
+  const isMobileRequest = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         (params.get('state') && params.get('state')!.includes('mobile')) ||
+                         params.get('mobile') === 'true';
+  
+  if (isLoading && isMobileRequest && params.get('code')) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
+        <div className="bg-green-900/20 border border-green-500/50 p-6 rounded-lg mb-6 max-w-md text-center">
+          <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
+          <h2 className="text-xl font-semibold text-green-400 mb-2">Authentication Successful!</h2>
+          <p className="text-sm text-gray-300 mb-4">Redirecting you back to Mavrixfy app...</p>
+          <div className="flex justify-center">
+            <Loader className="animate-spin h-6 w-6 text-[#1DB954]" />
           </div>
-          <p className="text-xs text-gray-400 text-center max-w-sm">
-            If you're not redirected automatically, please check if the Mavrixfy app is installed on your device.
-          </p>
         </div>
-      );
-    }
+        <p className="text-xs text-gray-400 text-center max-w-sm">
+          If you're not redirected automatically, please check if the Mavrixfy app is installed on your device.
+        </p>
+      </div>
+    );
+  }
 
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
         <Loader className="animate-spin h-10 w-10 text-[#1DB954] mb-4" />
