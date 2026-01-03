@@ -34,34 +34,53 @@ const PORT = process.env.PORT || 5000;
 const corsOptions = {
   origin: (origin, callback) => {
     try {
-      const defaultAllowed = [
+      // Define allowed origins
+      const allowedOrigins = [
         'http://localhost:3000',
         'http://localhost:5173',
-        'https://1d3c38b2f441.ngrok-free.app',
-        process.env.FRONTEND_URL || '',
+        'http://localhost:3001',
+        process.env.FRONTEND_URL,
+        'https://mavrixfy.site',
+        'https://www.mavrixfy.site'
       ].filter(Boolean);
 
-      // Allow non-browser requests (no Origin)
+      // Allow non-browser requests (no Origin header)
       if (!origin) return callback(null, true);
 
       // Parse hostname safely
       let hostname = '';
-      try { hostname = new URL(origin).hostname; } catch {}
+      try { 
+        hostname = new URL(origin).hostname; 
+      } catch (e) {
+        console.warn('Invalid origin URL:', origin);
+        return callback(new Error('Invalid origin'), false);
+      }
 
+      // Allow ngrok domains for development
       const isNgrok = hostname.endsWith('.ngrok-free.app') || hostname.endsWith('.ngrok.io');
-      const isAllowed = defaultAllowed.includes(origin) || isNgrok;
+      
+      // Allow Vercel preview deployments
+      const isVercelPreview = hostname.includes('vercel.app');
+      
+      // Check if origin is explicitly allowed
+      const isExplicitlyAllowed = allowedOrigins.includes(origin);
 
-      console.log('CORS check:', { origin, hostname, isNgrok, isAllowed, defaultAllowed });
+      const isAllowed = isExplicitlyAllowed || isNgrok || isVercelPreview;
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('CORS check:', { origin, hostname, isNgrok, isVercelPreview, isExplicitlyAllowed, isAllowed });
+      }
+
       return callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
     } catch (e) {
-      // Fallback: deny if anything goes wrong
+      console.error('CORS configuration error:', e);
       return callback(new Error('CORS error'), false);
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  credentials: true, // Allow cookies to be sent with requests
+  credentials: true,
   maxAge: 600
 };
 
@@ -146,6 +165,25 @@ if (!process.env.VERCEL) {
 }
 
 // API test routes
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    vercel: process.env.VERCEL ? 'yes' : 'no',
+    firebase: admin.apps.length > 0 ? 'initialized' : 'not initialized'
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    vercel: process.env.VERCEL ? 'yes' : 'no',
+    firebase: admin.apps.length > 0 ? 'initialized' : 'not initialized'
+  });
+});
 
 
 app.use("/api/users", userRoutes);

@@ -25,7 +25,4 @@ router.delete("/:songId", firebaseAuth, removeLikedSong);
 // Sync liked songs between local storage and server (requires auth)
 router.post("/sync", firebaseAuth, syncLikedSongs);
 
-export default router;
-router.post("/sync", optionalFirebaseAuth, syncLikedSongs);
-
 export default router; 

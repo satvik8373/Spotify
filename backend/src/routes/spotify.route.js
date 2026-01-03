@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as spotifyService from "../services/spotify.service.js";
 import { storeSpotifyTokens, getSpotifyTokens } from '../services/spotifyTokenService.js';
-import { syncSpotifyLikedSongs, getSyncedLikedSongs, getSyncStatus, migrateLikedSongsStructure } from '../services/spotifySyncService.js';
+import { syncSpotifyLikedSongs, getSyncedLikedSongs, getSyncStatus, migrateLikedSongsStructure, handleSpotifyLikeUnlike } from '../services/spotifySyncService.js';
 import admin from '../config/firebase.js';
 import axios from 'axios';
 
@@ -61,7 +61,8 @@ router.post("/callback", async (req, res) => {
     console.error("❌ Missing authorization code");
     return res.status(400).json({ 
       message: "Authorization code is required",
-      error: "MISSING_CODE"
+      error: "MISSING_CODE",
+      success: false
     });
   }
   
@@ -69,7 +70,8 @@ router.post("/callback", async (req, res) => {
     console.error("❌ Missing user ID");
     return res.status(400).json({ 
       message: "User ID is required",
-      error: "MISSING_USER_ID"
+      error: "MISSING_USER_ID",
+      success: false
     });
   }
   
@@ -77,9 +79,23 @@ router.post("/callback", async (req, res) => {
     console.error("❌ Missing Spotify credentials");
     console.error("CLIENT_ID present:", !!CLIENT_ID);
     console.error("CLIENT_SECRET present:", !!CLIENT_SECRET);
+    console.error("Please set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in your .env file");
     return res.status(500).json({ 
-      message: "Spotify credentials not configured",
-      error: "MISSING_CREDENTIALS"
+      message: "Spotify integration is not configured on this server",
+      error: "MISSING_CREDENTIALS",
+      success: false,
+      details: "The server administrator needs to configure Spotify API credentials"
+    });
+  }
+  
+  // Check if credentials are still placeholder values
+  if (CLIENT_ID === 'your_spotify_client_id' || CLIENT_SECRET === 'your_spotify_client_secret') {
+    console.error("❌ Spotify credentials are placeholder values");
+    return res.status(500).json({ 
+      message: "Spotify integration is not properly configured",
+      error: "INVALID_CREDENTIALS",
+      success: false,
+      details: "The server administrator needs to set real Spotify API credentials"
     });
   }
   
@@ -105,10 +121,12 @@ router.post("/callback", async (req, res) => {
     
     console.log("=== Callback Success ===");
     res.json({
+      message: "Successfully connected to Spotify",
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token,
       expires_in: tokenData.expires_in,
-      synced: true
+      synced: true,
+      success: true
     });
   } catch (error) {
     console.error("❌ Spotify callback error:");
@@ -133,6 +151,7 @@ router.post("/callback", async (req, res) => {
     res.status(500).json({ 
       message: errorMessage,
       error: errorCode,
+      success: false,
       details: error.response?.data || error.message
     });
   }

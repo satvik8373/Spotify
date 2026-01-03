@@ -44,10 +44,20 @@ service cloud.firestore {
     
     // Playlists collection
     match /playlists/{playlistId} {
-      // Allow read if authenticated and (playlist is public OR user is owner)
-      allow read: if isAuthenticated();
+      // Allow read if authenticated and (playlist is public OR user is owner OR playlist is featured)
+      allow read: if isAuthenticated() && (
+        resource.data.isPublic == true || 
+        isOwner(resource.data.createdBy.id) ||
+        resource.data.featured == true
+      );
       allow create: if isAuthenticated();
       allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy.id);
+    }
+    
+    // For development - allow more permissive access to public playlists
+    // This can be removed in production
+    match /playlists/{playlistId} {
+      allow read: if resource.data.isPublic == true || resource.data.featured == true;
     }
   }
 } 

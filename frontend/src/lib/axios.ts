@@ -4,8 +4,8 @@ import axios from "axios";
 // Avoid importing Firebase eagerly to keep initial bundle small
 // We'll lazy-import inside the interceptor
 
-// Get API URL from environment variables or fallback to default
-const RAW_API_URL = import.meta.env.VITE_API_URL || "";
+// Get API URL from environment variables
+const RAW_API_URL = import.meta.env.VITE_API_URL;
 
 // Determine if we're in production
 const isProduction = window.location.hostname === 'mavrixfy.site' || 
@@ -13,16 +13,22 @@ const isProduction = window.location.hostname === 'mavrixfy.site' ||
                      window.location.hostname.includes('vercel.app') ||
                      window.location.hostname.includes('netlify.app');
 
-// Prefer explicit VITE_API_URL; otherwise fallback by environment
-let FINAL_API_URL = RAW_API_URL;
+// Ensure API URL is always set
+let FINAL_API_URL: string;
 
-if (!FINAL_API_URL) {
+if (RAW_API_URL) {
+  FINAL_API_URL = RAW_API_URL;
+} else {
+  // Fallback based on environment
   if (isProduction) {
-    FINAL_API_URL = 'https://mavrixfy.site/api';
+    // Use the actual deployed backend URL
+    FINAL_API_URL = 'https://spotify-api-drab.vercel.app/api';
   } else {
-    // For development, try different common ports
+    // Development fallback
     FINAL_API_URL = 'http://localhost:5000';
   }
+  
+  console.warn('⚠️ VITE_API_URL not set, using fallback:', FINAL_API_URL);
 }
 
 // Remove trailing slash and ensure proper formatting

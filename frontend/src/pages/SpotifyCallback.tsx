@@ -1,197 +1,154 @@
-import React, { useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { handleCallback, isAuthenticated as isSpotifyAuthenticated, debugAuthenticationState } from '../services/spotifyService';
-import { Loader, AlertCircle, CheckCircle, Bug } from 'lucide-react';
-import { useAuthStore } from '../stores/useAuthStore';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import axiosInstance from '../lib/axios';
 
-const SpotifyCallback: React.FC = () => {
-  const location = useLocation();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [errorDetails, setErrorDetails] = useState<string | null>(null);
-  const { user } = useAuthStore();
+const SpotifyCallback = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [message, setMessage] = useState('Processing Spotify authorization...');
+  const [errorDetails, setErrorDetails] = useState<string>('');
 
   useEffect(() => {
-    const processAuth = async () => {
+    const handleCallback = async () => {
       try {
-        const params = new URLSearchParams(location.search);
-        const code = params.get('code');
-        const error = params.get('error');
-        const state = params.get('state');
-
-        // Check if this is a mobile request by looking for mobile user agent or state parameter
-        const isMobileRequest = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                               state?.includes('mobile') ||
-                               params.get('mobile') === 'true';
-
-        console.log('Callback processing:', {
-          isMobileRequest,
-          userAgent: navigator.userAgent,
-          state,
-          code: code ? 'present' : 'missing',
-          error
-        });
-
-        // If this is a mobile request, redirect to mobile app
-        if (isMobileRequest && code) {
-          console.log('🔄 Redirecting to mobile app with authorization code');
-          const mobileDeepLink = `mavrixfy://spotify-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state || '')}`;
-          
-          // Try to redirect to mobile app
-          window.location.href = mobileDeepLink;
-          
-          // Show mobile redirect UI
-          setIsLoading(false);
-          return;
-        }
+        const code = searchParams.get('code');
+        const state = searchParams.get('state');
+        const error = searchParams.get('error');
 
         if (error) {
-          console.error('Spotify returned error:', error);
-          setError('Spotify authentication was cancelled or failed');
-          setErrorDetails(`Error: ${error}`);
-          setIsLoading(false);
+          setStatus('error');
+          setMessage(`Spotify authorization failed: ${error}`);
+          setErrorDetails('The authorization was denied or cancelled.');
+          setTimeout(() => navigate('/home'), 5000);
           return;
         }
 
         if (!code) {
-          console.error('No authorization code received from Spotify');
-          setError('No authorization code received');
-          setErrorDetails('The authentication process was incomplete. Please try again.');
-          setIsLoading(false);
+          setStatus('error');
+          setMessage('No authorization code received from Spotify');
+          setErrorDetails('The callback URL did not contain the required authorization code.');
+          setTimeout(() => navigate('/home'), 5000);
           return;
         }
 
-        console.log('Starting Spotify authentication process...');
-        console.log('Authorization code received:', code ? 'present' : 'missing');
-        console.log('User ID:', user?.id);
-        
-        const success = await handleCallback(code, user?.id);
-        
-        if (success) {
-          console.log('Spotify authentication successful!');
-          
-          // Verify tokens are actually stored and valid
-          if (isSpotifyAuthenticated()) {
-            console.log('Tokens verified and stored successfully');
-            try { sessionStorage.setItem('spotify_sync_prompt', '1'); } catch {}
-            
-            // Add a small delay to ensure tokens are properly stored
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            setIsAuthenticated(true);
-          } else {
-            console.error('Tokens not found after successful authentication');
-            setError('Authentication completed but tokens not stored');
-            setErrorDetails('Please try logging in again. If the problem persists, check your browser console for more details.');
-          }
-        } else {
-          console.log('Spotify authentication failed - handleCallback returned false');
-          setError('Authentication process incomplete');
-          setErrorDetails('The authentication process did not complete successfully. Check the console for detailed logs.');
+        if (!user) {
+          setStatus('error');
+          setMessage('Please log in first');
+          setErrorDetails('You need to be logged in to connect your Spotify account.');
+          setTimeout(() => navigate('/login'), 3000);
+          return;
         }
-      } catch (err: any) {
-        console.error('Authentication error:', err);
-        setError('Authentication process encountered an error');
-        setErrorDetails(err?.message || 'An unexpected error occurred. Check the console for more details.');
-      } finally {
-        setIsLoading(false);
+
+        setMessage('Exchanging authorization code for access tokens...');
+
+        // Send the authorization code to your backend
+        const response = await axiosInstance.post('/api/spotify/callback', {
+          code,
+          state,
+          userId: user.id,
+          redirect_uri: window.location.origin + '/spotify-callback'
+        });
+
+        if (response.data.access_token) {
+          setStatus('success');
+          setMessage('Successfully connected to Spotify!');
+          setTimeout(() => navigate('/home'), 2000);
+        } else {
+          setStatus('error');
+          setMessage('Failed to connect to Spotify');
+          setErrorDetails('The server did not return valid access tokens.');
+          setTimeout(() => navigate('/home'), 5000);
+        }
+      } catch (error: any) {
+        console.error('Spotify callback error:', error);
+        setStatus('error');
+        
+        // Handle different types of errors
+        if (error.response?.status === 500) {
+          const errorData = error.response.data;
+          if (errorData.error === 'MISSING_CREDENTIALS') {
+            setMessage('Spotify integration not configured');
+            setErrorDetails('The server is missing Spotify API credentials. Please contact the administrator.');
+          } else if (errorData.error === 'INVALID_CREDENTIALS') {
+            setMessage('Invalid Spotify credentials');
+            setErrorDetails('The server\'s Spotify API credentials are invalid.');
+          } else {
+            setMessage('Server error occurred');
+            setErrorDetails(errorData.message || 'An unexpected server error occurred.');
+          }
+        } else if (error.response?.status === 400) {
+          const errorData = error.response.data;
+          if (errorData.error === 'INVALID_CODE') {
+            setMessage('Invalid authorization code');
+            setErrorDetails('The authorization code has expired or is invalid. Please try connecting again.');
+          } else {
+            setMessage('Bad request');
+            setErrorDetails(errorData.message || 'The request was invalid.');
+          }
+        } else if (error.code === 'NETWORK_ERROR' || !error.response) {
+          setMessage('Network error');
+          setErrorDetails('Could not connect to the server. Please check your internet connection.');
+        } else {
+          setMessage('An error occurred while connecting to Spotify');
+          setErrorDetails(error.response?.data?.message || error.message || 'Unknown error');
+        }
+        
+        setTimeout(() => navigate('/home'), 5000);
       }
     };
 
-    processAuth();
-  }, [location, user?.id]);
+    handleCallback();
+  }, [searchParams, navigate, user]);
 
-  if (isLoading) {
-    const params = new URLSearchParams(location.search);
-    const isMobileRequest = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                           params.get('state')?.includes('mobile') ||
-                           params.get('mobile') === 'true';
-    
-    if (isMobileRequest && params.get('code')) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-          <div className="bg-green-900/20 border border-green-500/50 p-6 rounded-lg mb-6 max-w-md text-center">
-            <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
-            <h2 className="text-xl font-semibold text-green-400 mb-2">Authentication Successful!</h2>
-            <p className="text-sm text-gray-300 mb-4">Redirecting you back to Mavrixfy app...</p>
-            <div className="flex justify-center">
-              <Loader className="animate-spin h-6 w-6 text-[#1DB954]" />
-            </div>
-          </div>
-          <p className="text-xs text-gray-400 text-center max-w-sm">
-            If you're not redirected automatically, please check if the Mavrixfy app is installed on your device.
-          </p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-        <Loader className="animate-spin h-10 w-10 text-[#1DB954] mb-4" />
-        <p className="text-lg">Connecting to Spotify...</p>
-        <p className="text-sm text-gray-400 mt-2">Please wait while we complete the authentication</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-        <div className="bg-red-900/20 border border-red-500/50 p-6 rounded-lg mb-6 max-w-md">
-          <div className="flex items-center gap-3 mb-3">
-            <AlertCircle className="h-6 w-6 text-red-400" />
-            <h2 className="text-xl font-semibold text-red-400">{error}</h2>
-          </div>
-          {errorDetails && (
-            <p className="text-sm text-gray-300 mb-4">{errorDetails}</p>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="max-w-md w-full text-center">
+        <div className="bg-card rounded-lg p-8 shadow-lg">
+          {status === 'loading' && (
+            <>
+              <div className="h-12 w-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+              <h2 className="text-xl font-semibold mb-2 text-foreground">Connecting to Spotify</h2>
+              <p className="text-muted-foreground">{message}</p>
+            </>
           )}
-          <div className="text-xs text-gray-400 space-y-1">
-            <p>• Check that your Spotify app is properly configured</p>
-            <p>• Verify the redirect URI matches exactly</p>
-            <p>• Ensure you're logged into the correct Spotify account</p>
-          </div>
-        </div>
-        <div className="flex gap-4">
-          <a href="/" className="text-[#1DB954] hover:underline px-4 py-2 border border-[#1DB954] rounded-lg">
-            Return to Home
-          </a>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="text-white hover:text-[#1DB954] px-4 py-2 border border-gray-600 rounded-lg hover:border-[#1DB954]"
-          >
-            Try Again
-          </button>
-          <button 
-            onClick={() => {
-              console.log('=== Manual Debug Triggered ===');
-              debugAuthenticationState();
-              alert('Check browser console for detailed authentication state');
-            }} 
-            className="text-gray-400 hover:text-[#1DB954] px-4 py-2 border border-gray-600 rounded-lg hover:border-[#1DB954] flex items-center gap-2"
-          >
-            <Bug className="h-4 w-4" />
-            Debug
-          </button>
+
+          {status === 'success' && (
+            <>
+              <div className="h-12 w-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold mb-2 text-foreground">Success!</h2>
+              <p className="text-muted-foreground">{message}</p>
+              <p className="text-sm text-muted-foreground mt-2">Redirecting to home...</p>
+            </>
+          )}
+
+          {status === 'error' && (
+            <>
+              <div className="h-12 w-12 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold mb-2 text-foreground">Connection Failed</h2>
+              <p className="text-muted-foreground mb-2">{message}</p>
+              {errorDetails && (
+                <p className="text-sm text-muted-foreground mb-4 p-3 bg-muted rounded-md text-left">
+                  {errorDetails}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">Redirecting to home...</p>
+            </>
+          )}
         </div>
       </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-        <div className="bg-green-900/20 border border-green-500/50 p-6 rounded-lg mb-6 max-w-md text-center">
-          <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
-          <h2 className="text-xl font-semibold text-green-400 mb-2">Authentication Successful!</h2>
-          <p className="text-sm text-gray-300">Redirecting to Liked Songs...</p>
-        </div>
-        <Navigate to="/liked-songs" replace />
-      </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 };
 
-export default SpotifyCallback; 
+export default SpotifyCallback;

@@ -1,14 +1,21 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
   "routes": [
     {
       "handle": "filesystem"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "dest": "https://spotify-api-drab.vercel.app/api/$1"
     },
     {
       "src": "/(.*)",
