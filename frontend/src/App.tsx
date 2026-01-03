@@ -5,6 +5,9 @@ import { performanceService } from './services/performanceService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
+import { ErrorBoundary } from 'react-error-boundary';
+import { reportReactError } from './utils/errorReporting';
+
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
@@ -143,23 +146,28 @@ const router = createBrowserRouter(
 	[
 		{
 			path: '/',
-			element: <LandingRedirector />
+			element: <LandingRedirector />,
+			errorElement: <ErrorFallback />
 		},
 		{
 			path: '/login',
-			element: <Login />
+			element: <Login />,
+			errorElement: <ErrorFallback />
 		},
 		{
 			path: '/register',
-			element: <Register />
+			element: <Register />,
+			errorElement: <ErrorFallback />
 		},
 		{
 			path: '/reset-password',
-			element: <ResetPassword />
+			element: <ResetPassword />,
+			errorElement: <ErrorFallback />
 		},
 		{
 			path: '/spotify-callback',
-			element: <SpotifyCallback />
+			element: <SpotifyCallback />,
+			errorElement: <ErrorFallback />
 		},
 		{
 			element: <MainLayout />,
@@ -167,55 +175,68 @@ const router = createBrowserRouter(
 			children: [
 				{
 					path: '/home',
-					element: <AuthGate><HomePage /></AuthGate>
+					element: <AuthGate><HomePage /></AuthGate>,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/albums/:albumId',
-					element: <AuthGate><AlbumPage /></AuthGate>
+					element: <AuthGate><AlbumPage /></AuthGate>,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/library',
-					element: <AuthGate><LibraryPage /></AuthGate>
+					element: <AuthGate><LibraryPage /></AuthGate>,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/liked-songs',
-					element: <AuthGate><LikedSongsPage /></AuthGate>
+					element: <AuthGate><LikedSongsPage /></AuthGate>,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/search',
-					element: <AuthGate><SearchPage /></AuthGate>
+					element: <AuthGate><SearchPage /></AuthGate>,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/profile',
-					element: <AuthGate><ProfilePage /></AuthGate>
+					element: <AuthGate><ProfilePage /></AuthGate>,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/playlist/:id',
-					element: <AuthGate><PlaylistPage /></AuthGate>
+					element: <AuthGate><PlaylistPage /></AuthGate>,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/song/:songId',
-					element: <AuthGate><SongPage /></AuthGate>
+					element: <AuthGate><SongPage /></AuthGate>,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/debug/api',
-					element: <ApiDebugPage />
+					element: <ApiDebugPage />,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/privacy',
-					element: <PrivacyPolicy />
+					element: <PrivacyPolicy />,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/terms',
-					element: <TermsOfService />
+					element: <TermsOfService />,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '/about',
-					element: <About />
+					element: <About />,
+					errorElement: <ErrorFallback />
 				},
 				{
 					path: '*',
-					element: <NotFoundFallback />
+					element: <NotFoundFallback />,
+					errorElement: <ErrorFallback />
 				}
 			]
 		}
@@ -289,7 +310,25 @@ function AppContent() {
 
 	// Always show main app content, login will be handled in the header
 	return (
-		<>
+		<ErrorBoundary
+			fallback={<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+				<div className="text-center max-w-md">
+					<h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
+					<p className="text-muted-foreground mb-8">
+						We're sorry, but there was an error loading this page. Please try refreshing.
+					</p>
+					<button
+						onClick={() => window.location.reload()}
+						className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+					>
+						Reload Page
+					</button>
+				</div>
+			</div>}
+			onError={(error, errorInfo) => {
+				reportReactError(error, errorInfo);
+			}}
+		>
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
 			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div></div>}>
 				<RouterProvider
@@ -320,7 +359,7 @@ function AppContent() {
 			/>
 			<PWAInstallPrompt />
 			<AndroidPWAHelper />
-		</>
+		</ErrorBoundary>
 	);
 }
 
@@ -344,11 +383,31 @@ function App() {
 	}, []);
 
 	return (
-		<AuthProvider>
-			<SpotifyProvider>
-				<AppContent />
-			</SpotifyProvider>
-		</AuthProvider>
+		<ErrorBoundary
+			fallback={<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+				<div className="text-center max-w-md">
+					<h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
+					<p className="text-muted-foreground mb-8">
+						We're sorry, but there was an error loading this page. Please try refreshing.
+					</p>
+					<button
+						onClick={() => window.location.reload()}
+						className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+					>
+						Reload Page
+					</button>
+				</div>
+			</div>}
+			onError={(error, errorInfo) => {
+				reportReactError(error, errorInfo);
+			}}
+		>
+			<AuthProvider>
+				<SpotifyProvider>
+					<AppContent />
+				</SpotifyProvider>
+			</AuthProvider>
+		</ErrorBoundary>
 	);
 }
 

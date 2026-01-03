@@ -37,6 +37,9 @@ export default defineConfig(({ mode }) => {
 		resolve: {
 			alias: {
 				"@": path.resolve(__dirname, "./src"),
+				// Ensure single React instance
+				"react": path.resolve(__dirname, "./node_modules/react"),
+				"react-dom": path.resolve(__dirname, "./node_modules/react-dom")
 			},
 		},
 		server: {
@@ -103,6 +106,11 @@ export default defineConfig(({ mode }) => {
 				// Reduce bundle analysis time
 				treeshake: {
 					preset: 'recommended'
+				},
+				// Add external dependencies to prevent bundling issues
+				external: (id) => {
+					// Don't externalize anything in production
+					return false;
 				}
 			},
 			chunkSizeWarningLimit: 1000,
@@ -139,7 +147,9 @@ export default defineConfig(({ mode }) => {
 			exclude: [
 				// Exclude heavy dependencies that don't need pre-bundling
 				'@mui/icons-material'
-			]
+			],
+			// Force single React instance
+			force: true
 		}
 	}
 });
