@@ -1,20 +1,29 @@
 // React import kept for JSX runtime compatibility in some tooling
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
 import './index.css'
-import './styles/mobile-optimizations.css'
-import './styles/custom-utilities.css'
-import { configureWebViewAuth, getEnvironmentInfo } from './utils/webViewDetection'
 
-// Configure WebView authentication on app start
-configureWebViewAuth();
-
-// Log environment info for debugging
-if (import.meta.env.DEV) {
-  console.log('🌍 Environment Info:', getEnvironmentInfo());
-}
+// Simple test component to check if React is working
+const TestApp = () => {
+  return (
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      height: '100vh', 
+      backgroundColor: '#121212', 
+      color: 'white',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <h1>Mavrixfy Test</h1>
+        <p>React is working!</p>
+        <p>Time: {new Date().toLocaleTimeString()}</p>
+      </div>
+    </div>
+  );
+};
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <App />,
+  <TestApp />,
 )
