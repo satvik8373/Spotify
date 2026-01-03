@@ -25,7 +25,7 @@ try {
 // Spotify API configuration
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
-const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || 'mavrixfy://spotify-callback';
+const SPOTIFY_REDIRECT_URI = 'mavrixfy://spotify-callback'; // Mobile app deep link
 
 // JioSaavn API configuration
 const JIOSAAVN_API_BASE_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
