@@ -1,91 +1,45 @@
-import { LikedSong } from "../models/likedSong.model.js";
 import admin from "firebase-admin";
 
-// Helper to identify user type and ID from request
-const getUserIdentity = async (req) => {
-  try {
-    // Check for Firebase authentication
-    if (req.auth && req.auth.uid) {
-      return {
-        userType: "firebase",
-        userId: req.auth.uid,
-        firebaseId: req.auth.uid
-      };
-    }
-    
+const db = admin.firestore();
 
-    
-    // Check for Google authentication from token
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      
-      try {
-        // Try to verify as Firebase token first
-        const decodedToken = await admin.auth().verifyIdToken(token);
-        return {
-          userType: "firebase",
-          userId: decodedToken.uid,
-          firebaseId: decodedToken.uid,
-          email: decodedToken.email
-        };
-      } catch (firebaseError) {
-        console.log("Not a Firebase token, trying Google userinfo:", firebaseError.message);
-        
-        try {
-          // Verify the Google token with userinfo endpoint
-          const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          if (response.ok) {
-            const userInfo = await response.json();
-            return {
-              userType: "google",
-              userId: userInfo.sub,
-              googleId: userInfo.sub,
-              email: userInfo.email
-            };
-          }
-        } catch (err) {
-          console.error("Error verifying Google token:", err);
-        }
-      }
-    }
-    
-    throw new Error("User not authenticated");
-  } catch (error) {
-    console.error("Error identifying user:", error);
-    throw error;
+// Helper to get user ID from Firebase authentication
+const getUserId = (req) => {
+  if (req.auth && req.auth.uid) {
+    return req.auth.uid;
   }
+  throw new Error("User not authenticated");
 };
 
 // Get all liked songs for the authenticated user
 export const getLikedSongs = async (req, res, next) => {
   try {
-    const identity = await getUserIdentity(req);
+    const userId = getUserId(req);
     
-    // Find or create liked songs document
-    let likedSongsDoc = await LikedSong.findOne({
-      userId: identity.userId,
-      userType: identity.userType
+    // Get liked songs from Firestore subcollection
+    const likedSongsRef = db.collection('users').doc(userId).collection('likedSongs');
+    const snapshot = await likedSongsRef.orderBy('likedAt', 'desc').get();
+    
+    const songs = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      songs.push({
+        id: doc.id,
+        songId: data.songId || doc.id,
+        title: data.title,
+        artist: data.artist,
+        imageUrl: data.imageUrl,
+        audioUrl: data.audioUrl,
+        duration: data.duration || 0,
+        albumName: data.albumName || data.album,
+        source: data.source || 'mavrixfy',
+        likedAt: data.likedAt
+      });
     });
     
-    if (!likedSongsDoc) {
-      // Create a new empty document
-      likedSongsDoc = await LikedSong.create({
-        userId: identity.userId,
-        userType: identity.userType,
-        ...(identity.googleId && { googleId: identity.googleId }),
-        songs: []
-      });
-    }
-    
-    // Return the songs in reversed order (newest first)
     res.status(200).json({
       success: true,
-      count: likedSongsDoc.songs.length,
-      data: likedSongsDoc.songs.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
+      count: songs.length,
+      data: songs
     });
   } catch (error) {
     console.error("Error fetching liked songs:", error);
@@ -100,62 +54,49 @@ export const getLikedSongs = async (req, res, next) => {
 // Add a song to liked songs
 export const addLikedSong = async (req, res, next) => {
   try {
-    const { songId, title, artist, imageUrl, audioUrl, duration, albumId } = req.body;
+    const { songId, title, artist, imageUrl, audioUrl, duration, albumName, album } = req.body;
     
     // Validate required fields
-    if (!songId || !title || !artist || !imageUrl || !audioUrl) {
+    if (!songId || !title || !artist || !audioUrl) {
       return res.status(400).json({
         success: false,
-        message: "Missing required song information"
+        message: "Missing required song information (songId, title, artist, audioUrl)"
       });
     }
     
-    const identity = await getUserIdentity(req);
-    
-    // Find or create liked songs document
-    let likedSongsDoc = await LikedSong.findOne({
-      userId: identity.userId,
-      userType: identity.userType
-    });
-    
-    if (!likedSongsDoc) {
-      // Create a new document
-      likedSongsDoc = await LikedSong.create({
-        userId: identity.userId,
-        userType: identity.userType,
-        ...(identity.googleId && { googleId: identity.googleId }),
-
-        songs: []
-      });
-    }
+    const userId = getUserId(req);
     
     // Check if song already exists
-    const songExists = likedSongsDoc.songs.some(song => song.songId === songId);
-    if (songExists) {
+    const songRef = db.collection('users').doc(userId).collection('likedSongs').doc(songId);
+    const existingDoc = await songRef.get();
+    
+    if (existingDoc.exists) {
       return res.status(400).json({
         success: false,
         message: "Song already in liked songs"
       });
     }
     
-    // Add the song
-    likedSongsDoc.songs.push({
-      songId,
-      title,
-      artist,
-      imageUrl,
-      audioUrl,
+    // Add the song to Firestore
+    const songData = {
+      id: songId,
+      songId: songId,
+      title: title,
+      artist: artist,
+      imageUrl: imageUrl || '',
+      audioUrl: audioUrl,
       duration: duration || 0,
-      albumId: albumId || null,
-      addedAt: new Date()
-    });
+      albumName: albumName || album || '',
+      source: 'mavrixfy',
+      likedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
     
-    await likedSongsDoc.save();
+    await songRef.set(songData);
     
     res.status(201).json({
       success: true,
       message: "Song added to liked songs",
-      data: likedSongsDoc.songs
+      data: songData
     });
   } catch (error) {
     console.error("Error adding liked song:", error);
@@ -179,39 +120,24 @@ export const removeLikedSong = async (req, res, next) => {
       });
     }
     
-    const identity = await getUserIdentity(req);
+    const userId = getUserId(req);
     
-    // Find liked songs document
-    const likedSongsDoc = await LikedSong.findOne({
-      userId: identity.userId,
-      userType: identity.userType
-    });
+    // Remove the song from Firestore
+    const songRef = db.collection('users').doc(userId).collection('likedSongs').doc(songId);
+    const doc = await songRef.get();
     
-    if (!likedSongsDoc) {
-      return res.status(404).json({
-        success: false,
-        message: "No liked songs found"
-      });
-    }
-    
-    // Filter out the song
-    const initialCount = likedSongsDoc.songs.length;
-    likedSongsDoc.songs = likedSongsDoc.songs.filter(song => song.songId !== songId);
-    
-    // Check if song was found and removed
-    if (initialCount === likedSongsDoc.songs.length) {
+    if (!doc.exists) {
       return res.status(404).json({
         success: false,
         message: "Song not found in liked songs"
       });
     }
     
-    await likedSongsDoc.save();
+    await songRef.delete();
     
     res.status(200).json({
       success: true,
-      message: "Song removed from liked songs",
-      data: likedSongsDoc.songs
+      message: "Song removed from liked songs"
     });
   } catch (error) {
     console.error("Error removing liked song:", error);
@@ -235,27 +161,15 @@ export const isSongLiked = async (req, res, next) => {
       });
     }
     
-    const identity = await getUserIdentity(req);
+    const userId = getUserId(req);
     
-    // Find liked songs document
-    const likedSongsDoc = await LikedSong.findOne({
-      userId: identity.userId,
-      userType: identity.userType
-    });
-    
-    if (!likedSongsDoc) {
-      return res.status(200).json({
-        success: true,
-        isLiked: false
-      });
-    }
-    
-    // Check if song is in liked songs
-    const isLiked = likedSongsDoc.songs.some(song => song.songId === songId);
+    // Check if song exists in Firestore
+    const songRef = db.collection('users').doc(userId).collection('likedSongs').doc(songId);
+    const doc = await songRef.get();
     
     res.status(200).json({
       success: true,
-      isLiked
+      isLiked: doc.exists
     });
   } catch (error) {
     console.error("Error checking if song is liked:", error);
@@ -279,57 +193,70 @@ export const syncLikedSongs = async (req, res, next) => {
       });
     }
     
-    const identity = await getUserIdentity(req);
+    const userId = getUserId(req);
+    const likedSongsRef = db.collection('users').doc(userId).collection('likedSongs');
     
-    // Find or create liked songs document
-    let likedSongsDoc = await LikedSong.findOne({
-      userId: identity.userId,
-      userType: identity.userType
+    // Get existing songs
+    const existingSnapshot = await likedSongsRef.get();
+    const existingSongIds = new Set();
+    existingSnapshot.forEach(doc => {
+      existingSongIds.add(doc.id);
     });
     
-    if (!likedSongsDoc) {
-      // Create a new document
-      likedSongsDoc = await LikedSong.create({
-        userId: identity.userId,
-        userType: identity.userId,
-        ...(identity.googleId && { googleId: identity.googleId }),
-        songs: []
-      });
-    }
+    // Process incoming songs and add new ones
+    const batch = db.batch();
+    let addedCount = 0;
     
-    // Map of existing songs by songId for quick lookup
-    const existingSongs = {};
-    likedSongsDoc.songs.forEach(song => {
-      existingSongs[song.songId] = song;
-    });
-    
-    // Process incoming songs
-    const songsToAdd = [];
     songs.forEach(song => {
-      if (!existingSongs[song.id || song.songId]) {
-        songsToAdd.push({
-          songId: song.id || song.songId,
-          title: song.title,
-          artist: song.artist,
-          imageUrl: song.imageUrl,
-          audioUrl: song.audioUrl,
+      const songId = song.id || song.songId;
+      if (songId && !existingSongIds.has(songId)) {
+        const songRef = likedSongsRef.doc(songId);
+        const songData = {
+          id: songId,
+          songId: songId,
+          title: song.title || 'Unknown',
+          artist: song.artist || 'Unknown Artist',
+          imageUrl: song.imageUrl || '',
+          audioUrl: song.audioUrl || '',
           duration: song.duration || 0,
-          albumId: song.albumId || null,
-          addedAt: song.addedAt || new Date()
-        });
+          albumName: song.albumName || song.album || '',
+          source: song.source || 'mavrixfy',
+          likedAt: song.likedAt || admin.firestore.FieldValue.serverTimestamp()
+        };
+        batch.set(songRef, songData);
+        addedCount++;
       }
     });
     
-    // Add any new songs
-    if (songsToAdd.length > 0) {
-      likedSongsDoc.songs = [...likedSongsDoc.songs, ...songsToAdd];
-      await likedSongsDoc.save();
+    // Commit the batch
+    if (addedCount > 0) {
+      await batch.commit();
     }
+    
+    // Get updated songs list
+    const updatedSnapshot = await likedSongsRef.orderBy('likedAt', 'desc').get();
+    const updatedSongs = [];
+    updatedSnapshot.forEach(doc => {
+      const data = doc.data();
+      updatedSongs.push({
+        id: doc.id,
+        songId: data.songId || doc.id,
+        title: data.title,
+        artist: data.artist,
+        imageUrl: data.imageUrl,
+        audioUrl: data.audioUrl,
+        duration: data.duration || 0,
+        albumName: data.albumName,
+        source: data.source,
+        likedAt: data.likedAt
+      });
+    });
     
     res.status(200).json({
       success: true,
-      message: `Synced ${songsToAdd.length} songs`,
-      data: likedSongsDoc.songs.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
+      message: `Synced ${addedCount} new songs`,
+      count: updatedSongs.length,
+      data: updatedSongs
     });
   } catch (error) {
     console.error("Error syncing liked songs:", error);
