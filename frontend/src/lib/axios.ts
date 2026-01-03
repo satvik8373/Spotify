@@ -9,12 +9,21 @@ const RAW_API_URL = import.meta.env.VITE_API_URL || "";
 
 // Determine if we're in production
 const isProduction = window.location.hostname === 'mavrixfy.site' || 
-                     window.location.hostname === 'www.mavrixfy.site';
+                     window.location.hostname === 'www.mavrixfy.site' ||
+                     window.location.hostname.includes('vercel.app') ||
+                     window.location.hostname.includes('netlify.app');
 
 // Prefer explicit VITE_API_URL; otherwise fallback by environment
-const FINAL_API_URL = RAW_API_URL
-  ? RAW_API_URL
-  : (isProduction ? 'https://mavrixfy.site' : 'http://localhost:5000');
+let FINAL_API_URL = RAW_API_URL;
+
+if (!FINAL_API_URL) {
+  if (isProduction) {
+    FINAL_API_URL = 'https://mavrixfy.site/api';
+  } else {
+    // For development, try different common ports
+    FINAL_API_URL = 'http://localhost:5000';
+  }
+}
 
 // Remove trailing slash and ensure proper formatting
 const cleanApiUrl = FINAL_API_URL.replace(/\/$/, '');
@@ -54,7 +63,8 @@ axiosInstance.interceptors.request.use(
 				config.headers.Authorization = `Bearer ${token}`;
 			}
 		} catch (error) {
-			// Ignore token retrieval errors silently
+			// Ignore token retrieval errors silently - user might not be logged in
+			console.debug('No auth token available:', error);
 		}
 		return config;
 	},
@@ -81,8 +91,10 @@ axiosInstance.interceptors.response.use(
 		if (error.response?.status === 401) {
 			// Clear auth token
 			setAuthToken(null);
-			// Redirect to login if needed
-			window.location.href = '/login';
+			// Only redirect to login if we're not already on login page
+			if (!window.location.pathname.includes('/login')) {
+				window.location.href = '/login';
+			}
 		}
 		return Promise.reject(error);
 	}
