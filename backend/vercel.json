@@ -20,6 +20,9 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "VERCEL": "1"
+    "VERCEL": "1",
+    "FIREBASE_PROJECT_ID": "spotify-8fefc",
+    "FIREBASE_STORAGE_BUCKET": "spotify-8fefc.firebasestorage.app",
+    "FIREBASE_DATABASE_URL": "https://spotify-8fefc-default-rtdb.firebaseio.com"
   }
 } 
