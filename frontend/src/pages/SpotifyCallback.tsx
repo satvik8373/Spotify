@@ -20,9 +20,9 @@ const SpotifyCallback: React.FC = () => {
         const error = params.get('error');
         const state = params.get('state');
 
-        // Check if this is a mobile request
+        // Check if this is a mobile request by looking for mobile user agent or state parameter
         const isMobileRequest = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                               (state && state.includes('mobile')) ||
+                               state?.includes('mobile') ||
                                params.get('mobile') === 'true';
 
         console.log('Callback processing:', {
@@ -41,7 +41,7 @@ const SpotifyCallback: React.FC = () => {
           // Try to redirect to mobile app
           window.location.href = mobileDeepLink;
           
-          // Show mobile redirect UI and stop further processing
+          // Show mobile redirect UI
           setIsLoading(false);
           return;
         }
@@ -102,14 +102,12 @@ const SpotifyCallback: React.FC = () => {
     processAuth();
   }, [location, user?.id]);
 
-  // Check if this is a mobile redirect case
-  const params = new URLSearchParams(location.search);
-  const isMobileRequest = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                         (params.get('state') && params.get('state')!.includes('mobile')) ||
-                         params.get('mobile') === 'true';
-
   if (isLoading) {
-    // Show mobile redirect UI if it's a mobile request with code
+    const params = new URLSearchParams(location.search);
+    const isMobileRequest = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                           params.get('state')?.includes('mobile') ||
+                           params.get('mobile') === 'true';
+    
     if (isMobileRequest && params.get('code')) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
@@ -128,7 +126,6 @@ const SpotifyCallback: React.FC = () => {
       );
     }
 
-    // Default loading UI
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
         <Loader className="animate-spin h-10 w-10 text-[#1DB954] mb-4" />
