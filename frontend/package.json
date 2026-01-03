@@ -7,14 +7,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:production": "NODE_ENV=production vite build",
     "build:mobile": "vite build && node scripts/add-cache-busting.js",
     "build:optimized": "node scripts/build-optimized.js",
-    "vercel-build": "vite build",
+    "vercel-build": "NODE_ENV=production vite build",
     "preview": "vite preview",
     "start": "vite preview --port $PORT",
     "deploy": "vercel deploy --prod",
     "deploy:mobile": "npm run build:mobile && npx cap sync",
-    "analyze": "vite-bundle-analyzer dist/assets"
+    "analyze": "vite-bundle-analyzer dist/assets",
+    "test:build": "npm run build && npm run preview"
   },
   "keywords": [
     "spotify",

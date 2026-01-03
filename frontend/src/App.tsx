@@ -5,27 +5,96 @@ import { performanceService } from './services/performanceService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
-const MainLayout = lazy(() => import('./layout/MainLayout'));
-const HomePage = lazy(() => import('./pages/home/HomePage'));
-const SearchPage = lazy(() => import('./pages/search/SearchPage'));
-const LibraryPage = lazy(() => import('./pages/LibraryPage'));
-const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
-const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
-const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.PlaylistPage })));
-const SongPage = lazy(() => import('./pages/song/SongPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
-const TermsOfService = lazy(() => import('./pages/TermsOfService'));
-const About = lazy(() => import('./pages/About'));
-// import SharedSongPage from './pages/SharedSongPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+// Lazy load components with error handling
+const MainLayout = lazy(() => import('./layout/MainLayout').catch(err => {
+  console.error('Failed to load MainLayout:', err);
+  return { default: () => <div>Error loading layout</div> };
+}));
+
+const HomePage = lazy(() => import('./pages/home/HomePage').catch(err => {
+  console.error('Failed to load HomePage:', err);
+  return { default: () => <div>Error loading home page</div> };
+}));
+
+const SearchPage = lazy(() => import('./pages/search/SearchPage').catch(err => {
+  console.error('Failed to load SearchPage:', err);
+  return { default: () => <div>Error loading search page</div> };
+}));
+
+const LibraryPage = lazy(() => import('./pages/LibraryPage').catch(err => {
+  console.error('Failed to load LibraryPage:', err);
+  return { default: () => <div>Error loading library page</div> };
+}));
+
+const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage').catch(err => {
+  console.error('Failed to load LikedSongsPage:', err);
+  return { default: () => <div>Error loading liked songs page</div> };
+}));
+
+const AlbumPage = lazy(() => import('./pages/album/AlbumPage').catch(err => {
+  console.error('Failed to load AlbumPage:', err);
+  return { default: () => <div>Error loading album page</div> };
+}));
+
+const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.PlaylistPage })).catch(err => {
+  console.error('Failed to load PlaylistPage:', err);
+  return { default: () => <div>Error loading playlist page</div> };
+}));
+
+const SongPage = lazy(() => import('./pages/song/SongPage').catch(err => {
+  console.error('Failed to load SongPage:', err);
+  return { default: () => <div>Error loading song page</div> };
+}));
+
+const ProfilePage = lazy(() => import('./pages/ProfilePage').catch(err => {
+  console.error('Failed to load ProfilePage:', err);
+  return { default: () => <div>Error loading profile page</div> };
+}));
+
+const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback').catch(err => {
+  console.error('Failed to load SpotifyCallback:', err);
+  return { default: () => <div>Error loading Spotify callback</div> };
+}));
+
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy').catch(err => {
+  console.error('Failed to load PrivacyPolicy:', err);
+  return { default: () => <div>Error loading privacy policy</div> };
+}));
+
+const TermsOfService = lazy(() => import('./pages/TermsOfService').catch(err => {
+  console.error('Failed to load TermsOfService:', err);
+  return { default: () => <div>Error loading terms of service</div> };
+}));
+
+const About = lazy(() => import('./pages/About').catch(err => {
+  console.error('Failed to load About:', err);
+  return { default: () => <div>Error loading about page</div> };
+}));
+
+const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx').catch(err => {
+  console.error('Failed to load ApiDebugPage:', err);
+  return { default: () => <div>Error loading debug page</div> };
+}));
+
+const Login = lazy(() => import('./pages/Login').catch(err => {
+  console.error('Failed to load Login:', err);
+  return { default: () => <div>Error loading login page</div> };
+}));
+
+const Register = lazy(() => import('./pages/Register').catch(err => {
+  console.error('Failed to load Register:', err);
+  return { default: () => <div>Error loading register page</div> };
+}));
+
+const ResetPassword = lazy(() => import('./pages/ResetPassword').catch(err => {
+  console.error('Failed to load ResetPassword:', err);
+  return { default: () => <div>Error loading reset password page</div> };
+}));
+
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-// @ts-ignore
-const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
@@ -343,12 +412,69 @@ function App() {
 		};
 	}, []);
 
+	// Global error handler for unhandled errors
+	useEffect(() => {
+		const handleError = (event: ErrorEvent) => {
+			console.error('Global error:', event.error);
+			// Prevent white screen by showing error message
+			if (event.error && !document.querySelector('[data-error-boundary]')) {
+				const errorDiv = document.createElement('div');
+				errorDiv.setAttribute('data-error-boundary', 'true');
+				errorDiv.innerHTML = `
+					<div style="
+						position: fixed;
+						top: 0;
+						left: 0;
+						width: 100%;
+						height: 100%;
+						background: #000;
+						color: #fff;
+						display: flex;
+						flex-direction: column;
+						align-items: center;
+						justify-content: center;
+						z-index: 9999;
+						padding: 20px;
+						text-align: center;
+					">
+						<h1 style="font-size: 24px; margin-bottom: 16px;">Application Error</h1>
+						<p style="margin-bottom: 20px;">Something went wrong. Please refresh the page.</p>
+						<button onclick="window.location.reload()" style="
+							background: #1ed760;
+							color: #000;
+							border: none;
+							padding: 12px 24px;
+							border-radius: 6px;
+							cursor: pointer;
+							font-size: 16px;
+						">Reload Page</button>
+					</div>
+				`;
+				document.body.appendChild(errorDiv);
+			}
+		};
+
+		const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+			console.error('Unhandled promise rejection:', event.reason);
+		};
+
+		window.addEventListener('error', handleError);
+		window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+		return () => {
+			window.removeEventListener('error', handleError);
+			window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+		};
+	}, []);
+
 	return (
-		<AuthProvider>
-			<SpotifyProvider>
-				<AppContent />
-			</SpotifyProvider>
-		</AuthProvider>
+		<ErrorBoundary>
+			<AuthProvider>
+				<SpotifyProvider>
+					<AppContent />
+				</SpotifyProvider>
+			</AuthProvider>
+		</ErrorBoundary>
 	);
 }
 
