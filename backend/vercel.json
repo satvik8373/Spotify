@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api-server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "api-server.js",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+        "Access-Control-Allow-Credentials": "true"
+      }
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "VERCEL": "1",
+    "FIREBASE_PROJECT_ID": "spotify-8fefc",
+    "FIREBASE_STORAGE_BUCKET": "spotify-8fefc.firebasestorage.app",
+    "FIREBASE_DATABASE_URL": "https://spotify-8fefc-default-rtdb.firebaseio.com"
+  }
+} 

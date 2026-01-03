@@ -1,0 +1,37 @@
+/* Custom styles for playlist page */
+
+/* Only hide mobile header when on playlist page, keep bottom navigation */
+.hide-mobile-nav div[class*="fixed top-0 left-0 right-0 z-30 bg-zinc-900 md:hidden"] {
+  display: none !important;
+}
+
+/* Full-height container for playlist page with bottom nav visible */
+.hide-mobile-nav .h-screen {
+  height: 100vh !important;
+}
+
+/* Adjust layout height but keep space for bottom nav */
+.hide-mobile-nav [style*="height: calc"] {
+  height: calc(100vh - 72px) !important; /* Leave room for bottom nav */
+  margin-top: 0 !important;
+}
+
+/* Fullscreen playlist styles */
+.playlist-fullscreen {
+  max-height: 100vh !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* Playlist content with appropriate height */
+.playlist-content {
+  height: 100% !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Add safe area inset padding for iOS devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .playlist-content {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+} 

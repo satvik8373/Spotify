@@ -43,3 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Node.js / Web related
+node_modules/
+.next/
+dist/
+
+.vercel
+
+# Environment Files
+.env
+.env.*
+
+# Nested git repository
+Mavrixfy/

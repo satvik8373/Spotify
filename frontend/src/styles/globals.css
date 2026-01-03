@@ -1,0 +1,379 @@
+/* Theme CSS Variables */
+@layer base {
+  :root {
+    --background: 0 0% 70%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 142.1 76.2% 36.3%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    /* Spotify exact colors */
+    /* Main background: #121212 */
+    --background: 0 0% 7.1%;
+    --foreground: 0 0% 100%;
+
+    /* Cards/elevated surfaces: #181818 */
+    --card: 0 0% 9.4%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 9.4%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Spotify Green #1DB954 ~ hsl(141 73% 42%) */
+    --primary: 141 73% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary/muted surfaces: #181818 */
+    --secondary: 0 0% 9.4%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 9.4%;
+    /* Secondary text: #B3B3B3 */
+    --muted-foreground: 0 0% 70%;
+
+    /* Accent uses Spotify Green */
+    --accent: 141 73% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive */
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    /* Border: #282828 */
+    --border: 0 0% 15.7%;
+    --input: 0 0% 15.7%;
+
+    /* Focus ring follows primary */
+    --ring: 141 73% 42%;
+
+    /* Charts */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+/* Mobile nav player color transitions */
+.mobile-nav-glass {
+  transition: background-color 0.5s ease-in-out;
+}
+
+.mobile-player-glass {
+  transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
+}
+
+.mobile-player-glass * {
+  transition: color 0.5s ease-in-out, background-color 0.5s ease-in-out, opacity 0.5s ease-in-out;
+}
+
+/* Marquee animations for long text */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(var(--scroll-distance, -100%));
+  }
+}
+
+.animate-marquee {
+  animation: marquee 10s linear infinite;
+  /* Control timing in component via style prop instead */
+  animation: none;
+}
+
+/* Auto scroll for text that's too long */
+.text-auto-scroll {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+.text-auto-scroll-inner {
+  white-space: nowrap;
+  transition: transform 0.5s ease-out;
+  will-change: transform;
+  display: inline-block;
+  padding-right: 1rem;
+  /* Add some space after text */
+}
+
+/* Improved scrolling animation like Spotify */
+.text-auto-scroll-inner.scrolling {
+  animation: enhanced-spotify-scroll 12s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+  animation-delay: 1s;
+}
+
+/* Make scrolling activate on hover for desktop */
+@media (hover: hover) {
+  .text-auto-scroll:hover .text-auto-scroll-inner.hover\:scrolling {
+    animation: enhanced-spotify-scroll 12s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+    animation-delay: 0.5s;
+  }
+}
+
+/* New Spotify-like scrolling animation with pause at beginning and end */
+@keyframes spotify-scroll {
+
+  0%,
+  5% {
+    transform: translateX(0);
+  }
+
+  45% {
+    transform: translateX(var(--max-scroll, -100%));
+  }
+
+  55% {
+    transform: translateX(var(--max-scroll, -100%));
+  }
+
+  95%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Enhance marquee animation with better timing */
+@keyframes enhanced-spotify-scroll {
+
+  0%,
+  10% {
+    transform: translateX(0);
+  }
+
+  40%,
+  60% {
+    transform: translateX(var(--max-scroll, -100%));
+  }
+
+  90%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Removed liquid glass button styles */
+
+/* Mobile Nav Animation */
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px 0 rgba(74, 222, 128, 0.4);
+    transform: scale(1);
+  }
+
+  50% {
+    box-shadow: 0 0 8px 2px rgba(74, 222, 128, 0.6);
+    transform: scale(1.05);
+  }
+}
+
+.nav-icon-active {
+  animation: pulse-glow 2s infinite;
+  transition: all 0.3s ease;
+}
+
+/* Mini Player Glass Effect */
+.mobile-nav-glass {
+  background-color: rgba(24, 24, 27, 0.85);
+}
+
+/* Liquid Glass Buttons */
+.liquid-glass-button {
+  transition: all 0.3s ease;
+}
+
+.liquid-glass-button:active {
+  transform: scale(0.94);
+}
+
+/* Song title container in player */
+.song-title-container {
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Audio player song title styling */
+.song-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* Single line marquee for song details */
+.single-line-marquee {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Mask effect for the marquee */
+.has-mask {
+  position: relative;
+}
+
+.marquee-mask-left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.5), transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.marquee-mask-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.5), transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Only apply marquee when title overflows */
+.song-title.overflow {
+  animation: enhanced-spotify-scroll 12s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+  animation-delay: 1s;
+  display: inline-block;
+}
+
+/* Theme-specific styles for Spotify app */
+.dark .playback-controls-glass {
+  background: rgba(24, 24, 27, 0.85) !important;
+}
+
+.light .playback-controls-glass {
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Smooth theme transitions */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Base theme-aware scrollbar using CSS variables */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground));
+}
+
+/* Firefox scrollbar */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--muted));
+}
+
+/* Theme-aware scrollbar */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground));
+}
+
+.light ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.light ::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 4px;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground));
+}
+
+/* Spotify-style sidebar scrollbar - Override default */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+  border-radius: 4px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-radius: 4px !important;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35) !important;
+  background-clip: padding-box;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.5) !important;
+  background-clip: padding-box;
+}
+
+/* Firefox scrollbar for sidebar */
+.sidebar-scroll {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent !important;
+}
