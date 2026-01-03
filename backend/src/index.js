@@ -4,18 +4,12 @@ import dotenv from "dotenv";
 // Load environment variables first
 dotenv.config();
 
-
 import fileUpload from "express-fileupload";
 import path from "path";
 import cors from "cors";
-import fs from "fs";
-import { createServer } from "http";
-import cron from "node-cron";
 
 // Import Firebase admin
 import admin from "./config/firebase.js";
-
-import { initializeSocket } from "./lib/socket.js";
 
 import userRoutes from "./routes/user.route.js";
 import authRoutes from "./routes/auth.route.js";
@@ -35,9 +29,6 @@ import jiosaavnRoutes from "./routes/jiosaavn.route.js";
 const __dirname = path.resolve();
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-const httpServer = createServer(app);
-initializeSocket(httpServer);
 
 // CORS configuration with proper credentials support
 const corsOptions = {
@@ -133,20 +124,24 @@ if (!process.env.VERCEL) {
     })
   );
 
-  // cron jobs
-  const tempDir = path.join(process.cwd(), "tmp");
-  cron.schedule("0 * * * *", () => {
-    if (fs.existsSync(tempDir)) {
-      fs.readdir(tempDir, (err, files) => {
-        if (err) {
-          console.log("error", err);
-          return;
-        }
-        for (const file of files) {
-          fs.unlink(path.join(tempDir, file), (err) => {});
+  // Import and setup cron jobs for local development only
+  import("node-cron").then(({ default: cron }) => {
+    import("fs").then(({ default: fs }) => {
+      const tempDir = path.join(process.cwd(), "tmp");
+      cron.schedule("0 * * * *", () => {
+        if (fs.existsSync(tempDir)) {
+          fs.readdir(tempDir, (err, files) => {
+            if (err) {
+              console.log("error", err);
+              return;
+            }
+            for (const file of files) {
+              fs.unlink(path.join(tempDir, file), (err) => {});
+            }
+          });
         }
       });
-    }
+    });
   });
 }
 
@@ -204,10 +199,29 @@ app.use((err, req, res, next) => {
 	});
 });
 
-// Start server
-httpServer.listen(PORT, () => {
-  console.log("Server is running on port " + PORT);
-  console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`Running on Vercel: ${process.env.VERCEL ? 'Yes' : 'No'}`);
-});
+// Start server - different approach for Vercel vs local
+if (process.env.VERCEL) {
+  // For Vercel, export the app directly
+  console.log("Running on Vercel - serverless mode");
+} else {
+  // For local development, create HTTP server with Socket.io
+  import("http").then(({ createServer }) => {
+    const httpServer = createServer(app);
+    
+    // Import and initialize socket.io for local development
+    import("./lib/socket.js").then(({ initializeSocket }) => {
+      initializeSocket(httpServer);
+    }).catch(err => {
+      console.log("Socket.io not available:", err.message);
+    });
+    
+    httpServer.listen(PORT, () => {
+      console.log("Server is running on port " + PORT);
+      console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}`);
+      console.log(`Environment: ${process.env.NODE_ENV}`);
+      console.log(`Running on Vercel: ${process.env.VERCEL ? 'Yes' : 'No'}`);
+    });
+  });
+}
+
+export default app;
