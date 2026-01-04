@@ -46,8 +46,21 @@ try {
       cwd: frontendDir 
     });
     
-    // No need to copy - Vercel will use frontend/dist directly
-    console.log('Build completed successfully! Output in frontend/dist');
+    // Copy build output to root dist directory for Vercel
+    const distDir = path.join(rootDir, 'dist');
+    const frontendDistDir = path.join(frontendDir, 'dist');
+    
+    if (fs.existsSync(frontendDistDir)) {
+      console.log('Copying build output to root dist directory...');
+      if (!fs.existsSync(distDir)) {
+        fs.mkdirSync(distDir, { recursive: true });
+      }
+      copyDir(frontendDistDir, distDir);
+      console.log('Build completed successfully! Output copied to dist/');
+    } else {
+      console.error('Build output not found at:', frontendDistDir);
+      process.exit(1);
+    }
   } else {
     console.error('No frontend directory found!');
     console.log('Current directory structure:');
