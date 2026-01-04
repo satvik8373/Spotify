@@ -12,7 +12,7 @@ import path from "path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import { VitePWA } from 'vite-plugin-pwa';
-import { compression } from 'vite-plugin-compression2';
+// Compression removed - Vercel handles compression automatically
 
 export default defineConfig(({ mode }) => {
 	// Load environment variables
@@ -30,12 +30,16 @@ export default defineConfig(({ mode }) => {
 	return {
 		plugins: [
 			react(),
-			VitePWA({
+			// Only enable PWA in production builds, use faster mode for Vercel
+			...(mode === 'production' ? [VitePWA({
 				registerType: 'autoUpdate',
+				strategies: 'generateSW', // Faster than injectManifest
 				workbox: {
 					globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,avif}'],
 					// Exclude audio files from precaching
 					globIgnores: ['**/*.{mp3,mp4,m4a,aac,ogg,wav,flac}'],
+					// Optimize for faster builds
+					maximumFileSizeToCacheInBytes: 5000000, // 5MB limit
 					runtimeCaching: [
 						{
 							urlPattern: /^https:\/\/res\.cloudinary\.com\/.*/i,
@@ -112,15 +116,9 @@ export default defineConfig(({ mode }) => {
 						}
 					]
 				}
-			}),
-			compression({
-				algorithms: ['gzip'],
-				exclude: [/\.(br)$/, /\.(gz)$/],
-			}),
-			compression({
-				algorithms: ['brotliCompress'],
-				exclude: [/\.(br)$/, /\.(gz)$/],
-			}),
+			})] : []),
+			// Remove compression plugins - Vercel handles compression automatically
+			// This saves significant build time
 		],
 		base: '/',
 		resolve: {
@@ -158,9 +156,9 @@ export default defineConfig(({ mode }) => {
 			outDir: "dist",
 			assetsDir: "assets",
 			sourcemap: false,
-			minify: 'esbuild',
+			minify: 'esbuild', // Fastest minifier
 			cssCodeSplit: true,
-			modulePreload: { polyfill: true },
+			modulePreload: { polyfill: false }, // Disable for faster builds
 			target: 'es2018',
 			commonjsOptions: { transformMixedEsModules: true },
 			rollupOptions: {
@@ -186,8 +184,10 @@ export default defineConfig(({ mode }) => {
 					assetFileNames: 'assets/[ext]/[name]-[hash].[ext]'
 				}
 			},
-			chunkSizeWarningLimit: 1000,
 			assetsInlineLimit: 4096, // Inline small assets as base64
+			// Optimize for faster builds
+			reportCompressedSize: false, // Skip compressed size calculation (saves time)
+			chunkSizeWarningLimit: 1000,
 		},
 		define: {
 			'process.env.VITE_API_URL': JSON.stringify(apiUrl),
