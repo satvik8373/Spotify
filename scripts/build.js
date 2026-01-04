@@ -40,27 +40,24 @@ try {
   if (fs.existsSync(frontendDir)) {
     console.log('Frontend directory found, building project...');
     
-    // Build the frontend (use vercel-build for faster builds without TypeScript check)
-    execSync('npm run vercel-build', { 
+    // Build the frontend
+    execSync('npm run build', { 
       stdio: 'inherit',
       cwd: frontendDir 
     });
     
-    // Copy build output to root dist directory for Vercel
+    // Create dist directory in root
     const distDir = path.join(rootDir, 'dist');
-    const frontendDistDir = path.join(frontendDir, 'dist');
-    
-    if (fs.existsSync(frontendDistDir)) {
-      console.log('Copying build output to root dist directory...');
-      if (!fs.existsSync(distDir)) {
-        fs.mkdirSync(distDir, { recursive: true });
-      }
-      copyDir(frontendDistDir, distDir);
-      console.log('Build completed successfully! Output copied to dist/');
-    } else {
-      console.error('Build output not found at:', frontendDistDir);
-      process.exit(1);
+    if (!fs.existsSync(distDir)) {
+      fs.mkdirSync(distDir, { recursive: true });
     }
+    
+    // Copy the frontend build to the root dist directory
+    console.log('Copying build files to root dist directory...');
+    const frontendDistDir = path.join(frontendDir, 'dist');
+    copyDir(frontendDistDir, distDir);
+    
+    console.log('Build completed successfully!');
   } else {
     console.error('No frontend directory found!');
     console.log('Current directory structure:');

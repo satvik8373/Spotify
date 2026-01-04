@@ -12,7 +12,7 @@ import path from "path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import { VitePWA } from 'vite-plugin-pwa';
-// Compression removed - Vercel handles compression automatically
+import { compression } from 'vite-plugin-compression2';
 
 export default defineConfig(({ mode }) => {
 	// Load environment variables
@@ -30,16 +30,12 @@ export default defineConfig(({ mode }) => {
 	return {
 		plugins: [
 			react(),
-			// Only enable PWA in production builds, use faster mode for Vercel
-			...(mode === 'production' ? [VitePWA({
+			VitePWA({
 				registerType: 'autoUpdate',
-				strategies: 'generateSW', // Faster than injectManifest
 				workbox: {
 					globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,avif}'],
 					// Exclude audio files from precaching
 					globIgnores: ['**/*.{mp3,mp4,m4a,aac,ogg,wav,flac}'],
-					// Optimize for faster builds
-					maximumFileSizeToCacheInBytes: 5000000, // 5MB limit
 					runtimeCaching: [
 						{
 							urlPattern: /^https:\/\/res\.cloudinary\.com\/.*/i,
@@ -116,9 +112,15 @@ export default defineConfig(({ mode }) => {
 						}
 					]
 				}
-			})] : []),
-			// Remove compression plugins - Vercel handles compression automatically
-			// This saves significant build time
+			}),
+			compression({
+				algorithms: ['gzip'],
+				exclude: [/\.(br)$/, /\.(gz)$/],
+			}),
+			compression({
+				algorithms: ['brotliCompress'],
+				exclude: [/\.(br)$/, /\.(gz)$/],
+			}),
 		],
 		base: '/',
 		resolve: {
@@ -156,38 +158,25 @@ export default defineConfig(({ mode }) => {
 			outDir: "dist",
 			assetsDir: "assets",
 			sourcemap: false,
-			minify: 'esbuild', // Fastest minifier
+			minify: 'esbuild',
 			cssCodeSplit: true,
-			modulePreload: { polyfill: false }, // Disable for faster builds
+			modulePreload: { polyfill: true },
 			target: 'es2018',
 			commonjsOptions: { transformMixedEsModules: true },
 			rollupOptions: {
 				output: {
-					manualChunks: (id) => {
-						// Vendor chunk for React and core libraries
-						if (id.includes('node_modules')) {
-							if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-								return 'vendor-react';
-							}
-							if (id.includes('firebase')) {
-								return 'vendor-firebase';
-							}
-							if (id.includes('@mui') || id.includes('@emotion')) {
-								return 'vendor-ui';
-							}
-							// Other node_modules
-							return 'vendor';
-						}
-					},
-					chunkFileNames: 'assets/js/[name]-[hash].js',
-					entryFileNames: 'assets/js/[name]-[hash].js',
-					assetFileNames: 'assets/[ext]/[name]-[hash].[ext]'
+					manualChunks: {
+						vendor: [
+							'react', 
+							'react-dom', 
+							'react-router-dom',
+							'zustand'
+						]
+					}
 				}
 			},
-			assetsInlineLimit: 4096, // Inline small assets as base64
-			// Optimize for faster builds
-			reportCompressedSize: false, // Skip compressed size calculation (saves time)
 			chunkSizeWarningLimit: 1000,
+			assetsInlineLimit: 4096, // Inline small assets as base64
 		},
 		define: {
 			'process.env.VITE_API_URL': JSON.stringify(apiUrl),

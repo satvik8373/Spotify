@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 
 import axios from "axios";
-import { auth } from './firebase';
+// Avoid importing Firebase eagerly to keep initial bundle small
+// We'll lazy-import inside the interceptor
 
 // Get API URL from environment variables or fallback to default
 const RAW_API_URL = import.meta.env.VITE_API_URL || "";
@@ -45,8 +46,9 @@ export const setAuthToken = (token: string | null) => {
 // Add request interceptor
 axiosInstance.interceptors.request.use(
 	async (config) => {
-		// Get token from Firebase for each request
+		// Get token from Firebase for each request (lazy import to avoid eager Firebase load)
 		try {
+			const { auth } = await import('./firebase');
 			if (auth.currentUser) {
 				const token = await auth.currentUser.getIdToken(true);
 				config.headers.Authorization = `Bearer ${token}`;
