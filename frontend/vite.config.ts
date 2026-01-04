@@ -165,14 +165,25 @@ export default defineConfig(({ mode }) => {
 			commonjsOptions: { transformMixedEsModules: true },
 			rollupOptions: {
 				output: {
-					manualChunks: {
-						vendor: [
-							'react', 
-							'react-dom', 
-							'react-router-dom',
-							'zustand'
-						]
-					}
+					manualChunks: (id) => {
+						// Vendor chunk for React and core libraries
+						if (id.includes('node_modules')) {
+							if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+								return 'vendor-react';
+							}
+							if (id.includes('firebase')) {
+								return 'vendor-firebase';
+							}
+							if (id.includes('@mui') || id.includes('@emotion')) {
+								return 'vendor-ui';
+							}
+							// Other node_modules
+							return 'vendor';
+						}
+					},
+					chunkFileNames: 'assets/js/[name]-[hash].js',
+					entryFileNames: 'assets/js/[name]-[hash].js',
+					assetFileNames: 'assets/[ext]/[name]-[hash].[ext]'
 				}
 			},
 			chunkSizeWarningLimit: 1000,
