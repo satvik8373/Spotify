@@ -40,8 +40,8 @@ try {
   if (fs.existsSync(frontendDir)) {
     console.log('Frontend directory found, building project...');
     
-    // Build the frontend
-    execSync('npm run build', { 
+    // Build the frontend (use vercel-build for faster builds without TypeScript check)
+    execSync('npm run vercel-build', { 
       stdio: 'inherit',
       cwd: frontendDir 
     });

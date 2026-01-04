@@ -15,9 +15,9 @@ try {
   
   if (fs.existsSync(frontendDir)) {
     console.log('Frontend directory found, installing dependencies...');
-    execSync('cd frontend && npm install', { 
+    execSync('npm install', { 
       stdio: 'inherit',
-      cwd: rootDir
+      cwd: frontendDir
     });
   } else {
     console.log('No frontend directory found at:', frontendDir);
