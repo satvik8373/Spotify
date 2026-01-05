@@ -56,69 +56,17 @@ spotifyApi.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Intercept responses to handle auth errors with retry
+// Intercept responses to handle auth errors
 spotifyApi.interceptors.response.use(
   (response) => {
     return response;
   },
-  async (error) => {
-    const originalRequest = error.config;
-    
-    // If we get a 401 and haven't retried yet, try to refresh the token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (refreshToken) {
-        try {
-          console.log('Got 401, attempting token refresh...');
-          const response = await axios.post(
-            SPOTIFY_TOKEN_URL,
-            new URLSearchParams({
-              grant_type: 'refresh_token',
-              refresh_token: refreshToken,
-              client_id: CLIENT_ID,
-              client_secret: CLIENT_SECRET,
-            }),
-            {
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-            }
-          );
-          
-          if (response.data) {
-            const { access_token, expires_in, refresh_token: newRefreshToken } = response.data;
-            const newExpiry = Date.now() + expires_in * 1000;
-            
-            localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
-            localStorage.setItem(TOKEN_EXPIRY_KEY, newExpiry.toString());
-            if (newRefreshToken) {
-              localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
-            }
-            
-            console.log('Token refresh successful, retrying request...');
-            
-            // Update the authorization header and retry
-            originalRequest.headers.Authorization = `Bearer ${access_token}`;
-            return spotifyApi(originalRequest);
-          }
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          logout();
-          return Promise.reject(error);
-        }
-      } else {
-        logout();
-      }
-    }
-    
+  (error) => {
     // If we get a 403, the token is invalid - clear it
     if (error.response?.status === 403) {
       console.log('Spotify API returned 403 - clearing invalid tokens');
       logout();
     }
-    
     return Promise.reject(error);
   }
 );
@@ -267,65 +215,15 @@ export const isAuthenticated = (): boolean => {
     return false;
   }
   
-  const expiryTime = parseInt(expiry, 10);
-  const now = Date.now();
+  const isValid = Date.now() < parseInt(expiry, 10);
   
-  // Check if token is expired
-  if (now >= expiryTime) {
-    console.log('Token expired, attempting refresh...');
-    // Don't logout immediately - try to refresh first
-    // The getAccessToken function will handle refresh
-    return false;
+  // If token is expired, clear it
+  if (!isValid) {
+    console.log('Token expired, clearing...');
+    logout();
   }
   
-  // Proactively refresh if token expires in less than 5 minutes
-  const fiveMinutes = 5 * 60 * 1000;
-  if (expiryTime - now < fiveMinutes) {
-    console.log('Token expiring soon, triggering background refresh...');
-    // Trigger background refresh without blocking
-    refreshTokenInBackground();
-  }
-  
-  return true;
-};
-
-// Background token refresh
-const refreshTokenInBackground = async (): Promise<void> => {
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-  if (!refreshToken) return;
-  
-  try {
-    const response = await axios.post(
-      SPOTIFY_TOKEN_URL,
-      new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
-    
-    if (response.data) {
-      const { access_token, expires_in, refresh_token: newRefreshToken } = response.data;
-      const newExpiry = Date.now() + expires_in * 1000;
-      
-      localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
-      localStorage.setItem(TOKEN_EXPIRY_KEY, newExpiry.toString());
-      if (newRefreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
-      }
-      
-      console.log('Background token refresh successful');
-    }
-  } catch (error) {
-    console.error('Background token refresh failed:', error);
-    // Don't logout on background refresh failure - let the next API call handle it
-  }
+  return isValid;
 };
 
 const getAccessToken = async (): Promise<string | null> => {
@@ -656,98 +554,6 @@ export const debugAuthenticationState = (): void => {
   console.log('=== End Debug ===');
 };
 
-// Check Spotify connection status from backend (Firestore)
-export const checkSpotifyConnectionStatus = async (userId: string): Promise<{
-  connected: boolean;
-  spotifyUser?: {
-    id: string;
-    displayName: string;
-    email: string;
-    imageUrl?: string;
-  };
-  expiresAt?: number;
-}> => {
-  try {
-    const response = await api.get(`/api/spotify/connection-status/${userId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error checking Spotify connection status:', error);
-    return { connected: false };
-  }
-};
-
-// Restore Spotify tokens from backend (Firestore) to localStorage
-export const restoreSpotifyTokensFromBackend = async (userId: string): Promise<boolean> => {
-  try {
-    const response = await api.get(`/api/spotify/tokens/${userId}`);
-    
-    if (response.data && response.data.access_token) {
-      const { access_token, expires_at } = response.data;
-      
-      // Store in localStorage
-      localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
-      localStorage.setItem(TOKEN_EXPIRY_KEY, expires_at.toString());
-      
-      console.log('Restored Spotify tokens from backend');
-      
-      // Notify app about auth change
-      try { window.dispatchEvent(new Event('spotify_auth_changed')); } catch {}
-      
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Error restoring Spotify tokens:', error);
-    return false;
-  }
-};
-
-// Trigger manual sync from backend
-export const triggerSpotifySync = async (userId: string): Promise<{
-  success: boolean;
-  total?: number;
-  added?: number;
-  updated?: number;
-  removed?: number;
-}> => {
-  try {
-    const response = await api.post('/api/spotify/sync', { userId });
-    return { success: true, ...response.data };
-  } catch (error) {
-    console.error('Error triggering Spotify sync:', error);
-    return { success: false };
-  }
-};
-
-// Get sync status from backend
-export const getSpotifySyncStatus = async (userId: string): Promise<{
-  hasSynced: boolean;
-  lastSyncAt?: Date;
-  syncStatus: string;
-  totalSongs?: number;
-  error?: string;
-}> => {
-  try {
-    const response = await api.get(`/api/spotify/sync-status/${userId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error getting sync status:', error);
-    return { hasSynced: false, syncStatus: 'error' };
-  }
-};
-
-// Disconnect Spotify
-export const disconnectSpotify = async (userId: string): Promise<boolean> => {
-  try {
-    await api.delete(`/api/spotify/disconnect/${userId}`);
-    logout(); // Clear local tokens
-    return true;
-  } catch (error) {
-    console.error('Error disconnecting Spotify:', error);
-    return false;
-  }
-};
-
 export default {
   getLoginUrl,
   handleCallback,
@@ -772,9 +578,4 @@ export default {
   playTrack,
   debugTokenState,
   debugAuthenticationState,
-  checkSpotifyConnectionStatus,
-  restoreSpotifyTokensFromBackend,
-  triggerSpotifySync,
-  getSpotifySyncStatus,
-  disconnectSpotify,
 }; 

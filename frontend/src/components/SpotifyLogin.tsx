@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Music2, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
-import { getLoginUrl, isAuthenticated as isSpotifyAuthenticated, logout as spotifyLogout, restoreSpotifyTokensFromBackend, checkSpotifyConnectionStatus } from '@/services/spotifyService';
+import { Music2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { getLoginUrl, isAuthenticated as isSpotifyAuthenticated, logout as spotifyLogout } from '@/services/spotifyService';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/stores/useAuthStore';
 
 interface SpotifyLoginProps {
   className?: string;
@@ -17,10 +16,8 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
   size = 'default'
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const [isAuth, setIsAuth] = useState<boolean>(false);
-  const { userId, isAuthenticated: isUserAuthenticated } = useAuthStore();
 
   // Sync auth state with storage and global events
   useEffect(() => {
@@ -44,38 +41,6 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       clearInterval(interval);
     };
   }, []);
-
-  // Try to restore Spotify connection from backend if user is logged in but Spotify is not connected locally
-  useEffect(() => {
-    const restoreConnection = async () => {
-      // Only try to restore if user is authenticated but Spotify is not connected locally
-      if (!isUserAuthenticated || !userId || isSpotifyAuthenticated()) {
-        return;
-      }
-
-      setIsRestoring(true);
-      try {
-        console.log('Checking Spotify connection status from backend...');
-        const status = await checkSpotifyConnectionStatus(userId);
-        
-        if (status.connected) {
-          console.log('Spotify is connected on backend, restoring tokens...');
-          const restored = await restoreSpotifyTokensFromBackend(userId);
-          if (restored) {
-            console.log('Spotify tokens restored successfully');
-            setIsAuth(true);
-            toast.success('Spotify connection restored');
-          }
-        }
-      } catch (error) {
-        console.error('Error restoring Spotify connection:', error);
-      } finally {
-        setIsRestoring(false);
-      }
-    };
-
-    restoreConnection();
-  }, [isUserAuthenticated, userId]);
 
   // Check configuration on mount
   useEffect(() => {
@@ -144,21 +109,6 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       >
         <AlertCircle className="h-4 w-4" />
         {size !== 'icon' && <span>Configuration Error</span>}
-      </Button>
-    );
-  }
-
-  // Show restoring state
-  if (isRestoring) {
-    return (
-      <Button 
-        disabled
-        className={`bg-[#1DB954] text-white font-bold flex items-center gap-2 ${className}`}
-        variant={variant}
-        size={size}
-      >
-        <RefreshCw className="h-4 w-4 animate-spin" />
-        {size !== 'icon' && <span>Restoring...</span>}
       </Button>
     );
   }

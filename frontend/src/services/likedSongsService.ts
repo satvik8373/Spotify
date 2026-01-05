@@ -174,7 +174,7 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
 /**
  * Add a single song to liked songs in Firestore
  */
-export const addLikedSong = async (song: Song, source: 'mavrixfy' | 'spotify' = 'mavrixfy'): Promise<void> => {
+export const addLikedSong = async (song: Song): Promise<void> => {
   const { isAuthenticated, userId } = useAuthStore.getState();
   
   if (!isAuthenticated || !userId) {
@@ -197,7 +197,7 @@ export const addLikedSong = async (song: Song, source: 'mavrixfy' | 'spotify' = 
       duration: normalizedSong.duration,
       year: normalizedSong.year,
       likedAt: serverTimestamp(),
-      source: source
+      source: 'mavrixfy'
     };
     
     await setDoc(likedSongRef, likedSongData);

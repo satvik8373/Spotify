@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { Song } from '@/types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService, deleteAllLikedSongs, migrateLikedSongsStructure, repairLikedSongsData } from '@/services/syncedLikedSongsService';
+import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService, deleteAllLikedSongs, migrateLikedSongsStructure } from '@/services/syncedLikedSongsService';
 import SpotifySyncPermissionModal from '@/components/SpotifySyncPermissionModal';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
@@ -192,20 +192,6 @@ const LikedSongsPage = () => {
 
     try {
       setIsLoading(true);
-
-      // One-time data repair for existing users (runs once per user)
-      const repairKey = `liked_songs_repaired_v2_${user.id}`;
-      const hasRepaired = getLocalStorage(repairKey);
-      if (!hasRepaired) {
-        try {
-          console.log('🔧 Running one-time data repair...');
-          await repairLikedSongsData(user.id);
-          setLocalStorage(repairKey, 'true');
-          console.log('✅ Data repair completed');
-        } catch (repairError) {
-          console.warn('⚠️ Data repair failed (non-critical):', repairError);
-        }
-      }
 
       // Check if we have valid Spotify auth before making API calls
       const hasValidSpotifyAuth = isSpotifyAuthenticated();

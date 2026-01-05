@@ -162,14 +162,3 @@ export const migrateLikedSongsStructure = async (userId: string) => {
     throw error;
   }
 };
-
-// Repair/normalize existing liked songs data
-export const repairLikedSongsData = async (userId: string) => {
-  try {
-    const response = await axios.post(`/api/spotify/repair/${userId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error repairing liked songs data:', error);
-    throw error;
-  }
-};
