@@ -46,6 +46,8 @@ const corsOptions = {
       const defaultAllowed = [
         'http://localhost:3000',
         'http://localhost:5173',
+        'https://mavrixfy.site',
+        'https://www.mavrixfy.site',
         'https://1d3c38b2f441.ngrok-free.app',
         process.env.FRONTEND_URL || '',
       ].filter(Boolean);
