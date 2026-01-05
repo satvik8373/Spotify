@@ -7,3 +7,6 @@ dist/
 # Environment Files
 .env
 .env.*
+
+# Flutter mobile app (not for Spotify sync repo)
+mavrixfy_flutter/

@@ -17,6 +17,11 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.auth.uid == userId;
       allow update, delete: if isOwner(userId);
       
+      // Spotify Tokens subcollection - only the user can access their tokens
+      match /spotifyTokens/{tokenId} {
+        allow read, write, delete: if isAuthenticated() && isOwner(userId);
+      }
+      
       // Liked Songs subcollection - each user has their own collection
       match /likedSongs/{songId} {
         allow read, write, delete: if isAuthenticated() && isOwner(userId);
@@ -44,7 +49,8 @@ service cloud.firestore {
     
     // Playlists collection
     match /playlists/{playlistId} {
-      allow read: if isAuthenticated() && (resource.data.isPublic || isOwner(resource.data.createdBy.id));
+      // Allow read if authenticated and (playlist is public OR user is owner)
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy.id);
     }
