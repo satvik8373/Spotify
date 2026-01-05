@@ -593,4 +593,112 @@ router.delete("/disconnect/:userId", async (req, res) => {
   }
 });
 
+// Repair/normalize existing liked songs data
+router.post("/repair/:userId", async (req, res) => {
+  const { userId } = req.params;
+  
+  if (!userId) {
+    return res.status(400).json({ 
+      message: "User ID is required"
+    });
+  }
+  
+  try {
+    console.log(`Starting data repair for user: ${userId}`);
+    
+    const likedSongsRef = admin.firestore().collection('users').doc(userId).collection('likedSongs');
+    const snapshot = await likedSongsRef.get();
+    
+    if (snapshot.empty) {
+      return res.json({
+        success: true,
+        message: "No songs to repair",
+        repairedCount: 0
+      });
+    }
+    
+    const BATCH_SIZE = 500;
+    let repairedCount = 0;
+    let batch = admin.firestore().batch();
+    let batchCount = 0;
+    
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const updates = {};
+      let needsUpdate = false;
+      
+      // Ensure id field exists
+      if (!data.id) {
+        updates.id = data.trackId || data.songId || doc.id;
+        needsUpdate = true;
+      }
+      
+      // Ensure songId field exists
+      if (!data.songId) {
+        updates.songId = data.id || data.trackId || doc.id;
+        needsUpdate = true;
+      }
+      
+      // Ensure imageUrl exists (copy from coverUrl if needed)
+      if (!data.imageUrl && data.coverUrl) {
+        updates.imageUrl = data.coverUrl;
+        needsUpdate = true;
+      }
+      
+      // Ensure audioUrl exists (copy from previewUrl if needed)
+      if (!data.audioUrl && data.previewUrl) {
+        updates.audioUrl = data.previewUrl;
+        needsUpdate = true;
+      }
+      
+      // Ensure albumName exists (copy from album if needed)
+      if (!data.albumName && data.album) {
+        updates.albumName = data.album;
+        needsUpdate = true;
+      }
+      
+      // Ensure source field exists
+      if (!data.source) {
+        // If it has spotifyUrl or trackId, it's from Spotify
+        updates.source = (data.spotifyUrl || data.trackId) ? 'spotify' : 'mavrixfy';
+        needsUpdate = true;
+      }
+      
+      if (needsUpdate) {
+        batch.update(doc.ref, updates);
+        repairedCount++;
+        batchCount++;
+        
+        // Commit batch if it reaches the limit
+        if (batchCount >= BATCH_SIZE) {
+          await batch.commit();
+          batch = admin.firestore().batch();
+          batchCount = 0;
+        }
+      }
+    }
+    
+    // Commit remaining updates
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+    
+    console.log(`Repaired ${repairedCount} songs for user: ${userId}`);
+    
+    res.json({
+      success: true,
+      message: `Repaired ${repairedCount} songs`,
+      repairedCount,
+      totalSongs: snapshot.size
+    });
+    
+  } catch (error) {
+    console.error("Error repairing data:", error);
+    res.status(500).json({ 
+      message: "Failed to repair data",
+      error: error.message
+    });
+  }
+});
+
 export default router; 
