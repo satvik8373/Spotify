@@ -1,4 +1,4 @@
-import { getSavedTracks, isAuthenticated as isSpotifyAuthenticated } from '@/services/spotifyService';
+import { getSavedTracks, isAuthenticated as isSpotifyAuthenticated, triggerSpotifySync, getSpotifySyncStatus } from '@/services/spotifyService';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { addLikedSong as addFirestoreLikedSong, Song as FirestoreSong, getLikedSongsCount } from '@/services/likedSongsService';
 import { auth, db } from '@/lib/firebase';
@@ -13,8 +13,10 @@ const SPOTIFY_LAST_SYNC_TS = 'spotify-liked-songs-last-sync';
 
 const toFirestoreSong = (item: any): FirestoreSong => {
   const track = item?.track || item; // support raw track or saved item
+  const trackId = track?.id;
   return {
-    id: track?.id,
+    id: trackId,
+    songId: trackId, // Add songId for consistency
     title: track?.name || 'Unknown Title',
     artist: resolveArtist(track),
     imageUrl: track?.album?.images?.[1]?.url || track?.album?.images?.[0]?.url || '',
@@ -154,4 +156,39 @@ export const backgroundAutoSyncOnce = async (): Promise<SpotifySyncResult | null
 
 export const isSpotifyConnected = (): boolean => isSpotifyAuthenticated();
 
+// Trigger backend sync (recommended for full sync)
+export const triggerBackendSync = async (): Promise<SpotifySyncResult | null> => {
+  if (!auth.currentUser) return null;
+  
+  try {
+    const result = await triggerSpotifySync(auth.currentUser.uid);
+    if (result.success) {
+      // Update local sync timestamp
+      localStorage.setItem(SPOTIFY_LAST_SYNC_TS, Date.now().toString());
+      return {
+        fetchedCount: result.total || 0,
+        syncedCount: result.added || 0
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Backend sync failed:', error);
+    return null;
+  }
+};
 
+// Get sync status from backend
+export const getSyncStatus = async (): Promise<{
+  hasSynced: boolean;
+  lastSyncAt?: Date;
+  totalSongs?: number;
+}> => {
+  if (!auth.currentUser) return { hasSynced: false };
+  
+  try {
+    return await getSpotifySyncStatus(auth.currentUser.uid);
+  } catch (error) {
+    console.error('Error getting sync status:', error);
+    return { hasSynced: false };
+  }
+};

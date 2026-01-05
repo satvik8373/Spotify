@@ -474,4 +474,123 @@ router.post("/migrate/:userId", async (req, res) => {
   }
 });
 
+// Check Spotify connection status for a user
+router.get("/connection-status/:userId", async (req, res) => {
+  const { userId } = req.params;
+  
+  if (!userId) {
+    return res.status(400).json({ 
+      message: "User ID is required",
+      connected: false
+    });
+  }
+  
+  try {
+    const tokens = await getSpotifyTokens(userId);
+    
+    if (!tokens) {
+      return res.json({
+        connected: false,
+        message: "No Spotify connection found"
+      });
+    }
+    
+    // Verify the token is still valid by making a test API call
+    try {
+      const response = await axios.get('https://api.spotify.com/v1/me', {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`
+        }
+      });
+      
+      return res.json({
+        connected: true,
+        spotifyUser: {
+          id: response.data.id,
+          displayName: response.data.display_name,
+          email: response.data.email,
+          imageUrl: response.data.images?.[0]?.url
+        },
+        expiresAt: tokens.expires_at
+      });
+    } catch (apiError) {
+      // Token might be invalid, try to refresh
+      if (apiError.response?.status === 401) {
+        return res.json({
+          connected: false,
+          message: "Spotify token expired and refresh failed"
+        });
+      }
+      throw apiError;
+    }
+  } catch (error) {
+    console.error("Error checking Spotify connection:", error);
+    res.status(500).json({ 
+      connected: false,
+      message: "Failed to check Spotify connection",
+      error: error.message
+    });
+  }
+});
+
+// Get fresh tokens for frontend (with auto-refresh)
+router.get("/tokens/:userId", async (req, res) => {
+  const { userId } = req.params;
+  
+  if (!userId) {
+    return res.status(400).json({ 
+      message: "User ID is required"
+    });
+  }
+  
+  try {
+    const tokens = await getSpotifyTokens(userId);
+    
+    if (!tokens) {
+      return res.status(404).json({
+        message: "No Spotify tokens found for user"
+      });
+    }
+    
+    res.json({
+      access_token: tokens.access_token,
+      expires_at: tokens.expires_at,
+      // Don't send refresh_token to frontend for security
+    });
+  } catch (error) {
+    console.error("Error getting tokens:", error);
+    res.status(500).json({ 
+      message: "Failed to get tokens",
+      error: error.message
+    });
+  }
+});
+
+// Disconnect Spotify (remove tokens)
+router.delete("/disconnect/:userId", async (req, res) => {
+  const { userId } = req.params;
+  
+  if (!userId) {
+    return res.status(400).json({ 
+      message: "User ID is required"
+    });
+  }
+  
+  try {
+    const { removeSpotifyTokens } = await import('../services/spotifyTokenService.js');
+    await removeSpotifyTokens(userId);
+    
+    res.json({
+      success: true,
+      message: "Spotify disconnected successfully"
+    });
+  } catch (error) {
+    console.error("Error disconnecting Spotify:", error);
+    res.status(500).json({ 
+      message: "Failed to disconnect Spotify",
+      error: error.message
+    });
+  }
+});
+
 export default router; 

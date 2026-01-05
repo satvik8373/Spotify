@@ -46,24 +46,46 @@ export const fetchSpotifyLikedSongs = async (userId) => {
   }
 };
 
-// Map Spotify track data to our format
+// Map Spotify track data to our format - consistent with web frontend
 const mapSpotifyTrack = (item) => {
   const track = item.track;
+  const trackId = track.id;
   return {
-    trackId: track.id,
+    // Primary identifiers - consistent with web frontend
+    id: trackId,
+    songId: trackId,
+    trackId: trackId, // Keep for backward compatibility
+    
+    // Song metadata
     title: track.name,
     artist: track.artists.map(artist => artist.name).join(', '),
     album: track.album?.name || '',
-    coverUrl: track.album?.images?.[1]?.url || track.album?.images?.[0]?.url || '',
+    albumName: track.album?.name || '', // Alias for Flutter compatibility
+    
+    // URLs - use consistent field names with web frontend
+    imageUrl: track.album?.images?.[1]?.url || track.album?.images?.[0]?.url || '',
+    coverUrl: track.album?.images?.[1]?.url || track.album?.images?.[0]?.url || '', // Alias
+    audioUrl: track.preview_url || '', // Use preview_url as audioUrl
+    previewUrl: track.preview_url || '',
     spotifyUrl: track.external_urls?.spotify || '',
+    
+    // Duration in seconds
     duration: Math.floor(track.duration_ms / 1000),
+    
+    // Timestamps
     addedAt: item.added_at,
+    likedAt: admin.firestore.FieldValue.serverTimestamp(), // For ordering consistency
+    
+    // Source tracking
+    source: 'spotify',
+    
     // Additional metadata
     albumId: track.album?.id,
     artistIds: track.artists.map(artist => artist.id),
     popularity: track.popularity,
-    previewUrl: track.preview_url,
-    // Timestamps
+    year: track.album?.release_date ? String(track.album.release_date).slice(0, 4) : '',
+    
+    // Sync timestamp
     syncedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 };
@@ -85,53 +107,89 @@ export const syncSpotifyLikedSongs = async (userId) => {
       existingSongs.set(doc.id, doc.data());
     });
 
-    // Process new songs
-    const batch = admin.firestore().batch();
+    // Process new songs - use batched writes for better performance
+    const BATCH_SIZE = 500;
     let addedCount = 0;
     let updatedCount = 0;
-    let removedCount = 0;
+    let skippedCount = 0;
 
-    // Add/update songs from Spotify
-    for (const item of spotifyLikedSongs) {
-      const trackData = mapSpotifyTrack(item);
-      // No need to add userId since it's now in the path
+    // Process in batches
+    for (let i = 0; i < spotifyLikedSongs.length; i += BATCH_SIZE) {
+      const batch = admin.firestore().batch();
+      const batchItems = spotifyLikedSongs.slice(i, i + BATCH_SIZE);
       
-      const trackRef = existingRef.doc(trackData.trackId);
-      
-      if (existingSongs.has(trackData.trackId)) {
-        // Update existing song
-        batch.update(trackRef, {
-          ...trackData,
-          syncedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        updatedCount++;
-      } else {
-        // Add new song
-        batch.set(trackRef, trackData);
-        addedCount++;
+      for (const item of batchItems) {
+        const trackData = mapSpotifyTrack(item);
+        const trackId = trackData.id;
+        
+        // Use the track ID as document ID for consistency
+        const trackRef = existingRef.doc(trackId);
+        
+        if (existingSongs.has(trackId)) {
+          // Check if it's a manual like (source: mavrixfy) - don't overwrite
+          const existingData = existingSongs.get(trackId);
+          if (existingData.source === 'mavrixfy') {
+            skippedCount++;
+            existingSongs.delete(trackId);
+            continue;
+          }
+          
+          // Update existing Spotify song
+          batch.update(trackRef, {
+            ...trackData,
+            syncedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          updatedCount++;
+        } else {
+          // Add new song
+          batch.set(trackRef, trackData);
+          addedCount++;
+        }
+        
+        // Remove from existing songs map (to track what's been processed)
+        existingSongs.delete(trackId);
       }
       
-      // Remove from existing songs map
-      existingSongs.delete(trackData.trackId);
+      // Commit this batch
+      await batch.commit();
+      console.log(`Processed batch ${Math.floor(i / BATCH_SIZE) + 1}, added: ${addedCount}, updated: ${updatedCount}`);
     }
 
-    // Remove songs that are no longer liked
+    // Don't remove songs that are no longer in Spotify - they might be manual likes
+    // Only remove songs that were synced from Spotify and are no longer there
+    let removedCount = 0;
+    const removeBatch = admin.firestore().batch();
+    let removeCount = 0;
+    
     for (const [trackId, songData] of existingSongs) {
-      batch.delete(existingRef.doc(trackId));
-      removedCount++;
+      // Only remove if it was a Spotify sync (not manual like)
+      if (songData.source === 'spotify') {
+        removeBatch.delete(existingRef.doc(trackId));
+        removedCount++;
+        removeCount++;
+        
+        // Commit in batches
+        if (removeCount >= BATCH_SIZE) {
+          await removeBatch.commit();
+          removeCount = 0;
+        }
+      }
     }
-
-    // Commit the batch
-    await batch.commit();
+    
+    // Commit remaining removes
+    if (removeCount > 0) {
+      await removeBatch.commit();
+    }
 
     // Update sync metadata
     const syncMetadataRef = admin.firestore().collection('users').doc(userId).collection('spotifySync').doc('metadata');
     await syncMetadataRef.set({
       lastSyncAt: admin.firestore.FieldValue.serverTimestamp(),
-      totalSongs: spotifyLikedSongs.length,
+      totalSpotifySongs: spotifyLikedSongs.length,
       addedCount,
       updatedCount,
       removedCount,
+      skippedCount,
       syncStatus: 'completed'
     });
 
@@ -139,14 +197,16 @@ export const syncSpotifyLikedSongs = async (userId) => {
       total: spotifyLikedSongs.length,
       added: addedCount,
       updated: updatedCount,
-      removed: removedCount
+      removed: removedCount,
+      skipped: skippedCount
     });
 
     return {
       total: spotifyLikedSongs.length,
       added: addedCount,
       updated: updatedCount,
-      removed: removedCount
+      removed: removedCount,
+      skipped: skippedCount
     };
   } catch (error) {
     console.error('Error syncing Spotify liked songs:', error);
