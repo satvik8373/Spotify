@@ -20,7 +20,7 @@ const Register = () => {
 
   // Redirect if already authenticated
   useEffect(() => {
-    // Check both context auth and localStorage
+  
     const hasLocalAuth = localStorage.getItem('auth-store') && 
       JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated;
     

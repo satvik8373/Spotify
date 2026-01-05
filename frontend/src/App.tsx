@@ -21,7 +21,7 @@ const About = lazy(() => import('./pages/About'));
 // import SharedSongPage from './pages/SharedSongPage';
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-// @ts-ignore
+//
 const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
