@@ -107,7 +107,7 @@ export const handleCallback = async (code: string, userId?: string): Promise<boo
   try {
     // Use backend route to exchange code for tokens (safer)
     console.log('🔄 Attempting backend token exchange...');
-    const response = await api.post('/api/spotify/callback', {
+    const response = await api.post('/spotify/callback', {
       code,
       redirect_uri: REDIRECT_URI,
       userId

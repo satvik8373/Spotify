@@ -14,7 +14,7 @@ const isProduction = window.location.hostname === 'mavrixfy.site' ||
 // Prefer explicit VITE_API_URL; otherwise fallback by environment
 const FINAL_API_URL = RAW_API_URL
   ? RAW_API_URL
-  : (isProduction ? 'https://mavrixfy.site' : 'http://localhost:5000');
+  : (isProduction ? 'https://spotify-api-drab.vercel.app/api' : 'http://localhost:5000');
 
 // Remove trailing slash and ensure proper formatting
 const cleanApiUrl = FINAL_API_URL.replace(/\/$/, '');
