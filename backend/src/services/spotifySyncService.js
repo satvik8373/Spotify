@@ -3,30 +3,73 @@ import { getSpotifyTokens } from './spotifyTokenService.js';
 
 const db = admin.firestore();
 
-// Fetch all liked songs from Spotify
-export const fetchSpotifyLikedSongs = async (userId) => {
+// Delay helper for handling Spotify's server-side caching
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Fetch all liked songs from Spotify with cache-busting
+export const fetchSpotifyLikedSongs = async (userId, options = {}) => {
+  const { 
+    initialDelay = 0,  // Delay before first fetch (for post-OAuth sync)
+    retryCount = 3,    // Number of retries on failure
+    retryDelay = 2000  // Delay between retries
+  } = options;
+
   try {
     const tokens = await getSpotifyTokens(userId);
     if (!tokens) {
       throw new Error('No valid Spotify tokens found');
     }
 
+    // Apply initial delay if specified (helps with Spotify's server-side caching)
+    if (initialDelay > 0) {
+      console.log(`⏳ Waiting ${initialDelay}ms before fetching liked songs (Spotify cache delay)...`);
+      await delay(initialDelay);
+    }
+
     const axios = (await import('axios')).default;
     const likedSongs = [];
     let offset = 0;
     const limit = 50;
+    let attempt = 0;
 
-    // Paginate through all liked songs
+    // Paginate through all liked songs with retry logic
     while (true) {
-      const response = await axios.get('https://api.spotify.com/v1/me/tracks', {
-        headers: {
-          'Authorization': `Bearer ${tokens.access_token}`,
-        },
-        params: {
-          limit,
-          offset,
-        },
-      });
+      let response;
+      let lastError;
+
+      // Retry logic for each page
+      for (attempt = 0; attempt < retryCount; attempt++) {
+        try {
+          // Add cache-busting timestamp to prevent stale responses
+          const timestamp = Date.now();
+          
+          response = await axios.get('https://api.spotify.com/v1/me/tracks', {
+            headers: {
+              'Authorization': `Bearer ${tokens.access_token}`,
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0',
+            },
+            params: {
+              limit,
+              offset,
+              _t: timestamp, // Cache-busting parameter
+            },
+          });
+          break; // Success, exit retry loop
+        } catch (error) {
+          lastError = error;
+          console.warn(`⚠️ Fetch attempt ${attempt + 1}/${retryCount} failed for offset ${offset}:`, error.message);
+          
+          if (attempt < retryCount - 1) {
+            await delay(retryDelay);
+          }
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error('Failed to fetch liked songs after retries');
+      }
 
       const items = response.data.items;
       if (!items || items.length === 0) break;
@@ -34,16 +77,30 @@ export const fetchSpotifyLikedSongs = async (userId) => {
       likedSongs.push(...items);
       offset += items.length;
 
-      // Break if we got fewer items than requested (end of list)
+      // Check if we've reached the end using the 'next' field (more reliable)
+      if (!response.data.next) {
+        console.log(`📄 Reached end of liked songs (next is null)`);
+        break;
+      }
+
+      // Also break if we got fewer items than requested (fallback check)
       if (items.length < limit) break;
+
+      // Small delay between pages to avoid rate limiting
+      await delay(100);
     }
 
-    console.log(`Fetched ${likedSongs.length} liked songs for user: ${userId}`);
+    console.log(`✅ Fetched ${likedSongs.length} liked songs for user: ${userId}`);
     return likedSongs;
   } catch (error) {
-    console.error('Error fetching Spotify liked songs:', error);
+    console.error('❌ Error fetching Spotify liked songs:', error);
     throw error;
   }
+};
+
+// Fetch liked songs with initial delay (for post-OAuth sync)
+export const fetchSpotifyLikedSongsWithDelay = async (userId, delayMs = 4000) => {
+  return fetchSpotifyLikedSongs(userId, { initialDelay: delayMs });
 };
 
 // Map Spotify track data to our format
@@ -69,12 +126,15 @@ const mapSpotifyTrack = (item) => {
 };
 
 // Sync liked songs to Firestore
-export const syncSpotifyLikedSongs = async (userId) => {
+export const syncSpotifyLikedSongs = async (userId, options = {}) => {
+  const { isInitialSync = false } = options;
+  
   try {
-    console.log(`Starting Spotify sync for user: ${userId}`);
+    console.log(`🔄 Starting Spotify sync for user: ${userId} (initial: ${isInitialSync})`);
     
-    // Fetch current liked songs from Spotify
-    const spotifyLikedSongs = await fetchSpotifyLikedSongs(userId);
+    // For initial sync after OAuth, add delay to handle Spotify's server-side caching
+    const fetchOptions = isInitialSync ? { initialDelay: 4000 } : {};
+    const spotifyLikedSongs = await fetchSpotifyLikedSongs(userId, fetchOptions);
     
     // Get existing liked songs from Firestore (new nested structure)
     const existingRef = admin.firestore().collection('users').doc(userId).collection('likedSongs');
@@ -135,7 +195,7 @@ export const syncSpotifyLikedSongs = async (userId) => {
       syncStatus: 'completed'
     });
 
-    console.log(`Spotify sync completed for user: ${userId}`, {
+    console.log(`✅ Spotify sync completed for user: ${userId}`, {
       total: spotifyLikedSongs.length,
       added: addedCount,
       updated: updatedCount,
@@ -146,10 +206,11 @@ export const syncSpotifyLikedSongs = async (userId) => {
       total: spotifyLikedSongs.length,
       added: addedCount,
       updated: updatedCount,
-      removed: removedCount
+      removed: removedCount,
+      isInitialSync
     };
   } catch (error) {
-    console.error('Error syncing Spotify liked songs:', error);
+    console.error('❌ Error syncing Spotify liked songs:', error);
     
     // Update sync metadata with error
     const syncMetadataRef = admin.firestore().collection('users').doc(userId).collection('spotifySync').doc('metadata');

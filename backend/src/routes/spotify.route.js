@@ -93,10 +93,11 @@ router.post("/callback", async (req, res) => {
     await storeSpotifyTokens(userId, tokenData);
     console.log("✅ Tokens stored in Firestore");
     
-    // Perform initial sync
+    // Perform initial sync with delay to handle Spotify's server-side caching
+    // This is critical: Spotify's API may return stale data immediately after OAuth
     try {
-      console.log("🔄 Starting initial sync...");
-      await syncSpotifyLikedSongs(userId);
+      console.log("🔄 Starting initial sync (with 4s delay for Spotify cache)...");
+      await syncSpotifyLikedSongs(userId, { isInitialSync: true });
       console.log("✅ Initial sync completed");
     } catch (syncError) {
       console.error("⚠️ Initial sync failed:", syncError);
@@ -140,14 +141,15 @@ router.post("/callback", async (req, res) => {
 
 // Manual sync endpoint
 router.post("/sync", async (req, res) => {
-  const { userId } = req.body;
+  const { userId, isInitialSync } = req.body;
   
   if (!userId) {
     return res.status(400).json({ message: "User ID is required" });
   }
   
   try {
-    const result = await syncSpotifyLikedSongs(userId);
+    // Pass isInitialSync flag to apply delay if needed
+    const result = await syncSpotifyLikedSongs(userId, { isInitialSync: !!isInitialSync });
     res.json({ success: true, ...result });
   } catch (error) {
     console.error("Manual sync error:", error);
