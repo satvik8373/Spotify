@@ -1,8 +1,19 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import { resolveArtist } from "@/lib/resolveArtist";
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, serverTimestamp, orderBy, writeBatch } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, serverTimestamp, orderBy, writeBatch } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
 import { updateUserStats } from "./userService";
+
+// Helper to get the current user ID from either auth store or Firebase directly
+const getCurrentUserId = (): string | null => {
+  // First try the auth store
+  const { isAuthenticated, userId } = useAuthStore.getState();
+  if (isAuthenticated && userId) {
+    return userId;
+  }
+  // Fallback to Firebase auth directly
+  return auth.currentUser?.uid || null;
+};
 
 // Type for song objects
 export interface Song {
@@ -84,9 +95,9 @@ const normalizeSong = (song: any): Song => {
  * Save liked songs to Firestore
  */
 export const saveLikedSongs = async (songs: Song[]): Promise<void> => {
-  const { isAuthenticated, userId } = useAuthStore.getState();
+  const userId = getCurrentUserId();
   
-  if (!isAuthenticated || !userId) {
+  if (!userId) {
     console.warn('User not authenticated, cannot save to Firestore');
     return;
   }
@@ -131,9 +142,9 @@ export const saveLikedSongs = async (songs: Song[]): Promise<void> => {
  * Load liked songs from Firestore
  */
 export const loadLikedSongs = async (): Promise<Song[]> => {
-  const { isAuthenticated, userId } = useAuthStore.getState();
+  const userId = getCurrentUserId();
   
-  if (!isAuthenticated || !userId) {
+  if (!userId) {
     console.warn('User not authenticated, cannot load from Firestore');
     return [];
   }
@@ -162,7 +173,7 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
       });
     });
     
-    console.log(`Loaded ${songs.length} liked songs from Firestore`);
+    console.log(`Loaded ${songs.length} liked songs from Firestore for user ${userId}`);
     return songs;
     
   } catch (error) {
@@ -175,9 +186,9 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
  * Add a single song to liked songs in Firestore
  */
 export const addLikedSong = async (song: Song): Promise<void> => {
-  const { isAuthenticated, userId } = useAuthStore.getState();
+  const userId = getCurrentUserId();
   
-  if (!isAuthenticated || !userId) {
+  if (!userId) {
     console.warn('User not authenticated, cannot add to Firestore');
     return;
   }
@@ -219,9 +230,9 @@ export const addLikedSong = async (song: Song): Promise<void> => {
  * Remove a song from liked songs in Firestore
  */
 export const removeLikedSong = async (songId: string): Promise<void> => {
-  const { isAuthenticated, userId } = useAuthStore.getState();
+  const userId = getCurrentUserId();
   
-  if (!isAuthenticated || !userId) {
+  if (!userId) {
     console.warn('User not authenticated, cannot remove from Firestore');
     return;
   }
@@ -254,9 +265,9 @@ export const removeLikedSong = async (songId: string): Promise<void> => {
  * Check if a song is liked by querying Firestore
  */
 export const isSongLiked = async (songId: string): Promise<boolean> => {
-  const { isAuthenticated, userId } = useAuthStore.getState();
+  const userId = getCurrentUserId();
   
-  if (!isAuthenticated || !userId) {
+  if (!userId) {
     return false;
   }
   
@@ -276,9 +287,9 @@ export const isSongLiked = async (songId: string): Promise<boolean> => {
  * Get all liked songs count from Firestore
  */
 export const getLikedSongsCount = async (): Promise<number> => {
-  const { isAuthenticated, userId } = useAuthStore.getState();
+  const userId = getCurrentUserId();
   
-  if (!isAuthenticated || !userId) {
+  if (!userId) {
     return 0;
   }
 

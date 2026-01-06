@@ -3,6 +3,14 @@ import { persist } from 'zustand/middleware';
 import { Song } from '../types';
 import * as likedSongsFirestoreService from '@/services/likedSongsService';
 import { useAuthStore } from './useAuthStore';
+import { auth } from '@/lib/firebase';
+
+// Helper to check if user is authenticated
+const isUserAuthenticated = (): boolean => {
+  const storeAuth = useAuthStore.getState().isAuthenticated;
+  const firebaseAuth = !!auth.currentUser;
+  return storeAuth || firebaseAuth;
+};
 
 // Define a helper type for conversion between types
 type FirestoreSong = likedSongsFirestoreService.Song;
@@ -84,7 +92,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
 
         try {
           let songs: Song[] = [];
-          const isAuthenticated = useAuthStore.getState().isAuthenticated;
+          const isAuthenticated = isUserAuthenticated();
 
           // Try Firestore first if user is authenticated
           if (isAuthenticated) {
@@ -92,6 +100,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
               // Fetch from Firestore sorted by most recent first
               const firebaseSongs = await likedSongsFirestoreService.loadLikedSongs();
               songs = firebaseSongs.map(convertToLocalSong);
+              console.log(`Loaded ${songs.length} songs from Firestore`);
             } catch (firebaseError) {
               console.warn('Failed to load from Firebase, falling back to local storage', firebaseError);
               // Fall back to local storage if Firestore fails
@@ -171,8 +180,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           localLikedSongsService.addLikedSong(song);
 
           // Update Firestore if user is authenticated - don't await to prevent UI blocking
-          const isAuthenticated = useAuthStore.getState().isAuthenticated;
-          if (isAuthenticated) {
+          if (isUserAuthenticated()) {
             likedSongsFirestoreService.addLikedSong({
               id: songId,
               title: song.title,
@@ -231,8 +239,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           localLikedSongsService.removeLikedSong(songId);
 
           // Update Firestore if user is authenticated - don't await to prevent UI blocking
-          const isAuthenticated = useAuthStore.getState().isAuthenticated;
-          if (isAuthenticated) {
+          if (isUserAuthenticated()) {
             likedSongsFirestoreService.removeLikedSong(songId).catch(() => {
               // Error handled silently
             });
@@ -318,10 +325,32 @@ try {
   }
 } catch { }
 
+// Listen for Firebase auth state changes to reload liked songs
+import { onAuthStateChanged } from 'firebase/auth';
+
+let authUnsubscribe: (() => void) | null = null;
+
+const setupAuthListener = () => {
+  if (authUnsubscribe) return; // Already set up
+  
+  authUnsubscribe = onAuthStateChanged(auth, (user) => {
+    if (user) {
+      console.log('Firebase auth state changed - user logged in, reloading liked songs');
+      // Small delay to ensure Firestore is ready
+      setTimeout(() => {
+        useLikedSongsStore.getState().loadLikedSongs().catch(() => {});
+      }, 500);
+    }
+  });
+};
+
+// Set up auth listener
+setupAuthListener();
+
 // Initialize the store by loading liked songs
 // This must be done outside of any component to ensure it's only called once
 setTimeout(() => {
   useLikedSongsStore.getState().loadLikedSongs().catch(() => {
     // Error handling without logging
   });
-}, 0);
+}, 100);
