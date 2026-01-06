@@ -1,6 +1,6 @@
 import axiosInstance from '@/lib/axios';
 import { auth, db } from '@/lib/firebase';
-import { collection, doc, getDocs, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDocs, serverTimestamp, deleteDoc, setDoc } from 'firebase/firestore';
 import { resolveArtist } from '@/lib/resolveArtist';
 
 export interface ConversionResult {
@@ -184,6 +184,8 @@ export async function convertAllSpotifySongsToJiosaavn(
     return result;
   }
 
+  const userId = auth.currentUser.uid;
+
   try {
     const spotifySongs = await getSpotifySyncedSongs();
     result.total = spotifySongs.length;
@@ -195,73 +197,64 @@ export async function convertAllSpotifySongsToJiosaavn(
 
     onProgress?.({ current: 0, total: result.total, currentSong: '', status: 'converting' });
 
-    // Process in batches to avoid rate limiting
-    const batchSize = 10;
-    const batches: any[][] = [];
-    
-    for (let i = 0; i < spotifySongs.length; i += batchSize) {
-      batches.push(spotifySongs.slice(i, i + batchSize));
-    }
-
     let processedCount = 0;
 
-    for (const batch of batches) {
-      const batchUpdates: { docId: string; data: any }[] = [];
+    for (const song of spotifySongs) {
+      processedCount++;
+      onProgress?.({
+        current: processedCount,
+        total: result.total,
+        currentSong: `${song.title} - ${song.artist}`,
+        status: 'converting',
+      });
 
-      for (const song of batch) {
-        processedCount++;
-        onProgress?.({
-          current: processedCount,
-          total: result.total,
-          currentSong: `${song.title} - ${song.artist}`,
-          status: 'converting',
-        });
+      // Add delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Add delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 300));
+      const { success, jiosaavnSong, error } = await convertSingleSong(song);
 
-        const { success, jiosaavnSong, error } = await convertSingleSong(song);
+      if (success && jiosaavnSong) {
+        try {
+          // Delete the old Spotify document
+          const oldDocRef = doc(db, 'users', userId, 'likedSongs', song.docId);
+          await deleteDoc(oldDocRef);
 
-        if (success && jiosaavnSong) {
-          batchUpdates.push({
-            docId: song.docId,
-            data: {
-              // Keep the original document ID for consistency
-              id: song.docId,
-              songId: jiosaavnSong.id, // Store JioSaavn ID as songId
-              title: jiosaavnSong.title,
-              artist: jiosaavnSong.artist,
-              albumName: jiosaavnSong.album,
-              imageUrl: jiosaavnSong.imageUrl,
-              audioUrl: jiosaavnSong.audioUrl,
-              duration: jiosaavnSong.duration,
-              year: jiosaavnSong.year,
-              source: 'mavrixfy', // Change source to mavrixfy (like manual likes)
-              convertedAt: serverTimestamp(),
-              originalSpotifyId: song.id, // Keep reference to original Spotify ID
-            },
-          });
+          // Create new document with JioSaavn ID (same format as manual likes)
+          const newDocRef = doc(db, 'users', userId, 'likedSongs', jiosaavnSong.id);
+          
+          // Store exactly like manual liked songs do
+          const likedSongData = {
+            id: jiosaavnSong.id,
+            songId: jiosaavnSong.id,
+            title: jiosaavnSong.title,
+            artist: jiosaavnSong.artist,
+            albumName: jiosaavnSong.album,
+            imageUrl: jiosaavnSong.imageUrl,
+            audioUrl: jiosaavnSong.audioUrl,
+            duration: jiosaavnSong.duration,
+            year: jiosaavnSong.year || '',
+            likedAt: song.likedAt || serverTimestamp(), // Preserve original liked time
+            source: 'mavrixfy', // Same as manual likes
+          };
+
+          await setDoc(newDocRef, likedSongData);
           result.converted++;
-        } else {
+        } catch (writeError) {
+          console.error('Error writing converted song:', writeError);
           result.failed++;
           result.failedSongs.push({
             title: song.title,
             artist: song.artist,
-            reason: error || 'Unknown error',
+            reason: 'Failed to save converted song',
           });
         }
-      }
-
-      // Write batch updates to Firestore
-      if (batchUpdates.length > 0) {
-        const firestoreBatch = writeBatch(db);
-        
-        for (const update of batchUpdates) {
-          const docRef = doc(db, 'users', auth.currentUser!.uid, 'likedSongs', update.docId);
-          firestoreBatch.update(docRef, update.data);
-        }
-
-        await firestoreBatch.commit();
+      } else {
+        result.failed++;
+        result.failedSongs.push({
+          title: song.title,
+          artist: song.artist,
+          reason: error || 'Unknown error',
+        });
       }
     }
 
