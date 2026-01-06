@@ -16,20 +16,15 @@ export const fetchSpotifyLikedSongs = async (userId) => {
     let offset = 0;
     const limit = 50;
 
-    // Paginate through all liked songs with cache-busting
+    // Paginate through all liked songs
     while (true) {
-      const timestamp = Date.now();
       const response = await axios.get('https://api.spotify.com/v1/me/tracks', {
         headers: {
           'Authorization': `Bearer ${tokens.access_token}`,
-          // Cache-busting headers to ensure fresh data
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
         },
         params: {
           limit,
           offset,
-          _t: timestamp, // Cache buster query param
         },
       });
 
@@ -41,9 +36,6 @@ export const fetchSpotifyLikedSongs = async (userId) => {
 
       // Break if we got fewer items than requested (end of list)
       if (items.length < limit) break;
-      
-      // Small delay between requests to be nice to Spotify's API
-      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     console.log(`Fetched ${likedSongs.length} liked songs for user: ${userId}`);

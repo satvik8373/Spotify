@@ -94,11 +94,8 @@ router.post("/callback", async (req, res) => {
     await storeSpotifyTokens(userId, tokenData);
     console.log("✅ Tokens stored in Firestore");
     
-    // Perform initial sync with delay to handle Spotify's server-side caching
+    // Perform initial sync
     try {
-      console.log("🔄 Waiting 4 seconds before initial sync (Spotify caching workaround)...");
-      await new Promise(resolve => setTimeout(resolve, 4000));
-      
       console.log("🔄 Starting initial sync...");
       await syncSpotifyLikedSongs(userId);
       console.log("✅ Initial sync completed");

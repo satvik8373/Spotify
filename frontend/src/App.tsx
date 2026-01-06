@@ -30,7 +30,6 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
 import { SpotifyProvider } from './contexts/SpotifyContext';
-import SpotifySyncIndicator from './components/SpotifySyncIndicator';
 
 
 
@@ -292,7 +291,6 @@ function AppContent() {
 	return (
 		<>
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
-			<SpotifySyncIndicator />
 			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div></div>}>
 				<RouterProvider
 					router={router}
