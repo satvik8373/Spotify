@@ -1,6 +1,6 @@
 import axiosInstance from '@/lib/axios';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, deleteDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, serverTimestamp, collection, getDocs, Timestamp } from 'firebase/firestore';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 
 // Types
@@ -462,6 +462,18 @@ export async function convertAndSaveSpotifyTracks(
           // Save to Firestore with JioSaavn data
           const docRef = doc(db, 'users', userId, 'likedSongs', convertedSong.id);
           
+          // Convert date string to Firestore Timestamp
+          let likedAtTimestamp;
+          if (track.addedAt) {
+            try {
+              likedAtTimestamp = Timestamp.fromDate(new Date(track.addedAt));
+            } catch {
+              likedAtTimestamp = serverTimestamp();
+            }
+          } else {
+            likedAtTimestamp = serverTimestamp();
+          }
+          
           const likedSongData = {
             id: convertedSong.id,
             songId: convertedSong.id,
@@ -472,7 +484,7 @@ export async function convertAndSaveSpotifyTracks(
             audioUrl: convertedSong.audioUrl,
             duration: convertedSong.duration,
             year: convertedSong.year,
-            likedAt: track.addedAt ? new Date(track.addedAt) : serverTimestamp(),
+            likedAt: likedAtTimestamp,
             source: 'mavrixfy',
             convertedFrom: 'spotify',
             spotifyId: track.id,
@@ -535,6 +547,18 @@ export async function convertAndSaveSpotifyTracks(
 async function saveSpotifyTrackAsFallback(userId: string, track: any): Promise<void> {
   const docRef = doc(db, 'users', userId, 'likedSongs', track.id);
   
+  // Convert date string to Firestore Timestamp
+  let likedAtTimestamp;
+  if (track.addedAt) {
+    try {
+      likedAtTimestamp = Timestamp.fromDate(new Date(track.addedAt));
+    } catch {
+      likedAtTimestamp = serverTimestamp();
+    }
+  } else {
+    likedAtTimestamp = serverTimestamp();
+  }
+  
   const likedSongData = {
     id: track.id,
     songId: track.id,
@@ -545,7 +569,7 @@ async function saveSpotifyTrackAsFallback(userId: string, track: any): Promise<v
     audioUrl: track.audioUrl || track.preview_url || '',
     duration: track.duration || Math.floor((track.duration_ms || 0) / 1000),
     year: track.year || '',
-    likedAt: track.addedAt ? new Date(track.addedAt) : serverTimestamp(),
+    likedAt: likedAtTimestamp,
     source: 'spotify',
     needsConversion: true
   };

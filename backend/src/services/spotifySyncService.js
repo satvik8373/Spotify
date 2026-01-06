@@ -243,16 +243,62 @@ export const handleSpotifyLikeUnlike = async (userId, trackId, action) => {
 export const getSyncedLikedSongs = async (userId) => {
   try {
     const songsRef = admin.firestore().collection('users').doc(userId).collection('likedSongs');
-    const snapshot = await songsRef.orderBy('addedAt', 'desc').get();
+    
+    // Try to get all songs without ordering first (more reliable)
+    // The ordering can fail if the field doesn't exist on all documents
+    let snapshot;
+    try {
+      snapshot = await songsRef.orderBy('likedAt', 'desc').get();
+    } catch (orderError) {
+      console.log('Ordering by likedAt failed, trying addedAt:', orderError.message);
+      try {
+        snapshot = await songsRef.orderBy('addedAt', 'desc').get();
+      } catch (orderError2) {
+        console.log('Ordering by addedAt failed, fetching without order:', orderError2.message);
+        snapshot = await songsRef.get();
+      }
+    }
     
     const songs = [];
     snapshot.forEach(doc => {
-      songs.push({
+      const data = doc.data();
+      
+      // Normalize the song data to handle both old and new formats
+      const normalizedSong = {
         id: doc.id,
-        ...doc.data()
-      });
+        _id: doc.id, // Also include _id for compatibility
+        songId: data.songId || data.trackId || doc.id,
+        title: data.title || data.name || 'Unknown Title',
+        artist: data.artist || 'Unknown Artist',
+        album: data.albumName || data.album || '',
+        imageUrl: data.imageUrl || data.coverUrl || '',
+        audioUrl: data.audioUrl || data.previewUrl || '',
+        duration: data.duration || 0,
+        year: data.year || '',
+        // Include timestamp for sorting (handle both formats)
+        likedAt: data.likedAt || data.addedAt || data.syncedAt,
+        addedAt: data.addedAt || data.likedAt || data.syncedAt,
+        // Source tracking
+        source: data.source || 'spotify',
+        convertedFrom: data.convertedFrom,
+        spotifyId: data.spotifyId || data.trackId,
+        // Original data for reference
+        ...data
+      };
+      
+      songs.push(normalizedSong);
     });
 
+    // Sort by timestamp client-side if ordering failed
+    songs.sort((a, b) => {
+      const aTime = a.likedAt?.toDate?.() || a.likedAt || a.addedAt?.toDate?.() || a.addedAt || 0;
+      const bTime = b.likedAt?.toDate?.() || b.likedAt || b.addedAt?.toDate?.() || b.addedAt || 0;
+      const aTimestamp = aTime instanceof Date ? aTime.getTime() : new Date(aTime).getTime() || 0;
+      const bTimestamp = bTime instanceof Date ? bTime.getTime() : new Date(bTime).getTime() || 0;
+      return bTimestamp - aTimestamp; // Most recent first
+    });
+
+    console.log(`Retrieved ${songs.length} liked songs for user: ${userId}`);
     return songs;
   } catch (error) {
     console.error('Error getting synced liked songs:', error);

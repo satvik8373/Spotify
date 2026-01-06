@@ -151,29 +151,46 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
 
   try {
     const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
-    const q = query(
-      likedSongsRef, 
-      orderBy('likedAt', 'desc')
-    );
     
-    const snapshot = await getDocs(q);
+    // First try with ordering
+    let snapshot;
+    try {
+      const q = query(likedSongsRef, orderBy('likedAt', 'desc'));
+      snapshot = await getDocs(q);
+    } catch (orderError) {
+      // If ordering fails (e.g., missing index or invalid data), load without ordering
+      console.warn('Failed to load with ordering, loading without order:', orderError);
+      snapshot = await getDocs(likedSongsRef);
+    }
+    
     const songs: Song[] = [];
     
-    snapshot.forEach(doc => {
-      const data = doc.data() as LikedSong;
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      // Use document ID as fallback if id field is missing
+      const songId = data.id || data.songId || docSnap.id;
+      
       songs.push({
-        id: data.id,
-        title: data.title,
-        artist: data.artist,
-        imageUrl: data.imageUrl,
-        audioUrl: data.audioUrl,
-        duration: data.duration,
-        album: data.albumName,
+        id: songId,
+        title: data.title || 'Unknown Title',
+        artist: data.artist || 'Unknown Artist',
+        imageUrl: data.imageUrl || '',
+        audioUrl: data.audioUrl || '',
+        duration: data.duration || 0,
+        album: data.albumName || data.album || '',
         year: data.year || ''
       });
     });
     
     console.log(`Loaded ${songs.length} liked songs from Firestore for user ${userId}`);
+    
+    // Sort by likedAt if available (handle both Timestamp and Date objects)
+    songs.sort((a: any, b: any) => {
+      const aTime = a.likedAt?.toDate?.() || a.likedAt || 0;
+      const bTime = b.likedAt?.toDate?.() || b.likedAt || 0;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    });
+    
     return songs;
     
   } catch (error) {
