@@ -112,7 +112,7 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
   }
 }
 
-// Get all Spotify synced songs from Firestore
+// Get all Spotify synced songs from Firestore that need conversion
 export async function getSpotifySyncedSongs(): Promise<any[]> {
   if (!auth.currentUser) return [];
 
@@ -120,27 +120,36 @@ export async function getSpotifySyncedSongs(): Promise<any[]> {
     const likedSongsRef = collection(db, 'users', auth.currentUser.uid, 'likedSongs');
     const snapshot = await getDocs(likedSongsRef);
     
-    const spotifySongs: any[] = [];
+    const songsNeedingConversion: any[] = [];
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
-      // Check if it's a Spotify song (has Spotify ID format or source is spotify, or no audioUrl)
-      const isSpotifySong = data.source === 'spotify' || 
-                           !data.audioUrl || 
-                           data.audioUrl === '' ||
-                           data.audioUrl?.includes('spotify') ||
-                           (data.id && data.id.length === 22 && /^[a-zA-Z0-9]+$/.test(data.id));
+      const audioUrl = data.audioUrl || '';
       
-      if (isSpotifySong) {
-        spotifySongs.push({
+      // Check if song needs conversion:
+      // 1. No audioUrl or empty audioUrl
+      // 2. audioUrl is a Spotify preview URL (p.scdn.co)
+      // 3. audioUrl contains 'spotify'
+      // Songs with valid JioSaavn URLs (saavncdn) are already converted
+      const hasValidAudio = audioUrl && 
+        audioUrl.length > 10 && 
+        (audioUrl.includes('saavncdn') || audioUrl.includes('aac.saavncdn'));
+      
+      const isSpotifyUrl = audioUrl.includes('spotify') || audioUrl.includes('p.scdn.co');
+      
+      const needsConversion = !hasValidAudio || isSpotifyUrl || !audioUrl;
+      
+      if (needsConversion) {
+        songsNeedingConversion.push({
           docId: docSnap.id,
           ...data
         });
       }
     });
 
-    return spotifySongs;
+    console.log(`Found ${songsNeedingConversion.length} songs needing conversion`);
+    return songsNeedingConversion;
   } catch (error) {
-    console.error('Error getting Spotify synced songs:', error);
+    console.error('Error getting songs needing conversion:', error);
     return [];
   }
 }
@@ -281,7 +290,7 @@ export async function convertAllSpotifySongsToJiosaavn(
   }
 }
 
-// Check how many Spotify songs need conversion
+// Check how many songs need conversion
 export async function getConversionStats(): Promise<{ spotifyCount: number; totalCount: number }> {
   if (!auth.currentUser) {
     return { spotifyCount: 0, totalCount: 0 };
@@ -291,25 +300,29 @@ export async function getConversionStats(): Promise<{ spotifyCount: number; tota
     const likedSongsRef = collection(db, 'users', auth.currentUser.uid, 'likedSongs');
     const snapshot = await getDocs(likedSongsRef);
     
-    let spotifyCount = 0;
+    let needsConversionCount = 0;
     let totalCount = 0;
 
     snapshot.forEach(docSnap => {
       totalCount++;
       const data = docSnap.data();
+      const audioUrl = data.audioUrl || '';
       
-      // Check if it's a Spotify song that needs conversion
-      const isSpotifySong = data.source === 'spotify' || 
-                           !data.audioUrl || 
-                           data.audioUrl === '' ||
-                           data.audioUrl?.includes('spotify');
+      // Same logic as getSpotifySyncedSongs
+      const hasValidAudio = audioUrl && 
+        audioUrl.length > 10 && 
+        (audioUrl.includes('saavncdn') || audioUrl.includes('aac.saavncdn'));
       
-      if (isSpotifySong) {
-        spotifyCount++;
+      const isSpotifyUrl = audioUrl.includes('spotify') || audioUrl.includes('p.scdn.co');
+      
+      const needsConversion = !hasValidAudio || isSpotifyUrl || !audioUrl;
+      
+      if (needsConversion) {
+        needsConversionCount++;
       }
     });
 
-    return { spotifyCount, totalCount };
+    return { spotifyCount: needsConversionCount, totalCount };
   } catch (error) {
     console.error('Error getting conversion stats:', error);
     return { spotifyCount: 0, totalCount: 0 };
