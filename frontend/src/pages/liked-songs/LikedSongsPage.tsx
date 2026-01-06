@@ -30,6 +30,7 @@ import { getLocalStorage, getSessionStorage, setLocalStorage, setSessionStorage,
 // Add CSS for desktop view
 import './liked-songs.css';
 import SwipeableSongItem from '@/components/SwipeableSongItem';
+import SpotifyToJiosaavnConverter from '@/components/SpotifyToJiosaavnConverter';
 
 // Convert liked song format to player song format
 const adaptToPlayerSong = (likedSong: any): Song => {
@@ -1154,6 +1155,9 @@ const LikedSongsPage = () => {
 
                     {/* Right - Buttons */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Convert to Playable Button */}
+                      <SpotifyToJiosaavnConverter />
+                      
                       <Button
                         disabled={syncingSpotify}
                         onClick={async () => {
