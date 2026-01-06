@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import spotifyService, { isAuthenticated, logout } from '../services/spotifyService';
+import { setupAutoSyncTriggers, performQuickSync } from '../services/robustSpotifySync';
 
 interface SpotifyContextType {
   isAuthenticated: boolean;
@@ -52,6 +53,20 @@ export const SpotifyProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
 
     checkAuthStatus();
+    
+    // Setup auto-sync triggers for re-syncing on focus/visibility
+    const cleanupAutoSync = setupAutoSyncTriggers();
+    
+    // Listen for auth changes
+    const handleAuthChange = () => {
+      checkAuthStatus();
+    };
+    window.addEventListener('spotify_auth_changed', handleAuthChange);
+    
+    return () => {
+      cleanupAutoSync();
+      window.removeEventListener('spotify_auth_changed', handleAuthChange);
+    };
   }, []);
 
   const handleLogout = () => {

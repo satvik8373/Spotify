@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { handleCallback, isAuthenticated as isSpotifyAuthenticated, debugAuthenticationState } from '../services/spotifyService';
-import { Loader, AlertCircle, CheckCircle, Bug } from 'lucide-react';
+import { Loader, AlertCircle, CheckCircle, Bug, Music2 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
+import { performDelayedSync } from '../services/robustSpotifySync';
 
 const SpotifyCallback: React.FC = () => {
   const location = useLocation();
@@ -10,6 +11,8 @@ const SpotifyCallback: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'waiting' | 'syncing' | 'done'>('idle');
+  const [syncMessage, setSyncMessage] = useState('');
   const { user } = useAuthStore();
 
   useEffect(() => {
@@ -47,7 +50,29 @@ const SpotifyCallback: React.FC = () => {
           // Verify tokens are actually stored and valid
           if (isSpotifyAuthenticated()) {
             console.log('Tokens verified and stored successfully');
-            try { sessionStorage.setItem('spotify_sync_prompt', '1'); } catch {}
+            
+            // Start the delayed sync process
+            setSyncStatus('waiting');
+            setSyncMessage('Preparing to sync your Spotify library...');
+            
+            // Perform delayed sync (4 second delay to handle Spotify's caching)
+            performDelayedSync(4000)
+              .then((result) => {
+                if (result.success) {
+                  setSyncStatus('done');
+                  setSyncMessage(`Synced ${result.tracksCount} songs from Spotify`);
+                  console.log('✅ Initial sync completed:', result);
+                } else {
+                  console.warn('⚠️ Initial sync had issues:', result.error);
+                  setSyncStatus('done');
+                  setSyncMessage('Connected to Spotify');
+                }
+              })
+              .catch((err) => {
+                console.error('❌ Initial sync failed:', err);
+                setSyncStatus('done');
+                setSyncMessage('Connected to Spotify (sync will retry)');
+              });
             
             // Add a small delay to ensure tokens are properly stored
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -81,6 +106,34 @@ const SpotifyCallback: React.FC = () => {
         <Loader className="animate-spin h-10 w-10 text-[#1DB954] mb-4" />
         <p className="text-lg">Connecting to Spotify...</p>
         <p className="text-sm text-gray-400 mt-2">Please wait while we complete the authentication</p>
+      </div>
+    );
+  }
+
+  // Show sync status while syncing
+  if (isAuthenticated && (syncStatus === 'waiting' || syncStatus === 'syncing')) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
+        <div className="bg-zinc-900/50 border border-zinc-700 p-8 rounded-xl max-w-md text-center">
+          <div className="relative mb-6">
+            <Music2 className="h-16 w-16 text-[#1DB954] mx-auto" />
+            <div className="absolute -top-1 -right-1 left-0 right-0 mx-auto w-4 h-4">
+              <Loader className="animate-spin h-6 w-6 text-[#1DB954] absolute -top-2 -right-8" />
+            </div>
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-2">
+            Syncing your Spotify library…
+          </h2>
+          <p className="text-sm text-gray-400 mb-4">
+            {syncMessage || 'This may take a moment for large libraries'}
+          </p>
+          <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+            <div className="h-full bg-[#1DB954] rounded-full animate-pulse w-1/2" />
+          </div>
+          <p className="text-xs text-gray-500 mt-4">
+            We're ensuring all your liked songs are properly synced
+          </p>
+        </div>
       </div>
     );
   }

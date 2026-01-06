@@ -1,9 +1,17 @@
 import axios from '../lib/axios';
+import { performForceSync, getSyncInfo } from './robustSpotifySync';
 
 // Get synced liked songs from backend
 export const getSyncedLikedSongs = async (userId: string) => {
   try {
-    const response = await axios.get(`/api/spotify/liked-songs/${userId}`);
+    // Add cache-busting timestamp to ensure fresh data
+    const timestamp = Date.now();
+    const response = await axios.get(`/api/spotify/liked-songs/${userId}?_t=${timestamp}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    });
     return response.data;
   } catch (error) {
     console.error('Error fetching synced liked songs:', error);
@@ -15,18 +23,35 @@ export const getSyncedLikedSongs = async (userId: string) => {
 export const getSyncStatus = async (userId: string) => {
   try {
     const response = await axios.get(`/api/spotify/sync-status/${userId}`);
-    return response.data;
+    
+    // Merge with local sync info
+    const localSyncInfo = getSyncInfo();
+    
+    return {
+      ...response.data,
+      localLastSync: localSyncInfo.lastSync,
+      canSync: localSyncInfo.canSync,
+      syncInProgress: localSyncInfo.inProgress,
+    };
   } catch (error) {
     console.error('Error fetching sync status:', error);
     throw error;
   }
 };
 
-// Manual sync trigger
+// Manual sync trigger - now uses robust sync
 export const triggerManualSync = async (userId: string) => {
   try {
+    // First trigger the robust frontend sync
+    const syncResult = await performForceSync();
+    
+    // Also trigger backend sync for consistency
     const response = await axios.post('/api/spotify/sync', { userId });
-    return response.data;
+    
+    return {
+      ...response.data,
+      frontendSync: syncResult,
+    };
   } catch (error) {
     console.error('Error triggering manual sync:', error);
     throw error;
@@ -111,8 +136,17 @@ export const handleSpotifyLikeUnlike = async (userId: string, trackId: string, a
 // Force refresh synced songs from server
 export const forceRefreshSyncedSongs = async (userId: string) => {
   try {
-    // Clear any cached data and fetch fresh from server
-    const response = await axios.get(`/api/spotify/liked-songs/${userId}?refresh=true`);
+    // Trigger a force sync first
+    await performForceSync();
+    
+    // Then fetch fresh data with cache-busting
+    const timestamp = Date.now();
+    const response = await axios.get(`/api/spotify/liked-songs/${userId}?refresh=true&_t=${timestamp}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    });
     return response.data;
   } catch (error) {
     console.error('Error forcing refresh of synced songs:', error);

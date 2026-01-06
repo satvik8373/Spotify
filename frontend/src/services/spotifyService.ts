@@ -199,6 +199,9 @@ export const logout = (): void => {
   // Clear any sync-related timestamps
   localStorage.removeItem('spotify-liked-songs-last-sync');
   localStorage.removeItem('spotify_sync_prompt');
+  localStorage.removeItem('spotify_robust_sync_timestamp');
+  localStorage.removeItem('spotify_sync_in_progress');
+  localStorage.removeItem('spotify_sync_start_time');
   
   // Notify app about auth change
   try { window.dispatchEvent(new Event('spotify_auth_changed')); } catch {}
@@ -262,6 +265,9 @@ const getAccessToken = async (): Promise<string | null> => {
         
         localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
         localStorage.setItem(TOKEN_EXPIRY_KEY, newExpiry.toString());
+        
+        // Emit token refresh event for sync triggers
+        try { window.dispatchEvent(new Event('spotify_token_refreshed')); } catch {}
         
         return access_token;
       }
