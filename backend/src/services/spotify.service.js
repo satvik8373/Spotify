@@ -47,14 +47,23 @@ export const getAuthorizationUrl = () => {
 };
 
 // Exchange authorization code for access token
-export const getAccessToken = async (clientId, clientSecret, code = null) => {
+export const getAccessToken = async (clientId, clientSecret, code = null, redirectUri = null) => {
+  // Use provided redirectUri or fall back to env variable
+  const finalRedirectUri = redirectUri || REDIRECT_URI;
+  
   try {
     // If code is provided, use authorization code flow
     if (code) {
       const params = new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: finalRedirectUri,
+      });
+
+      console.log('Token exchange params:', {
+        grant_type: 'authorization_code',
+        code: code ? 'present' : 'missing',
+        redirect_uri: finalRedirectUri,
       });
 
       const response = await axios.post(SPOTIFY_TOKEN_URL, params.toString(), {

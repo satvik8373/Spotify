@@ -180,8 +180,8 @@ const LikedSongsPage = () => {
     };
   }, [isAuthenticated]);
 
-  // Single parallel loader for status + songs
-  const parallelLoad = async () => {
+  // Single parallel loader for status + songs with retry for fresh connections
+  const parallelLoad = async (retryCount = 0) => {
     if (!isAuthenticated) {
       const anonymousSongs = await loadLikedSongs();
       console.log('📥 Loaded anonymous songs:', anonymousSongs.length);
@@ -202,6 +202,21 @@ const LikedSongsPage = () => {
       ]);
 
       if (status) setSyncStatus(status);
+      
+      // Check if this is a fresh connection with no songs yet
+      const isFreshConnection = hasValidSpotifyAuth && 
+        (!Array.isArray(songs) || songs.length === 0) && 
+        retryCount < 3;
+      
+      if (isFreshConnection) {
+        console.log(`⏳ No songs found yet, retrying in 3s... (attempt ${retryCount + 1}/3)`);
+        setIsLoading(true);
+        
+        // Wait and retry - backend sync may still be in progress
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        return parallelLoad(retryCount + 1);
+      }
+      
       const pick = Array.isArray(songs) && songs.length > 0 ? songs : await loadLikedSongs();
 
       console.log('📥 Loaded liked songs:', {

@@ -85,7 +85,10 @@ router.post("/callback", async (req, res) => {
   
   try {
     console.log("🔄 Exchanging code for tokens...");
-    const tokenData = await spotifyService.getAccessToken(CLIENT_ID, CLIENT_SECRET, code);
+    console.log("Using redirect_uri from frontend:", redirect_uri);
+    
+    // Pass the redirect_uri from frontend to ensure it matches the auth request
+    const tokenData = await spotifyService.getAccessToken(CLIENT_ID, CLIENT_SECRET, code, redirect_uri);
     console.log("✅ Tokens received successfully");
     
     // Store tokens in Firestore
@@ -164,11 +167,14 @@ router.post("/sync", async (req, res) => {
 router.get("/liked-songs/:userId", async (req, res) => {
   const { userId } = req.params;
   
+  console.log(`📥 GET /liked-songs/${userId} - Fetching synced songs`);
+  
   try {
     const songs = await getSyncedLikedSongs(userId);
+    console.log(`✅ Returning ${songs.length} songs for user: ${userId}`);
     res.json(songs);
   } catch (error) {
-    console.error("Error getting liked songs:", error);
+    console.error("❌ Error getting liked songs:", error);
     res.status(500).json({ 
       message: "Failed to get liked songs",
       error: error.message

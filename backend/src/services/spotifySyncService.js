@@ -303,20 +303,39 @@ export const handleSpotifyLikeUnlike = async (userId, trackId, action) => {
 // Get user's synced liked songs from Firestore with real-time updates
 export const getSyncedLikedSongs = async (userId) => {
   try {
+    console.log(`📥 Fetching synced liked songs for user: ${userId}`);
     const songsRef = admin.firestore().collection('users').doc(userId).collection('likedSongs');
-    const snapshot = await songsRef.orderBy('addedAt', 'desc').get();
+    
+    // Try to order by addedAt, but fall back to unordered if field doesn't exist
+    let snapshot;
+    try {
+      snapshot = await songsRef.orderBy('addedAt', 'desc').get();
+    } catch (orderError) {
+      console.log('⚠️ Could not order by addedAt, fetching unordered:', orderError.message);
+      snapshot = await songsRef.get();
+    }
     
     const songs = [];
     snapshot.forEach(doc => {
+      const data = doc.data();
       songs.push({
         id: doc.id,
-        ...doc.data()
+        // Map to frontend expected format
+        _id: doc.id,
+        title: data.title || 'Unknown',
+        artist: data.artist || 'Unknown Artist',
+        imageUrl: data.coverUrl || data.imageUrl || '',
+        audioUrl: data.audioUrl || data.spotifyUrl || '',
+        duration: data.duration || 0,
+        addedAt: data.addedAt,
+        ...data
       });
     });
 
+    console.log(`✅ Found ${songs.length} synced liked songs for user: ${userId}`);
     return songs;
   } catch (error) {
-    console.error('Error getting synced liked songs:', error);
+    console.error('❌ Error getting synced liked songs:', error);
     throw error;
   }
 };

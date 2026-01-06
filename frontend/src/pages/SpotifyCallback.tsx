@@ -10,6 +10,7 @@ const SpotifyCallback: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<string>('Connecting to Spotify...');
   const { user } = useAuthStore();
 
   useEffect(() => {
@@ -39,6 +40,7 @@ const SpotifyCallback: React.FC = () => {
         console.log('Authorization code received:', code ? 'present' : 'missing');
         console.log('User ID:', user?.id);
         
+        setSyncStatus('Authenticating with Spotify...');
         const success = await handleCallback(code, user?.id);
         
         if (success) {
@@ -47,9 +49,21 @@ const SpotifyCallback: React.FC = () => {
           // Verify tokens are actually stored and valid
           if (isSpotifyAuthenticated()) {
             console.log('Tokens verified and stored successfully');
+            
+            // IMPORTANT: The backend sync has a 4-second delay to handle Spotify's caching
+            // We need to wait for it to complete before redirecting
+            setSyncStatus('Syncing your Spotify library...');
+            console.log('⏳ Waiting for backend sync to complete (includes 4s Spotify cache delay)...');
+            
+            // Wait additional time for the backend sync to complete
+            // Backend has 4s delay + fetch time, so we wait 6-7 seconds total
+            await new Promise(resolve => setTimeout(resolve, 6000));
+            
+            setSyncStatus('Sync complete! Redirecting...');
+            
             try { sessionStorage.setItem('spotify_sync_prompt', '1'); } catch {}
             
-            // Add a small delay to ensure tokens are properly stored
+            // Small delay before redirect
             await new Promise(resolve => setTimeout(resolve, 500));
             
             setIsAuthenticated(true);
@@ -79,8 +93,11 @@ const SpotifyCallback: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
         <Loader className="animate-spin h-10 w-10 text-[#1DB954] mb-4" />
-        <p className="text-lg">Connecting to Spotify...</p>
-        <p className="text-sm text-gray-400 mt-2">Please wait while we complete the authentication</p>
+        <p className="text-lg">{syncStatus}</p>
+        <p className="text-sm text-gray-400 mt-2">Please wait while we sync your library</p>
+        {syncStatus.includes('Syncing') && (
+          <p className="text-xs text-gray-500 mt-4">This may take a few seconds...</p>
+        )}
       </div>
     );
   }
