@@ -619,6 +619,9 @@ const LikedSongsPage = () => {
     }
 
     try {
+      // Refresh the global liked songs store first (this updates heart icons everywhere)
+      await useLikedSongsStore.getState().loadLikedSongs();
+      
       // First try to load synced songs from Firestore
       if (isSpotifyAuthValid && user?.id) {
         const syncedData = await getSyncedLikedSongs(user.id);

@@ -1,6 +1,7 @@
 import axiosInstance from '@/lib/axios';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, deleteDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
+import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 
 // Types
 export interface ConversionProgress {
@@ -386,6 +387,17 @@ export async function convertAllSpotifySongsToJiosaavn(
   });
 
   console.log(`🏁 Conversion complete:`, result);
+  
+  // Refresh the liked songs store to update heart icons
+  try {
+    await useLikedSongsStore.getState().loadLikedSongs();
+    document.dispatchEvent(new CustomEvent('likedSongsUpdated', {
+      detail: { source: 'spotifyConversion', count: result.converted }
+    }));
+  } catch (e) {
+    console.warn('Failed to refresh liked songs store:', e);
+  }
+  
   return result;
 }
 
@@ -505,6 +517,17 @@ export async function convertAndSaveSpotifyTracks(
   });
 
   console.log(`🏁 Batch conversion complete:`, result);
+  
+  // Refresh the liked songs store to update heart icons
+  try {
+    await useLikedSongsStore.getState().loadLikedSongs();
+    document.dispatchEvent(new CustomEvent('likedSongsUpdated', {
+      detail: { source: 'spotifySync', count: result.converted + result.skipped }
+    }));
+  } catch (e) {
+    console.warn('Failed to refresh liked songs store:', e);
+  }
+  
   return result;
 }
 
