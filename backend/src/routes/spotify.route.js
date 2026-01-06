@@ -85,7 +85,8 @@ router.post("/callback", async (req, res) => {
   
   try {
     console.log("🔄 Exchanging code for tokens...");
-    const tokenData = await spotifyService.getAccessToken(CLIENT_ID, CLIENT_SECRET, code);
+    console.log("🔗 Using redirect_uri:", redirect_uri || process.env.SPOTIFY_REDIRECT_URI);
+    const tokenData = await spotifyService.getAccessToken(CLIENT_ID, CLIENT_SECRET, code, redirect_uri);
     console.log("✅ Tokens received successfully");
     
     // Store tokens in Firestore

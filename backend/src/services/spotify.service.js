@@ -3,7 +3,7 @@ import axios from 'axios';
 // Spotify API configuration
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
-const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
+const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || 'https://mavrixfy.site/spotify-callback';
 
 // Spotify API endpoints
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
@@ -47,14 +47,17 @@ export const getAuthorizationUrl = () => {
 };
 
 // Exchange authorization code for access token
-export const getAccessToken = async (clientId, clientSecret, code = null) => {
+export const getAccessToken = async (clientId, clientSecret, code = null, redirectUri = null) => {
   try {
+    // Use provided redirectUri or fall back to env variable
+    const finalRedirectUri = redirectUri || REDIRECT_URI;
+    
     // If code is provided, use authorization code flow
     if (code) {
       const params = new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: finalRedirectUri,
       });
 
       const response = await axios.post(SPOTIFY_TOKEN_URL, params.toString(), {

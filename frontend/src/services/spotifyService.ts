@@ -10,11 +10,8 @@ const CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI_ENV = import.meta.env.VITE_REDIRECT_URI;
 const REDIRECT_URI = (() => {
   if (REDIRECT_URI_ENV && typeof REDIRECT_URI_ENV === 'string' && REDIRECT_URI_ENV.trim()) return REDIRECT_URI_ENV;
-  try {
-    return `${window.location.origin}/spotify-callback`;
-  } catch {
-    return '/spotify-callback';
-  }
+  // Hardcoded fallback for production
+  return 'https://mavrixfy.site/spotify-callback';
 })();
 const SCOPES = [
   'user-read-private',
