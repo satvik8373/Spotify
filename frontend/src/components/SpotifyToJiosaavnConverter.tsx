@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { RefreshCw, Music, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useSpotifyToJiosaavnConverter } from '@/hooks/useSpotifyToJiosaavnConverter';
 import { cn } from '@/lib/utils';
+import { auth } from '@/lib/firebase';
 
 interface SpotifyToJiosaavnConverterProps {
   className?: string;
@@ -14,6 +15,7 @@ export default function SpotifyToJiosaavnConverter({ className }: SpotifyToJiosa
   const [showModal, setShowModal] = useState(false);
   const [stats, setStats] = useState<{ spotifyCount: number; totalCount: number } | null>(null);
   const [isCheckingStats, setIsCheckingStats] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
   const {
     isConverting,
@@ -24,18 +26,29 @@ export default function SpotifyToJiosaavnConverter({ className }: SpotifyToJiosa
     checkStats,
   } = useSpotifyToJiosaavnConverter();
 
-  // Check stats when component mounts or modal opens
+  // Wait for Firebase auth to be ready
   useEffect(() => {
-    if (showModal && !stats && !isCheckingStats) {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      console.log('Auth state changed:', user ? user.uid : 'no user');
+      setAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Check stats when modal opens and auth is ready
+  useEffect(() => {
+    if (showModal && authReady && !stats && !isCheckingStats) {
       setIsCheckingStats(true);
       checkStats().then(s => {
+        console.log('Stats received:', s);
         setStats(s);
         setIsCheckingStats(false);
       });
     }
-  }, [showModal, stats, isCheckingStats, checkStats]);
+  }, [showModal, authReady, stats, isCheckingStats, checkStats]);
 
   const handleStartConversion = async () => {
+    console.log('Starting conversion...');
     await startConversion();
     // Refresh stats after conversion
     const newStats = await checkStats();
@@ -43,11 +56,15 @@ export default function SpotifyToJiosaavnConverter({ className }: SpotifyToJiosa
   };
 
   const handleOpenModal = async () => {
+    console.log('Opening modal, auth ready:', authReady, 'current user:', auth.currentUser?.uid);
     setShowModal(true);
-    setIsCheckingStats(true);
-    const s = await checkStats();
-    setStats(s);
-    setIsCheckingStats(false);
+    if (authReady && auth.currentUser) {
+      setIsCheckingStats(true);
+      const s = await checkStats();
+      console.log('Stats on open:', s);
+      setStats(s);
+      setIsCheckingStats(false);
+    }
   };
 
   const progressPercent = progress.total > 0 

@@ -125,16 +125,28 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
 
 // Get all songs from Firestore that need conversion (no valid audio URL)
 export async function getSpotifySyncedSongs(): Promise<any[]> {
-  if (!auth.currentUser) return [];
+  console.log('=== getSpotifySyncedSongs called ===');
+  
+  if (!auth.currentUser) {
+    console.log('ERROR: No authenticated user! auth.currentUser is null');
+    return [];
+  }
+  
+  console.log('User ID:', auth.currentUser.uid);
 
   try {
     const likedSongsRef = collection(db, 'users', auth.currentUser.uid, 'likedSongs');
+    console.log('Fetching from:', `users/${auth.currentUser.uid}/likedSongs`);
+    
     const snapshot = await getDocs(likedSongsRef);
+    console.log('Total documents found:', snapshot.size);
     
     const songsNeedingConversion: any[] = [];
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
       const audioUrl = (data.audioUrl || '').trim();
+      
+      console.log(`Song: "${data.title}" | audioUrl length: ${audioUrl.length} | has saavncdn: ${audioUrl.includes('saavncdn')}`);
       
       // Song needs conversion if:
       // 1. audioUrl is empty or missing
@@ -142,12 +154,15 @@ export async function getSpotifySyncedSongs(): Promise<any[]> {
       const hasValidJioSaavnUrl = audioUrl.length > 0 && audioUrl.includes('saavncdn');
       
       if (!hasValidJioSaavnUrl) {
-        console.log(`Song needs conversion: "${data.title}" - audioUrl: "${audioUrl.substring(0, 50)}..."`);
+        console.log(`  -> NEEDS CONVERSION`);
         songsNeedingConversion.push({
           docId: docSnap.id,
           ...data
         });
+      } else {
+        console.log(`  -> Already has valid audio`);
       }
+    });
     });
 
     console.log(`Found ${songsNeedingConversion.length} songs needing conversion out of ${snapshot.size} total`);
@@ -306,9 +321,14 @@ export async function convertAllSpotifySongsToJiosaavn(
 
 // Check how many songs need conversion
 export async function getConversionStats(): Promise<{ spotifyCount: number; totalCount: number }> {
+  console.log('=== getConversionStats called ===');
+  
   if (!auth.currentUser) {
+    console.log('ERROR: No authenticated user for stats!');
     return { spotifyCount: 0, totalCount: 0 };
   }
+
+  console.log('Stats for user:', auth.currentUser.uid);
 
   try {
     const likedSongsRef = collection(db, 'users', auth.currentUser.uid, 'likedSongs');
@@ -330,7 +350,7 @@ export async function getConversionStats(): Promise<{ spotifyCount: number; tota
       }
     });
 
-    console.log(`Stats: ${needsConversionCount} need conversion out of ${totalCount} total`);
+    console.log(`Stats result: ${needsConversionCount} need conversion out of ${totalCount} total`);
     return { spotifyCount: needsConversionCount, totalCount };
   } catch (error) {
     console.error('Error getting conversion stats:', error);
