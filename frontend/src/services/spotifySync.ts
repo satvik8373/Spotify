@@ -3,6 +3,13 @@ import { resolveArtist } from '@/lib/resolveArtist';
 import { addLikedSong as addFirestoreLikedSong, Song as FirestoreSong, getLikedSongsCount } from '@/services/likedSongsService';
 import { auth, db } from '@/lib/firebase';
 import { collection, doc, setDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { 
+  convertAndSaveSpotifyTracks, 
+  ConversionProgress, 
+  ConversionResult,
+  getSpotifySyncedSongs,
+  convertAllSpotifySongsToJiosaavn
+} from '@/services/spotifyToJiosaavnConverter';
 
 export interface SpotifySyncResult {
   fetchedCount: number;
@@ -155,3 +162,56 @@ export const backgroundAutoSyncOnce = async (): Promise<SpotifySyncResult | null
 export const isSpotifyConnected = (): boolean => isSpotifyAuthenticated();
 
 
+
+// Enhanced sync with JioSaavn conversion
+export interface EnhancedSyncResult extends SpotifySyncResult {
+  converted: number;
+  skipped: number;
+  failed: number;
+}
+
+export const syncSpotifyWithJiosaavnConversion = async (
+  tracks: FirestoreSong[],
+  onProgress?: (progress: ConversionProgress) => void
+): Promise<EnhancedSyncResult> => {
+  const existingIds = await getExistingSongIds();
+  const fetchedCount = tracks.length;
+  
+  // Filter to only new tracks
+  const newTracks = tracks.filter(track => track?.id && !existingIds.has(track.id));
+  
+  if (newTracks.length === 0) {
+    return { fetchedCount, syncedCount: 0, converted: 0, skipped: 0, failed: 0 };
+  }
+
+  // Convert and save using JioSaavn
+  const result = await convertAndSaveSpotifyTracks(newTracks, onProgress);
+  
+  try {
+    localStorage.setItem(SPOTIFY_LAST_SYNC_TS, Date.now().toString());
+  } catch { }
+
+  return {
+    fetchedCount,
+    syncedCount: result.converted + result.skipped,
+    converted: result.converted,
+    skipped: result.skipped,
+    failed: result.failed
+  };
+};
+
+// Convert existing Spotify songs that don't have JioSaavn audio
+export const convertExistingSongsToJiosaavn = async (
+  onProgress?: (progress: ConversionProgress) => void
+): Promise<ConversionResult> => {
+  return convertAllSpotifySongsToJiosaavn(onProgress);
+};
+
+// Get count of songs needing conversion
+export const getSongsNeedingConversion = async (): Promise<number> => {
+  const songs = await getSpotifySyncedSongs();
+  return songs.length;
+};
+
+// Re-export types for convenience
+export type { ConversionProgress, ConversionResult };

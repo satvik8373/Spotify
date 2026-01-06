@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef, useCallback, useMemo, startTransition } from 'react';
-import { Heart, Music, Music2, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Calendar, Shuffle, Search, RefreshCw, LogOut, X } from 'lucide-react';
+import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Calendar, Shuffle, Search, RefreshCw, X, Sparkles } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { loadLikedSongs, syncWithServer, removeLikedSong } from '@/services/likedSongsService';
+import { loadLikedSongs, removeLikedSong } from '@/services/likedSongsService';
 import SpotifyLogin from '@/components/SpotifyLogin';
 import { isAuthenticated as isSpotifyAuthenticated } from '@/services/spotifyService';
-import { fetchAllSpotifySavedTracks, syncSpotifyLikedSongsToMavrixfy, backgroundAutoSyncOnce, countNewSpotifyTracks, filterOnlyNewSpotifyTracks } from '@/services/spotifySync';
+import { fetchAllSpotifySavedTracks, syncSpotifyLikedSongsToMavrixfy, backgroundAutoSyncOnce, filterOnlyNewSpotifyTracks, convertExistingSongsToJiosaavn, getSongsNeedingConversion } from '@/services/spotifySync';
 import { logout as spotifyLogout, debugTokenState } from '@/services/spotifyService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
@@ -15,7 +15,7 @@ import { Song } from '@/types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { getSyncStatus, formatSyncStatus, triggerManualSync, getSyncedLikedSongs, handleSpotifyLikeUnlike as handleSpotifyLikeUnlikeService, deleteAllLikedSongs, migrateLikedSongsStructure } from '@/services/syncedLikedSongsService';
-import SpotifySyncPermissionModal from '@/components/SpotifySyncPermissionModal';
+import SpotifyConvertSyncModal from '@/components/SpotifyConvertSyncModal';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 import {
@@ -30,7 +30,6 @@ import { getLocalStorage, getSessionStorage, setLocalStorage, setSessionStorage,
 // Add CSS for desktop view
 import './liked-songs.css';
 import SwipeableSongItem from '@/components/SwipeableSongItem';
-import SpotifyToJiosaavnConverter from '@/components/SpotifyToJiosaavnConverter';
 
 // Convert liked song format to player song format
 const adaptToPlayerSong = (likedSong: any): Song => {
@@ -1132,109 +1131,120 @@ const LikedSongsPage = () => {
               )}
             </div>
 
-            {/* Spotify sync section - Ultra Compact */}
+            {/* Spotify Connected - Minimal Design */}
             {(isSpotifyAuthValid) && (
-              <div className={cn("mb-4", isMobile ? "px-0" : "px-0")}>
-                <div className="bg-green-500/10 backdrop-blur-sm rounded-lg border border-green-500/20 p-3 hover:border-green-500/40 transition-all">
-                  <div className="flex items-center justify-between gap-3">
-                    {/* Left - Icon & Status */}
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <div className="w-9 h-9 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Music2 className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-foreground">Spotify</span>
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {spotifyAccountName || 'Connected'} · {upToDate ? 'Up to date' : 'New songs'}
-                        </p>
-                      </div>
+              <div className="mb-3">
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-[#1DB954] rounded-full flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                      </svg>
                     </div>
-
-                    {/* Right - Buttons */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {/* Convert to Playable Button */}
-                      <SpotifyToJiosaavnConverter />
-                      
-                      <Button
-                        disabled={syncingSpotify}
-                        onClick={async () => {
-                          setSyncingSpotify(true);
-                          try {
-                            const tracks = await fetchAllSpotifySavedTracks();
-                            const sortedTracks = tracks.sort((a: any, b: any) => {
-                              const dateA = new Date(a.addedAt).getTime();
-                              const dateB = new Date(b.addedAt).getTime();
-                              return dateB - dateA;
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-foreground">{spotifyAccountName || 'Spotify'}</span>
+                      <span className="w-1.5 h-1.5 bg-[#1DB954] rounded-full"></span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <Button
+                      disabled={syncingSpotify}
+                      onClick={async () => {
+                        setSyncingSpotify(true);
+                        try {
+                          const needsConversion = await getSongsNeedingConversion();
+                          if (needsConversion === 0) {
+                            toast.success('All songs ready!');
+                          } else {
+                            toast.loading(`Converting ${needsConversion} songs...`, { id: 'convert' });
+                            const result = await convertExistingSongsToJiosaavn((progress) => {
+                              toast.loading(`${progress.current}/${progress.total}`, { id: 'convert' });
                             });
-                            const newTracks = await filterOnlyNewSpotifyTracks(sortedTracks);
-                            setSpotifyTracks(newTracks);
-                            const newCount = newTracks.length;
-                            if (newCount === 0) {
-                              setUpToDate(true);
-                              toast.success('Already up to date');
-                            } else {
-                              setShowPermissionModal(true);
+                            toast.dismiss('convert');
+                            if (result.converted > 0) {
+                              toast.success(`${result.converted} songs converted`);
+                              await loadAndSetLikedSongs();
                             }
-                          } catch {
-                            toast.error('Sync failed');
-                          } finally {
-                            setSyncingSpotify(false);
                           }
-                        }}
-                        size="sm"
-                        className="h-8 bg-green-600 hover:bg-green-700 text-white text-xs px-3 rounded-md"
-                      >
-                        {syncingSpotify ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                            Sync
-                          </>
-                        )}
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleDisconnect}
-                        className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
+                        } catch {
+                          toast.dismiss('convert');
+                          toast.error('Failed');
+                        } finally {
+                          setSyncingSpotify(false);
+                        }
+                      }}
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-[#1DB954] hover:bg-[#1DB954]/10 rounded-full"
+                      title="Convert to playable audio"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </Button>
+                    
+                    <Button
+                      disabled={syncingSpotify}
+                      onClick={async () => {
+                        setSyncingSpotify(true);
+                        try {
+                          const tracks = await fetchAllSpotifySavedTracks();
+                          const sortedTracks = tracks.sort((a: any, b: any) => 
+                            new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
+                          );
+                          const newTracks = await filterOnlyNewSpotifyTracks(sortedTracks);
+                          setSpotifyTracks(newTracks);
+                          if (newTracks.length === 0) {
+                            setUpToDate(true);
+                            toast.success('Up to date');
+                          } else {
+                            setShowPermissionModal(true);
+                          }
+                        } catch {
+                          toast.error('Sync failed');
+                        } finally {
+                          setSyncingSpotify(false);
+                        }
+                      }}
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-[#1DB954] hover:bg-[#1DB954]/10 rounded-full"
+                    >
+                      {syncingSpotify ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      )}
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDisconnect}
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-full"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Connect Spotify section - Ultra Compact */}
+            {/* Connect Spotify - Minimal Design */}
             {(!isSpotifyAuthValid) && (
-              <div className={cn("mb-4", isMobile ? "px-0" : "px-0")}>
-                <div className="bg-green-500/10 backdrop-blur-sm rounded-lg border border-green-500/20 p-3 hover:border-green-500/40 transition-all group">
-                  <div className="flex items-center justify-between gap-3">
-                    {/* Left - Icon & Info */}
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <div className="w-9 h-9 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                        <Music2 className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-semibold text-foreground block">Connect Spotify</span>
-                        <p className="text-xs text-muted-foreground">Sync your liked songs</p>
-                      </div>
+              <div className="mb-3">
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-[#1DB954]/20 rounded-full flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5 text-[#1DB954]" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                      </svg>
                     </div>
-
-                    {/* Right - Connect Button */}
-                    <div className="flex-shrink-0">
-                      <SpotifyLogin
-                        variant="default"
-                        className="h-8 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 rounded-md"
-                      />
-                    </div>
+                    <span className="text-sm text-muted-foreground">Connect Spotify</span>
                   </div>
+                  <SpotifyLogin
+                    variant="ghost"
+                    className="h-7 text-xs font-medium text-[#1DB954] hover:bg-[#1DB954]/10 px-3 rounded-full"
+                  />
                 </div>
               </div>
             )}
@@ -1575,12 +1585,23 @@ const LikedSongsPage = () => {
         </div>
       </ScrollArea>
 
-      {/* Spotify Sync Permission Modal */}
-      <SpotifySyncPermissionModal
+      {/* Spotify Sync & Convert Modal */}
+      <SpotifyConvertSyncModal
         isOpen={showPermissionModal}
         onClose={() => setShowPermissionModal(false)}
         tracks={spotifyTracks}
-        onSync={handleSelectedSongsSync}
+        onSyncComplete={(result) => {
+          if (result.converted > 0 || result.skipped > 0) {
+            toast.success(`Added ${result.converted + result.skipped} songs to your library`);
+            loadAndSetLikedSongs();
+            setUpToDate(true);
+          } else if (result.failed > 0) {
+            toast.error(`Failed to sync ${result.failed} songs`);
+          } else {
+            toast('No new songs were added');
+          }
+          setShowPermissionModal(false);
+        }}
         isLoading={syncingSpotify}
       />
 
