@@ -1,7 +1,6 @@
 import axiosInstance from '@/lib/axios';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, deleteDoc, serverTimestamp, collection, getDocs, Timestamp } from 'firebase/firestore';
-import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
+import { doc, setDoc, deleteDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
 
 // Types
 export interface ConversionProgress {
@@ -45,43 +44,43 @@ export interface SpotifySyncedSong {
 }
 
 // Convert JioSaavn API response to our song format
+// Uses the same logic as playlist add song (convertSaavnTrack in useMusicStore)
 function convertJiosaavnToSong(item: any): ConvertedSong | null {
   if (!item) return null;
 
   // Get the best quality download URL (prefer 320kbps, then 160kbps, then 96kbps)
+  // Same logic as convertSaavnTrack in useMusicStore
   let audioUrl = '';
-  const downloadUrls = item.downloadUrl || [];
-  
-  // Try to get highest quality first
-  for (const quality of ['320kbps', '160kbps', '96kbps', '48kbps', '12kbps']) {
-    const urlObj = downloadUrls.find((u: any) => u.quality === quality);
-    if (urlObj?.url) {
-      audioUrl = urlObj.url;
-      break;
-    }
+  if (item.downloadUrl && Array.isArray(item.downloadUrl)) {
+    // Try to get the highest quality available - same order as playlist add song
+    const downloadUrl = item.downloadUrl.find((d: any) => d.quality === '320kbps') ||
+                       item.downloadUrl.find((d: any) => d.quality === '160kbps') ||
+                       item.downloadUrl.find((d: any) => d.quality === '96kbps') ||
+                       item.downloadUrl[item.downloadUrl.length - 1];
+    audioUrl = downloadUrl?.link || downloadUrl?.url || '';
   }
 
-  // Fallback to array index if quality labels not found
-  if (!audioUrl && downloadUrls.length > 0) {
-    audioUrl = downloadUrls[downloadUrls.length - 1]?.url || downloadUrls[0]?.url || '';
-  }
-
-  // Get best quality image
+  // Get best quality image - same logic as convertSaavnTrack
   let imageUrl = '';
-  const images = item.image || [];
-  if (images.length > 0) {
-    // Prefer 500x500, then 150x150, then 50x50
-    const highQuality = images.find((img: any) => img.quality === '500x500');
-    const medQuality = images.find((img: any) => img.quality === '150x150');
-    imageUrl = highQuality?.url || medQuality?.url || images[images.length - 1]?.url || '';
+  if (item.image && Array.isArray(item.image)) {
+    const image = item.image.find((i: any) => i.quality === '500x500') ||
+                 item.image.find((i: any) => i.quality === '150x150') ||
+                 item.image[item.image.length - 1];
+    imageUrl = image?.link || image?.url || '';
+  } else if (typeof item.image === 'string') {
+    imageUrl = item.image;
   }
 
-  // Extract artist names
+  // Extract artist names - same logic as convertSaavnTrack
   let artist = '';
-  if (item.artists?.primary && Array.isArray(item.artists.primary)) {
-    artist = item.artists.primary.map((a: any) => a.name).join(', ');
-  } else if (item.primaryArtists) {
+  if (item.primaryArtists) {
     artist = item.primaryArtists;
+  } else if (item.singers) {
+    artist = item.singers;
+  } else if (item.artistMap?.primary && Array.isArray(item.artistMap.primary)) {
+    artist = item.artistMap.primary.map((a: any) => a?.name).filter(Boolean).join(', ');
+  } else if (item.artists?.primary && Array.isArray(item.artists.primary)) {
+    artist = item.artists.primary.map((a: any) => a.name).join(', ');
   } else if (item.artist) {
     artist = item.artist;
   }
@@ -137,6 +136,7 @@ function calculateSimilarity(str1: string, str2: string): number {
 }
 
 // Search for a song on JioSaavn
+// Uses the same endpoint and filtering logic as playlist add song (searchIndianSongs in useMusicStore)
 async function searchJiosaavn(title: string, artist: string): Promise<any | null> {
   try {
     const cleanTitle = cleanSearchQuery(title);
@@ -145,8 +145,9 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
     
     console.log(`🔍 Searching JioSaavn for: "${query}"`);
     
+    // Same endpoint as playlist add song (searchIndianSongs)
     const response = await axiosInstance.get('/api/jiosaavn/search/songs', {
-      params: { query, limit: 10 },
+      params: { query, limit: 20 }, // Same limit as playlist add song
       timeout: 15000,
     });
 
@@ -156,15 +157,23 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
       return null;
     }
 
-    console.log(`✅ Found ${results.length} results on JioSaavn`);
+    // Filter results with valid downloadUrl - same as playlist add song
+    const validResults = results.filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0);
+    
+    if (validResults.length === 0) {
+      console.log('❌ No results with valid audio URL found');
+      return null;
+    }
+
+    console.log(`✅ Found ${validResults.length} results with valid audio on JioSaavn`);
 
     // Find the best match
     let bestMatch = null;
     let bestScore = 0;
 
-    for (const result of results) {
+    for (const result of validResults) {
       const resultTitle = (result.name || result.title || '').toLowerCase();
-      const resultArtist = (result.primaryArtists || result.artist || '').toLowerCase();
+      const resultArtist = (result.primaryArtists || result.singers || result.artist || '').toLowerCase();
       
       // Calculate match scores
       const titleScore = calculateSimilarity(cleanTitle, resultTitle);
@@ -173,17 +182,14 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
       // Combined score with title weighted more
       const combinedScore = (titleScore * 0.7) + (artistScore * 0.3);
       
-      // Check if this result has a valid audio URL
-      const hasAudio = result.downloadUrl && result.downloadUrl.length > 0;
-      
-      if (hasAudio && combinedScore > bestScore && combinedScore > 0.3) {
+      if (combinedScore > bestScore && combinedScore > 0.3) {
         bestScore = combinedScore;
         bestMatch = result;
       }
     }
 
     if (bestMatch) {
-      console.log(`🎯 Best match: "${bestMatch.name}" by ${bestMatch.primaryArtists} (score: ${bestScore.toFixed(2)})`);
+      console.log(`🎯 Best match: "${bestMatch.name}" by ${bestMatch.primaryArtists || bestMatch.singers} (score: ${bestScore.toFixed(2)})`);
     }
 
     return bestMatch;
@@ -386,18 +392,12 @@ export async function convertAllSpotifySongsToJiosaavn(
     message: `Conversion complete! ${result.converted} converted, ${result.failed} failed`
   });
 
-  console.log(`🏁 Conversion complete:`, result);
-  
-  // Refresh the liked songs store to update heart icons
-  try {
-    await useLikedSongsStore.getState().loadLikedSongs();
-    document.dispatchEvent(new CustomEvent('likedSongsUpdated', {
-      detail: { source: 'spotifyConversion', count: result.converted }
-    }));
-  } catch (e) {
-    console.warn('Failed to refresh liked songs store:', e);
+  // Dispatch event to notify other components (same pattern as playlist add song)
+  if (result.converted > 0) {
+    document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
   }
-  
+
+  console.log(`🏁 Conversion complete:`, result);
   return result;
 }
 
@@ -462,18 +462,6 @@ export async function convertAndSaveSpotifyTracks(
           // Save to Firestore with JioSaavn data
           const docRef = doc(db, 'users', userId, 'likedSongs', convertedSong.id);
           
-          // Convert date string to Firestore Timestamp
-          let likedAtTimestamp;
-          if (track.addedAt) {
-            try {
-              likedAtTimestamp = Timestamp.fromDate(new Date(track.addedAt));
-            } catch {
-              likedAtTimestamp = serverTimestamp();
-            }
-          } else {
-            likedAtTimestamp = serverTimestamp();
-          }
-          
           const likedSongData = {
             id: convertedSong.id,
             songId: convertedSong.id,
@@ -484,7 +472,7 @@ export async function convertAndSaveSpotifyTracks(
             audioUrl: convertedSong.audioUrl,
             duration: convertedSong.duration,
             year: convertedSong.year,
-            likedAt: likedAtTimestamp,
+            likedAt: track.addedAt ? new Date(track.addedAt) : serverTimestamp(),
             source: 'mavrixfy',
             convertedFrom: 'spotify',
             spotifyId: track.id,
@@ -528,36 +516,19 @@ export async function convertAndSaveSpotifyTracks(
     message: `Done! ${result.converted} converted, ${result.skipped} saved with Spotify data, ${result.failed} failed`
   });
 
-  console.log(`🏁 Batch conversion complete:`, result);
-  
-  // Refresh the liked songs store to update heart icons
-  try {
-    await useLikedSongsStore.getState().loadLikedSongs();
-    document.dispatchEvent(new CustomEvent('likedSongsUpdated', {
-      detail: { source: 'spotifySync', count: result.converted + result.skipped }
-    }));
-  } catch (e) {
-    console.warn('Failed to refresh liked songs store:', e);
+  // Dispatch event to notify other components (same pattern as playlist add song)
+  // This ensures the liked songs list updates immediately
+  if (result.converted > 0 || result.skipped > 0) {
+    document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
   }
-  
+
+  console.log(`🏁 Batch conversion complete:`, result);
   return result;
 }
 
 // Save Spotify track as fallback when JioSaavn conversion fails
 async function saveSpotifyTrackAsFallback(userId: string, track: any): Promise<void> {
   const docRef = doc(db, 'users', userId, 'likedSongs', track.id);
-  
-  // Convert date string to Firestore Timestamp
-  let likedAtTimestamp;
-  if (track.addedAt) {
-    try {
-      likedAtTimestamp = Timestamp.fromDate(new Date(track.addedAt));
-    } catch {
-      likedAtTimestamp = serverTimestamp();
-    }
-  } else {
-    likedAtTimestamp = serverTimestamp();
-  }
   
   const likedSongData = {
     id: track.id,
@@ -569,7 +540,7 @@ async function saveSpotifyTrackAsFallback(userId: string, track: any): Promise<v
     audioUrl: track.audioUrl || track.preview_url || '',
     duration: track.duration || Math.floor((track.duration_ms || 0) / 1000),
     year: track.year || '',
-    likedAt: likedAtTimestamp,
+    likedAt: track.addedAt ? new Date(track.addedAt) : serverTimestamp(),
     source: 'spotify',
     needsConversion: true
   };

@@ -196,17 +196,12 @@ const LikedSongsPage = () => {
       // Check if we have valid Spotify auth before making API calls
       const hasValidSpotifyAuth = isSpotifyAuthenticated();
 
-      // First, refresh the global liked songs store to ensure heart icons are correct
-      await useLikedSongsStore.getState().loadLikedSongs();
-
       const [status, songs] = await Promise.all([
-        hasValidSpotifyAuth ? getSyncStatus(user.id).catch(() => null) : Promise.resolve(null),
-        hasValidSpotifyAuth ? getSyncedLikedSongs(user.id).catch(() => []) : loadLikedSongs(),
+        hasValidSpotifyAuth ? getSyncStatus(user.id) : Promise.resolve(null),
+        hasValidSpotifyAuth ? getSyncedLikedSongs(user.id) : loadLikedSongs(),
       ]);
 
       if (status) setSyncStatus(status);
-      
-      // Use backend songs if available, otherwise fall back to direct Firestore load
       const pick = Array.isArray(songs) && songs.length > 0 ? songs : await loadLikedSongs();
 
       console.log('📥 Loaded liked songs:', {
@@ -624,9 +619,6 @@ const LikedSongsPage = () => {
     }
 
     try {
-      // Refresh the global liked songs store first (this updates heart icons everywhere)
-      await useLikedSongsStore.getState().loadLikedSongs();
-      
       // First try to load synced songs from Firestore
       if (isSpotifyAuthValid && user?.id) {
         const syncedData = await getSyncedLikedSongs(user.id);

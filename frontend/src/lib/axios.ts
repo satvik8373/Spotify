@@ -11,10 +11,13 @@ const RAW_API_URL = import.meta.env.VITE_API_URL || "";
 const isProduction = window.location.hostname === 'mavrixfy.site' || 
                      window.location.hostname === 'www.mavrixfy.site';
 
+// Check if we're on ngrok (development via tunnel)
+const isNgrok = window.location.hostname.includes('ngrok');
+
 // Prefer explicit VITE_API_URL; otherwise fallback by environment
 let FINAL_API_URL = RAW_API_URL
   ? RAW_API_URL
-  : (isProduction ? 'https://spotify-api-drab.vercel.app/api' : 'http://localhost:5000');
+  : (isProduction ? 'https://spotify-api-drab.vercel.app/api' : 'http://localhost:5000/api');
 
 // Ensure production URL always has /api suffix
 if (isProduction && !FINAL_API_URL.endsWith('/api')) {
@@ -27,7 +30,7 @@ if (isProduction && !FINAL_API_URL.endsWith('/api')) {
 // Remove trailing slash and ensure proper formatting
 const cleanApiUrl = FINAL_API_URL.replace(/\/$/, '');
 
-console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
+console.log('🌍 Environment:', isProduction ? 'Production' : (isNgrok ? 'Development (ngrok)' : 'Development'));
 console.log('🔧 RAW_API_URL:', RAW_API_URL || '(not set)');
 console.log('🔗 API base URL:', cleanApiUrl);
 console.log('📍 Current hostname:', window.location.hostname);
