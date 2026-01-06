@@ -85,10 +85,7 @@ router.post("/callback", async (req, res) => {
   
   try {
     console.log("🔄 Exchanging code for tokens...");
-    console.log("Using redirect_uri from frontend:", redirect_uri);
-    
-    // Pass the redirect_uri from frontend to ensure it matches the auth request
-    const tokenData = await spotifyService.getAccessToken(CLIENT_ID, CLIENT_SECRET, code, redirect_uri);
+    const tokenData = await spotifyService.getAccessToken(CLIENT_ID, CLIENT_SECRET, code);
     console.log("✅ Tokens received successfully");
     
     // Store tokens in Firestore
@@ -96,11 +93,10 @@ router.post("/callback", async (req, res) => {
     await storeSpotifyTokens(userId, tokenData);
     console.log("✅ Tokens stored in Firestore");
     
-    // Perform initial sync with delay to handle Spotify's server-side caching
-    // This is critical: Spotify's API may return stale data immediately after OAuth
+    // Perform initial sync
     try {
-      console.log("🔄 Starting initial sync (with 4s delay for Spotify cache)...");
-      await syncSpotifyLikedSongs(userId, { isInitialSync: true });
+      console.log("🔄 Starting initial sync...");
+      await syncSpotifyLikedSongs(userId);
       console.log("✅ Initial sync completed");
     } catch (syncError) {
       console.error("⚠️ Initial sync failed:", syncError);
@@ -144,15 +140,14 @@ router.post("/callback", async (req, res) => {
 
 // Manual sync endpoint
 router.post("/sync", async (req, res) => {
-  const { userId, isInitialSync } = req.body;
+  const { userId } = req.body;
   
   if (!userId) {
     return res.status(400).json({ message: "User ID is required" });
   }
   
   try {
-    // Pass isInitialSync flag to apply delay if needed
-    const result = await syncSpotifyLikedSongs(userId, { isInitialSync: !!isInitialSync });
+    const result = await syncSpotifyLikedSongs(userId);
     res.json({ success: true, ...result });
   } catch (error) {
     console.error("Manual sync error:", error);
@@ -167,14 +162,11 @@ router.post("/sync", async (req, res) => {
 router.get("/liked-songs/:userId", async (req, res) => {
   const { userId } = req.params;
   
-  console.log(`📥 GET /liked-songs/${userId} - Fetching synced songs`);
-  
   try {
     const songs = await getSyncedLikedSongs(userId);
-    console.log(`✅ Returning ${songs.length} songs for user: ${userId}`);
     res.json(songs);
   } catch (error) {
-    console.error("❌ Error getting liked songs:", error);
+    console.error("Error getting liked songs:", error);
     res.status(500).json({ 
       message: "Failed to get liked songs",
       error: error.message

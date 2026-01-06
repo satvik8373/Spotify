@@ -266,12 +266,6 @@ const getAccessToken = async (): Promise<string | null> => {
         localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
         localStorage.setItem(TOKEN_EXPIRY_KEY, newExpiry.toString());
         
-        // Dispatch event to notify about token refresh (triggers re-sync)
-        try { 
-          window.dispatchEvent(new Event('spotify_token_refreshed')); 
-          console.log('🔄 Token refreshed, dispatched spotify_token_refreshed event');
-        } catch {}
-        
         return access_token;
       }
     } catch (error) {
@@ -391,81 +385,15 @@ export const addTracksToPlaylist = async (playlistId: string, uris: string[]) =>
 // Library related API calls
 export const getSavedTracks = async (limit = 20, offset = 0) => {
   try {
-    // Add cache-busting timestamp to prevent stale responses
-    const timestamp = Date.now();
     const response = await spotifyApi.get('/me/tracks', {
       params: {
         limit,
         offset,
-        _t: timestamp, // Cache-busting parameter
-      },
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
       },
     });
     return response.data.items;
   } catch (error) {
     console.error('Error getting saved tracks:', error);
-    throw error;
-  }
-};
-
-// Fetch ALL saved tracks with proper pagination (handles Spotify's 50-item limit)
-export const getAllSavedTracks = async (onProgress?: (loaded: number, total: number | null) => void) => {
-  try {
-    const allTracks: any[] = [];
-    let offset = 0;
-    const limit = 50;
-    let total: number | null = null;
-    
-    console.log('🔄 Fetching all saved tracks with pagination...');
-    
-    while (true) {
-      const timestamp = Date.now();
-      const response = await spotifyApi.get('/me/tracks', {
-        params: {
-          limit,
-          offset,
-          _t: timestamp,
-        },
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-        },
-      });
-      
-      const { items, next, total: responseTotal } = response.data;
-      
-      if (total === null) {
-        total = responseTotal;
-        console.log(`📊 Total tracks to fetch: ${total}`);
-      }
-      
-      if (!items || items.length === 0) break;
-      
-      allTracks.push(...items);
-      
-      // Report progress
-      if (onProgress) {
-        onProgress(allTracks.length, total);
-      }
-      
-      // Check if we've reached the end
-      if (!next || items.length < limit) {
-        break;
-      }
-      
-      offset += items.length;
-      
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    
-    console.log(`✅ Fetched ${allTracks.length} total saved tracks`);
-    return allTracks;
-  } catch (error) {
-    console.error('Error getting all saved tracks:', error);
     throw error;
   }
 };
@@ -626,134 +554,6 @@ export const debugAuthenticationState = (): void => {
   console.log('=== End Debug ===');
 };
 
-// ============================================
-// SPOTIFY SYNC MANAGER
-// Handles automatic re-sync on visibility change, token refresh, etc.
-// ============================================
-
-type SyncCallback = () => Promise<void>;
-type SyncStatusCallback = (status: 'syncing' | 'completed' | 'error', message?: string) => void;
-
-class SpotifySyncManager {
-  private syncCallback: SyncCallback | null = null;
-  private statusCallback: SyncStatusCallback | null = null;
-  private isInitialized = false;
-  private lastSyncTime = 0;
-  private minSyncInterval = 30000; // Minimum 30 seconds between syncs
-  private syncOnFocusEnabled = true;
-
-  // Initialize the sync manager with callbacks
-  initialize(onSync: SyncCallback, onStatusChange?: SyncStatusCallback) {
-    if (this.isInitialized) {
-      console.log('SpotifySyncManager already initialized');
-      return;
-    }
-
-    this.syncCallback = onSync;
-    this.statusCallback = onStatusChange || null;
-    this.isInitialized = true;
-
-    // Listen for visibility changes (tab focus)
-    document.addEventListener('visibilitychange', this.handleVisibilityChange);
-    
-    // Listen for window focus
-    window.addEventListener('focus', this.handleWindowFocus);
-    
-    // Listen for Spotify auth changes
-    window.addEventListener('spotify_auth_changed', this.handleAuthChange);
-    
-    // Listen for token refresh events
-    window.addEventListener('spotify_token_refreshed', this.handleTokenRefresh);
-
-    console.log('✅ SpotifySyncManager initialized');
-  }
-
-  // Cleanup listeners
-  destroy() {
-    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-    window.removeEventListener('focus', this.handleWindowFocus);
-    window.removeEventListener('spotify_auth_changed', this.handleAuthChange);
-    window.removeEventListener('spotify_token_refreshed', this.handleTokenRefresh);
-    this.isInitialized = false;
-    console.log('SpotifySyncManager destroyed');
-  }
-
-  // Enable/disable sync on focus
-  setSyncOnFocus(enabled: boolean) {
-    this.syncOnFocusEnabled = enabled;
-  }
-
-  // Set minimum sync interval
-  setMinSyncInterval(ms: number) {
-    this.minSyncInterval = ms;
-  }
-
-  // Trigger a manual sync
-  async triggerSync(force = false): Promise<void> {
-    if (!this.syncCallback) {
-      console.warn('No sync callback registered');
-      return;
-    }
-
-    const now = Date.now();
-    if (!force && now - this.lastSyncTime < this.minSyncInterval) {
-      console.log(`⏳ Skipping sync - last sync was ${Math.round((now - this.lastSyncTime) / 1000)}s ago`);
-      return;
-    }
-
-    try {
-      this.statusCallback?.('syncing', 'Syncing your Spotify library...');
-      await this.syncCallback();
-      this.lastSyncTime = Date.now();
-      this.statusCallback?.('completed', 'Sync completed');
-    } catch (error) {
-      console.error('Sync failed:', error);
-      this.statusCallback?.('error', 'Sync failed');
-    }
-  }
-
-  private handleVisibilityChange = () => {
-    if (document.visibilityState === 'visible' && this.syncOnFocusEnabled && isAuthenticated()) {
-      console.log('📱 App became visible - triggering sync');
-      this.triggerSync();
-    }
-  };
-
-  private handleWindowFocus = () => {
-    if (this.syncOnFocusEnabled && isAuthenticated()) {
-      console.log('🔍 Window focused - triggering sync');
-      this.triggerSync();
-    }
-  };
-
-  private handleAuthChange = () => {
-    if (isAuthenticated()) {
-      console.log('🔐 Auth changed - triggering sync with delay');
-      // Add delay after auth to handle Spotify's server-side caching
-      setTimeout(() => this.triggerSync(true), 4000);
-    }
-  };
-
-  private handleTokenRefresh = () => {
-    if (isAuthenticated()) {
-      console.log('🔄 Token refreshed - triggering sync');
-      this.triggerSync(true);
-    }
-  };
-}
-
-// Export singleton instance
-export const spotifySyncManager = new SpotifySyncManager();
-
-// Helper function to trigger sync after initial OAuth
-export const triggerPostOAuthSync = async (delayMs = 4000): Promise<void> => {
-  console.log(`⏳ Waiting ${delayMs}ms before post-OAuth sync...`);
-  await new Promise(resolve => setTimeout(resolve, delayMs));
-  
-  // Dispatch event to trigger sync
-  window.dispatchEvent(new Event('spotify_auth_changed'));
-};
-
 export default {
   getLoginUrl,
   handleCallback,
@@ -768,7 +568,6 @@ export default {
   createPlaylist,
   addTracksToPlaylist,
   getSavedTracks,
-  getAllSavedTracks,
   saveTrack,
   removeTrack,
   getAlbum,
@@ -779,6 +578,4 @@ export default {
   playTrack,
   debugTokenState,
   debugAuthenticationState,
-  spotifySyncManager,
-  triggerPostOAuthSync,
 }; 
