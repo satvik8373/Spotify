@@ -163,7 +163,6 @@ export async function getSpotifySyncedSongs(): Promise<any[]> {
         console.log(`  -> Already has valid audio`);
       }
     });
-    });
 
     console.log(`Found ${songsNeedingConversion.length} songs needing conversion out of ${snapshot.size} total`);
     return songsNeedingConversion;
