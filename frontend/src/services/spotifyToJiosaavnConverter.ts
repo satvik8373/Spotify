@@ -67,15 +67,22 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
     const cleanArtist = artist.split(',')[0].trim(); // Use first artist only
     const query = `${cleanTitle} ${cleanArtist}`;
     
+    console.log(`Searching JioSaavn for: "${query}"`);
+    
     const response = await axiosInstance.get('/api/jiosaavn/search/songs', {
       params: { query, limit: 5 },
       timeout: 10000,
     });
 
+    console.log('JioSaavn API response:', response.data);
+
     const results = response.data?.data?.results;
     if (!results || results.length === 0) {
+      console.log('No results found on JioSaavn');
       return null;
     }
+
+    console.log(`Found ${results.length} results on JioSaavn`);
 
     // Find the best match - prioritize exact title match
     const normalizedTitle = cleanTitle.toLowerCase();
@@ -105,6 +112,10 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
       bestMatch = results.find((r: any) => r.downloadUrl && r.downloadUrl.length > 0);
     }
 
+    if (bestMatch) {
+      console.log(`Best match: "${bestMatch.name}" by ${bestMatch.primaryArtists}`);
+    }
+
     return bestMatch;
   } catch (error) {
     console.error('JioSaavn search error:', error);
@@ -112,7 +123,7 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
   }
 }
 
-// Get all Spotify synced songs from Firestore that need conversion
+// Get all songs from Firestore that need conversion (no valid audio URL)
 export async function getSpotifySyncedSongs(): Promise<any[]> {
   if (!auth.currentUser) return [];
 
@@ -123,22 +134,15 @@ export async function getSpotifySyncedSongs(): Promise<any[]> {
     const songsNeedingConversion: any[] = [];
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
-      const audioUrl = data.audioUrl || '';
+      const audioUrl = (data.audioUrl || '').trim();
       
-      // Check if song needs conversion:
-      // 1. No audioUrl or empty audioUrl
-      // 2. audioUrl is a Spotify preview URL (p.scdn.co)
-      // 3. audioUrl contains 'spotify'
-      // Songs with valid JioSaavn URLs (saavncdn) are already converted
-      const hasValidAudio = audioUrl && 
-        audioUrl.length > 10 && 
-        (audioUrl.includes('saavncdn') || audioUrl.includes('aac.saavncdn'));
+      // Song needs conversion if:
+      // 1. audioUrl is empty or missing
+      // 2. audioUrl doesn't contain a valid streaming URL (saavncdn for JioSaavn)
+      const hasValidJioSaavnUrl = audioUrl.length > 0 && audioUrl.includes('saavncdn');
       
-      const isSpotifyUrl = audioUrl.includes('spotify') || audioUrl.includes('p.scdn.co');
-      
-      const needsConversion = !hasValidAudio || isSpotifyUrl || !audioUrl;
-      
-      if (needsConversion) {
+      if (!hasValidJioSaavnUrl) {
+        console.log(`Song needs conversion: "${data.title}" - audioUrl: "${audioUrl.substring(0, 50)}..."`);
         songsNeedingConversion.push({
           docId: docSnap.id,
           ...data
@@ -146,7 +150,7 @@ export async function getSpotifySyncedSongs(): Promise<any[]> {
       }
     });
 
-    console.log(`Found ${songsNeedingConversion.length} songs needing conversion`);
+    console.log(`Found ${songsNeedingConversion.length} songs needing conversion out of ${snapshot.size} total`);
     return songsNeedingConversion;
   } catch (error) {
     console.error('Error getting songs needing conversion:', error);
@@ -224,9 +228,18 @@ export async function convertAllSpotifySongsToJiosaavn(
 
       if (success && jiosaavnSong) {
         try {
+          console.log(`Converting "${song.title}": Deleting old doc ${song.docId}, creating new doc ${jiosaavnSong.id}`);
+          console.log(`JioSaavn data:`, {
+            id: jiosaavnSong.id,
+            title: jiosaavnSong.title,
+            audioUrl: jiosaavnSong.audioUrl?.substring(0, 50) + '...',
+            imageUrl: jiosaavnSong.imageUrl?.substring(0, 50) + '...'
+          });
+          
           // Delete the old Spotify document
           const oldDocRef = doc(db, 'users', userId, 'likedSongs', song.docId);
           await deleteDoc(oldDocRef);
+          console.log(`Deleted old document: ${song.docId}`);
 
           // Create new document with JioSaavn ID (same format as manual likes)
           const newDocRef = doc(db, 'users', userId, 'likedSongs', jiosaavnSong.id);
@@ -247,6 +260,7 @@ export async function convertAllSpotifySongsToJiosaavn(
           };
 
           await setDoc(newDocRef, likedSongData);
+          console.log(`Created new document: ${jiosaavnSong.id} with audioUrl: ${jiosaavnSong.audioUrl?.substring(0, 50)}...`);
           result.converted++;
         } catch (writeError) {
           console.error('Error writing converted song:', writeError);
@@ -306,22 +320,17 @@ export async function getConversionStats(): Promise<{ spotifyCount: number; tota
     snapshot.forEach(docSnap => {
       totalCount++;
       const data = docSnap.data();
-      const audioUrl = data.audioUrl || '';
+      const audioUrl = (data.audioUrl || '').trim();
       
       // Same logic as getSpotifySyncedSongs
-      const hasValidAudio = audioUrl && 
-        audioUrl.length > 10 && 
-        (audioUrl.includes('saavncdn') || audioUrl.includes('aac.saavncdn'));
+      const hasValidJioSaavnUrl = audioUrl.length > 0 && audioUrl.includes('saavncdn');
       
-      const isSpotifyUrl = audioUrl.includes('spotify') || audioUrl.includes('p.scdn.co');
-      
-      const needsConversion = !hasValidAudio || isSpotifyUrl || !audioUrl;
-      
-      if (needsConversion) {
+      if (!hasValidJioSaavnUrl) {
         needsConversionCount++;
       }
     });
 
+    console.log(`Stats: ${needsConversionCount} need conversion out of ${totalCount} total`);
     return { spotifyCount: needsConversionCount, totalCount };
   } catch (error) {
     console.error('Error getting conversion stats:', error);
