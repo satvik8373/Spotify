@@ -28,6 +28,11 @@ export interface LikedSong {
   likedAt: any; // Firebase Timestamp
   source: 'mavrixfy' | 'spotify'; // Track the source of the liked song
   year?: string; // Add year property
+  // Spotify sync fields
+  trackId?: string;
+  coverUrl?: string;
+  previewUrl?: string;
+  album?: string;
 }
 
 /**
@@ -151,13 +156,14 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
     snapshot.forEach(doc => {
       const data = doc.data() as LikedSong;
       songs.push({
-        id: data.id,
+        id: data.id || data.songId || data.trackId || doc.id,
         title: data.title,
         artist: data.artist,
-        imageUrl: data.imageUrl,
-        audioUrl: data.audioUrl,
+        // Support both 'imageUrl' (manual likes) and 'coverUrl' (Spotify sync)
+        imageUrl: data.imageUrl || data.coverUrl || '',
+        audioUrl: data.audioUrl || data.previewUrl || '',
         duration: data.duration,
-        album: data.albumName,
+        album: data.albumName || data.album || '',
         year: data.year || ''
       });
     });
