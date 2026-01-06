@@ -93,20 +93,36 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
         try {
           let songs: Song[] = [];
           const isAuthenticated = isUserAuthenticated();
+          const firebaseUid = auth.currentUser?.uid;
+          
+          console.log('🔄 loadLikedSongs called:', { 
+            isAuthenticated, 
+            firebaseUid,
+            authStoreUserId: useAuthStore.getState().userId 
+          });
 
           // Try Firestore first if user is authenticated
-          if (isAuthenticated) {
+          if (isAuthenticated || firebaseUid) {
             try {
               // Fetch from Firestore sorted by most recent first
               const firebaseSongs = await likedSongsFirestoreService.loadLikedSongs();
               songs = firebaseSongs.map(convertToLocalSong);
-              console.log(`Loaded ${songs.length} songs from Firestore`);
+              console.log(`✅ Loaded ${songs.length} songs from Firestore`);
+              
+              if (songs.length > 0) {
+                console.log('📋 First song:', { 
+                  title: songs[0].title, 
+                  id: songs[0]._id,
+                  hasAudio: !!songs[0].audioUrl 
+                });
+              }
             } catch (firebaseError) {
-              console.warn('Failed to load from Firebase, falling back to local storage', firebaseError);
+              console.warn('❌ Failed to load from Firebase, falling back to local storage', firebaseError);
               // Fall back to local storage if Firestore fails
               songs = localLikedSongsService.getLikedSongs();
             }
           } else {
+            console.log('👤 User not authenticated, using local storage');
             // Use local storage for anonymous users
             songs = localLikedSongsService.getLikedSongs();
           }
@@ -120,12 +136,17 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
             if (song.id && song.id !== song._id) songIds.add(song.id);
           });
 
-          console.log(`Store loaded ${songs.length} liked songs, ${songIds.size} unique IDs`);
-          console.log('Sample IDs:', Array.from(songIds).slice(0, 5));
+          console.log(`📊 Store loaded ${songs.length} liked songs, ${songIds.size} unique IDs`);
           
           // Always update state to ensure fresh data
           set({ likedSongs: songs, likedSongIds: songIds });
+          
+          // Also update localStorage for persistence
+          if (songs.length > 0) {
+            localLikedSongsService.getLikedSongs(); // This syncs the local storage
+          }
         } catch (error) {
+          console.error('❌ Error in loadLikedSongs:', error);
           // Don't clear existing songs on error, just keep what we have
         } finally {
           set({ isLoading: false });
@@ -329,17 +350,25 @@ try {
 import { onAuthStateChanged } from 'firebase/auth';
 
 let authUnsubscribe: (() => void) | null = null;
+let hasLoadedAfterAuth = false;
 
 const setupAuthListener = () => {
   if (authUnsubscribe) return; // Already set up
   
   authUnsubscribe = onAuthStateChanged(auth, (user) => {
     if (user) {
-      console.log('Firebase auth state changed - user logged in, reloading liked songs');
+      console.log('Firebase auth state changed - user logged in:', user.uid);
+      // Always reload when we detect a logged-in user
+      hasLoadedAfterAuth = true;
       // Small delay to ensure Firestore is ready
       setTimeout(() => {
-        useLikedSongsStore.getState().loadLikedSongs().catch(() => {});
-      }, 500);
+        console.log('🔄 Loading liked songs after auth state change...');
+        useLikedSongsStore.getState().loadLikedSongs().catch((e) => {
+          console.error('Failed to load liked songs after auth:', e);
+        });
+      }, 300);
+    } else {
+      hasLoadedAfterAuth = false;
     }
   });
 };

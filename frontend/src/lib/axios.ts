@@ -12,9 +12,17 @@ const isProduction = window.location.hostname === 'mavrixfy.site' ||
                      window.location.hostname === 'www.mavrixfy.site';
 
 // Prefer explicit VITE_API_URL; otherwise fallback by environment
-const FINAL_API_URL = RAW_API_URL
+let FINAL_API_URL = RAW_API_URL
   ? RAW_API_URL
   : (isProduction ? 'https://spotify-api-drab.vercel.app/api' : 'http://localhost:5000');
+
+// Ensure production URL always has /api suffix
+if (isProduction && !FINAL_API_URL.endsWith('/api')) {
+  // If it's the production backend URL without /api, add it
+  if (FINAL_API_URL.includes('spotify-api-drab.vercel.app') || FINAL_API_URL.includes('vercel.app')) {
+    FINAL_API_URL = FINAL_API_URL.replace(/\/?$/, '/api');
+  }
+}
 
 // Remove trailing slash and ensure proper formatting
 const cleanApiUrl = FINAL_API_URL.replace(/\/$/, '');

@@ -144,24 +144,30 @@ export const saveLikedSongs = async (songs: Song[]): Promise<void> => {
 export const loadLikedSongs = async (): Promise<Song[]> => {
   const userId = getCurrentUserId();
   
+  console.log('📥 likedSongsService.loadLikedSongs called, userId:', userId);
+  
   if (!userId) {
-    console.warn('User not authenticated, cannot load from Firestore');
+    console.warn('⚠️ User not authenticated, cannot load from Firestore');
     return [];
   }
 
   try {
     const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+    console.log('📂 Reading from Firestore path: users/' + userId + '/likedSongs');
     
     // First try with ordering
     let snapshot;
     try {
       const q = query(likedSongsRef, orderBy('likedAt', 'desc'));
       snapshot = await getDocs(q);
+      console.log('✅ Query with likedAt ordering succeeded');
     } catch (orderError) {
       // If ordering fails (e.g., missing index or invalid data), load without ordering
-      console.warn('Failed to load with ordering, loading without order:', orderError);
+      console.warn('⚠️ Failed to load with ordering, loading without order:', orderError);
       snapshot = await getDocs(likedSongsRef);
     }
+    
+    console.log('📊 Firestore returned', snapshot.size, 'documents');
     
     const songs: Song[] = [];
     
@@ -182,7 +188,16 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
       });
     });
     
-    console.log(`Loaded ${songs.length} liked songs from Firestore for user ${userId}`);
+    console.log(`✅ Loaded ${songs.length} liked songs from Firestore for user ${userId}`);
+    
+    if (songs.length > 0) {
+      console.log('📋 First song:', { 
+        title: songs[0].title, 
+        id: songs[0].id,
+        hasAudioUrl: !!songs[0].audioUrl,
+        audioUrlPreview: songs[0].audioUrl?.substring(0, 50)
+      });
+    }
     
     // Sort by likedAt if available (handle both Timestamp and Date objects)
     songs.sort((a: any, b: any) => {
@@ -194,7 +209,7 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
     return songs;
     
   } catch (error) {
-    console.error('Error loading liked songs from Firestore:', error);
+    console.error('❌ Error loading liked songs from Firestore:', error);
     return [];
   }
 };
