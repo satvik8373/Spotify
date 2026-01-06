@@ -67,7 +67,8 @@ const isTokenValid = (): boolean => {
 };
 
 /**
- * Create axios instance with cache-busting headers
+ * Create axios instance for Spotify API
+ * Note: Cache-busting is done via query params, not headers (CORS restriction)
  */
 const createSpotifyClient = () => {
   const token = getAccessToken();
@@ -78,10 +79,6 @@ const createSpotifyClient = () => {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
-      // Cache-busting headers
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
     },
   });
 };

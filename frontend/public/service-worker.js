@@ -1,7 +1,7 @@
 // Service Worker for Mavrixfy
-const CACHE_NAME = 'mavrixfy-v2.0.2';
-const STATIC_CACHE = 'mavrixfy-static-v1.0.2';
-const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.2';
+const CACHE_NAME = 'mavrixfy-v2.0.3';
+const STATIC_CACHE = 'mavrixfy-static-v1.0.3';
+const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.3';
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -67,6 +67,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip requests with cache-busting query params (let browser handle them directly)
+  if (url.searchParams.has('_t') || url.searchParams.has('refresh')) {
+    return;
+  }
+
   // Handle different types of requests
   if (url.origin === self.location.origin) {
     // Check if this is a JioSaavn API request through our backend
@@ -94,11 +99,15 @@ self.addEventListener('fetch', (event) => {
     // Cloudinary images - cache first strategy
     event.respondWith(handleImageRequest(request));
   } else if (url.hostname === 'api.spotify.com') {
-    // Spotify API - network first strategy
-    event.respondWith(handleApiRequest(request));
+    // Spotify API - bypass service worker entirely to avoid CORS issues
+    // Let the browser handle these requests directly
+    return;
   } else if (url.hostname === 'saavn.dev' || url.hostname.endsWith('.googleusercontent.com')) {
     // Bypass SW for these hosts to avoid unintended 504 fallbacks or rate-limit noise
     return; // allow default browser fetch handling
+  } else if (url.hostname.includes('vercel.app') || url.hostname.includes('spotify-api')) {
+    // Backend API requests - bypass service worker to avoid caching issues
+    return;
   } else {
     // Other external requests - network first
     event.respondWith(handleExternalRequest(request));
