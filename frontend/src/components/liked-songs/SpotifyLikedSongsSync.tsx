@@ -6,7 +6,7 @@ import { useMusicStore } from '@/stores/useMusicStore';
 import { Song } from '@/types';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { addLikedSong } from '@/services/likedSongsService';
+import { addLikedSong, isSongAlreadyLiked } from '@/services/likedSongsService';
 import { isAuthenticated as isSpotifyAuthenticated, getSavedTracks } from '@/services/spotifyService';
 import SpotifyLogin from '@/components/SpotifyLogin';
 
@@ -24,18 +24,22 @@ interface SpotifyTrack {
   };
   duration_ms: number;
   preview_url?: string;
-  status: 'ready' | 'added' | 'error' | 'searching';
+  added_at: string; // When the song was added to Spotify liked songs
+  status: 'ready' | 'added' | 'error' | 'searching' | 'skipped';
   message?: string;
 }
 
 export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
   const [spotifyTracks, setSpotifyTracks] = useState<SpotifyTrack[]>([]);
+  const [newTracksOnly, setNewTracksOnly] = useState<SpotifyTrack[]>([]);
   const [isLoadingTracks, setIsLoadingTracks] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [addedSongsCount, setAddedSongsCount] = useState(0);
+  const [skippedSongsCount, setSkippedSongsCount] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
+  const [syncMode, setSyncMode] = useState<'new' | 'all'>('new'); // Default to new songs only
   
   const { convertIndianSongToAppSong, searchIndianSongs } = useMusicStore();
 
@@ -55,8 +59,8 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
     };
   }, []);
 
-  // Load Spotify liked songs
-  const loadSpotifyTracks = async () => {
+  // Load Spotify liked songs with smart filtering
+  const loadSpotifyTracks = async (mode: 'new' | 'all' = 'new') => {
     if (!isSpotifyAuthenticated()) {
       toast.error('Please connect to Spotify first');
       return;
@@ -67,8 +71,10 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
       const tracks: SpotifyTrack[] = [];
       let offset = 0;
       const limit = 50;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - 30); // Only get songs from last 30 days for 'new' mode
 
-      // Fetch all liked songs from Spotify
+      // Fetch liked songs from Spotify
       while (true) {
         const batch = await getSavedTracks(limit, offset);
         if (!batch || batch.length === 0) break;
@@ -80,17 +86,51 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
           album: item.track.album,
           duration_ms: item.track.duration_ms,
           preview_url: item.track.preview_url,
+          added_at: item.added_at,
           status: 'ready' as const
         }));
 
-        tracks.push(...formattedTracks);
+        // Filter based on mode
+        if (mode === 'new') {
+          const recentTracks = formattedTracks.filter((track: SpotifyTrack) => 
+            new Date(track.added_at) > cutoffDate
+          );
+          tracks.push(...recentTracks);
+          
+          // If we got fewer recent tracks than the batch size, we've reached older songs
+          if (recentTracks.length < formattedTracks.length) {
+            break;
+          }
+        } else {
+          tracks.push(...formattedTracks);
+        }
+
         offset += batch.length;
 
         if (batch.length < limit) break;
+        
+        // For 'new' mode, limit to reasonable number to avoid long waits
+        if (mode === 'new' && tracks.length >= 200) break;
       }
 
       setSpotifyTracks(tracks);
-      toast.success(`Found ${tracks.length} liked songs on Spotify`);
+      
+      // Filter out songs that already exist in liked songs
+      const newTracks = [];
+      for (const track of tracks) {
+        const title = track.name;
+        const artist = track.artists.map(a => a.name).join(', ');
+        const alreadyExists = await isSongAlreadyLiked(title, artist);
+        
+        if (!alreadyExists) {
+          newTracks.push(track);
+        }
+      }
+      
+      setNewTracksOnly(newTracks);
+      
+      const modeText = mode === 'new' ? 'recent' : 'total';
+      toast.success(`Found ${tracks.length} ${modeText} Spotify songs, ${newTracks.length} are new`);
     } catch (error) {
       console.error('Error loading Spotify tracks:', error);
       toast.error('Failed to load Spotify liked songs');
@@ -119,11 +159,13 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
   };
 
   const syncSpotifyToLikedSongs = async () => {
-    if (spotifyTracks.length === 0) return;
+    const tracksToSync = syncMode === 'new' ? newTracksOnly : spotifyTracks;
+    if (tracksToSync.length === 0) return;
     
     setIsProcessing(true);
     setProgress(0);
     setAddedSongsCount(0);
+    setSkippedSongsCount(0);
     toast.dismiss();
     
     const progressToastId = 'spotify-sync-progress';
@@ -131,8 +173,9 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
       id: progressToastId,
     });
     
-    const updatedTracks = [...spotifyTracks];
+    const updatedTracks = [...tracksToSync];
     let addedCount = 0;
+    let skippedCount = 0;
     let errorCount = 0;
     
     for (let i = 0; i < updatedTracks.length; i++) {
@@ -144,15 +187,20 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
         continue;
       }
       
-      if (track.status === 'error') {
-        errorCount++;
+      if (track.status === 'error' || track.status === 'skipped') {
+        if (track.status === 'skipped') skippedCount++;
+        else errorCount++;
         continue;
       }
       
       try {
         // Update status to searching
         updatedTracks[i] = { ...track, status: 'searching', message: 'Searching for song...' };
-        setSpotifyTracks([...updatedTracks]);
+        if (syncMode === 'new') {
+          setNewTracksOnly([...updatedTracks]);
+        } else {
+          setSpotifyTracks([...updatedTracks]);
+        }
         
         // Calculate and update progress
         const currentProgress = Math.round(((i + 1) / updatedTracks.length) * 100);
@@ -177,18 +225,28 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
           duration: searchResult?.duration || Math.floor(track.duration_ms / 1000).toString()
         });
         
-        // Add to liked songs with Spotify source
-        await addLikedSong(appSong, 'spotify', track.id);
+        // Add to liked songs with duplicate detection
+        const result = await addLikedSong(appSong, 'spotify', track.id);
         
-        // Update status
-        updatedTracks[i] = {
-          ...track,
-          status: 'added',
-          message: searchResult?.url ? 'Added with full audio' : 'Added (preview only)',
-        };
+        // Update status based on result
+        if (result.added) {
+          updatedTracks[i] = {
+            ...track,
+            status: 'added',
+            message: searchResult?.url ? 'Added with full audio' : 'Added (preview only)',
+          };
+          addedCount++;
+        } else {
+          updatedTracks[i] = {
+            ...track,
+            status: 'skipped',
+            message: result.reason === 'Already exists' ? 'Already in library' : 'Skipped'
+          };
+          skippedCount++;
+        }
         
-        addedCount++;
         setAddedSongsCount(addedCount);
+        setSkippedSongsCount(skippedCount);
       } catch (error) {
         console.error('Error syncing Spotify track:', error);
         
@@ -203,7 +261,11 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
       }
       
       // Update the UI
-      setSpotifyTracks([...updatedTracks]);
+      if (syncMode === 'new') {
+        setNewTracksOnly([...updatedTracks]);
+      } else {
+        setSpotifyTracks([...updatedTracks]);
+      }
       
       // Add a small delay between requests to avoid rate limiting
       if (i < updatedTracks.length - 1) {
@@ -219,11 +281,13 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
     setIsComplete(true);
     
     if (addedCount > 0) {
-      if (errorCount > 0) {
-        toast.success(`Synced ${addedCount} out of ${spotifyTracks.length} songs from Spotify`);
+      if (skippedCount > 0) {
+        toast.success(`Added ${addedCount} new songs, ${skippedCount} were already in your library`);
       } else {
-        toast.success(`Successfully synced all ${addedCount} songs from Spotify!`);
+        toast.success(`Successfully synced ${addedCount} songs from Spotify!`);
       }
+    } else if (skippedCount > 0) {
+      toast.info(`All ${skippedCount} songs were already in your library`);
     } else if (errorCount > 0) {
       toast.error(`Failed to sync ${errorCount} songs. Please try again.`);
     }
@@ -262,23 +326,37 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
     <div className="w-full">
       {/* Load Spotify tracks */}
       {!spotifyTracks.length && !isLoadingTracks && (
-        <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
+        <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 text-center">
           <div className="flex flex-col items-center justify-center">
-            <Music className="h-12 w-12 text-green-500 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Sync Spotify Liked Songs</h3>
+            <Music className="h-10 w-10 text-green-500 mb-3" />
+            <h3 className="text-md font-medium mb-2">Sync Spotify Liked Songs</h3>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-              Import your liked songs from Spotify. We'll search for high-quality audio versions.
+              Import your liked songs from Spotify. We'll find high-quality audio versions.
             </p>
-            <Button
-              onClick={loadSpotifyTracks}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-              size="sm"
-            >
-              <Music className="h-4 w-4" />
-              <span>Load Spotify Liked Songs</span>
-            </Button>
-            <div className="mt-4 text-xs text-muted-foreground">
-              <p>This may take a moment for large libraries</p>
+            
+            {/* Sync mode selection */}
+            <div className="flex gap-2 mb-4">
+              <Button
+                onClick={() => loadSpotifyTracks('new')}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                size="sm"
+              >
+                <Music className="h-3 w-3" />
+                <span>Sync Recent (30 days)</span>
+              </Button>
+              <Button
+                onClick={() => loadSpotifyTracks('all')}
+                variant="outline"
+                className="flex items-center gap-2"
+                size="sm"
+              >
+                <Music className="h-3 w-3" />
+                <span>Sync All Songs</span>
+              </Button>
+            </div>
+            
+            <div className="text-xs text-muted-foreground">
+              <p>Recent sync is faster and finds only new songs</p>
             </div>
           </div>
         </div>
@@ -299,16 +377,43 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
       {spotifyTracks.length > 0 && !isProcessing && !isComplete && (
         <div className="space-y-4">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-medium">{spotifyTracks.length} Spotify Songs Found</h3>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={resetSync}
-              className="h-8 px-2 text-xs sm:text-sm"
-            >
-              <ArrowRight className="h-3 w-3 mr-1 sm:h-4 sm:w-4 rotate-180" />
-              <span>Back</span>
-            </Button>
+            <div>
+              <h3 className="text-lg font-medium">
+                {syncMode === 'new' ? `${newTracksOnly.length} New Songs` : `${spotifyTracks.length} Total Songs`}
+              </h3>
+              {syncMode === 'new' && (
+                <p className="text-sm text-muted-foreground">
+                  {spotifyTracks.length - newTracksOnly.length} songs already in your library
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={syncMode === 'new' ? 'default' : 'outline'}
+                onClick={() => setSyncMode('new')}
+                className="h-8 text-xs"
+              >
+                New Only ({newTracksOnly.length})
+              </Button>
+              <Button
+                size="sm"
+                variant={syncMode === 'all' ? 'default' : 'outline'}
+                onClick={() => setSyncMode('all')}
+                className="h-8 text-xs"
+              >
+                All ({spotifyTracks.length})
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={resetSync}
+                className="h-8 px-2 text-xs"
+              >
+                <ArrowRight className="h-3 w-3 mr-1 rotate-180" />
+                <span>Back</span>
+              </Button>
+            </div>
           </div>
           
           <div className="border rounded-lg overflow-hidden">
@@ -324,7 +429,7 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {spotifyTracks.map((track, index) => (
+                  {(syncMode === 'new' ? newTracksOnly : spotifyTracks).map((track, index) => (
                     <tr key={track.id} className="border-t border-gray-200 dark:border-gray-800">
                       <td className="p-2 text-xs sm:text-sm">{index + 1}</td>
                       <td className="p-2 text-xs sm:text-sm">
@@ -368,10 +473,10 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
             <Button
               onClick={syncSpotifyToLikedSongs}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-              disabled={spotifyTracks.length === 0}
+              disabled={(syncMode === 'new' ? newTracksOnly : spotifyTracks).length === 0}
             >
               <ArrowRight className="h-4 w-4" />
-              <span>Sync {spotifyTracks.length} Songs</span>
+              <span>Sync {syncMode === 'new' ? newTracksOnly.length : spotifyTracks.length} Songs</span>
             </Button>
           </div>
         </div>
@@ -383,15 +488,25 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-medium">Syncing from Spotify...</h3>
-              <Badge variant="outline" className="bg-green-600/10 text-green-400 border-green-600/20">
-                {addedSongsCount}/{spotifyTracks.length}
-              </Badge>
+              <div className="flex gap-2">
+                <Badge variant="outline" className="bg-green-600/10 text-green-400 border-green-600/20">
+                  Added: {addedSongsCount}
+                </Badge>
+                {skippedSongsCount > 0 && (
+                  <Badge variant="outline" className="bg-yellow-600/10 text-yellow-400 border-yellow-600/20">
+                    Skipped: {skippedSongsCount}
+                  </Badge>
+                )}
+                <Badge variant="outline">
+                  Total: {(syncMode === 'new' ? newTracksOnly : spotifyTracks).length}
+                </Badge>
+              </div>
             </div>
             
             <Progress value={progress} className="h-2" />
             
             <div className="max-h-[30vh] overflow-y-auto border rounded-lg p-2">
-              {spotifyTracks.map((track) => (
+              {(syncMode === 'new' ? newTracksOnly : spotifyTracks).map((track) => (
                 <div
                   key={track.id}
                   className="flex items-center justify-between py-2 px-2 border-b last:border-0 text-xs sm:text-sm"
@@ -416,6 +531,7 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
                   <div className="ml-2 flex-shrink-0">
                     {track.status === 'added' && <CheckCircle className="h-4 w-4 text-green-500" />}
                     {track.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
+                    {track.status === 'skipped' && <CheckCircle className="h-4 w-4 text-yellow-500" />}
                     {track.status === 'searching' && <Search className="h-4 w-4 animate-pulse text-blue-500" />}
                     {track.status === 'ready' && <div className="h-4 w-4" />}
                   </div>
@@ -435,7 +551,8 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
             </div>
             <h3 className="text-lg font-medium mb-2">Spotify Sync Complete</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Successfully synced {addedSongsCount} songs from Spotify to your liked songs.
+              Added {addedSongsCount} new songs to your liked songs.
+              {skippedSongsCount > 0 && ` ${skippedSongsCount} songs were already in your library.`}
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Button onClick={onClose} className="bg-green-600 hover:bg-green-700">

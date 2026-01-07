@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../../components/playlist/CreatePlaylistDialog';
+import { getLikedSongsCount } from '@/services/likedSongsService';
 // Removed Spotify section per request
 
 interface LeftSidebarProps {
@@ -24,6 +25,7 @@ interface LeftSidebarProps {
 export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSidebarProps) => {
   const { isAuthenticated } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [likedSongsCount, setLikedSongsCount] = useState(0);
   const { userPlaylists, fetchUserPlaylists, fetchPublicPlaylists } = usePlaylistStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -31,9 +33,37 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserPlaylists();
+      loadLikedSongsCount();
     }
     fetchPublicPlaylists();
   }, [isAuthenticated, fetchUserPlaylists, fetchPublicPlaylists]);
+
+  // Listen for liked songs updates
+  useEffect(() => {
+    const handleLikedSongsUpdated = () => {
+      loadLikedSongsCount();
+    };
+
+    document.addEventListener('likedSongsUpdated', handleLikedSongsUpdated);
+
+    return () => {
+      document.removeEventListener('likedSongsUpdated', handleLikedSongsUpdated);
+    };
+  }, []);
+
+  const loadLikedSongsCount = async () => {
+    if (isAuthenticated) {
+      try {
+        const count = await getLikedSongsCount();
+        setLikedSongsCount(count);
+      } catch (error) {
+        console.error('Error loading liked songs count:', error);
+        setLikedSongsCount(0);
+      }
+    } else {
+      setLikedSongsCount(0);
+    }
+  };
 
   const isActive = (path: string) => {
     return location.pathname.startsWith(path);
@@ -122,7 +152,7 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground truncate">Liked Songs</p>
                 <p className="text-xs text-muted-foreground truncate">
-                  Playlist • {userPlaylists.length || '246'} songs
+                  Playlist • {likedSongsCount} songs
                 </p>
               </div>
             )}

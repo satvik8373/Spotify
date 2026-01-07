@@ -231,19 +231,33 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
           duration: searchResult?.duration || song.duration || '0'
         });
         
-        // Add to liked songs
-        await addLikedSong(appSong);
+        // Add to liked songs with duplicate detection
+        const result = await addLikedSong(appSong);
         
-        // Update status
-        updatedSongs[i] = {
-          ...song,
-          status: 'added',
-          message: searchResult?.url ? 'Added with audio' : 'Added (no audio found)',
-          imageUrl: searchResult?.image || song.imageUrl,
-          audioUrl: searchResult?.url || song.audioUrl
-        };
+        // Update status based on result
+        if (result.added) {
+          updatedSongs[i] = {
+            ...song,
+            status: 'added',
+            message: searchResult?.url ? 'Added with audio' : 'Added (no audio found)',
+            imageUrl: searchResult?.image || song.imageUrl,
+            audioUrl: searchResult?.url || song.audioUrl
+          };
+          addedCount++;
+        } else {
+          updatedSongs[i] = {
+            ...song,
+            status: 'error',
+            message: result.reason === 'Already exists' ? 'Already in liked songs' : 'Failed to add'
+          };
+          if (result.reason === 'Already exists') {
+            // Count as skipped, not error
+            addedCount++; // Don't increment error count for duplicates
+          } else {
+            errorCount++;
+          }
+        }
         
-        addedCount++;
         setAddedSongsCount(addedCount);
       } catch (error) {
         console.error('Error adding song to liked songs:', error);

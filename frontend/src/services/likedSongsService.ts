@@ -22,17 +22,56 @@ export interface LikedSong {
 }
 
 /**
- * Add a song to liked songs
+ * Check if a song already exists in liked songs (by title and artist)
  */
-export const addLikedSong = async (song: Song, source: 'mavrixfy' | 'spotify' = 'mavrixfy', spotifyId?: string): Promise<void> => {
+export const isSongAlreadyLiked = async (title: string, artist: string): Promise<boolean> => {
+  const { isAuthenticated, userId } = useAuthStore.getState();
+  
+  if (!isAuthenticated || !userId) {
+    return false;
+  }
+  
+  try {
+    const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+    const snapshot = await getDocs(likedSongsRef);
+    
+    // Check if any existing song matches title and artist (case-insensitive)
+    const exists = snapshot.docs.some(doc => {
+      const data = doc.data();
+      const existingTitle = data.title?.toLowerCase().trim();
+      const existingArtist = data.artist?.toLowerCase().trim();
+      const newTitle = title.toLowerCase().trim();
+      const newArtist = artist.toLowerCase().trim();
+      
+      return existingTitle === newTitle && existingArtist === newArtist;
+    });
+    
+    return exists;
+  } catch (error) {
+    console.error('Error checking if song is already liked:', error);
+    return false;
+  }
+};
+
+/**
+ * Add a song to liked songs (with duplicate detection)
+ */
+export const addLikedSong = async (song: Song, source: 'mavrixfy' | 'spotify' = 'mavrixfy', spotifyId?: string): Promise<{ added: boolean; reason?: string }> => {
   const { isAuthenticated, userId } = useAuthStore.getState();
   
   if (!isAuthenticated || !userId) {
     console.warn('User not authenticated, cannot add to liked songs');
-    return;
+    return { added: false, reason: 'Not authenticated' };
   }
 
   try {
+    // Check for duplicates first
+    const alreadyExists = await isSongAlreadyLiked(song.title, song.artist);
+    if (alreadyExists) {
+      console.log(`⚠️ Song already exists in liked songs: "${song.title}" by ${song.artist}`);
+      return { added: false, reason: 'Already exists' };
+    }
+
     // IMPORTANT: Always save to user's subcollection, never to main songs collection
     const likedSongRef = doc(db, 'users', userId, 'likedSongs', song._id);
     
@@ -58,6 +97,8 @@ export const addLikedSong = async (song: Song, source: 'mavrixfy' | 'spotify' = 
     
     // Dispatch event to notify other components
     document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
+    
+    return { added: true };
     
   } catch (error) {
     console.error('Error adding liked song:', error);
@@ -129,13 +170,14 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
         imageUrl: data.imageUrl,
         audioUrl: data.audioUrl,
         duration: data.duration || 0,
-        albumId: null,
+        albumId: data.albumName || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         // Preserve source information for UI indicators
         source: data.source,
-        spotifyId: data.spotifyId
-      } as Song & { source?: string; spotifyId?: string });
+        spotifyId: data.spotifyId,
+        likedAt: data.likedAt // Keep the liked timestamp
+      } as Song & { source?: string; spotifyId?: string; likedAt?: any });
     });
     
     console.log(`📥 Loaded ${songs.length} liked songs from user subcollection: users/${userId}/likedSongs`);

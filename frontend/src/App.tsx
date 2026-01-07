@@ -2,6 +2,7 @@ import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom'
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
+import { spotifyAutoSyncService } from './services/spotifyAutoSyncService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
@@ -237,8 +238,18 @@ function AppContent() {
 				performanceService.addResourceHints();
 				// Mobile performance service initializes automatically
 
-				// Check for cached authentication
+				// Initialize auto-sync service if user was previously authenticated
 				const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
+				if (hasCachedAuth) {
+					// Check if auto-sync was previously enabled and start it
+					const autoSyncConfig = spotifyAutoSyncService.getConfig();
+					if (autoSyncConfig.enabled) {
+						// Delay auto-sync start to avoid blocking app initialization
+						setTimeout(() => {
+							spotifyAutoSyncService.startAutoSync(autoSyncConfig.intervalMinutes);
+						}, 3000);
+					}
+				}
 
 				const fromAuthRedirect = getSessionStorage('auth_redirect') === '1';
 
