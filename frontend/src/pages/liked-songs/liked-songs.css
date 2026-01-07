@@ -1,118 +1,148 @@
-/* Liked Songs page specific styles */
+/* Liked Songs Page Styles */
 
-/* Desktop styles */
-@media (min-width: 768px) {
-  /* Fix grid layout for desktop */
-  .spotify-liked-song-row {
-    display: grid;
-    grid-template-columns: 16px 4fr 2fr 1fr auto;
-    gap: 1rem;
-    padding: 0.5rem 1rem;
-  }
-  
-  /* Desktop song row specific styles */
-  .spotify-desktop-song-row {
-    display: grid !important;
-    grid-template-columns: 16px 4fr 2fr 1fr auto !important;
-    gap: 1rem !important;
-    align-items: center;
-  }
-  
-  .spotify-desktop-song-row > div {
-    overflow: hidden;
-  }
-  
-  /* Fix artist and duration columns */
-  .desktop-artist-column,
-  .desktop-duration-column {
-    display: flex !important;
-  }
-  
-  .desktop-artist-column {
-    max-width: 100%;
-    padding-right: 1rem;
-  }
-  
-  .desktop-duration-column {
-    justify-content: flex-end;
-    white-space: nowrap;
-  }
-  
-  /* Ensure proper text truncation */
-  .spotify-desktop-song-row .truncate,
-  .spotify-liked-song-row .truncate {
-    max-width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  /* Ensure proper spacing for song title and artist */
-  .spotify-desktop-song-row .min-w-0,
-  .spotify-liked-song-row .min-w-0 {
-    min-width: 0;
-    max-width: 100%;
-  }
+.liked-songs-page {
+  min-height: 100vh;
 }
 
-/* Gradient background for liked songs header */
-.spotify-mobile-liked-header {
-  background: linear-gradient(180deg, #2941ab 0%, #121212 100%);
+.liked-songs-header {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.4) 0%, transparent 100%);
+}
+
+.liked-songs-grid-desktop {
+  display: grid;
+  grid-template-columns: 16px 4fr 2fr 1fr auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+.liked-songs-grid-mobile {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.liked-songs-row {
+  transition: background-color 0.2s ease;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.liked-songs-row:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.liked-songs-album-art {
+  border-radius: 0.375rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   position: relative;
 }
 
-/* Desktop specific header styling */
-@media (min-width: 768px) {
-  .spotify-mobile-liked-header {
-    padding-top: 2rem;
-    border-radius: 0.5rem 0.5rem 0 0;
-  }
+.liked-songs-source-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  background-color: #22c55e;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(0, 0, 0, 0.8);
 }
 
-/* Fix hover states for better visibility */
-.group:hover .text-zinc-400 {
-  color: white;
+.liked-songs-source-indicator.spotify {
+  background-color: #1db954;
 }
 
-/* Fix song row spacing */
-.spotify-liked-song-row,
-.spotify-desktop-song-row {
-  margin-bottom: 0.25rem;
+.liked-songs-source-indicator.mavrixfy {
+  background-color: #8b5cf6;
 }
 
-/* Play/Pause button animations */
-.group:hover .group-hover\:flex {
-  display: flex !important;
+.liked-songs-title {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.group:hover .group-hover\:hidden {
-  display: none !important;
+.liked-songs-artist {
+  color: rgba(161, 161, 170, 1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Smooth transitions for play button */
-.group button {
-  transition: all 0.2s ease-in-out;
+.liked-songs-duration {
+  color: rgba(161, 161, 170, 1);
+  font-size: 0.875rem;
 }
 
-.group:hover button {
+.liked-songs-actions {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.liked-songs-row:hover .liked-songs-actions {
   opacity: 1;
 }
 
-/* Mobile play button styling */
-@media (max-width: 767px) {
-  .spotify-liked-song-row {
-    grid-template-columns: auto 1fr auto !important;
+.liked-songs-play-button {
+  transition: all 0.2s ease;
+}
+
+.liked-songs-play-button:hover {
+  transform: scale(1.1);
+}
+
+.liked-songs-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.liked-songs-search {
+  position: relative;
+  max-width: 28rem;
+}
+
+.liked-songs-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 1rem;
+  width: 1rem;
+  color: rgba(161, 161, 170, 1);
+}
+
+.liked-songs-search-input {
+  padding-left: 2.5rem;
+  background-color: rgba(39, 39, 42, 0.5);
+  border-color: rgba(63, 63, 70, 1);
+}
+
+@media (max-width: 768px) {
+  .liked-songs-grid-desktop {
+    display: none;
+  }
+  
+  .liked-songs-grid-mobile {
+    display: grid;
   }
 }
 
-/* Ensure proper alignment of song details */
-@media (min-width: 768px) {
-  .spotify-desktop-song-row > div:nth-child(2) {
-    padding-right: 1rem;
+@media (min-width: 769px) {
+  .liked-songs-grid-desktop {
+    display: grid;
   }
   
-  /* Make sure artist column is visible */
-  .spotify-desktop-song-row .hidden.md\:flex {
-    display: flex !important;
+  .liked-songs-grid-mobile {
+    display: none;
   }
-} 
+}
