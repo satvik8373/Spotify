@@ -154,15 +154,17 @@ function convertJiosaavnToSong(item: any): any | null {
     artist = item.artist;
   }
 
+  // Return in the same format as playlist songs
   return {
-    id: item.id || '',
+    _id: item.id || '',
     title: item.name || item.title || 'Unknown Title',
     artist: artist || 'Unknown Artist',
-    album: item.album?.name || item.album || '',
+    albumId: null,
     imageUrl,
     audioUrl,
     duration: parseInt(item.duration) || 0,
-    year: item.year || item.releaseDate?.split('-')[0] || ''
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
 }
 
@@ -185,14 +187,15 @@ export async function fetchSpotifyLikedSongs(): Promise<any[]> {
       const track = item?.track || item;
       if (track?.id) {
         songs.push({
-          id: track.id,
+          _id: track.id,
           title: track.name || 'Unknown Title',
           artist: resolveArtist(track),
-          album: track.album?.name || '',
+          albumId: null,
           imageUrl: track.album?.images?.[1]?.url || track.album?.images?.[0]?.url || '',
           audioUrl: track.preview_url || '',
           duration: track.duration_ms ? Math.floor(track.duration_ms / 1000) : 0,
-          year: track.album?.release_date ? String(track.album.release_date).slice(0, 4) : '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
           addedAt: item.added_at
         });
       }
@@ -270,14 +273,15 @@ export async function importSpotifySongsToLiked(
         } else {
           // Save with original Spotify data as fallback
           const fallbackSong = {
-            id: track.id,
+            _id: track._id,
             title: track.title,
             artist: track.artist,
-            album: track.album,
+            albumId: null,
             imageUrl: track.imageUrl,
             audioUrl: track.audioUrl, // Spotify preview URL
             duration: track.duration,
-            year: track.year
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           };
           
           await addLikedSong(fallbackSong);
@@ -287,14 +291,15 @@ export async function importSpotifySongsToLiked(
       } else {
         // Save with original Spotify data as fallback
         const fallbackSong = {
-          id: track.id,
+          _id: track._id,
           title: track.title,
           artist: track.artist,
-          album: track.album,
+          albumId: null,
           imageUrl: track.imageUrl,
           audioUrl: track.audioUrl, // Spotify preview URL
           duration: track.duration,
-          year: track.year
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         };
         
         await addLikedSong(fallbackSong);

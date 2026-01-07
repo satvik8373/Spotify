@@ -24,20 +24,18 @@ import { TouchRipple } from '@/components/ui/touch-ripple';
 import './liked-songs.css';
 import SwipeableSongItem from '@/components/SwipeableSongItem';
 
-// Convert liked song format to player song format
+// Convert liked song format to player song format (same as playlist logic)
 const adaptToPlayerSong = (likedSong: any): Song => {
-  const songId = likedSong.id || likedSong._id;
-
   return {
-    _id: songId,
+    _id: likedSong._id || likedSong.id,
     title: likedSong.title || 'Unknown Title',
     artist: likedSong.artist || 'Unknown Artist',
     audioUrl: likedSong.audioUrl || '',
-    imageUrl: likedSong.imageUrl || likedSong.image || '',
+    imageUrl: likedSong.imageUrl || '',
     duration: likedSong.duration || 0,
-    albumId: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    albumId: likedSong.albumId || null,
+    createdAt: likedSong.createdAt || new Date().toISOString(),
+    updatedAt: likedSong.updatedAt || new Date().toISOString()
   };
 };
 
@@ -190,7 +188,7 @@ const LikedSongsPage = () => {
   // Handle playing a specific song
   const playSong = (song: any, index: number) => {
     const sourceSongs = visibleSongs;
-    const songId = song.id || song._id;
+    const songId = song._id || song.id;
 
     // If clicking the currently playing song, just toggle play/pause
     if (currentSong && currentSong._id === songId) {
@@ -212,15 +210,15 @@ const LikedSongsPage = () => {
   // Check if a song is currently playing
   const isSongPlaying = (song: any) => {
     if (!isPlaying || !currentSong) return false;
-    const songId = song.id || song._id;
+    const songId = song._id || song.id;
     return currentSong._id === songId;
   };
 
   // Unlike a song
-  const unlikeSong = async (id: string) => {
+  const unlikeSong = async (songId: string) => {
     try {
-      await removeFromStore(id);
-      setLikedSongs(prev => prev.filter(song => song.id !== id));
+      await removeFromStore(songId);
+      setLikedSongs(prev => prev.filter(song => (song._id || song.id) !== songId));
       toast.success('Removed from Liked Songs');
     } catch (error) {
       console.error('Error removing song:', error);
@@ -364,7 +362,7 @@ const LikedSongsPage = () => {
         ) : likedSongs.length > 0 ? (
           <div className={cn("pb-8", isMobile ? "pt-3 px-3" : "")}>
             {visibleSongs.map((song, index) => {
-              const songKey = song.id || song._id || `song-${index}`;
+              const songKey = song._id || song.id || `song-${index}`;
 
               return (
                 <SwipeableSongItem
@@ -523,7 +521,7 @@ const LikedSongsPage = () => {
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  unlikeSong(song.id);
+                                  unlikeSong(song._id || song.id);
                                 }}
                                 className="text-red-500"
                               >
