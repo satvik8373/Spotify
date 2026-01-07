@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Music, Check, Loader2, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Music, Check, Loader2, ListPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
   convertAndSaveSpotifyTracks, 
@@ -41,8 +43,18 @@ const SpotifyConvertSyncModal: React.FC<SpotifyConvertSyncModalProps> = ({
   const [stage, setStage] = useState<SyncStage>('selection');
   const [conversionProgress, setConversionProgress] = useState<ConversionProgress | null>(null);
   const [conversionResult, setConversionResult] = useState<ConversionResult | null>(null);
+  const [filter, setFilter] = useState('');
 
   const safeTracks: SpotifyTrack[] = useMemo(() => (Array.isArray(tracks) ? tracks : []), [tracks]);
+
+  const filteredTracks = useMemo(() => {
+    if (!filter.trim()) return safeTracks;
+    const query = filter.toLowerCase();
+    return safeTracks.filter(track => 
+      track.title.toLowerCase().includes(query) || 
+      track.artist.toLowerCase().includes(query)
+    );
+  }, [safeTracks, filter]);
 
   useEffect(() => {
     if (safeTracks.length > 0) {
@@ -59,6 +71,7 @@ const SpotifyConvertSyncModal: React.FC<SpotifyConvertSyncModalProps> = ({
       setStage('selection');
       setConversionProgress(null);
       setConversionResult(null);
+      setFilter('');
     }
   }, [isOpen]);
 
@@ -123,177 +136,198 @@ const SpotifyConvertSyncModal: React.FC<SpotifyConvertSyncModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={stage === 'converting' ? undefined : onClose}>
-      <DialogContent className="w-[92vw] max-w-md p-0 gap-0 overflow-hidden bg-background/95 backdrop-blur-xl border-border/50 rounded-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-[#1DB954] rounded-full flex items-center justify-center">
-              <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-[#1DB954] rounded-full flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
               </svg>
             </div>
-            <span className="text-sm font-medium">
-              {stage === 'selection' && 'Import Songs'}
-              {stage === 'converting' && 'Importing...'}
-              {stage === 'complete' && 'Done'}
-            </span>
-          </div>
-          {stage !== 'converting' && (
-            <button onClick={onClose} className="p-1 rounded-full hover:bg-muted/50 transition-colors">
-              <X className="w-4 h-4 text-muted-foreground" />
-            </button>
-          )}
-        </div>
+            {stage === 'selection' && 'Import from Spotify'}
+            {stage === 'converting' && 'Importing Songs...'}
+            {stage === 'complete' && 'Import Complete'}
+          </DialogTitle>
+          <DialogDescription>
+            {stage === 'selection' && `Select songs to add to your Liked Songs (${safeTracks.length} available)`}
+            {stage === 'converting' && 'Converting songs to playable format...'}
+            {stage === 'complete' && 'Your songs have been imported successfully'}
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Selection Stage */}
-        {stage === 'selection' && (
-          <>
-            {/* Select All Bar */}
-            <div className="flex items-center justify-between px-4 py-2 bg-muted/30">
-              <span className="text-xs text-muted-foreground">
-                {selectedTracks.size} selected
-              </span>
-              <button
-                onClick={() => handleSelectAll(!selectAll)}
-                className="text-xs font-medium text-[#1DB954] hover:underline"
-              >
-                {selectAll ? 'Deselect all' : 'Select all'}
-              </button>
-            </div>
-
-            {/* Track List */}
-            <div className="max-h-[50vh] overflow-y-auto">
-              {safeTracks
-                .slice()
-                .sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime())
-                .map((track) => (
-                <div
-                  key={track.id}
-                  onClick={() => handleTrackToggle(track.id)}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors",
-                    "hover:bg-muted/30 active:bg-muted/50",
-                    selectedTracks.has(track.id) && "bg-[#1DB954]/5"
-                  )}
-                >
-                  {/* Checkbox */}
-                  <div className={cn(
-                    "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0",
-                    selectedTracks.has(track.id) 
-                      ? "bg-[#1DB954] border-[#1DB954]" 
-                      : "border-muted-foreground/30"
-                  )}>
-                    {selectedTracks.has(track.id) && (
-                      <Check className="w-3 h-3 text-white" />
-                    )}
-                  </div>
-                  
-                  {/* Album Art */}
-                  <div className="w-10 h-10 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                    {track.imageUrl ? (
-                      <img src={track.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Music className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Track Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{track.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
-                  </div>
-                  
-                  {/* Duration */}
-                  <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">
-                    {formatTime(track.duration)}
-                  </span>
+        <div className="py-4">
+          {/* Selection Stage */}
+          {stage === 'selection' && (
+            <>
+              {safeTracks.length === 0 ? (
+                <div className="text-center py-8">
+                  <ListPlus className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">No new songs to import</p>
+                  <Button variant="outline" className="mt-4" onClick={onClose}>
+                    Close
+                  </Button>
                 </div>
-              ))}
-            </div>
+              ) : (
+                <>
+                  {/* Filter Input */}
+                  <Input
+                    placeholder="Filter songs..."
+                    value={filter}
+                    onChange={e => setFilter(e.target.value)}
+                    className="mb-3"
+                  />
 
-            {/* Footer */}
-            <div className="px-4 py-3 border-t border-border/50">
-              <Button
-                onClick={handleStartSync}
-                disabled={isLoading || selectedTracks.size === 0}
-                className="w-full h-10 bg-[#1DB954] hover:bg-[#1ed760] text-white font-medium rounded-full"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  `Add ${selectedTracks.size} song${selectedTracks.size !== 1 ? 's' : ''}`
+                  {/* Select All Bar */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm text-muted-foreground">
+                      {selectedTracks.size} of {safeTracks.length} selected
+                    </span>
+                    <button
+                      onClick={() => handleSelectAll(!selectAll)}
+                      className="text-sm font-medium text-[#1DB954] hover:underline"
+                    >
+                      {selectAll ? 'Deselect all' : 'Select all'}
+                    </button>
+                  </div>
+
+                  {/* Track List */}
+                  <ScrollArea className="h-[300px] pr-4">
+                    <div className="space-y-1">
+                      {filteredTracks
+                        .slice()
+                        .sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime())
+                        .map((track) => (
+                        <div
+                          key={track.id}
+                          onClick={() => handleTrackToggle(track.id)}
+                          className={cn(
+                            "flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors",
+                            "hover:bg-accent",
+                            selectedTracks.has(track.id) && "bg-[#1DB954]/10"
+                          )}
+                        >
+                          {/* Album Art */}
+                          <div className="h-12 w-12 overflow-hidden rounded-md flex-shrink-0">
+                            {track.imageUrl ? (
+                              <img 
+                                src={track.imageUrl} 
+                                alt={track.title} 
+                                className="h-full w-full object-cover" 
+                                loading="lazy" 
+                              />
+                            ) : (
+                              <div className="h-full w-full bg-muted flex items-center justify-center">
+                                <Music className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Track Info */}
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <span className="font-medium truncate">{track.title}</span>
+                            <span className="text-xs text-muted-foreground truncate">
+                              {track.artist} • {formatTime(track.duration)}
+                            </span>
+                          </div>
+
+                          {/* Selection Indicator */}
+                          {selectedTracks.has(track.id) && (
+                            <div className="flex items-center justify-center h-8 w-8 bg-[#1DB954] rounded-full flex-shrink-0">
+                              <Check className="h-4 w-4 text-white" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+
+                  {/* Action Button */}
+                  <Button
+                    onClick={handleStartSync}
+                    disabled={isLoading || selectedTracks.size === 0}
+                    className="w-full mt-4 bg-[#1DB954] hover:bg-[#1ed760] text-white"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : null}
+                    Add {selectedTracks.size} song{selectedTracks.size !== 1 ? 's' : ''} to Liked Songs
+                  </Button>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Converting Stage */}
+          {stage === 'converting' && conversionProgress && (
+            <div className="flex flex-col items-center py-6">
+              {/* Progress Ring */}
+              <div className="relative w-24 h-24 mb-4">
+                <svg className="w-24 h-24 -rotate-90">
+                  <circle
+                    cx="48" cy="48" r="42"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="6"
+                    className="text-muted/30"
+                  />
+                  <circle
+                    cx="48" cy="48" r="42"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 42}`}
+                    strokeDashoffset={`${2 * Math.PI * 42 * (1 - progressPercent / 100)}`}
+                    className="text-[#1DB954] transition-all duration-300"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xl font-semibold">{progressPercent}%</span>
+                </div>
+              </div>
+              
+              <p className="text-sm font-medium mb-1">
+                {conversionProgress.current} of {conversionProgress.total} songs
+              </p>
+              
+              {conversionProgress.currentSong && (
+                <p className="text-xs text-muted-foreground truncate max-w-[250px] text-center">
+                  Converting: {conversionProgress.currentSong}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Complete Stage */}
+          {stage === 'complete' && conversionResult && (
+            <div className="flex flex-col items-center py-6">
+              <div className="w-16 h-16 bg-[#1DB954]/10 rounded-full flex items-center justify-center mb-4">
+                <Check className="w-8 h-8 text-[#1DB954]" />
+              </div>
+              
+              <p className="text-lg font-medium mb-2">
+                {conversionResult.converted + conversionResult.skipped} songs added
+              </p>
+              
+              <div className="text-sm text-muted-foreground mb-6 text-center">
+                <p>{conversionResult.converted} converted to playable format</p>
+                {conversionResult.skipped > 0 && (
+                  <p>{conversionResult.skipped} saved with original data</p>
                 )}
+                {conversionResult.failed > 0 && (
+                  <p className="text-destructive">{conversionResult.failed} failed</p>
+                )}
+              </div>
+              
+              <Button
+                onClick={onClose}
+                className="bg-[#1DB954] hover:bg-[#1ed760] text-white"
+              >
+                Done
               </Button>
             </div>
-          </>
-        )}
-
-        {/* Converting Stage */}
-        {stage === 'converting' && conversionProgress && (
-          <div className="px-6 py-10 flex flex-col items-center">
-            {/* Progress Ring */}
-            <div className="relative w-20 h-20 mb-4">
-              <svg className="w-20 h-20 -rotate-90">
-                <circle
-                  cx="40" cy="40" r="36"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  className="text-muted/30"
-                />
-                <circle
-                  cx="40" cy="40" r="36"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 36}`}
-                  strokeDashoffset={`${2 * Math.PI * 36 * (1 - progressPercent / 100)}`}
-                  className="text-[#1DB954] transition-all duration-300"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-semibold">{progressPercent}%</span>
-              </div>
-            </div>
-            
-            <p className="text-sm text-muted-foreground mb-1">
-              {conversionProgress.current} of {conversionProgress.total}
-            </p>
-            
-            {conversionProgress.currentSong && (
-              <p className="text-xs text-muted-foreground/70 truncate max-w-[200px] text-center">
-                {conversionProgress.currentSong}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Complete Stage */}
-        {stage === 'complete' && conversionResult && (
-          <div className="px-6 py-8 flex flex-col items-center">
-            <div className="w-14 h-14 bg-[#1DB954]/10 rounded-full flex items-center justify-center mb-4">
-              <Check className="w-7 h-7 text-[#1DB954]" />
-            </div>
-            
-            <p className="text-base font-medium mb-1">
-              {conversionResult.converted + conversionResult.skipped} songs added
-            </p>
-            
-            <p className="text-xs text-muted-foreground mb-6">
-              {conversionResult.converted} converted • {conversionResult.skipped} saved • {conversionResult.failed} failed
-            </p>
-            
-            <Button
-              onClick={onClose}
-              className="h-10 px-8 bg-[#1DB954] hover:bg-[#1ed760] text-white font-medium rounded-full"
-            >
-              Done
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
