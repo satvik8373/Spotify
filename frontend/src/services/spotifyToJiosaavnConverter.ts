@@ -143,15 +143,18 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
     const query = `${cleanTitle} ${cleanArtist}`;
     
     console.log(`🔍 Searching JioSaavn for: "${query}"`);
+    console.log(`📡 API URL: ${axiosInstance.defaults.baseURL}/jiosaavn/search/songs`);
     
     const response = await axiosInstance.get('/jiosaavn/search/songs', {
       params: { query, limit: 10 },
       timeout: 15000,
     });
 
+    console.log(`📥 JioSaavn API Response:`, response.status, response.data ? 'has data' : 'no data');
+
     const results = response.data?.data?.results;
     if (!results || results.length === 0) {
-      console.log('❌ No results found on JioSaavn');
+      console.log('❌ No results found on JioSaavn for:', query);
       return null;
     }
 
@@ -397,6 +400,7 @@ export async function convertAndSaveSpotifyTracks(
 ): Promise<ConversionResult> {
   const userId = auth.currentUser?.uid;
   if (!userId) {
+    console.log('❌ No user logged in, cannot convert tracks');
     return { total: 0, converted: 0, failed: 0, skipped: 0, errors: [] };
   }
 
@@ -409,10 +413,13 @@ export async function convertAndSaveSpotifyTracks(
   };
 
   if (tracks.length === 0) {
+    console.log('⚠️ No tracks to convert');
     return result;
   }
 
-  console.log(`🚀 Converting and saving ${tracks.length} Spotify tracks...`);
+  console.log(`🚀 Starting JioSaavn conversion for ${tracks.length} Spotify tracks...`);
+  console.log(`👤 User ID: ${userId}`);
+  console.log(`📋 First track:`, tracks[0]?.title || tracks[0]?.name, 'by', tracks[0]?.artist);
 
   for (let i = 0; i < tracks.length; i++) {
     const track = tracks[i];
