@@ -256,18 +256,22 @@ const LikedSongsPage = () => {
             </div>
           </div>
 
-          {/* Import from Spotify button */}
-          {isSpotifyAuthenticated() && (
-            <Button
-              onClick={() => setShowSpotifyImport(true)}
-              variant="outline"
-              size={isMobile ? "sm" : "default"}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              {isMobile ? "Import" : "Import from Spotify"}
-            </Button>
-          )}
+          {/* Spotify Actions */}
+          <div className="flex items-center gap-2">
+            {isSpotifyAuthenticated() ? (
+              <Button
+                onClick={() => setShowSpotifyImport(true)}
+                variant="outline"
+                size={isMobile ? "sm" : "default"}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                {isMobile ? "Import" : "Import from Spotify"}
+              </Button>
+            ) : (
+              <SpotifyLogin />
+            )}
+          </div>
         </div>
 
         {/* Controls */}
@@ -544,23 +548,13 @@ const LikedSongsPage = () => {
                 Songs you like will appear here. Start exploring music to build your collection!
               </p>
               
-              {/* Show Spotify import option if connected */}
-              {isSpotifyAuthenticated() ? (
-                <Button
-                  onClick={() => setShowSpotifyImport(true)}
-                  className="gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Import from Spotify
-                </Button>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-500">
-                    Connect your Spotify account to import your liked songs
-                  </p>
-                  <SpotifyLogin />
-                </div>
-              )}
+              {/* Simple call to action */}
+              <p className="text-sm text-gray-500">
+                {isSpotifyAuthenticated() 
+                  ? "Use the Import button above to add songs from Spotify"
+                  : "Connect your Spotify account above to import your liked songs"
+                }
+              </p>
             </div>
           </div>
         )}
