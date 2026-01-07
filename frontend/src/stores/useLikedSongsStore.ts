@@ -10,15 +10,15 @@ type FirestoreSong = likedSongsFirestoreService.Song;
 // Helper function to convert between song types
 const convertToLocalSong = (firebaseSong: FirestoreSong): Song => {
   return {
-    _id: firebaseSong.id,
+    _id: firebaseSong._id, // Use _id directly since our service now returns Song format
     title: firebaseSong.title,
     artist: firebaseSong.artist,
-    albumId: null,
+    albumId: firebaseSong.albumId,
     imageUrl: firebaseSong.imageUrl,
     audioUrl: firebaseSong.audioUrl,
     duration: firebaseSong.duration || 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: firebaseSong.createdAt || new Date().toISOString(),
+    updatedAt: firebaseSong.updatedAt || new Date().toISOString()
   };
 };
 
@@ -89,9 +89,8 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Try Firestore first if user is authenticated
           if (isAuthenticated) {
             try {
-              // Fetch from Firestore sorted by most recent first
-              const firebaseSongs = await likedSongsFirestoreService.loadLikedSongs();
-              songs = firebaseSongs.map(convertToLocalSong);
+              // Fetch from Firestore - already returns Song[] format
+              songs = await likedSongsFirestoreService.loadLikedSongs();
             } catch (firebaseError) {
               console.warn('Failed to load from Firebase, falling back to local storage', firebaseError);
               // Fall back to local storage if Firestore fails
@@ -175,15 +174,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Update Firestore if user is authenticated - don't await to prevent UI blocking
           const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
-            likedSongsFirestoreService.addLikedSong({
-              id: songId,
-              title: song.title,
-              artist: song.artist,
-              imageUrl: song.imageUrl,
-              audioUrl: song.audioUrl,
-              duration: song.duration,
-              album: song.albumId || ''
-            }).catch(() => {
+            likedSongsFirestoreService.addLikedSong(song).catch(() => {
               // Error handled silently
             });
           }

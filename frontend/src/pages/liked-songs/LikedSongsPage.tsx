@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo, startTransition } from 'react';
 import { Heart, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Shuffle, Search, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { loadLikedSongs } from '@/services/likedSongsService';
 import { isAuthenticated as isSpotifyAuthenticated } from '@/services/spotifyService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
@@ -73,16 +72,48 @@ const LikedSongsPage = () => {
   const { removeLikedSong: removeFromStore } = useLikedSongsStore();
   const { isAuthenticated } = useAuthStore();
 
+  // Subscribe to store changes
+  useEffect(() => {
+    const unsubscribe = useLikedSongsStore.subscribe((state) => {
+      startTransition(() => {
+        setLikedSongs(state.likedSongs);
+        setIsLoading(state.isLoading);
+      });
+    });
+
+    // Initial load from store
+    const initialState = useLikedSongsStore.getState();
+    startTransition(() => {
+      setLikedSongs(initialState.likedSongs);
+      setIsLoading(initialState.isLoading);
+    });
+
+    return unsubscribe;
+  }, []);
+
   // Load liked songs on mount
   useEffect(() => {
-    loadAndSetLikedSongs();
+    // Use the store to load liked songs
+    useLikedSongsStore.getState().loadLikedSongs();
 
     // Subscribe to liked songs updates
     const handleLikedSongsUpdated = () => {
-      loadAndSetLikedSongs();
+      // Reload from store when updated
+      const storeSongs = useLikedSongsStore.getState().likedSongs;
+      startTransition(() => {
+        setLikedSongs(storeSongs);
+      });
     };
 
     document.addEventListener('likedSongsUpdated', handleLikedSongsUpdated);
+
+    // Initial load from store
+    const initialSongs = useLikedSongsStore.getState().likedSongs;
+    if (initialSongs.length > 0) {
+      startTransition(() => {
+        setLikedSongs(initialSongs);
+      });
+    }
 
     return () => {
       document.removeEventListener('likedSongsUpdated', handleLikedSongsUpdated);
@@ -98,23 +129,6 @@ const LikedSongsPage = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  // Load liked songs from Firestore
-  const loadAndSetLikedSongs = async () => {
-    setIsLoading(true);
-    try {
-      const songs = await loadLikedSongs();
-      console.log('📥 Loaded liked songs:', songs.length);
-      startTransition(() => {
-        setLikedSongs(songs);
-      });
-    } catch (error) {
-      console.error('Error loading liked songs:', error);
-      toast.error('Failed to load liked songs');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Sort songs based on selected method
   const sortSongs = (songs: any[], method: 'recent' | 'title' | 'artist') => {

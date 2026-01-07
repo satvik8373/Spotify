@@ -1,7 +1,7 @@
 import axiosInstance from '@/lib/axios';
 import { getSavedTracks, isAuthenticated as isSpotifyAuthenticated } from '@/services/spotifyService';
-import { addLikedSong } from '@/services/likedSongsService';
 import { resolveArtist } from '@/lib/resolveArtist';
+import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 
 export interface ImportProgress {
   current: number;
@@ -265,8 +265,8 @@ export async function importSpotifySongsToLiked(
             message: `Adding "${title}" to liked songs...`
           });
 
-          // Add to liked songs using the same method as manual adds
-          await addLikedSong(convertedSong);
+          // Add to liked songs using the store (same method as manual adds)
+          await useLikedSongsStore.getState().addLikedSong(convertedSong);
           
           console.log(`✅ Imported: "${convertedSong.title}"`);
           result.imported++;
@@ -284,7 +284,7 @@ export async function importSpotifySongsToLiked(
             updatedAt: new Date().toISOString()
           };
           
-          await addLikedSong(fallbackSong);
+          await useLikedSongsStore.getState().addLikedSong(fallbackSong);
           result.imported++;
           console.log(`⚠️ No JioSaavn audio for "${title}", saved with Spotify data`);
         }
@@ -302,7 +302,7 @@ export async function importSpotifySongsToLiked(
           updatedAt: new Date().toISOString()
         };
         
-        await addLikedSong(fallbackSong);
+        await useLikedSongsStore.getState().addLikedSong(fallbackSong);
         result.imported++;
         console.log(`⚠️ No JioSaavn match for "${title}", saved with Spotify data`);
       }
