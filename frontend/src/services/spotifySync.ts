@@ -82,10 +82,21 @@ const getExistingSongIds = async (): Promise<Set<string>> => {
 
     snapshot.forEach(doc => {
       const data = doc.data();
-      if (data.songId) {
-        existingIds.add(data.songId);
+      // Add all possible ID fields to prevent duplicates
+      if (data.spotifyId) {
+        existingIds.add(data.spotifyId); // Original Spotify track ID
       }
+      if (data.songId) {
+        existingIds.add(data.songId); // JioSaavn ID after conversion
+      }
+      if (data.id) {
+        existingIds.add(data.id); // Document ID
+      }
+      // Also add the document ID itself
+      existingIds.add(doc.id);
     });
+    
+    console.log(`📊 Found ${existingIds.size} existing song IDs in Firestore`);
   } catch (error) {
     console.error('Error getting existing song IDs from Firestore:', error);
   }

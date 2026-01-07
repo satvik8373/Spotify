@@ -389,6 +389,12 @@ export async function convertAllSpotifySongsToJiosaavn(
   });
 
   console.log(`🏁 Conversion complete:`, result);
+  
+  // Dispatch event to notify UI that liked songs have been updated
+  if (result.converted > 0) {
+    document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
+  }
+  
   return result;
 }
 
@@ -512,6 +518,12 @@ export async function convertAndSaveSpotifyTracks(
   });
 
   console.log(`🏁 Batch conversion complete:`, result);
+  
+  // Dispatch event to notify UI that liked songs have been updated
+  if (result.converted > 0 || result.skipped > 0) {
+    document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
+  }
+  
   return result;
 }
 

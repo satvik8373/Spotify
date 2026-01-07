@@ -65,18 +65,8 @@ router.post("/callback", async (req, res) => {
     });
   }
   
-  if (!userId) {
-    console.error("❌ Missing user ID");
-    return res.status(400).json({ 
-      message: "User ID is required",
-      error: "MISSING_USER_ID"
-    });
-  }
-  
   if (!CLIENT_ID || !CLIENT_SECRET) {
     console.error("❌ Missing Spotify credentials");
-    console.error("CLIENT_ID present:", !!CLIENT_ID);
-    console.error("CLIENT_SECRET present:", !!CLIENT_SECRET);
     return res.status(500).json({ 
       message: "Spotify credentials not configured",
       error: "MISSING_CREDENTIALS"
@@ -89,19 +79,32 @@ router.post("/callback", async (req, res) => {
     const tokenData = await spotifyService.getAccessToken(CLIENT_ID, CLIENT_SECRET, code, redirect_uri);
     console.log("✅ Tokens received successfully");
     
-    // Store tokens in Firestore
-    console.log("🔄 Storing tokens in Firestore...");
-    await storeSpotifyTokens(userId, tokenData);
-    console.log("✅ Tokens stored in Firestore");
+    // Store tokens in Firestore (optional - don't fail if this fails)
+    let tokensStored = false;
+    if (userId) {
+      try {
+        console.log("🔄 Storing tokens in Firestore...");
+        await storeSpotifyTokens(userId, tokenData);
+        console.log("✅ Tokens stored in Firestore");
+        tokensStored = true;
+      } catch (storeError) {
+        console.error("⚠️ Failed to store tokens in Firestore:", storeError.message);
+        // Continue without storing - tokens will be stored client-side
+      }
+    }
     
-    // Perform initial sync
-    try {
-      console.log("🔄 Starting initial sync...");
-      await syncSpotifyLikedSongs(userId);
-      console.log("✅ Initial sync completed");
-    } catch (syncError) {
-      console.error("⚠️ Initial sync failed:", syncError);
-      // Don't fail the auth if sync fails
+    // Perform initial sync (optional - don't fail if this fails)
+    let synced = false;
+    if (userId && tokensStored) {
+      try {
+        console.log("🔄 Starting initial sync...");
+        await syncSpotifyLikedSongs(userId);
+        console.log("✅ Initial sync completed");
+        synced = true;
+      } catch (syncError) {
+        console.error("⚠️ Initial sync failed:", syncError.message);
+        // Don't fail the auth if sync fails
+      }
     }
     
     console.log("=== Callback Success ===");
@@ -109,13 +112,13 @@ router.post("/callback", async (req, res) => {
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token,
       expires_in: tokenData.expires_in,
-      synced: true
+      synced,
+      tokensStored
     });
   } catch (error) {
     console.error("❌ Spotify callback error:");
     console.error("Error details:", error.response?.data || error.message);
     console.error("Error status:", error.response?.status);
-    console.error("Error stack:", error.stack);
     
     let errorMessage = "Failed to authenticate with Spotify";
     let errorCode = "AUTH_FAILED";

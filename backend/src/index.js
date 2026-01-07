@@ -195,9 +195,24 @@ if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
 	});
 }
 
-// Add error handling middleware
+// Add error handling middleware with CORS headers
 app.use((err, req, res, next) => {
 	console.error('Error:', err);
+	
+	// Ensure CORS headers are set even on errors
+	const origin = req.headers.origin;
+	const allowedOrigins = [
+		'http://localhost:3000',
+		'http://localhost:5173',
+		'https://mavrixfy.site',
+		'https://www.mavrixfy.site'
+	];
+	
+	if (origin && allowedOrigins.includes(origin)) {
+		res.setHeader('Access-Control-Allow-Origin', origin);
+		res.setHeader('Access-Control-Allow-Credentials', 'true');
+	}
+	
 	res.status(err.status || 500).json({
 		message: process.env.NODE_ENV === "production" 
 			? "An error occurred" 

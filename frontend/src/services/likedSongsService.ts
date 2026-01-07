@@ -140,29 +140,53 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
 
   try {
     const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
-    const q = query(
-      likedSongsRef, 
-      orderBy('likedAt', 'desc')
-    );
     
-    const snapshot = await getDocs(q);
+    let snapshot;
+    try {
+      // Try to order by likedAt first
+      const q = query(likedSongsRef, orderBy('likedAt', 'desc'));
+      snapshot = await getDocs(q);
+    } catch (orderError) {
+      // If ordering fails (missing index or field), get all docs without ordering
+      console.log('Ordering by likedAt failed, fetching without order:', orderError);
+      snapshot = await getDocs(likedSongsRef);
+    }
+    
     const songs: Song[] = [];
     
-    snapshot.forEach(doc => {
-      const data = doc.data() as LikedSong;
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      
+      // Handle both old and new data formats
+      const songId = data.id || data.songId || docSnap.id;
+      const audioUrl = data.audioUrl || data.url || '';
+      const imageUrl = data.imageUrl || data.image || '';
+      
+      // Only include songs with valid audio URLs for playback
+      // But still show songs without audio (they just won't play)
       songs.push({
-        id: data.id,
-        title: data.title,
-        artist: data.artist,
-        imageUrl: data.imageUrl,
-        audioUrl: data.audioUrl,
-        duration: data.duration,
-        album: data.albumName,
+        id: songId,
+        title: data.title || 'Unknown Title',
+        artist: data.artist || 'Unknown Artist',
+        imageUrl: imageUrl,
+        audioUrl: audioUrl,
+        duration: data.duration || 0,
+        album: data.albumName || data.album || '',
         year: data.year || ''
       });
     });
     
-    console.log(`Loaded ${songs.length} liked songs from Firestore`);
+    console.log(`📥 Loaded ${songs.length} liked songs from Firestore`);
+    
+    // Log sample data for debugging
+    if (songs.length > 0) {
+      console.log('📋 Sample song data:', {
+        title: songs[0].title,
+        hasAudioUrl: !!songs[0].audioUrl,
+        audioUrlPreview: songs[0].audioUrl?.substring(0, 60)
+      });
+    }
+    
     return songs;
     
   } catch (error) {

@@ -196,33 +196,40 @@ const LikedSongsPage = () => {
       // Check if we have valid Spotify auth before making API calls
       const hasValidSpotifyAuth = isSpotifyAuthenticated();
 
-      const [status, songs] = await Promise.all([
-        hasValidSpotifyAuth ? getSyncStatus(user.id) : Promise.resolve(null),
-        hasValidSpotifyAuth ? getSyncedLikedSongs(user.id) : loadLikedSongs(),
-      ]);
+      // Always load from Firestore first since that's where converted songs are saved
+      const firestoreSongs = await loadLikedSongs();
+      
+      // Try to get sync status from backend if Spotify is connected
+      let status = null;
+      if (hasValidSpotifyAuth) {
+        try {
+          status = await getSyncStatus(user.id);
+        } catch (e) {
+          console.log('Could not get sync status from backend:', e);
+        }
+      }
 
       if (status) setSyncStatus(status);
-      const pick = Array.isArray(songs) && songs.length > 0 ? songs : await loadLikedSongs();
 
-      console.log('📥 Loaded liked songs:', {
-        count: pick.length,
+      console.log('📥 Loaded liked songs from Firestore:', {
+        count: firestoreSongs.length,
         hasSpotifyAuth: hasValidSpotifyAuth,
-        sampleSong: pick[0] ? {
-          title: pick[0].title,
-          hasAudioUrl: !!pick[0].audioUrl,
-          audioUrlPreview: pick[0].audioUrl?.substring(0, 50)
+        sampleSong: firestoreSongs[0] ? {
+          title: firestoreSongs[0].title,
+          hasAudioUrl: !!firestoreSongs[0].audioUrl,
+          audioUrlPreview: firestoreSongs[0].audioUrl?.substring(0, 50)
         } : null
       });
 
       startTransition(() => {
-        setLikedSongs(pick);
+        setLikedSongs(firestoreSongs);
         setUpToDate(formatSyncStatus(status || { syncStatus: 'never', hasSynced: false })?.status === 'synced');
       });
 
       // Cache the results for instant loading on next visit
       setSessionStorageJSON('liked_songs_cache_v1', {
         t: Date.now(),
-        songs: pick,
+        songs: firestoreSongs,
         userId: user.id,
         hasSpotifyAuth: hasValidSpotifyAuth
       });
@@ -596,12 +603,13 @@ const LikedSongsPage = () => {
     if (!isAuthenticated || !user?.id) return;
 
     try {
-      const syncedData = await getSyncedLikedSongs(user.id);
-      setSyncedSongs(syncedData);
+      // Load directly from Firestore since that's where converted songs are saved
+      const firestoreSongs = await loadLikedSongs();
+      setSyncedSongs(firestoreSongs);
 
-      // If we have synced songs, use them as the primary source
-      if (syncedData.length > 0) {
-        setLikedSongs(syncedData);
+      // If we have songs, use them as the primary source
+      if (firestoreSongs.length > 0) {
+        setLikedSongs(firestoreSongs);
         setUpToDate(true);
       }
     } catch (error) {
@@ -609,7 +617,7 @@ const LikedSongsPage = () => {
     }
   };
 
-  // Enhanced load function that prioritizes synced data
+  // Enhanced load function that prioritizes Firestore data
   const loadAndSetLikedSongs = async () => {
     if (!isAuthenticated) {
       // Load anonymous liked songs
@@ -619,19 +627,16 @@ const LikedSongsPage = () => {
     }
 
     try {
-      // First try to load synced songs from Firestore
-      if (isSpotifyAuthValid && user?.id) {
-        const syncedData = await getSyncedLikedSongs(user.id);
-        if (syncedData.length > 0) {
-          setLikedSongs(syncedData);
-          setUpToDate(true);
-          return;
-        }
+      // Load from Firestore - this is where converted songs are saved
+      const firestoreSongs = await loadLikedSongs();
+      if (firestoreSongs.length > 0) {
+        setLikedSongs(firestoreSongs);
+        setUpToDate(true);
+        return;
       }
 
-      // Fallback to local storage if no synced data
-      const localSongs = await loadLikedSongs();
-      setLikedSongs(localSongs);
+      // Fallback to empty if no songs found
+      setLikedSongs([]);
     } catch (error) {
       console.error('Error loading liked songs:', error);
       // Fallback to local storage
