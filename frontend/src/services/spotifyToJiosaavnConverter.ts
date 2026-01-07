@@ -44,43 +44,43 @@ export interface SpotifySyncedSong {
 }
 
 // Convert JioSaavn API response to our song format
-// Uses the same logic as playlist add song (convertSaavnTrack in useMusicStore)
 function convertJiosaavnToSong(item: any): ConvertedSong | null {
   if (!item) return null;
 
   // Get the best quality download URL (prefer 320kbps, then 160kbps, then 96kbps)
-  // Same logic as convertSaavnTrack in useMusicStore
   let audioUrl = '';
-  if (item.downloadUrl && Array.isArray(item.downloadUrl)) {
-    // Try to get the highest quality available - same order as playlist add song
-    const downloadUrl = item.downloadUrl.find((d: any) => d.quality === '320kbps') ||
-                       item.downloadUrl.find((d: any) => d.quality === '160kbps') ||
-                       item.downloadUrl.find((d: any) => d.quality === '96kbps') ||
-                       item.downloadUrl[item.downloadUrl.length - 1];
-    audioUrl = downloadUrl?.link || downloadUrl?.url || '';
+  const downloadUrls = item.downloadUrl || [];
+  
+  // Try to get highest quality first
+  for (const quality of ['320kbps', '160kbps', '96kbps', '48kbps', '12kbps']) {
+    const urlObj = downloadUrls.find((u: any) => u.quality === quality);
+    if (urlObj?.url) {
+      audioUrl = urlObj.url;
+      break;
+    }
   }
 
-  // Get best quality image - same logic as convertSaavnTrack
+  // Fallback to array index if quality labels not found
+  if (!audioUrl && downloadUrls.length > 0) {
+    audioUrl = downloadUrls[downloadUrls.length - 1]?.url || downloadUrls[0]?.url || '';
+  }
+
+  // Get best quality image
   let imageUrl = '';
-  if (item.image && Array.isArray(item.image)) {
-    const image = item.image.find((i: any) => i.quality === '500x500') ||
-                 item.image.find((i: any) => i.quality === '150x150') ||
-                 item.image[item.image.length - 1];
-    imageUrl = image?.link || image?.url || '';
-  } else if (typeof item.image === 'string') {
-    imageUrl = item.image;
+  const images = item.image || [];
+  if (images.length > 0) {
+    // Prefer 500x500, then 150x150, then 50x50
+    const highQuality = images.find((img: any) => img.quality === '500x500');
+    const medQuality = images.find((img: any) => img.quality === '150x150');
+    imageUrl = highQuality?.url || medQuality?.url || images[images.length - 1]?.url || '';
   }
 
-  // Extract artist names - same logic as convertSaavnTrack
+  // Extract artist names
   let artist = '';
-  if (item.primaryArtists) {
-    artist = item.primaryArtists;
-  } else if (item.singers) {
-    artist = item.singers;
-  } else if (item.artistMap?.primary && Array.isArray(item.artistMap.primary)) {
-    artist = item.artistMap.primary.map((a: any) => a?.name).filter(Boolean).join(', ');
-  } else if (item.artists?.primary && Array.isArray(item.artists.primary)) {
+  if (item.artists?.primary && Array.isArray(item.artists.primary)) {
     artist = item.artists.primary.map((a: any) => a.name).join(', ');
+  } else if (item.primaryArtists) {
+    artist = item.primaryArtists;
   } else if (item.artist) {
     artist = item.artist;
   }
@@ -136,7 +136,6 @@ function calculateSimilarity(str1: string, str2: string): number {
 }
 
 // Search for a song on JioSaavn
-// Uses the same endpoint and filtering logic as playlist add song (searchIndianSongs in useMusicStore)
 async function searchJiosaavn(title: string, artist: string): Promise<any | null> {
   try {
     const cleanTitle = cleanSearchQuery(title);
@@ -145,9 +144,8 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
     
     console.log(`🔍 Searching JioSaavn for: "${query}"`);
     
-    // Same endpoint as playlist add song (searchIndianSongs)
     const response = await axiosInstance.get('/api/jiosaavn/search/songs', {
-      params: { query, limit: 20 }, // Same limit as playlist add song
+      params: { query, limit: 10 },
       timeout: 15000,
     });
 
@@ -157,23 +155,15 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
       return null;
     }
 
-    // Filter results with valid downloadUrl - same as playlist add song
-    const validResults = results.filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0);
-    
-    if (validResults.length === 0) {
-      console.log('❌ No results with valid audio URL found');
-      return null;
-    }
-
-    console.log(`✅ Found ${validResults.length} results with valid audio on JioSaavn`);
+    console.log(`✅ Found ${results.length} results on JioSaavn`);
 
     // Find the best match
     let bestMatch = null;
     let bestScore = 0;
 
-    for (const result of validResults) {
+    for (const result of results) {
       const resultTitle = (result.name || result.title || '').toLowerCase();
-      const resultArtist = (result.primaryArtists || result.singers || result.artist || '').toLowerCase();
+      const resultArtist = (result.primaryArtists || result.artist || '').toLowerCase();
       
       // Calculate match scores
       const titleScore = calculateSimilarity(cleanTitle, resultTitle);
@@ -182,14 +172,17 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
       // Combined score with title weighted more
       const combinedScore = (titleScore * 0.7) + (artistScore * 0.3);
       
-      if (combinedScore > bestScore && combinedScore > 0.3) {
+      // Check if this result has a valid audio URL
+      const hasAudio = result.downloadUrl && result.downloadUrl.length > 0;
+      
+      if (hasAudio && combinedScore > bestScore && combinedScore > 0.3) {
         bestScore = combinedScore;
         bestMatch = result;
       }
     }
 
     if (bestMatch) {
-      console.log(`🎯 Best match: "${bestMatch.name}" by ${bestMatch.primaryArtists || bestMatch.singers} (score: ${bestScore.toFixed(2)})`);
+      console.log(`🎯 Best match: "${bestMatch.name}" by ${bestMatch.primaryArtists} (score: ${bestScore.toFixed(2)})`);
     }
 
     return bestMatch;
@@ -392,11 +385,6 @@ export async function convertAllSpotifySongsToJiosaavn(
     message: `Conversion complete! ${result.converted} converted, ${result.failed} failed`
   });
 
-  // Dispatch event to notify other components (same pattern as playlist add song)
-  if (result.converted > 0) {
-    document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
-  }
-
   console.log(`🏁 Conversion complete:`, result);
   return result;
 }
@@ -515,12 +503,6 @@ export async function convertAndSaveSpotifyTracks(
     status: 'complete',
     message: `Done! ${result.converted} converted, ${result.skipped} saved with Spotify data, ${result.failed} failed`
   });
-
-  // Dispatch event to notify other components (same pattern as playlist add song)
-  // This ensures the liked songs list updates immediately
-  if (result.converted > 0 || result.skipped > 0) {
-    document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
-  }
 
   console.log(`🏁 Batch conversion complete:`, result);
   return result;

@@ -1,8 +1,8 @@
 import { getSavedTracks, isAuthenticated as isSpotifyAuthenticated } from '@/services/spotifyService';
 import { resolveArtist } from '@/lib/resolveArtist';
-import { addLikedSong as addFirestoreLikedSong, Song as FirestoreSong, getLikedSongsCount } from '@/services/likedSongsService';
+import { Song as FirestoreSong } from '@/services/likedSongsService';
 import { auth, db } from '@/lib/firebase';
-import { collection, doc, setDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { 
   convertAndSaveSpotifyTracks, 
   ConversionProgress, 
@@ -93,34 +93,31 @@ const getExistingSongIds = async (): Promise<Set<string>> => {
   return existingIds;
 };
 
-export const syncSpotifyLikedSongsToMavrixfy = async (tracks: FirestoreSong[]): Promise<SpotifySyncResult> => {
+export const syncSpotifyLikedSongsToMavrixfy = async (
+  tracks: FirestoreSong[],
+  onProgress?: (progress: ConversionProgress) => void
+): Promise<SpotifySyncResult> => {
   const existingIds = await getExistingSongIds();
   const fetchedCount = tracks.length;
-  let syncedCount = 0;
-
-  // Add to global liked songs
-  for (const track of tracks) {
-    const id = track.id;
-    if (!id || existingIds.has(id)) continue;
-
-    await addFirestoreLikedSong({
-      id: track.id,
-      title: track.title,
-      artist: track.artist,
-      album: track.album || '',
-      imageUrl: track.imageUrl || '',
-      audioUrl: track.audioUrl || '',
-      duration: track.duration || 0,
-    });
-    syncedCount += 1;
-    existingIds.add(id);
+  
+  // Filter to only new tracks
+  const newTracks = tracks.filter(track => track?.id && !existingIds.has(track.id));
+  
+  if (newTracks.length === 0) {
+    return { fetchedCount, syncedCount: 0 };
   }
 
+  // Convert and save using JioSaavn for playable audio URLs
+  const result = await convertAndSaveSpotifyTracks(newTracks, onProgress);
+  
   try {
     localStorage.setItem(SPOTIFY_LAST_SYNC_TS, Date.now().toString());
   } catch { }
 
-  return { fetchedCount, syncedCount };
+  return { 
+    fetchedCount, 
+    syncedCount: result.converted + result.skipped 
+  };
 };
 
 export const countNewSpotifyTracks = async (tracks: FirestoreSong[]): Promise<number> => {
@@ -152,11 +149,13 @@ export const shouldBackgroundSync = (minMinutes: number = 10): boolean => {
   }
 };
 
-export const backgroundAutoSyncOnce = async (): Promise<SpotifySyncResult | null> => {
+export const backgroundAutoSyncOnce = async (
+  onProgress?: (progress: ConversionProgress) => void
+): Promise<SpotifySyncResult | null> => {
   if (!isSpotifyAuthenticated()) return null;
   if (!shouldBackgroundSync()) return null;
   const tracks = await fetchAllSpotifySavedTracks();
-  return syncSpotifyLikedSongsToMavrixfy(tracks);
+  return syncSpotifyLikedSongsToMavrixfy(tracks, onProgress);
 };
 
 export const isSpotifyConnected = (): boolean => isSpotifyAuthenticated();

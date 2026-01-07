@@ -89,23 +89,18 @@ router.post("/callback", async (req, res) => {
     const tokenData = await spotifyService.getAccessToken(CLIENT_ID, CLIENT_SECRET, code, redirect_uri);
     console.log("✅ Tokens received successfully");
     
-    // Store tokens in Firestore (skip if Firebase not configured)
-    try {
-      console.log("🔄 Storing tokens in Firestore...");
-      await storeSpotifyTokens(userId, tokenData);
-      console.log("✅ Tokens stored in Firestore");
-    } catch (firebaseError) {
-      console.warn("⚠️ Could not store tokens in Firestore:", firebaseError.message);
-      // Continue without storing - tokens will still be returned to frontend
-    }
+    // Store tokens in Firestore
+    console.log("🔄 Storing tokens in Firestore...");
+    await storeSpotifyTokens(userId, tokenData);
+    console.log("✅ Tokens stored in Firestore");
     
-    // Perform initial sync (skip if Firebase not configured)
+    // Perform initial sync
     try {
       console.log("🔄 Starting initial sync...");
       await syncSpotifyLikedSongs(userId);
       console.log("✅ Initial sync completed");
     } catch (syncError) {
-      console.warn("⚠️ Initial sync failed:", syncError.message);
+      console.error("⚠️ Initial sync failed:", syncError);
       // Don't fail the auth if sync fails
     }
     

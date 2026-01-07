@@ -1,4 +1,4 @@
-	// Node 16 compatibility: provide WebCrypto for Vite runtime that expects global crypto
+// Node 16 compatibility: provide WebCrypto for Vite runtime that expects global crypto
 // Safe no-op on newer Node versions where globalThis.crypto already exists
 import { webcrypto as nodeWebCrypto } from 'crypto';
 
@@ -130,7 +130,7 @@ export default defineConfig(({ mode }) => {
 		},
 		server: {
 			port: 3000,
-			allowedHosts: ['dbd0229c0837.ngrok-free.app'],
+		
 			hmr: {
 				overlay: false,
 			},
