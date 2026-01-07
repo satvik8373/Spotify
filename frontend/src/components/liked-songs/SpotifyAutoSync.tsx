@@ -14,7 +14,7 @@ interface SpotifyAutoSyncProps {
 
 export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
   const [isEnabled, setIsEnabled] = useState(false);
-  const [intervalMinutes, setIntervalMinutes] = useState(0.17); // 10 seconds default
+  const [intervalMinutes, setIntervalMinutes] = useState(30);
   const [status, setStatus] = useState<AutoSyncStatus | null>(null);
   const [timeUntilNext, setTimeUntilNext] = useState<number | null>(null);
   const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
@@ -42,12 +42,11 @@ export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
 
     spotifyAutoSyncService.addListener(handleStatusUpdate);
 
-    // Update time until next sync more frequently for ultra-fast mode
-    const updateInterval = intervalMinutes < 1 ? 1000 : intervalMinutes <= 5 ? 5000 : 60000; // 1 second for ultra-fast, 5 seconds for instant, 1 minute for others
+    // Update time until next sync every minute
     const timeInterval = setInterval(() => {
       const timeLeft = spotifyAutoSyncService.getTimeUntilNextSync();
       setTimeUntilNext(timeLeft);
-    }, updateInterval);
+    }, 60000);
 
     // Check Spotify auth changes
     const handleAuthChange = () => {
@@ -71,17 +70,7 @@ export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
       const success = spotifyAutoSyncService.startAutoSync(intervalMinutes);
       setIsEnabled(success);
       if (success) {
-        let intervalText;
-        if (intervalMinutes < 1) {
-          const seconds = Math.round(intervalMinutes * 60);
-          intervalText = `ultra-fast (${seconds} seconds)`;
-        } else if (intervalMinutes === 1) {
-          intervalText = 'instant sync';
-        } else {
-          intervalText = `every ${intervalMinutes} minutes`;
-        }
-        
-        toast.success(`Auto-sync enabled (${intervalText})`, {
+        toast.success(`Auto-sync enabled (every ${intervalMinutes} minutes)`, {
           icon: '⚡',
         });
       }
@@ -115,18 +104,13 @@ export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
   const formatTimeUntilNext = (ms: number | null) => {
     if (!ms) return null;
     
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
+    const minutes = Math.floor(ms / (1000 * 60));
     const hours = Math.floor(minutes / 60);
     
     if (hours > 0) {
       return `${hours}h ${minutes % 60}m`;
-    } else if (minutes > 0) {
-      return `${minutes}m`;
-    } else if (seconds > 0) {
-      return `${seconds}s`;
     } else {
-      return 'Now';
+      return `${minutes}m`;
     }
   };
 
@@ -229,11 +213,6 @@ export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
             disabled={!isSpotifyConnected}
             className="w-full px-3 py-2 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <option value="0.17">Ultra-Fast (10 seconds)</option>
-            <option value="0.5">Ultra-Fast (30 seconds)</option>
-            <option value="1">Instant (1 minute)</option>
-            <option value="2">Every 2 minutes</option>
-            <option value="5">Every 5 minutes</option>
             <option value="15">Every 15 minutes</option>
             <option value="30">Every 30 minutes</option>
             <option value="60">Every hour</option>
@@ -300,9 +279,7 @@ export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
             <strong>How it works:</strong>
           </p>
           <ul className="space-y-1 list-disc list-inside">
-            <li>Ultra-fast mode (10-30s): Checks songs liked in the last 1 hour</li>
-            <li>Instant mode (1-5 min): Checks songs liked in the last 24 hours</li>
-            <li>Longer intervals: Checks songs liked in the last 7 days</li>
+            <li>Checks for songs liked on Spotify in the last 7 days</li>
             <li>Automatically searches for high-quality audio versions</li>
             <li>Adds new songs to your Mavrixfy liked songs</li>
             <li>Skips songs already in your library</li>

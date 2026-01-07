@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Shuffle, Search, Plus, FileText, Settings, ListPlus, User } from 'lucide-react';
+import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Shuffle, Search, Plus, FileText, ListPlus, User, RefreshCw } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -13,8 +13,7 @@ import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { LikedSongsFileUploader } from '@/components/liked-songs/LikedSongsFileUploader';
 import { SpotifyLikedSongsSync } from '@/components/liked-songs/SpotifyLikedSongsSync';
-import { SpotifyAutoSync } from '@/components/liked-songs/SpotifyAutoSync';
-import { spotifyAutoSyncService, AutoSyncStatus } from '@/services/spotifyAutoSyncService';
+import { useSpotify } from '@/contexts/SpotifyContext';
 import SwipeableSongItem from '@/components/SwipeableSongItem';
 import './liked-songs.css';
 import {
@@ -38,10 +37,11 @@ const LikedSongsPage = () => {
   const [sortMethod, setSortMethod] = useState<'recent' | 'title' | 'artist'>('recent');
   const [filterQuery, setFilterQuery] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [autoSyncStatus, setAutoSyncStatus] = useState<AutoSyncStatus | null>(null);
+  const [activeTab, setActiveTab] = useState<'upload' | 'spotify'>('upload');
 
   const { currentSong, isPlaying, togglePlay, playAlbum, setIsPlaying, setUserInteracted } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated: isSpotifyConnected, fetchSavedTracks } = useSpotify();
 
   // Load liked songs on mount
   useEffect(() => {
@@ -58,26 +58,6 @@ const LikedSongsPage = () => {
       document.removeEventListener('likedSongsUpdated', handleLikedSongsUpdated);
     };
   }, [isAuthenticated]);
-
-  // Handle auto-sync status updates
-  useEffect(() => {
-    const handleAutoSyncStatus = (status: AutoSyncStatus) => {
-      setAutoSyncStatus(status);
-      
-      // Auto-hide status after a delay for non-error states
-      if (status.type === 'completed' || status.type === 'started') {
-        setTimeout(() => {
-          setAutoSyncStatus(null);
-        }, 5000);
-      }
-    };
-
-    spotifyAutoSyncService.addListener(handleAutoSyncStatus);
-
-    return () => {
-      spotifyAutoSyncService.removeListener(handleAutoSyncStatus);
-    };
-  }, []);
 
   // Handle window resize
   useEffect(() => {
@@ -207,6 +187,41 @@ const LikedSongsPage = () => {
     });
   };
 
+  // Manual Spotify sync
+  const handleManualSync = async () => {
+    if (!isSpotifyConnected) {
+      toast.error('Please connect to Spotify first');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      toast.loading('Syncing with Spotify...', { id: 'manual-sync' });
+      
+      // Fetch saved tracks from Spotify
+      const spotifyTracks = await fetchSavedTracks(50); // Get recent 50 tracks
+      
+      if (spotifyTracks.length === 0) {
+        toast.success('No new tracks to sync', { id: 'manual-sync' });
+        return;
+      }
+
+      // Process and add tracks (this would use the existing SpotifyLikedSongsSync logic)
+      // For now, just show success message
+      toast.success(`Found ${spotifyTracks.length} tracks from Spotify!`, { id: 'manual-sync' });
+      
+      // Open the dialog to the Spotify tab for detailed sync
+      setActiveTab('spotify');
+      setShowAddDialog(true);
+      
+    } catch (error) {
+      console.error('Manual sync error:', error);
+      toast.error('Failed to sync with Spotify', { id: 'manual-sync' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Unlike a song
   const unlikeSong = async (songId: string) => {
     try {
@@ -230,20 +245,6 @@ const LikedSongsPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Auto-sync status indicator */}
-      {autoSyncStatus && (
-        <div className={cn(
-          "auto-sync-indicator",
-          autoSyncStatus.type === 'syncing' && "syncing",
-          autoSyncStatus.type === 'error' && "error"
-        )}>
-          {autoSyncStatus.type === 'syncing' && <Music className="h-4 w-4 animate-pulse" />}
-          {autoSyncStatus.type === 'completed' && <Heart className="h-4 w-4" />}
-          {autoSyncStatus.type === 'error' && <MoreHorizontal className="h-4 w-4" />}
-          <span>{autoSyncStatus.message}</span>
-        </div>
-      )}
-
       {/* Header */}
       <div className="relative">
         <div className="bg-gradient-to-b from-purple-600/40 via-purple-700/30 to-background p-6 pb-8">
@@ -293,10 +294,27 @@ const LikedSongsPage = () => {
               variant="ghost"
               size="icon"
               className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10"
-              onClick={() => setShowAddDialog(true)}
+              onClick={() => {
+                setActiveTab('upload');
+                setShowAddDialog(true);
+              }}
             >
               <Plus className="h-5 w-5" />
             </Button>
+
+            {/* Manual Spotify Sync Button */}
+            {isSpotifyConnected && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10"
+                onClick={handleManualSync}
+                disabled={isLoading}
+                title="Sync with Spotify"
+              >
+                <RefreshCw className={cn("h-5 w-5", isLoading && "animate-spin")} />
+              </Button>
+            )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -319,14 +337,6 @@ const LikedSongsPage = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-
-          {/* List view toggle */}
-          <div className="flex items-center gap-2 text-sm text-white/60">
-            <span>List</span>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </div>
@@ -593,7 +603,10 @@ const LikedSongsPage = () => {
             <Heart className="h-16 w-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">No liked songs yet</h3>
             <p className="text-muted-foreground mb-6">Songs you like will appear here</p>
-            <Button onClick={() => setShowAddDialog(true)}>
+            <Button onClick={() => {
+              setActiveTab('upload');
+              setShowAddDialog(true);
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Add Songs
             </Button>
@@ -612,8 +625,8 @@ const LikedSongsPage = () => {
           </DialogHeader>
           
           <div className="flex-1 overflow-hidden">
-            <Tabs defaultValue="upload" className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-3">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'upload' | 'spotify')} className="h-full flex flex-col">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="upload" className="flex items-center gap-1">
                   <FileText className="h-4 w-4" />
                   <span>Upload File</span>
@@ -621,10 +634,6 @@ const LikedSongsPage = () => {
                 <TabsTrigger value="spotify" className="flex items-center gap-1">
                   <Music className="h-4 w-4" />
                   <span>Spotify Sync</span>
-                </TabsTrigger>
-                <TabsTrigger value="auto-sync" className="flex items-center gap-1">
-                  <Settings className="h-4 w-4" />
-                  <span>Auto-Sync</span>
                 </TabsTrigger>
               </TabsList>
               
@@ -637,12 +646,6 @@ const LikedSongsPage = () => {
               <TabsContent value="spotify" className="flex-1 overflow-auto">
                 <ScrollArea className="h-full">
                   <SpotifyLikedSongsSync onClose={() => setShowAddDialog(false)} />
-                </ScrollArea>
-              </TabsContent>
-              
-              <TabsContent value="auto-sync" className="flex-1 overflow-auto">
-                <ScrollArea className="h-full">
-                  <SpotifyAutoSync />
                 </ScrollArea>
               </TabsContent>
             </Tabs>

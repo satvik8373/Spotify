@@ -16,7 +16,7 @@ interface SpotifyAutoSyncConfig {
 class SpotifyAutoSyncService {
   private config: SpotifyAutoSyncConfig = {
     enabled: false,
-    intervalMinutes: 0.17, // 10 seconds (0.17 minutes) by default for ultra-fast mode
+    intervalMinutes: 30, // Check every 30 minutes
     lastSyncTimestamp: 0,
     maxSongsPerSync: 20, // Limit to prevent overwhelming
     retryCount: 0,
@@ -60,7 +60,7 @@ class SpotifyAutoSyncService {
   }
 
   // Start auto-sync
-  startAutoSync(intervalMinutes: number = 0.17) {
+  startAutoSync(intervalMinutes: number = 30) {
     if (!isSpotifyAuthenticated()) {
       console.warn('Cannot start auto-sync: Spotify not authenticated');
       this.notifyListeners({ type: 'error', message: 'Spotify not connected' });
@@ -87,40 +87,23 @@ class SpotifyAutoSyncService {
       this.performAutoSync();
     }, intervalMinutes * 60 * 1000);
 
-    // Perform initial sync immediately for ultra-fast mode
-    if (intervalMinutes <= 1) {
-      // For ultra-fast/instant modes, sync immediately
+    // Perform initial sync if it's been a while
+    const timeSinceLastSync = Date.now() - this.config.lastSyncTimestamp;
+    const shouldSyncNow = timeSinceLastSync > (intervalMinutes * 60 * 1000);
+    
+    if (shouldSyncNow) {
+      // Delay initial sync by 5 seconds to avoid overwhelming on startup
       setTimeout(() => {
         this.performAutoSync();
-      }, 500); // 0.5 second delay to avoid overwhelming
-    } else {
-      // For longer intervals, check if it's been a while
-      const timeSinceLastSync = Date.now() - this.config.lastSyncTimestamp;
-      const shouldSyncNow = timeSinceLastSync > (intervalMinutes * 60 * 1000);
-      
-      if (shouldSyncNow) {
-        setTimeout(() => {
-          this.performAutoSync();
-        }, 5000);
-      }
-    }
-
-    let intervalText;
-    if (intervalMinutes < 1) {
-      const seconds = Math.round(intervalMinutes * 60);
-      intervalText = `ultra-fast (${seconds} seconds)`;
-    } else if (intervalMinutes === 1) {
-      intervalText = 'instant sync';
-    } else {
-      intervalText = `every ${intervalMinutes} minutes`;
+      }, 5000);
     }
 
     this.notifyListeners({ 
       type: 'started', 
-      message: `Auto-sync enabled (${intervalText})` 
+      message: `Auto-sync enabled (every ${intervalMinutes} minutes)` 
     });
 
-    console.log(`✅ Spotify auto-sync started (${intervalText})`);
+    console.log(`✅ Spotify auto-sync started (every ${intervalMinutes} minutes)`);
     return true;
   }
 
@@ -157,18 +140,9 @@ class SpotifyAutoSyncService {
     try {
       console.log('🔄 Starting auto-sync check...');
       
-      // Get recent Spotify liked songs (last 1 hour for ultra-fast, 24 hours for instant, 7 days for others)
+      // Get recent Spotify liked songs (last 7 days to be safe)
       const cutoffDate = new Date();
-      if (this.config.intervalMinutes < 1) {
-        // For ultra-fast modes (seconds), check last 1 hour
-        cutoffDate.setHours(cutoffDate.getHours() - 1);
-      } else if (this.config.intervalMinutes <= 5) {
-        // For instant/frequent modes, check last 24 hours
-        cutoffDate.setHours(cutoffDate.getHours() - 24);
-      } else {
-        // For longer intervals, check last 7 days
-        cutoffDate.setDate(cutoffDate.getDate() - 7);
-      }
+      cutoffDate.setDate(cutoffDate.getDate() - 7);
       
       const recentTracks = await this.getRecentSpotifyTracks(cutoffDate);
       
