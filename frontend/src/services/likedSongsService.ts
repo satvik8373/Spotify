@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import { resolveArtist } from "@/lib/resolveArtist";
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, serverTimestamp, orderBy, writeBatch } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, serverTimestamp, orderBy, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { updateUserStats } from "./userService";
 
@@ -27,14 +27,13 @@ export interface LikedSong {
   duration?: number;
   likedAt: any; // Firebase Timestamp
   source: 'mavrixfy' | 'spotify'; // Track the source of the liked song
-  year?: string; // Add year property
+  year?: string;
 }
 
 /**
  * Ensure a URL is properly formatted
  */
 const normalizeUrl = (url: string): string => {
-  // Check if the URL is already valid
   if (!url) return '';
   
   // Skip placeholder URLs that might cause errors
@@ -59,7 +58,6 @@ const normalizeUrl = (url: string): string => {
  * Normalize a song object to ensure it has the correct format
  */
 const normalizeSong = (song: any): Song => {
-  // Basic song information
   const normalizedSong = {
     id: song.id || song._id || song.songId || `song-${Date.now()}`,
     title: song.title || 'Unknown Title',
@@ -67,68 +65,11 @@ const normalizeSong = (song: any): Song => {
     imageUrl: normalizeUrl(song.imageUrl || song.image || ''),
     audioUrl: normalizeUrl(song.audioUrl || song.url || ''),
     duration: typeof song.duration === 'number' ? song.duration : 0,
-    album: song.album || 'Unknown Album',
+    album: song.album || song.albumName || 'Unknown Album',
     year: song.year || ''
   };
   
-  // Provide a valid internal image URL if external one is missing
-  if (!normalizedSong.imageUrl) {
-    // Fallback to a gradient style with no external dependency
-    normalizedSong.imageUrl = '';
-  }
-  
   return normalizedSong;
-};
-
-/**
- * Save liked songs to Firestore
- */
-export const saveLikedSongs = async (songs: Song[]): Promise<void> => {
-  const { isAuthenticated, userId } = useAuthStore.getState();
-  
-  if (!isAuthenticated || !userId) {
-    console.warn('User not authenticated, cannot save to Firestore');
-    return;
-  }
-
-  try {
-    const batch = writeBatch(db);
-    
-    for (const song of songs) {
-      const normalizedSong = normalizeSong(song);
-      const likedSongRef = doc(collection(db, 'users', userId, 'likedSongs'), normalizedSong.id);
-      
-      // Use exact same format as FirestoreSong (playlist songs)
-      const likedSongData = {
-        id: normalizedSong.id,
-        title: normalizedSong.title,
-        artist: normalizedSong.artist,
-        albumId: null, // Same as playlist songs
-        imageUrl: normalizedSong.imageUrl,
-        audioUrl: normalizedSong.audioUrl,
-        duration: normalizedSong.duration,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        // Extra fields for tracking
-        year: normalizedSong.year,
-        albumName: normalizedSong.album,
-        likedAt: new Date().toISOString(),
-        source: 'mavrixfy'
-      };
-      
-      batch.set(likedSongRef, likedSongData);
-    }
-    
-    await batch.commit();
-    console.log(`Saved ${songs.length} liked songs to Firestore`);
-    
-    // Dispatch event to notify other components
-    document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
-    
-  } catch (error) {
-    console.error('Error saving liked songs to Firestore:', error);
-    throw error;
-  }
 };
 
 /**
@@ -147,19 +88,13 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
     
     let snapshot;
     try {
-      // Try to order by createdAt first (same as playlist songs)
-      const q = query(likedSongsRef, orderBy('createdAt', 'desc'));
+      // Try to order by likedAt first
+      const q = query(likedSongsRef, orderBy('likedAt', 'desc'));
       snapshot = await getDocs(q);
     } catch (orderError) {
-      // If ordering fails, try likedAt
-      try {
-        const q2 = query(likedSongsRef, orderBy('likedAt', 'desc'));
-        snapshot = await getDocs(q2);
-      } catch {
-        // If all ordering fails, get all docs without ordering
-        console.log('Ordering failed, fetching without order');
-        snapshot = await getDocs(likedSongsRef);
-      }
+      // If ordering fails, get all docs without ordering
+      console.log('Ordering by likedAt failed, fetching without order:', orderError);
+      snapshot = await getDocs(likedSongsRef);
     }
     
     const songs: Song[] = [];
@@ -172,8 +107,6 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
       const audioUrl = data.audioUrl || data.url || '';
       const imageUrl = data.imageUrl || data.image || '';
       
-      // Only include songs with valid audio URLs for playback
-      // But still show songs without audio (they just won't play)
       songs.push({
         id: songId,
         title: data.title || 'Unknown Title',
@@ -187,16 +120,6 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
     });
     
     console.log(`📥 Loaded ${songs.length} liked songs from Firestore`);
-    
-    // Log sample data for debugging
-    if (songs.length > 0) {
-      console.log('📋 Sample song data:', {
-        title: songs[0].title,
-        hasAudioUrl: !!songs[0].audioUrl,
-        audioUrlPreview: songs[0].audioUrl?.substring(0, 60)
-      });
-    }
-    
     return songs;
     
   } catch (error) {
@@ -220,26 +143,22 @@ export const addLikedSong = async (song: Song): Promise<void> => {
     const normalizedSong = normalizeSong(song);
     const likedSongRef = doc(collection(db, 'users', userId, 'likedSongs'), normalizedSong.id);
     
-    // Use exact same format as FirestoreSong (playlist songs)
-    const likedSongData = {
+    const likedSongData: LikedSong = {
       id: normalizedSong.id,
+      songId: normalizedSong.id,
       title: normalizedSong.title,
       artist: normalizedSong.artist,
-      albumId: null, // Same as playlist songs
+      albumName: normalizedSong.album,
       imageUrl: normalizedSong.imageUrl,
       audioUrl: normalizedSong.audioUrl,
       duration: normalizedSong.duration,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      // Extra fields for tracking
       year: normalizedSong.year,
-      albumName: normalizedSong.album,
-      likedAt: new Date().toISOString(),
+      likedAt: serverTimestamp(),
       source: 'mavrixfy'
     };
     
     await setDoc(likedSongRef, likedSongData);
-    console.log('Added song to liked songs in Firestore');
+    console.log('✅ Added song to liked songs:', normalizedSong.title);
     
     // Update user stats
     await updateUserStats({ likedSongsCount: 1 });
@@ -271,7 +190,7 @@ export const removeLikedSong = async (songId: string): Promise<void> => {
     const songDoc = await getDoc(likedSongRef);
     if (songDoc.exists()) {
       await deleteDoc(likedSongRef);
-      console.log('Removed song from liked songs in Firestore');
+      console.log('✅ Removed song from liked songs:', songId);
       
       // Update user stats
       await updateUserStats({ likedSongsCount: -1 });
@@ -279,7 +198,7 @@ export const removeLikedSong = async (songId: string): Promise<void> => {
       // Dispatch event to notify other components
       document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
     } else {
-      console.warn('Song not found');
+      console.warn('Song not found:', songId);
     }
     
   } catch (error) {
@@ -333,15 +252,6 @@ export const getLikedSongsCount = async (): Promise<number> => {
 };
 
 /**
- * Sync with server - now just returns Firestore data since it's already synced
- */
-export const syncWithServer = async (localSongs: Song[]): Promise<Song[]> => {
-  // Since we're now using Firestore, just return the current data
-  // This maintains compatibility with existing code
-  return await loadLikedSongs();
-};
-
-/**
  * Toggle liked state of a song
  */
 export const toggleLikedSong = async (song: Song): Promise<boolean> => {
@@ -361,7 +271,49 @@ export const toggleLikedSong = async (song: Song): Promise<boolean> => {
   }
 };
 
-// Legacy function names for backward compatibility
-export const addLikedSongLocal = addLikedSong;
-export const removeLikedSongLocal = removeLikedSong;
-export const isSongLikedLocal = isSongLiked; 
+/**
+ * Save multiple liked songs to Firestore (batch operation)
+ */
+export const saveLikedSongs = async (songs: Song[]): Promise<void> => {
+  const { isAuthenticated, userId } = useAuthStore.getState();
+  
+  if (!isAuthenticated || !userId) {
+    console.warn('User not authenticated, cannot save to Firestore');
+    return;
+  }
+
+  try {
+    const batch = writeBatch(db);
+    
+    for (const song of songs) {
+      const normalizedSong = normalizeSong(song);
+      const likedSongRef = doc(collection(db, 'users', userId, 'likedSongs'), normalizedSong.id);
+      
+      const likedSongData: LikedSong = {
+        id: normalizedSong.id,
+        songId: normalizedSong.id,
+        title: normalizedSong.title,
+        artist: normalizedSong.artist,
+        albumName: normalizedSong.album,
+        imageUrl: normalizedSong.imageUrl,
+        audioUrl: normalizedSong.audioUrl,
+        duration: normalizedSong.duration,
+        year: normalizedSong.year,
+        likedAt: serverTimestamp(),
+        source: 'mavrixfy'
+      };
+      
+      batch.set(likedSongRef, likedSongData);
+    }
+    
+    await batch.commit();
+    console.log(`✅ Saved ${songs.length} liked songs to Firestore`);
+    
+    // Dispatch event to notify other components
+    document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
+    
+  } catch (error) {
+    console.error('Error saving liked songs to Firestore:', error);
+    throw error;
+  }
+};

@@ -115,8 +115,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
             existingSongs.length !== songs.length ||
             existingSongs.some((existing, i) => existing._id !== songs[i]?._id);
 
-          // Always update if we have songs (force refresh after Spotify sync)
-          if (hasChanged || songs.length > 0) {
+          if (hasChanged) {
             console.log(`Store loaded ${songs.length} liked songs, ${songIds.size} unique IDs`);
             set({ likedSongs: songs, likedSongIds: songIds });
           }
