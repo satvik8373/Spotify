@@ -257,7 +257,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchMusicJson('/api/jiosaavn/trending', { limit: 10 });
+      const data = await fetchMusicJson('/jiosaavn/trending', { limit: 10 });
       if (data?.data?.results && data.data.results.length > 0) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
@@ -280,7 +280,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchMusicJson('/api/jiosaavn/search/songs', { query: 'bollywood hits', limit: 15 });
+      const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'bollywood hits', limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
@@ -303,7 +303,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchMusicJson('/api/jiosaavn/search/songs', { query: 'english top hits', limit: 15 });
+      const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'english top hits', limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
@@ -326,7 +326,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchMusicJson('/api/jiosaavn/trending', { limit: 15 });
+      const data = await fetchMusicJson('/jiosaavn/trending', { limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
@@ -349,7 +349,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchMusicJson('/api/jiosaavn/search/songs', { query: 'hindi top songs', limit: 15 });
+      const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'hindi top songs', limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
@@ -372,7 +372,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchMusicJson('/api/jiosaavn/new-releases', { limit: 10 });
+      const data = await fetchMusicJson('/jiosaavn/new-releases', { limit: 10 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
@@ -397,7 +397,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
     musicRequestState.activeKeys.add(key);
     set({ isIndianMusicLoading: true });
     try {
-      const data = await fetchMusicJson('/api/jiosaavn/search/songs', { query, limit: 20 }, 60 * 1000);
+      const data = await fetchMusicJson('/jiosaavn/search/songs', { query, limit: 20 }, 60 * 1000);
       if (data?.data?.results) {
         const formattedResults = data.data.results
           .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)

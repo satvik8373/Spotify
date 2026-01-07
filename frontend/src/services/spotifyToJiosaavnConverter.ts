@@ -144,7 +144,7 @@ async function searchJiosaavn(title: string, artist: string): Promise<any | null
     
     console.log(`🔍 Searching JioSaavn for: "${query}"`);
     
-    const response = await axiosInstance.get('/api/jiosaavn/search/songs', {
+    const response = await axiosInstance.get('/jiosaavn/search/songs', {
       params: { query, limit: 10 },
       timeout: 15000,
     });
