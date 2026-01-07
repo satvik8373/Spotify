@@ -98,17 +98,21 @@ export const saveLikedSongs = async (songs: Song[]): Promise<void> => {
       const normalizedSong = normalizeSong(song);
       const likedSongRef = doc(collection(db, 'users', userId, 'likedSongs'), normalizedSong.id);
       
-      const likedSongData: LikedSong = {
+      // Use exact same format as FirestoreSong (playlist songs)
+      const likedSongData = {
         id: normalizedSong.id,
-        songId: normalizedSong.id,
         title: normalizedSong.title,
         artist: normalizedSong.artist,
-        albumName: normalizedSong.album,
+        albumId: null, // Same as playlist songs
         imageUrl: normalizedSong.imageUrl,
         audioUrl: normalizedSong.audioUrl,
         duration: normalizedSong.duration,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        // Extra fields for tracking
         year: normalizedSong.year,
-        likedAt: serverTimestamp(),
+        albumName: normalizedSong.album,
+        likedAt: new Date().toISOString(),
         source: 'mavrixfy'
       };
       
@@ -210,17 +214,21 @@ export const addLikedSong = async (song: Song): Promise<void> => {
     const normalizedSong = normalizeSong(song);
     const likedSongRef = doc(collection(db, 'users', userId, 'likedSongs'), normalizedSong.id);
     
-    const likedSongData: LikedSong = {
+    // Use exact same format as FirestoreSong (playlist songs)
+    const likedSongData = {
       id: normalizedSong.id,
-      songId: normalizedSong.id,
       title: normalizedSong.title,
       artist: normalizedSong.artist,
-      albumName: normalizedSong.album,
+      albumId: null, // Same as playlist songs
       imageUrl: normalizedSong.imageUrl,
       audioUrl: normalizedSong.audioUrl,
       duration: normalizedSong.duration,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      // Extra fields for tracking
       year: normalizedSong.year,
-      likedAt: serverTimestamp(),
+      albumName: normalizedSong.album,
+      likedAt: new Date().toISOString(),
       source: 'mavrixfy'
     };
     

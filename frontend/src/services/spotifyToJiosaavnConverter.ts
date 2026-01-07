@@ -1,6 +1,6 @@
 import axiosInstance from '@/lib/axios';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, deleteDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 
 // Types
 export interface ConversionProgress {
@@ -345,23 +345,26 @@ export async function convertAllSpotifySongsToJiosaavn(
         const oldDocRef = doc(db, 'users', userId, 'likedSongs', song.docId);
         await deleteDoc(oldDocRef);
 
-        // Create new document with JioSaavn ID
+        // Create new document with JioSaavn ID - SAME FORMAT AS PLAYLIST SONGS
         const newDocRef = doc(db, 'users', userId, 'likedSongs', convertedSong.id);
         
+        // Use exact same format as FirestoreSong (playlist songs)
         const likedSongData = {
           id: convertedSong.id,
-          songId: convertedSong.id,
           title: convertedSong.title,
           artist: convertedSong.artist,
-          albumName: convertedSong.album,
+          albumId: null, // Same as playlist songs
           imageUrl: convertedSong.imageUrl,
           audioUrl: convertedSong.audioUrl,
           duration: convertedSong.duration,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          // Extra fields for tracking
           year: convertedSong.year,
-          likedAt: song.likedAt || serverTimestamp(),
-          source: 'mavrixfy',
-          convertedFrom: 'spotify',
-          convertedAt: serverTimestamp()
+          albumName: convertedSong.album,
+          likedAt: song.likedAt || new Date().toISOString(),
+          source: 'jiosaavn',
+          convertedFrom: 'spotify'
         };
 
         await setDoc(newDocRef, likedSongData);
@@ -460,24 +463,27 @@ export async function convertAndSaveSpotifyTracks(
             message: `Saving "${title}"...`
           });
 
-          // Save to Firestore with JioSaavn data
+          // Save to Firestore with JioSaavn data - SAME FORMAT AS PLAYLIST SONGS
           const docRef = doc(db, 'users', userId, 'likedSongs', convertedSong.id);
           
+          // Use exact same format as FirestoreSong (playlist songs)
           const likedSongData = {
             id: convertedSong.id,
-            songId: convertedSong.id,
             title: convertedSong.title,
             artist: convertedSong.artist,
-            albumName: convertedSong.album,
+            albumId: null, // Same as playlist songs
             imageUrl: convertedSong.imageUrl,
             audioUrl: convertedSong.audioUrl,
             duration: convertedSong.duration,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            // Extra fields for tracking (won't break compatibility)
             year: convertedSong.year,
-            likedAt: track.addedAt ? new Date(track.addedAt) : serverTimestamp(),
-            source: 'mavrixfy',
+            albumName: convertedSong.album,
+            likedAt: track.addedAt ? new Date(track.addedAt).toISOString() : new Date().toISOString(),
+            source: 'jiosaavn',
             convertedFrom: 'spotify',
-            spotifyId: track.id,
-            convertedAt: serverTimestamp()
+            spotifyId: track.id
           };
 
           await setDoc(docRef, likedSongData);
@@ -531,17 +537,21 @@ export async function convertAndSaveSpotifyTracks(
 async function saveSpotifyTrackAsFallback(userId: string, track: any): Promise<void> {
   const docRef = doc(db, 'users', userId, 'likedSongs', track.id);
   
+  // Use exact same format as FirestoreSong (playlist songs)
   const likedSongData = {
     id: track.id,
-    songId: track.id,
     title: track.title || track.name || 'Unknown',
     artist: track.artist || track.artists?.[0]?.name || 'Unknown',
-    albumName: track.album || track.album?.name || '',
+    albumId: null, // Same as playlist songs
     imageUrl: track.imageUrl || track.album?.images?.[0]?.url || '',
-    audioUrl: track.audioUrl || track.preview_url || '',
+    audioUrl: track.audioUrl || track.preview_url || '', // Spotify preview URL as fallback
     duration: track.duration || Math.floor((track.duration_ms || 0) / 1000),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    // Extra fields for tracking
     year: track.year || '',
-    likedAt: track.addedAt ? new Date(track.addedAt) : serverTimestamp(),
+    albumName: track.album || track.album?.name || '',
+    likedAt: track.addedAt ? new Date(track.addedAt).toISOString() : new Date().toISOString(),
     source: 'spotify',
     needsConversion: true
   };
@@ -624,20 +634,23 @@ export async function retryFailedConversions(
 
         const newDocRef = doc(db, 'users', userId, 'likedSongs', convertedSong.id);
         
+        // Use exact same format as FirestoreSong (playlist songs)
         await setDoc(newDocRef, {
           id: convertedSong.id,
-          songId: convertedSong.id,
           title: convertedSong.title,
           artist: convertedSong.artist,
-          albumName: convertedSong.album,
+          albumId: null, // Same as playlist songs
           imageUrl: convertedSong.imageUrl,
           audioUrl: convertedSong.audioUrl,
           duration: convertedSong.duration,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          // Extra fields for tracking
           year: convertedSong.year,
-          likedAt: song.likedAt || serverTimestamp(),
-          source: 'mavrixfy',
-          convertedFrom: 'spotify',
-          convertedAt: serverTimestamp()
+          albumName: convertedSong.album,
+          likedAt: song.likedAt || new Date().toISOString(),
+          source: 'jiosaavn',
+          convertedFrom: 'spotify'
         });
         
         result.converted++;
