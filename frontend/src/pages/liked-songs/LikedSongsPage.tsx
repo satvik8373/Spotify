@@ -415,6 +415,12 @@ const LikedSongsPage = () => {
       if (result.syncedCount > 0) {
         toast.success(`Successfully added ${result.syncedCount} songs to your library`);
 
+        // Reload the liked songs store to update heart icons
+        try {
+          await useLikedSongsStore.getState().loadLikedSongs();
+        } catch (e) {
+          console.error('Failed to reload store:', e);
+        }
 
         await loadAndSetLikedSongs();
         setUpToDate(true);
@@ -1595,10 +1601,19 @@ const LikedSongsPage = () => {
         isOpen={showPermissionModal}
         onClose={() => setShowPermissionModal(false)}
         tracks={spotifyTracks}
-        onSyncComplete={(result) => {
+        onSyncComplete={async (result) => {
           if (result.converted > 0 || result.skipped > 0) {
             toast.success(`Added ${result.converted + result.skipped} songs to your library`);
-            loadAndSetLikedSongs();
+            
+            // Reload the liked songs store to update heart icons
+            try {
+              await useLikedSongsStore.getState().loadLikedSongs();
+            } catch (e) {
+              console.error('Failed to reload store:', e);
+            }
+            
+            // Also reload the page data
+            await loadAndSetLikedSongs();
             setUpToDate(true);
           } else if (result.failed > 0) {
             toast.error(`Failed to sync ${result.failed} songs`);

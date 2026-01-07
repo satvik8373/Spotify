@@ -147,13 +147,19 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
     
     let snapshot;
     try {
-      // Try to order by likedAt first
-      const q = query(likedSongsRef, orderBy('likedAt', 'desc'));
+      // Try to order by createdAt first (same as playlist songs)
+      const q = query(likedSongsRef, orderBy('createdAt', 'desc'));
       snapshot = await getDocs(q);
     } catch (orderError) {
-      // If ordering fails (missing index or field), get all docs without ordering
-      console.log('Ordering by likedAt failed, fetching without order:', orderError);
-      snapshot = await getDocs(likedSongsRef);
+      // If ordering fails, try likedAt
+      try {
+        const q2 = query(likedSongsRef, orderBy('likedAt', 'desc'));
+        snapshot = await getDocs(q2);
+      } catch {
+        // If all ordering fails, get all docs without ordering
+        console.log('Ordering failed, fetching without order');
+        snapshot = await getDocs(likedSongsRef);
+      }
     }
     
     const songs: Song[] = [];

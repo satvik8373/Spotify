@@ -1,6 +1,7 @@
 import axiosInstance from '@/lib/axios';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
+import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 
 // Types
 export interface ConversionProgress {
@@ -393,8 +394,15 @@ export async function convertAllSpotifySongsToJiosaavn(
 
   console.log(`🏁 Conversion complete:`, result);
   
-  // Dispatch event to notify UI that liked songs have been updated
+  // Reload the liked songs store to update the UI and heart icons
   if (result.converted > 0) {
+    try {
+      await useLikedSongsStore.getState().loadLikedSongs();
+      console.log('✅ Liked songs store reloaded after conversion');
+    } catch (e) {
+      console.error('Failed to reload liked songs store:', e);
+    }
+    
     document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
   }
   
@@ -525,8 +533,17 @@ export async function convertAndSaveSpotifyTracks(
 
   console.log(`🏁 Batch conversion complete:`, result);
   
-  // Dispatch event to notify UI that liked songs have been updated
+  // Reload the liked songs store to update the UI and heart icons
   if (result.converted > 0 || result.skipped > 0) {
+    try {
+      // Reload the store from Firestore to get all the new songs
+      await useLikedSongsStore.getState().loadLikedSongs();
+      console.log('✅ Liked songs store reloaded after sync');
+    } catch (e) {
+      console.error('Failed to reload liked songs store:', e);
+    }
+    
+    // Also dispatch event to notify UI components
     document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
   }
   
