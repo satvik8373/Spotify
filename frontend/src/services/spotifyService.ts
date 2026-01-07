@@ -238,36 +238,33 @@ const getAccessToken = async (): Promise<string | null> => {
     return token;
   }
   
-  // If token expired but we have refresh token, try to refresh
+  // If token expired but we have refresh token, try to refresh via backend
   if (refreshToken) {
     try {
-      const response = await axios.post(
-        SPOTIFY_TOKEN_URL,
-        new URLSearchParams({
-          grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET,
-        }),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
+      console.log('🔄 Token expired, refreshing via backend...');
+      const response = await api.post('/spotify/refresh-token', {
+        refresh_token: refreshToken,
+      });
       
-      if (response.data) {
+      if (response.data && response.data.access_token) {
         const { access_token, expires_in } = response.data;
         const newExpiry = Date.now() + expires_in * 1000;
         
         localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
         localStorage.setItem(TOKEN_EXPIRY_KEY, newExpiry.toString());
         
+        // If backend returns a new refresh token, update it
+        if (response.data.refresh_token) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refresh_token);
+        }
+        
+        console.log('✅ Token refreshed successfully');
         return access_token;
       }
-    } catch (error) {
-      console.error('Error refreshing token:', error);
-      logout(); // Clear invalid tokens
+    } catch (error: any) {
+      console.error('❌ Error refreshing token via backend:', error.response?.data || error.message);
+      // Clear invalid tokens
+      logout();
     }
   }
   
