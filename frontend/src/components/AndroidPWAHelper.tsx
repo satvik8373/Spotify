@@ -183,35 +183,35 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
       style.textContent = `
         /* Fixes for Android icon appearance */
         @media (display-mode: standalone) {
-          /* Ensure proper icon styling */
+          /* Ensure proper icon styling with small padding */
           .app-icon {
             -webkit-mask-image: none !important;
             mask-image: none !important;
-            background-size: 75% !important; /* Show more black border */
+            background-size: 85% !important; /* Add small padding */
             background-position: center !important;
-            border-radius: 17% !important; /* Exact match to Spotify's icon */
+            border-radius: 17% !important; /* Exact match to modern app icons */
             overflow: hidden !important;
             background-color: #191414 !important;
           }
           
-          /* Force icon corners to match Spotify */
+          /* Force icon corners to match with small padding */
           [class*="launcher-icon"] {
             border-radius: 17% !important;
             overflow: hidden !important;
-            background-size: 75% !important; /* Show more black border */
+            background-size: 85% !important; /* Add small padding */
           }
           
           /* Additional styling for any adaptive icons */
           [class*="adaptive-icon"] {
             border-radius: 17% !important;
             background-color: #191414 !important;
-            background-size: 75% !important; /* Show more black border */
+            background-size: 85% !important; /* Add small padding */
           }
           
-          /* Force home screen icon to show proper border */
+          /* Force home screen icon to show with small padding */
           [class*="home-screen"] [class*="icon"],
           [class*="homescreen"] [class*="icon"] {
-            background-size: 75% !important; /* Show more black border */
+            background-size: 85% !important; /* Add small padding */
             border-radius: 17% !important;
             background-color: #191414 !important;
           }

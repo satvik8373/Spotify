@@ -238,17 +238,13 @@ function AppContent() {
 
 				const fromAuthRedirect = getSessionStorage('auth_redirect') === '1';
 
-				// Reduce splash screen time for logged-in users or after auth redirect
-				if (hasCachedAuth || fromAuthRedirect) {
-					// Skip delay entirely for authenticated users
+				// Always show splash screen with video animation
+				// Just reduce the minimum time for authenticated users
+				const splashMinTime = (hasCachedAuth || fromAuthRedirect) ? 1500 : 2500;
+				
+				setTimeout(() => {
 					setInitialized(true);
-					setShowSplash(false); // Skip splash screen completely
-				} else {
-					// For new visitors, keep the normal timing
-					setTimeout(() => {
-						setInitialized(true);
-					}, 1000);
-				}
+				}, splashMinTime);
 			} catch (error) {
 				console.error("Error initializing app:", error);
 				// Continue anyway in case of initialization errors

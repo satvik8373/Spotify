@@ -1,24 +1,16 @@
 // Service Worker for Mavrixfy
-const CACHE_NAME = 'mavrixfy-v2.0.2';
-const STATIC_CACHE = 'mavrixfy-static-v1.0.2';
-const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.2';
+const CACHE_NAME = 'mavrixfy-v2.0.3';
+const STATIC_CACHE = 'mavrixfy-static-v1.0.3';
+const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.3';
 
 // Files to cache immediately
 const STATIC_FILES = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.png',
-  '/spotify-icons/spotify-icon-maskable-192.png',
-  '/spotify-icons/spotify-icon-maskable-512.png',
-  '/spotify-icons/spotify-logo-green.svg',
-  '/apple-touch-icon.png',
-  '/apple-touch-icon-120.png',
-  '/apple-touch-icon-152.png',
-  '/apple-touch-icon-167.png',
-  '/apple-touch-icon-180.png',
-  '/shortcut-liked-96.png',
-  '/shortcut-search-96.png',
+  '/mavrixfy.png',
+  '/mavrixfy_loading.mp4',
+  '/browserconfig.xml',
   '/pwa-icon-fix.css'
 ];
 
@@ -154,7 +146,7 @@ async function handleImageRequest(request) {
     return networkResponse;
   } catch (error) {
     // Return a placeholder image if available
-    const placeholderResponse = await cache.match('/spotify-icons/spotify-icon-192.png');
+    const placeholderResponse = await cache.match('/mavrixfy.png');
     if (placeholderResponse) {
       return placeholderResponse;
     }
@@ -241,8 +233,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: event.data ? event.data.text() : 'New music available!',
-    icon: '/spotify-icons/spotify-icon-maskable-192.png',
-    badge: '/spotify-icons/spotify-icon-maskable-192.png',
+    icon: '/mavrixfy.png',
+    badge: '/mavrixfy.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -252,12 +244,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'explore',
         title: 'Explore',
-        icon: '/spotify-icons/spotify-icon-maskable-192.png'
+        icon: '/mavrixfy.png'
       },
       {
         action: 'close',
         title: 'Close',
-        icon: '/spotify-icons/spotify-icon-maskable-192.png'
+        icon: '/mavrixfy.png'
       }
     ]
   };

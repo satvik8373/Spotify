@@ -20,7 +20,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
     
     // For cached authenticated users, complete faster
     // For new users, allow time for video animation to play
-    const delay = hasCachedAuth ? 800 : 2500;
+    const delay = hasCachedAuth ? 1200 : 2800;
     
     const timer = setTimeout(() => {
       if (!completedRef.current) {
@@ -37,10 +37,11 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
     // Start the crossfade transition after video is loaded
     setTimeout(() => {
       setShowVideo(true);
-    }, 100); // Small delay to ensure video is ready
+    }, 200); // Small delay to ensure video is ready
   };
 
   const handleVideoError = () => {
+    console.warn('Video failed to load, showing static logo');
     setVideoError(true);
   };
 
@@ -50,6 +51,14 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       setTimeout(onComplete, 300);
     }
   };
+
+  // Preload video on component mount
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      video.load(); // Force video to start loading
+    }
+  }, []);
 
   return (
     <div
@@ -69,43 +78,25 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           aria-label="Mavrixfy logo"
         />
         
-        {/* Video Animation - Only show when loaded and ready */}
-        {videoLoaded && !videoError && (
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ease-in-out ${
-              showVideo ? 'opacity-100' : 'opacity-0'
-            }`}
-            onLoadedData={handleVideoLoad}
-            onError={handleVideoError}
-            onEnded={handleVideoEnd}
-            aria-label="Mavrixfy loading animation"
-            preload="auto"
-          >
-            <source src="/mavrixfy_loading.mp4" type="video/mp4" />
-          </video>
-        )}
-
-        {/* Hidden video for preloading */}
-        {!videoLoaded && !videoError && (
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="opacity-0 absolute inset-0 w-full h-full object-contain"
-            onLoadedData={handleVideoLoad}
-            onError={handleVideoError}
-            aria-label="Mavrixfy loading animation"
-            preload="auto"
-          >
-            <source src="/mavrixfy_loading.mp4" type="video/mp4" />
-          </video>
-        )}
+        {/* Video Animation - Hidden until loaded */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ease-in-out ${
+            showVideo && videoLoaded && !videoError ? 'opacity-100' : 'opacity-0'
+          }`}
+          onLoadedData={handleVideoLoad}
+          onCanPlayThrough={handleVideoLoad}
+          onError={handleVideoError}
+          onEnded={handleVideoEnd}
+          aria-label="Mavrixfy loading animation"
+          preload="auto"
+        >
+          <source src="/mavrixfy_loading.mp4" type="video/mp4" />
+        </video>
       </div>
     </div>
   );
