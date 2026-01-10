@@ -15,20 +15,62 @@
     {
       "src": "/mavrixfy.png",
       "type": "image/png",
-      "sizes": "any",
+      "sizes": "72x72",
+      "purpose": "any"
+    },
+    {
+      "src": "/mavrixfy.png",
+      "type": "image/png",
+      "sizes": "96x96",
+      "purpose": "any"
+    },
+    {
+      "src": "/mavrixfy.png",
+      "type": "image/png",
+      "sizes": "128x128",
+      "purpose": "any"
+    },
+    {
+      "src": "/mavrixfy.png",
+      "type": "image/png",
+      "sizes": "144x144",
+      "purpose": "any"
+    },
+    {
+      "src": "/mavrixfy.png",
+      "type": "image/png",
+      "sizes": "152x152",
       "purpose": "any"
     },
     {
       "src": "/mavrixfy.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/mavrixfy.png",
+      "type": "image/png",
+      "sizes": "384x384",
+      "purpose": "any"
     },
     {
       "src": "/mavrixfy.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/mavrixfy.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/mavrixfy.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
