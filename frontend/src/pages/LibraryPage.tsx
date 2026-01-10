@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { usePlaylistStore } from '../stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../components/playlist/CreatePlaylistDialog';
+import { ContentLoading } from '@/components/ui/loading';
 import { cn } from '@/lib/utils';
 
 const LibraryPage = () => {
@@ -185,9 +186,7 @@ const LibraryPage = () => {
         >
           <div className="p-2 sm:p-4 pt-4">
             {isLibraryLoading || loading ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <ContentLoading text="Loading library..." height="h-64" />
             ) : !isAuthenticated ? (
               <div className="bg-card border border-border rounded-lg p-8 text-center">
                 <Library className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />

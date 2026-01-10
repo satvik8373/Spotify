@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Loader2 } from 'lucide-react';
 import SpotifyLogin from '../../components/SpotifyLogin';
 import { Link } from 'react-router-dom';
+import { ContentLoading, ButtonLoading } from '../../components/ui/loading';
 
 interface Playlist {
   id: string;
@@ -39,9 +40,7 @@ const SpotifyPlaylistsPage: React.FC = () => {
 
   if (spotify.loading) {
     return (
-      <div className="flex justify-center items-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-      </div>
+      <ContentLoading text="Loading Spotify..." />
     );
   }
 
@@ -67,15 +66,12 @@ const SpotifyPlaylistsPage: React.FC = () => {
           variant="outline"
           size="sm"
         >
-          {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          Refresh
+          {isLoading ? <ButtonLoading text="Refresh" /> : 'Refresh'}
         </Button>
       </div>
 
       {isLoading && playlists.length === 0 ? (
-        <div className="flex justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-        </div>
+        <ContentLoading text="Loading playlists..." height="p-12" />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {playlists.length > 0 ? (

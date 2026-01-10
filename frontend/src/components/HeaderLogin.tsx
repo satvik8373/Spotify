@@ -5,6 +5,7 @@ import { LogOut, User, Settings, Loader2 } from 'lucide-react';
 import { signOut } from '@/services/hybridAuthService';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { InlineLoading } from '@/components/ui/loading';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -90,9 +91,7 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
   // If still in initial loading state, show nothing
   if (showLoading) {
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
-      </div>
+      <InlineLoading className={className} />
     );
   }
 

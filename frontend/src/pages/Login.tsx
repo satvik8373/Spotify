@@ -127,6 +127,15 @@ const Login = () => {
     <div className="min-h-screen bg-black flex flex-col items-center">
       <div className="w-full max-w-md px-6 py-8">
         
+        {/* Mavrixfy Logo */}
+        <div className="flex justify-center mb-8">
+          <img
+            src="/mavrixfy.png"
+            alt="Mavrixfy"
+            className="h-16 w-16 object-contain"
+          />
+        </div>
+        
         <div className="mb-6">
           <Button
             type="button"

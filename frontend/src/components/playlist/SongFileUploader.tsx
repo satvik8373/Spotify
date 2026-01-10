@@ -8,6 +8,7 @@ import { Song } from '@/types';
 import { Progress } from '../../components/ui/progress';
 import { Badge } from '../../components/ui/badge';
 import { useNavigate } from 'react-router-dom';
+import { ContentLoading } from '@/components/ui/loading';
 import { 
   Accordion,
   AccordionContent,
@@ -693,13 +694,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
 
       {/* File upload progress */}
       {isUploading && (
-        <div className="border rounded-lg p-6">
-          <div className="flex flex-col items-center justify-center text-center">
-            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-primary mb-4"></div>
-            <h3 className="text-lg font-medium mb-2">Reading file...</h3>
-            <p className="text-sm text-muted-foreground">{fileName}</p>
-          </div>
-        </div>
+        <ContentLoading text={`Reading file... ${fileName}`} height="border rounded-lg p-6" />
       )}
 
       {/* Parsed songs list */}

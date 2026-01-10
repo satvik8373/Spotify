@@ -1,8 +1,60 @@
 import { useMusicStore } from '@/stores/useMusicStore';
 import { Song } from '@/types';
-import { addLikedSong, isSongAlreadyLiked } from '@/services/likedSongsService';
+import { addMultipleLikedSongs, isSongAlreadyLiked } from '@/services/likedSongsService';
 import { isAuthenticated as isSpotifyAuthenticated, getSavedTracks } from '@/services/spotifyService';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { requestManager } from '@/services/requestManager';
+
+interface SpotifyAutoSyncConfig {
+  enabled: boolean;
+  intervalMinutes: number;
+  lastSyncTimestamp: number;
+  maxSongsPerSync: number;
+  retryCount: number;
+  maxRetries: number;
+}
+
+// Background task manager for Spotify sync
+class BackgroundTaskManager {
+  private tasks: Array<() => Promise<void>> = [];
+  private isProcessing = false;
+  private processingDelay = 1000; // 1 second between tasks
+
+  addTask(task: () => Promise<void>) {
+    this.tasks.push(task);
+    this.processTasks();
+  }
+
+  private async processTasks() {
+    if (this.isProcessing || this.tasks.length === 0) return;
+    
+    this.isProcessing = true;
+    
+    while (this.tasks.length > 0) {
+      const task = this.tasks.shift();
+      if (task) {
+        try {
+          await task();
+        } catch (error) {
+          console.error('Background task error:', error);
+        }
+        
+        // Delay between tasks to prevent overwhelming the system
+        if (this.tasks.length > 0) {
+          await new Promise(resolve => setTimeout(resolve, this.processingDelay));
+        }
+      }
+    }
+    
+    this.isProcessing = false;
+  }
+
+  isActive(): boolean {
+    return this.isProcessing || this.tasks.length > 0;
+  }
+}
+
+const backgroundTaskManager = new BackgroundTaskManager();
 
 interface SpotifyAutoSyncConfig {
   enabled: boolean;
@@ -121,7 +173,7 @@ class SpotifyAutoSyncService {
     console.log('🛑 Spotify auto-sync stopped');
   }
 
-  // Perform the actual sync
+  // Perform the actual sync with optimized batching
   private async performAutoSync() {
     if (this.isCurrentlySyncing) {
       console.log('⏳ Auto-sync already in progress, skipping...');
@@ -134,135 +186,168 @@ class SpotifyAutoSyncService {
       return;
     }
 
-    this.isCurrentlySyncing = true;
-    this.notifyListeners({ type: 'syncing', message: 'Checking for new songs...' });
+    // Use background task manager to prevent blocking
+    backgroundTaskManager.addTask(async () => {
+      this.isCurrentlySyncing = true;
+      this.notifyListeners({ type: 'syncing', message: 'Checking for new songs...' });
 
-    try {
-      console.log('🔄 Starting auto-sync check...');
-      
-      // Get recent Spotify liked songs (last 7 days to be safe)
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - 7);
-      
-      const recentTracks = await this.getRecentSpotifyTracks(cutoffDate);
-      
-      if (recentTracks.length === 0) {
-        console.log('✅ No new songs found in auto-sync');
+      try {
+        console.log('🔄 Starting auto-sync check...');
+        
+        // Get recent Spotify liked songs (last 7 days to be safe)
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 7);
+        
+        const recentTracks = await this.getRecentSpotifyTracks(cutoffDate);
+        
+        if (recentTracks.length === 0) {
+          console.log('✅ No new songs found in auto-sync');
+          this.config.lastSyncTimestamp = Date.now();
+          this.saveConfig();
+          this.notifyListeners({ type: 'completed', message: 'No new songs found' });
+          return;
+        }
+
+        // Batch check for existing songs to reduce Firebase calls
+        const newSongs = await this.filterNewSongs(recentTracks);
+
+        if (newSongs.length === 0) {
+          console.log('✅ All recent songs already in library');
+          this.config.lastSyncTimestamp = Date.now();
+          this.saveConfig();
+          this.notifyListeners({ type: 'completed', message: 'All songs already in library' });
+          return;
+        }
+
+        // Limit the number of songs to sync at once
+        const songsToSync = newSongs.slice(0, this.config.maxSongsPerSync);
+        
+        console.log(`🎵 Found ${songsToSync.length} new songs to auto-sync`);
+        this.notifyListeners({ 
+          type: 'syncing', 
+          message: `Adding ${songsToSync.length} new songs...` 
+        });
+
+        // Convert to app songs and batch add
+        const appSongs = await this.convertTracksToAppSongs(songsToSync);
+        const result = await addMultipleLikedSongs(appSongs, 'spotify');
+
+        // Update last sync timestamp and reset retry count on success
         this.config.lastSyncTimestamp = Date.now();
+        this.config.retryCount = 0;
         this.saveConfig();
-        this.notifyListeners({ type: 'completed', message: 'No new songs found' });
-        return;
-      }
 
-      // Filter out songs that already exist
-      const newSongs = [];
-      for (const track of recentTracks) {
+        if (result.added > 0) {
+          console.log(`✅ Auto-sync completed: Added ${result.added} new songs`);
+          this.notifyListeners({ 
+            type: 'completed', 
+            message: `Added ${result.added} new songs automatically` 
+          });
+          
+          // Dispatch event to update UI
+          document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
+        } else {
+          console.log('✅ Auto-sync completed: No songs were added');
+          this.notifyListeners({ type: 'completed', message: 'No new songs were added' });
+        }
+
+      } catch (error) {
+        console.error('❌ Auto-sync error:', error);
+        
+        // Increment retry count
+        this.config.retryCount++;
+        this.saveConfig();
+        
+        // If we've exceeded max retries, disable auto-sync
+        if (this.config.retryCount >= this.config.maxRetries) {
+          console.error(`❌ Auto-sync failed ${this.config.maxRetries} times, disabling...`);
+          this.stopAutoSync();
+          this.notifyListeners({ 
+            type: 'error', 
+            message: `Auto-sync disabled after ${this.config.maxRetries} failures` 
+          });
+        } else {
+          this.notifyListeners({ 
+            type: 'error', 
+            message: `Auto-sync failed (${this.config.retryCount}/${this.config.maxRetries}). Will retry later.` 
+          });
+        }
+      } finally {
+        this.isCurrentlySyncing = false;
+      }
+    });
+  }
+
+  // Optimized batch filtering of new songs
+  private async filterNewSongs(tracks: any[]): Promise<any[]> {
+    const newSongs: any[] = [];
+    
+    // Process in batches to avoid overwhelming Firebase
+    const batchSize = 10;
+    for (let i = 0; i < tracks.length; i += batchSize) {
+      const batch = tracks.slice(i, i + batchSize);
+      
+      // Check each song in the batch
+      const batchPromises = batch.map(async (track) => {
         const title = track.name;
         const artist = track.artists.map((a: any) => a.name).join(', ');
         const alreadyExists = await isSongAlreadyLiked(title, artist);
         
+        return { track, alreadyExists };
+      });
+      
+      const batchResults = await Promise.all(batchPromises);
+      
+      // Add new songs to the result
+      batchResults.forEach(({ track, alreadyExists }) => {
         if (!alreadyExists) {
           newSongs.push(track);
         }
-      }
-
-      if (newSongs.length === 0) {
-        console.log('✅ All recent songs already in library');
-        this.config.lastSyncTimestamp = Date.now();
-        this.saveConfig();
-        this.notifyListeners({ type: 'completed', message: 'All songs already in library' });
-        return;
-      }
-
-      // Limit the number of songs to sync at once
-      const songsToSync = newSongs.slice(0, this.config.maxSongsPerSync);
-      
-      console.log(`🎵 Found ${songsToSync.length} new songs to auto-sync`);
-      this.notifyListeners({ 
-        type: 'syncing', 
-        message: `Adding ${songsToSync.length} new songs...` 
       });
-
-      // Add songs to liked songs
-      let addedCount = 0;
-      const { convertIndianSongToAppSong } = useMusicStore.getState();
-
-      for (const track of songsToSync) {
-        try {
-          const title = track.name;
-          const artist = track.artists.map((a: any) => a.name).join(', ');
-          
-          // Search for high-quality audio
-          const searchResult = await this.searchForSongDetails(title, artist);
-          
-          // Create app song
-          const appSong: Song = convertIndianSongToAppSong({
-            id: `spotify-auto-${track.id}`,
-            title: title,
-            artist: artist,
-            image: searchResult?.image || track.album.images[0]?.url || '/placeholder-song.jpg',
-            url: searchResult?.url || track.preview_url || '',
-            duration: searchResult?.duration || Math.floor(track.duration_ms / 1000).toString()
-          });
-          
-          // Add to liked songs
-          const result = await addLikedSong(appSong, 'spotify', track.id);
-          
-          if (result.added) {
-            addedCount++;
-          }
-          
-          // Small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 200));
-          
-        } catch (error) {
-          console.error('Error auto-syncing track:', track.name, error);
-        }
+      
+      // Small delay between batches
+      if (i + batchSize < tracks.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+    }
+    
+    return newSongs;
+  }
 
-      // Update last sync timestamp and reset retry count on success
-      this.config.lastSyncTimestamp = Date.now();
-      this.config.retryCount = 0; // Reset retry count on successful sync
-      this.saveConfig();
-
-      if (addedCount > 0) {
-        console.log(`✅ Auto-sync completed: Added ${addedCount} new songs`);
-        this.notifyListeners({ 
-          type: 'completed', 
-          message: `Added ${addedCount} new songs automatically` 
+  // Convert Spotify tracks to app songs with optimized search
+  private async convertTracksToAppSongs(tracks: any[]): Promise<Song[]> {
+    const { convertIndianSongToAppSong } = useMusicStore.getState();
+    const appSongs: Song[] = [];
+    
+    for (const track of tracks) {
+      try {
+        const title = track.name;
+        const artist = track.artists.map((a: any) => a.name).join(', ');
+        
+        // Search for high-quality audio with caching
+        const searchResult = await this.searchForSongDetails(title, artist);
+        
+        // Create app song
+        const appSong: Song = convertIndianSongToAppSong({
+          id: `spotify-auto-${track.id}`,
+          title: title,
+          artist: artist,
+          image: searchResult?.image || track.album.images[0]?.url || '/placeholder-song.jpg',
+          url: searchResult?.url || track.preview_url || '',
+          duration: searchResult?.duration || Math.floor(track.duration_ms / 1000).toString()
         });
         
-        // Dispatch event to update UI
-        document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
-      } else {
-        console.log('✅ Auto-sync completed: No songs were added');
-        this.notifyListeners({ type: 'completed', message: 'No new songs were added' });
+        appSongs.push(appSong);
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.error('Error converting track:', track.name, error);
       }
-
-    } catch (error) {
-      console.error('❌ Auto-sync error:', error);
-      
-      // Increment retry count
-      this.config.retryCount++;
-      this.saveConfig();
-      
-      // If we've exceeded max retries, disable auto-sync
-      if (this.config.retryCount >= this.config.maxRetries) {
-        console.error(`❌ Auto-sync failed ${this.config.maxRetries} times, disabling...`);
-        this.stopAutoSync();
-        this.notifyListeners({ 
-          type: 'error', 
-          message: `Auto-sync disabled after ${this.config.maxRetries} failures` 
-        });
-      } else {
-        this.notifyListeners({ 
-          type: 'error', 
-          message: `Auto-sync failed (${this.config.retryCount}/${this.config.maxRetries}). Will retry later.` 
-        });
-      }
-    } finally {
-      this.isCurrentlySyncing = false;
     }
+    
+    return appSongs;
   }
 
   // Get recent Spotify tracks
@@ -308,14 +393,27 @@ class SpotifyAutoSyncService {
     return tracks;
   }
 
-  // Search for song details
+  // Search for song details with caching
   private async searchForSongDetails(title: string, artist: string): Promise<any> {
     try {
       const searchQuery = `${title} ${artist}`.trim();
-      await useMusicStore.getState().searchIndianSongs(searchQuery);
       
-      const results = useMusicStore.getState().indianSearchResults;
-      return results && results.length > 0 ? results[0] : null;
+      // Use request manager for caching and deduplication
+      const response = await requestManager.request({
+        url: '/api/jiosaavn/search/songs',
+        method: 'GET',
+        params: { query: searchQuery, limit: 1 }
+      }, {
+        cache: true,
+        cacheTTL: 10 * 60 * 1000, // 10 minutes cache for search results
+        deduplicate: true,
+        priority: 'low' // Lower priority for background sync
+      }) as any;
+      
+      if (response && response.data && response.data.results && response.data.results.length > 0) {
+        return response.data.results[0];
+      }
+      return null;
     } catch (error) {
       console.error('Error searching for song:', error);
       return null;

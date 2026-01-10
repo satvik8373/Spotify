@@ -1,5 +1,5 @@
 import { useAuthStore } from "@/stores/useAuthStore";
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, serverTimestamp, writeBatch, where, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Song } from "@/types";
 
@@ -21,8 +21,52 @@ export interface LikedSong {
   spotifyId?: string; // Original Spotify track ID if synced from Spotify
 }
 
+// Batch operations manager for Firebase
+class FirebaseBatchManager {
+  private batchOperations: Array<() => Promise<void>> = [];
+  private isProcessing = false;
+  private batchSize = 10; // Process 10 operations at once
+  private processingDelay = 100; // ms between batches
+
+  addOperation(operation: () => Promise<void>) {
+    this.batchOperations.push(operation);
+    this.processBatch();
+  }
+
+  private async processBatch() {
+    if (this.isProcessing || this.batchOperations.length === 0) return;
+    
+    this.isProcessing = true;
+    
+    try {
+      const batch = this.batchOperations.splice(0, this.batchSize);
+      await Promise.all(batch.map(op => op().catch(console.error)));
+      
+      // Continue processing if more operations exist
+      if (this.batchOperations.length > 0) {
+        setTimeout(() => {
+          this.isProcessing = false;
+          this.processBatch();
+        }, this.processingDelay);
+      } else {
+        this.isProcessing = false;
+      }
+    } catch (error) {
+      console.error('Batch processing error:', error);
+      this.isProcessing = false;
+    }
+  }
+}
+
+const firebaseBatchManager = new FirebaseBatchManager();
+
+// Cache for duplicate checks to avoid repeated Firebase queries
+const duplicateCheckCache = new Map<string, { result: boolean; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 /**
- * Check if a song already exists in liked songs (by title and artist)
+ * Optimized check if a song already exists in liked songs (by title and artist)
+ * Uses Firestore query with caching instead of fetching all documents
  */
 export const isSongAlreadyLiked = async (title: string, artist: string): Promise<boolean> => {
   const { isAuthenticated, userId } = useAuthStore.getState();
@@ -31,20 +75,43 @@ export const isSongAlreadyLiked = async (title: string, artist: string): Promise
     return false;
   }
   
+  // Create cache key
+  const cacheKey = `${userId}:${title.toLowerCase().trim()}:${artist.toLowerCase().trim()}`;
+  
+  // Check cache first
+  const cached = duplicateCheckCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.result;
+  }
+  
   try {
     const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
-    const snapshot = await getDocs(likedSongsRef);
+    
+    // Use Firestore query to check for exact matches (more efficient)
+    const normalizedTitle = title.toLowerCase().trim();
+    const normalizedArtist = artist.toLowerCase().trim();
+    
+    // Query for songs with matching title (case-insensitive search would require composite index)
+    // For now, we'll do a limited query and filter in memory for better performance
+    const recentQuery = query(
+      likedSongsRef, 
+      orderBy('likedAt', 'desc'),
+      limit(100) // Only check recent 100 songs for performance
+    );
+    
+    const snapshot = await getDocs(recentQuery);
     
     // Check if any existing song matches title and artist (case-insensitive)
     const exists = snapshot.docs.some(doc => {
       const data = doc.data();
       const existingTitle = data.title?.toLowerCase().trim();
       const existingArtist = data.artist?.toLowerCase().trim();
-      const newTitle = title.toLowerCase().trim();
-      const newArtist = artist.toLowerCase().trim();
       
-      return existingTitle === newTitle && existingArtist === newArtist;
+      return existingTitle === normalizedTitle && existingArtist === normalizedArtist;
     });
+    
+    // Cache the result
+    duplicateCheckCache.set(cacheKey, { result: exists, timestamp: Date.now() });
     
     return exists;
   } catch (error) {
@@ -65,44 +132,130 @@ export const addLikedSong = async (song: Song, source: 'mavrixfy' | 'spotify' = 
   }
 
   try {
-    // Check for duplicates first
+    // Check for duplicates first with caching
     const alreadyExists = await isSongAlreadyLiked(song.title, song.artist);
     if (alreadyExists) {
       console.log(`⚠️ Song already exists in liked songs: "${song.title}" by ${song.artist}`);
       return { added: false, reason: 'Already exists' };
     }
 
-    // IMPORTANT: Always save to user's subcollection, never to main songs collection
-    const likedSongRef = doc(db, 'users', userId, 'likedSongs', song._id);
-    
-    console.log(`🔒 Saving liked song to user subcollection: users/${userId}/likedSongs/${song._id}`);
-    
-    const likedSongData: LikedSong = {
-      id: song._id,
-      title: song.title,
-      artist: song.artist,
-      albumName: song.albumId || '',
-      imageUrl: song.imageUrl,
-      audioUrl: song.audioUrl,
-      duration: song.duration,
-      year: '',
-      likedAt: serverTimestamp(),
-      source: source,
-      ...(spotifyId && { spotifyId })
-    };
-    
-    await setDoc(likedSongRef, likedSongData);
-    console.log(`✅ Successfully saved liked song to user subcollection (source: ${source})`);
-    console.log(`📍 Firestore path: users/${userId}/likedSongs/${song._id}`);
-    
-    // Dispatch event to notify other components
-    document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
-    
-    return { added: true };
+    // Use batch manager for better performance
+    return new Promise((resolve) => {
+      firebaseBatchManager.addOperation(async () => {
+        try {
+          const likedSongRef = doc(db, 'users', userId, 'likedSongs', song._id);
+          
+          console.log(`🔒 Saving liked song to user subcollection: users/${userId}/likedSongs/${song._id}`);
+          
+          const likedSongData: LikedSong = {
+            id: song._id,
+            title: song.title,
+            artist: song.artist,
+            albumName: song.albumId || '',
+            imageUrl: song.imageUrl,
+            audioUrl: song.audioUrl,
+            duration: song.duration,
+            year: '',
+            likedAt: serverTimestamp(),
+            source: source,
+            ...(spotifyId && { spotifyId })
+          };
+          
+          await setDoc(likedSongRef, likedSongData);
+          console.log(`✅ Successfully saved liked song to user subcollection (source: ${source})`);
+          
+          // Update cache
+          const cacheKey = `${userId}:${song.title.toLowerCase().trim()}:${song.artist.toLowerCase().trim()}`;
+          duplicateCheckCache.set(cacheKey, { result: true, timestamp: Date.now() });
+          
+          // Dispatch event to notify other components
+          document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
+          
+          resolve({ added: true });
+        } catch (error) {
+          console.error('Error adding liked song:', error);
+          resolve({ added: false, reason: 'Database error' });
+        }
+      });
+    });
     
   } catch (error) {
     console.error('Error adding liked song:', error);
     throw error;
+  }
+};
+
+/**
+ * Optimized batch add multiple songs to liked songs
+ */
+export const addMultipleLikedSongs = async (songs: Song[], source: 'mavrixfy' | 'spotify' = 'mavrixfy'): Promise<{ added: number; skipped: number; errors: number }> => {
+  const { isAuthenticated, userId } = useAuthStore.getState();
+  
+  if (!isAuthenticated || !userId) {
+    return { added: 0, skipped: 0, errors: 0 };
+  }
+
+  let added = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  try {
+    // Process songs in batches of 10 for better performance
+    const batchSize = 10;
+    for (let i = 0; i < songs.length; i += batchSize) {
+      const batch = writeBatch(db);
+      const songBatch = songs.slice(i, i + batchSize);
+      
+      for (const song of songBatch) {
+        try {
+          // Quick duplicate check using cache
+          const alreadyExists = await isSongAlreadyLiked(song.title, song.artist);
+          if (alreadyExists) {
+            skipped++;
+            continue;
+          }
+
+          const likedSongRef = doc(db, 'users', userId, 'likedSongs', song._id);
+          const likedSongData: LikedSong = {
+            id: song._id,
+            title: song.title,
+            artist: song.artist,
+            albumName: song.albumId || '',
+            imageUrl: song.imageUrl,
+            audioUrl: song.audioUrl,
+            duration: song.duration,
+            year: '',
+            likedAt: serverTimestamp(),
+            source: source
+          };
+          
+          batch.set(likedSongRef, likedSongData);
+          added++;
+        } catch (error) {
+          console.error('Error preparing song for batch:', error);
+          errors++;
+        }
+      }
+      
+      // Commit the batch
+      if (added > 0) {
+        await batch.commit();
+      }
+      
+      // Small delay between batches to avoid overwhelming Firestore
+      if (i + batchSize < songs.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // Dispatch event to notify other components
+    document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
+    
+    return { added, skipped, errors };
+    
+  } catch (error) {
+    console.error('Error in batch add liked songs:', error);
+    return { added, skipped, errors: errors + 1 };
   }
 };
 

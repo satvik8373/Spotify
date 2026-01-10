@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { handleCallback, isAuthenticated as isSpotifyAuthenticated, debugAuthenticationState } from '../services/spotifyService';
 import { Loader, AlertCircle, CheckCircle, Bug } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
+import { PageLoading } from '../components/ui/loading';
 
 const SpotifyCallback: React.FC = () => {
   const location = useLocation();
@@ -76,13 +77,7 @@ const SpotifyCallback: React.FC = () => {
   }, [location, user?.id]);
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-        <Loader className="animate-spin h-10 w-10 text-[#1DB954] mb-4" />
-        <p className="text-lg">Connecting to Spotify...</p>
-        <p className="text-sm text-gray-400 mt-2">Please wait while we complete the authentication</p>
-      </div>
-    );
+    return <PageLoading text="Connecting to Spotify..." />;
   }
 
   if (error) {

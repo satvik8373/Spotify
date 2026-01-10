@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { addLikedSong, isSongAlreadyLiked } from '@/services/likedSongsService';
 import { isAuthenticated as isSpotifyAuthenticated, getSavedTracks } from '@/services/spotifyService';
+import { ContentLoading } from '@/components/ui/loading';
 import SpotifyLogin from '@/components/SpotifyLogin';
 
 interface SpotifyLikedSongsSyncProps {
@@ -364,13 +365,7 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
 
       {/* Loading Spotify tracks */}
       {isLoadingTracks && (
-        <div className="border rounded-lg p-6">
-          <div className="flex flex-col items-center justify-center text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-green-500 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Loading Spotify songs...</h3>
-            <p className="text-sm text-muted-foreground">Fetching your liked songs from Spotify</p>
-          </div>
-        </div>
+        <ContentLoading text="Loading Spotify songs..." height="border rounded-lg p-6" />
       )}
 
       {/* Spotify tracks list */}

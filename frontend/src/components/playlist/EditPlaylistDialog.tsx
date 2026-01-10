@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { uploadImage, getPlaceholderImageUrl } from '@/services/cloudinaryService';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { Switch } from '../ui/switch';
+import { ContentLoading, ButtonLoading } from '@/components/ui/loading';
 
 // Helper function to get a default playlist image URL
 const getDefaultPlaylistImage = (name: string) => {
@@ -266,14 +267,7 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
                 </div>
                 {isUploading && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
-                    <Loader2 className="h-8 w-8 text-white animate-spin mb-2" />
-                    <div className="w-3/4 bg-gray-300 rounded-full h-1.5 mb-1 overflow-hidden">
-                      <div 
-                        className="bg-white h-1.5" 
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-white text-xs">{uploadProgress}%</span>
+                    <ContentLoading text={`Uploading... ${uploadProgress}%`} height="h-full" />
                   </div>
                 )}
               </div>
@@ -379,10 +373,7 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
               disabled={isSubmitting || isUploading || !hasValidImage || !watch('name')}
             >
               {isSubmitting || isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isUploading ? 'Uploading...' : 'Saving...'}
-                </>
+                <ButtonLoading text={isUploading ? 'Uploading...' : 'Saving...'} />
               ) : (
                 'Save Changes'
               )}

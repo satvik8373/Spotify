@@ -120,14 +120,14 @@ const PWAInstallPrompt = () => {
       const link = document.createElement('link');
       link.rel = 'apple-touch-icon';
       link.setAttribute('sizes', `${size}x${size}`);
-      link.href = `/apple-touch-icon-${size}.png`;
+      link.href = `/mavrixfy.png`;
       document.head.appendChild(link);
     });
 
     // Add default apple touch icon
     const defaultLink = document.createElement('link');
     defaultLink.rel = 'apple-touch-icon';
-    defaultLink.href = `/apple-touch-icon.png`;
+    defaultLink.href = `/mavrixfy.png`;
     document.head.appendChild(defaultLink);
   };
 

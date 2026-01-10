@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useAlbumColors } from '../../hooks/useAlbumColors';
 import { Button } from '../../components/ui/button';
 import '../../styles/playlist-page.css';
+import { ContentLoading, InlineLoading, PageLoading } from '../../components/ui/loading';
 import {
   Play,
   Pencil,
@@ -217,9 +218,7 @@ function AddSongsDialog({
 
         <ScrollArea className="h-[400px] pr-4 mt-4">
           {isIndianMusicLoading ? (
-            <div className="flex justify-center p-4">
-              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
-            </div>
+            <ContentLoading text="Loading songs..." height="p-4" />
           ) : (
             <>
               {isSearching && (
@@ -694,11 +693,7 @@ export function PlaylistPage() {
   };
 
   if (isLoading) {
-  return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-16 w-16 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
-        </div>
-    );
+  return <PageLoading text="Loading playlist..." />;
   }
 
   if (!currentPlaylist) {
@@ -1207,10 +1202,7 @@ export function PlaylistPage() {
               className="bg-green-500 text-black hover:bg-green-600"
             >
               {isRegeneratingCover ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
-                  Processing...
-                </>
+                <InlineLoading text="Processing..." />
               ) : (
                 'Generate Cover'
               )}

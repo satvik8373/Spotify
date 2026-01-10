@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { performanceService } from '../services/performanceService';
+import { Spinner } from './ui/loading';
 
 interface MobileOptimizedImageProps {
   src: string;
@@ -131,7 +132,7 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
             height: `${height}px`
           }}
         >
-          <div className="w-5 h-5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+          <Spinner size="sm" />
         </div>
       )}
       

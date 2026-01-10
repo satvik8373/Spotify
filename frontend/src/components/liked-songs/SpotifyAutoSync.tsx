@@ -7,6 +7,7 @@ import { Music, Clock, CheckCircle, AlertCircle, Loader2, Zap, Settings } from '
 import { spotifyAutoSyncService, AutoSyncStatus } from '@/services/spotifyAutoSyncService';
 import { isAuthenticated as isSpotifyAuthenticated } from '@/services/spotifyService';
 import { toast } from 'sonner';
+import { Spinner, InlineLoading } from '@/components/ui/loading';
 
 interface SpotifyAutoSyncProps {
   className?: string;
@@ -119,7 +120,7 @@ export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
     
     switch (status.type) {
       case 'syncing':
-        return <Loader2 className="h-4 w-4 animate-spin" />;
+        return <Spinner size="xs" />;
       case 'completed':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'error':
@@ -260,10 +261,7 @@ export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
             disabled={!isSpotifyConnected || status?.type === 'syncing'}
           >
             {status?.type === 'syncing' ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Syncing...
-              </>
+              <InlineLoading text="Syncing..." />
             ) : (
               <>
                 <Zap className="h-4 w-4 mr-2" />

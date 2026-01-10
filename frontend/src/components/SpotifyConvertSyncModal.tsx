@@ -10,6 +10,7 @@ import {
   ConversionProgress, 
   ConversionResult 
 } from '@/services/spotifyToJiosaavnConverter';
+import { ButtonLoading } from '@/components/ui/loading';
 
 interface SpotifyTrack {
   id: string;
@@ -248,9 +249,13 @@ const SpotifyConvertSyncModal: React.FC<SpotifyConvertSyncModalProps> = ({
                     className="w-full mt-4 bg-[#1DB954] hover:bg-[#1ed760] text-white"
                   >
                     {isLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : null}
-                    Add {selectedTracks.size} song{selectedTracks.size !== 1 ? 's' : ''} to Liked Songs
+                      <ButtonLoading />
+                    ) : (
+                      <>
+                        <ListPlus className="w-4 h-4 mr-2" />
+                        Add {selectedTracks.size} song{selectedTracks.size !== 1 ? 's' : ''} to Liked Songs
+                      </>
+                    )}
                   </Button>
                 </>
               )}

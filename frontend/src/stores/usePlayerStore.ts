@@ -73,29 +73,12 @@ export const usePlayerStore = create<PlayerState>()(
 
       setCurrentSong: (song) => {
         set({ currentSong: song });
-
-        // Debounced localStorage save to reduce writes
-        const saveToStorage = () => {
-          try {
-            const playerState = {
-              currentSong: song,
-              currentTime: get().currentTime,
-              timestamp: new Date().toISOString()
-            };
-            localStorage.setItem('player_state', JSON.stringify(playerState));
-          } catch (_error) {
-            // Error handling without logging
-          }
-        };
-
-        // Use setTimeout to debounce localStorage writes
-        setTimeout(saveToStorage, 100);
+        // Removed immediate localStorage write - will be handled by batch save
       },
 
       setIsPlaying: (isPlaying) => {
         // If trying to play but user hasn't interacted, don't allow
         if (isPlaying && !get().hasUserInteracted) {
-          // console.log('Attempted to play without user interaction, setting hasUserInteracted to true');
           set({ isPlaying, hasUserInteracted: true });
         } else {
           set({ isPlaying });
@@ -104,23 +87,7 @@ export const usePlayerStore = create<PlayerState>()(
 
       setCurrentTime: (time) => {
         set({ currentTime: time });
-
-        // Debounced localStorage save for current time updates
-        const saveToStorage = () => {
-          try {
-            const playerState = {
-              currentSong: get().currentSong,
-              currentTime: time,
-              timestamp: new Date().toISOString()
-            };
-            localStorage.setItem('player_state', JSON.stringify(playerState));
-          } catch (_error) {
-            // Error handling without logging
-          }
-        };
-
-        // Use setTimeout to debounce localStorage writes
-        setTimeout(saveToStorage, 200);
+        // Removed frequent localStorage writes - only save on pause/song change
       },
 
       setDuration: (duration) => set({ duration }),

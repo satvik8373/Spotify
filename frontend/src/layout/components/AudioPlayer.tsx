@@ -416,185 +416,78 @@ const AudioPlayer = () => {
     };
   }, [currentSong, setIsPlaying, playNext, playPrevious, setCurrentTime, isPlaying, queue]);
 
-  // Enhanced song end handling
+  // Optimized song end handling - consolidated event listeners
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleEnded = () => {
-      // Prevent multiple rapid calls to handleEnded
-      if (audio.dataset.ending === 'true') {
-        return;
-      }
-      audio.dataset.ending = 'true';
+    let endingDetectionInterval: NodeJS.Timeout | null = null;
+    let lastTimeUpdate = 0;
+    let isHandlingEnd = false;
 
-      // Get the current state for better control
+    const handleSongEnd = () => {
+      if (isHandlingEnd) return;
+      isHandlingEnd = true;
+
       const state = usePlayerStore.getState();
-
-      // Mark that user has interacted to enable autoplay for next song
       state.setUserInteracted();
 
-      // Check if we should repeat the current song
       if (state.isRepeating) {
-        // Just restart the current song
         audio.currentTime = 0;
-        audio.dataset.ending = 'false';
         audio.play().catch(() => { });
+        isHandlingEnd = false;
         return;
       }
 
-      // Ensure the song has actually ended (not just paused)
-      if (audio.currentTime < audio.duration - 0.1) {
-        audio.dataset.ending = 'false';
-        return;
-      }
+      // Move to next song
+      state.playNext();
+      state.setIsPlaying(true);
 
-      // Force a slight delay to ensure proper state updates
       setTimeout(() => {
-        // Call playNext directly from store for more reliable progression
-        state.playNext();
-
-        // Ensure playing state is maintained
-        state.setIsPlaying(true);
-
-        // Get the updated audio element reference since it might have changed
-        const updatedAudio = audioRef.current || document.querySelector('audio');
-
-        // Explicitly attempt to play after state updates to ensure next song starts
-        if (updatedAudio) {
-          const playPromise = updatedAudio.play();
-
-          if (playPromise !== undefined) {
-            playPromise.catch(() => {
-              // If initial play fails, try again with another delay
-              setTimeout(() => {
-                const audio = audioRef.current || document.querySelector('audio');
-                if (audio) {
-                  audio.play().catch(() => {
-                    // If it still fails, try one more time with longer delay
-                    setTimeout(() => {
-                      const finalAudio = audioRef.current || document.querySelector('audio');
-                      finalAudio?.play().catch(() => { });
-                    }, 1000);
-                  });
-                }
-              }, 300);
-            });
-          }
+        const newAudio = audioRef.current;
+        if (newAudio) {
+          newAudio.play().catch(() => { });
         }
-
-        // Reset the ending flag after a delay
-        setTimeout(() => {
-          if (audio) {
-            audio.dataset.ending = 'false';
-          }
-        }, 1000);
+        isHandlingEnd = false;
       }, 100);
     };
 
-    // Set up multiple event listeners for song end detection
-    audio.addEventListener('ended', handleEnded);
-
-    // Special fix for Firefox and some mobile browsers that don't reliably fire ended event
-    let lastTime = 0;
-    let endingDetectionInterval: NodeJS.Timeout | null = null;
-
-    // Additional protection: monitor for song completion via timeupdate
+    // Single consolidated timeupdate listener with throttling
     const handleTimeUpdate = () => {
-      if (!audio) return;
+      const now = Date.now();
+      if (now - lastTimeUpdate < 500) return; // Reduced frequency to 500ms
+      lastTimeUpdate = now;
 
-      // Don't continue if duration is invalid
-      if (isNaN(audio.duration) || audio.duration <= 0) return;
+      if (!audio || isNaN(audio.duration) || audio.duration <= 0) return;
 
-      // Track last time for end detection
-      if (audio.currentTime < audio.duration - 0.5) {
-        lastTime = audio.currentTime;
-      }
-
-      // Detect if we're very close to the end (within 0.2 seconds)
-      // This helps when the ended event doesn't fire properly
-      if (audio.currentTime > 0 &&
-        audio.duration > 0 &&
-        audio.currentTime >= audio.duration - 0.2 &&
-        audio.currentTime > lastTime && // Ensure we're actually progressing
-        !audio.paused && // Only trigger for playing audio to avoid duplicate triggers
-        audio.dataset.ending !== 'true') { // Prevent duplicate triggers
-
-        // Only trigger if we haven't reached the actual end yet (to avoid duplicates)
-        if (audio.currentTime < audio.duration) {
-          console.log("Detected near-end of song via timeupdate, triggering handleEnded");
-          // Since we're not actually at the end, we need to handle specially
-          handleEnded();
-
-          // Ensure we don't trigger again by pausing
-          audio.pause();
-        }
+      // Check for song end
+      if (audio.currentTime >= audio.duration - 0.3 && !audio.paused) {
+        handleSongEnd();
       }
     };
 
-    // Add a throttled timeupdate listener
-    let lastCheck = 0;
-    audio.addEventListener('timeupdate', () => {
-      const now = Date.now();
-      // Check every 250ms to improve responsiveness for end detection
-      if (now - lastCheck > 250) {
-        lastCheck = now;
-        handleTimeUpdate();
-      }
-    });
+    // Single event listeners
+    audio.addEventListener('ended', handleSongEnd);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
 
-    // Add an extra background checker for lock screen / background mode
+    // Reduced frequency background monitor
     endingDetectionInterval = setInterval(() => {
-      // Only check if we're supposed to be playing
-      if (isPlaying && audio) {
-        // Special check for song completion when in background or locked screen
-        if ((document.hidden || navigator.userActivation?.hasBeenActive === false) &&
-          audio.currentTime > 0 && audio.duration > 0 &&
-          !isNaN(audio.duration) && audio.currentTime >= audio.duration - 0.5) {
-          console.log("Background/lockscreen song end detected, advancing to next track");
-          handleEnded();
-        }
+      if (!isPlaying || !audio) return;
 
-        // Check if audio is paused but should be playing (autopaused by browser)
-        if (audio.paused && isPlaying && !isNaN(audio.duration) &&
-          audio.currentTime < audio.duration - 0.5) {
-          // Try to resume playback
-          audio.play().catch(() => { });
-        }
-
-        // Check for stalled playback (no movement for over 3 seconds)
-        if (!audio.paused && !isNaN(audio.duration) &&
-          Math.abs(audio.currentTime - lastTime) < 0.01 &&
-          audio.currentTime < audio.duration - 1) {
-          // Count consecutive stall detections
-          const stallCount = (audio as any)._stallCount || 0;
-          (audio as any)._stallCount = stallCount + 1;
-
-          // If stalled for too long (3 checks = ~3s), try to recover
-          if (stallCount >= 3) {
-            console.log("Detected stalled playback, attempting recovery");
-            // Try to unstick by seeking slightly forward
-            audio.currentTime += 0.1;
-            (audio as any)._stallCount = 0;
-
-            // If still stalled after seeking, try to play next
-            if (audio.paused || stallCount > 5) {
-              console.log("Stalled too long, advancing to next track");
-              handleEnded();
-            }
-          }
-        } else {
-          // Reset stall counter when playback is moving normally
-          (audio as any)._stallCount = 0;
-        }
-
-        // Update last time for stall detection
-        lastTime = audio.currentTime;
+      // Background/lockscreen end detection
+      if (document.hidden && audio.currentTime >= audio.duration - 0.5) {
+        handleSongEnd();
       }
-    }, 1000);
+
+      // Resume paused audio
+      if (audio.paused && !audio.ended) {
+        audio.play().catch(() => { });
+      }
+    }, 2000); // Reduced from 1000ms to 2000ms
 
     return () => {
-      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('ended', handleSongEnd);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
       if (endingDetectionInterval) clearInterval(endingDetectionInterval);
     };
   }, [isPlaying]);
@@ -718,93 +611,31 @@ const AudioPlayer = () => {
     return cleanup;
   }, [isPlaying]);
 
-  // Add a dedicated background playback maintenance system
+  // Optimized background playback monitor - reduced frequency
   useEffect(() => {
-    // Only set up if we have an active song
     if (!currentSong || !audioRef.current) return;
 
-    // Create a more reliable background check mechanism
     const backgroundPlaybackMonitor = setInterval(() => {
-      // Always run this check, regardless of visibility state
-      // This ensures reliable playback in all conditions including lock screen
       const state = usePlayerStore.getState();
       const audio = audioRef.current;
-
       if (!audio) return;
 
-      const audioDuration = audio.duration;
-
-      // 1. Check if audio is paused but should be playing
+      // Simple checks with reduced frequency
       if (audio.paused && state.isPlaying && !audio.ended) {
         audio.play().catch(() => { });
       }
 
-      // 2. Check if we need to advance to next song (with better duration validation)
-      if (!isNaN(audioDuration) && audioDuration > 0) {
-        // If the song is actually ended OR if we're within 0.5 seconds of the end
-        if (audio.ended || (audio.currentTime >= audioDuration - 0.5 && audio.currentTime > 0)) {
-          // Ensure we don't trigger multiple times for the same ending
-          if (!audio.ended && Math.abs(audio.currentTime - audioDuration) <= 0.5) {
-            // Explicitly mark the current song as ended to prevent duplicate triggers
-            audio.pause();
-
-            // Store current song info before transitioning
-            const currentSongInfo = {
-              id: state.currentSong?._id,
-              position: audio.currentTime,
-              duration: audio.duration
-            };
-
-            // Increment to next song with proper state handling
-            state.playNext();
-
-            // Ensure playback continues
-            state.setIsPlaying(true);
-
-            // Log the transition for debugging
-            try {
-              localStorage.setItem('last_song_transition', JSON.stringify({
-                from: currentSongInfo.id,
-                position: currentSongInfo.position,
-                duration: currentSongInfo.duration,
-                timestamp: new Date().toISOString(),
-                isLocked: document.hidden,
-                batteryLevel: (navigator as any).getBattery ?
-                  (navigator as any).getBattery().then((b: any) => b.level) : 'unknown'
-              }));
-            } catch (e) {
-              // Ignore storage errors
-            }
-
-            // Actually play the audio with multiple fallback attempts
-            setTimeout(() => {
-              if (audioRef.current) {
-                audioRef.current.play().catch(() => {
-                  // If initial attempt fails, try again after a delay
-                  setTimeout(() => {
-                    // Get fresh reference in case it changed
-                    const freshAudio = audioRef.current || document.querySelector('audio');
-                    if (freshAudio) {
-                      freshAudio.play().catch(() => {
-                        // One final attempt with longer delay
-                        setTimeout(() => {
-                          const finalAudio = audioRef.current || document.querySelector('audio');
-                          finalAudio?.play().catch(() => { });
-                        }, 1000);
-                      });
-                    }
-                  }, 500);
-                });
-              }
-            }, 100);
-          }
+      // Check for song end in background
+      if (!isNaN(audio.duration) && audio.duration > 0) {
+        if (audio.ended || (audio.currentTime >= audio.duration - 0.5 && audio.currentTime > 0)) {
+          state.playNext();
+          state.setIsPlaying(true);
+          setTimeout(() => audioRef.current?.play().catch(() => { }), 100);
         }
       }
-    }, 250); // More frequent checks to ensure we don't miss the end of a song
+    }, 1000); // Reduced from 250ms to 1000ms
 
-    return () => {
-      clearInterval(backgroundPlaybackMonitor);
-    };
+    return () => clearInterval(backgroundPlaybackMonitor);
   }, [currentSong, isPlaying]);
 
   // Wake lock API to prevent device from sleeping and stopping audio

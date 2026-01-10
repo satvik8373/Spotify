@@ -91,7 +91,14 @@ const Register = () => {
           >
             <ArrowLeft />
           </Button>
-          <h1 className="text-2xl font-bold text-white">Sign up for Spotify</h1>
+          <div className="flex items-center gap-3">
+            <img
+              src="/mavrixfy.png"
+              alt="Mavrixfy"
+              className="h-8 w-8 object-contain"
+            />
+            <h1 className="text-2xl font-bold text-white">Sign up for Mavrixfy</h1>
+          </div>
         </div>
         
         <div className="mb-6">

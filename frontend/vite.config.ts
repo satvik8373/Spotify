@@ -166,11 +166,39 @@ export default defineConfig(({ mode }) => {
 			rollupOptions: {
 				output: {
 					manualChunks: {
+						// Core React libraries
 						vendor: [
 							'react', 
 							'react-dom', 
-							'react-router-dom',
+							'react-router-dom'
+						],
+						// State management
+						store: [
 							'zustand'
+						],
+						// UI components
+						ui: [
+							'@radix-ui/react-dialog',
+							'@radix-ui/react-dropdown-menu',
+							'@radix-ui/react-slider',
+							'@radix-ui/react-tabs',
+							'@radix-ui/react-scroll-area'
+						],
+						// Utilities
+						utils: [
+							'lodash',
+							'clsx',
+							'class-variance-authority'
+						],
+						// Firebase
+						firebase: [
+							'firebase/app',
+							'firebase/auth',
+							'firebase/firestore'
+						],
+						// Icons
+						icons: [
+							'lucide-react'
 						]
 					}
 				}

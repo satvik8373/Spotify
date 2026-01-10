@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader, Music } from 'lucide-react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { ContentLoading } from '@/components/ui/loading';
 
 interface Album {
   _id: string;
@@ -49,10 +50,7 @@ const AlbumPage = () => {
       <ScrollArea className="h-[calc(100vh-180px)]">
         <div className="p-4 sm:p-6">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-80">
-              <Loader className="h-8 w-8 animate-spin text-green-500 mb-4" />
-              <p className="text-zinc-400">Loading album...</p>
-            </div>
+            <ContentLoading text="Loading album..." height="h-80" />
           ) : album ? (
             <>
               <div className="flex flex-col md:flex-row gap-6 items-center md:items-start mb-8">

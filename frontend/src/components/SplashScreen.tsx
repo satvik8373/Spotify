@@ -1,10 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface SplashScreenProps {
   onComplete: () => void;
 }
 
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const completedRef = useRef(false);
+
   useEffect(() => {
     // Check if user is already authenticated from cache
     const hasCachedAuth = Boolean(
@@ -12,34 +18,95 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
     );
     
-    // For cached authenticated users, complete immediately
-    // For new users, show splash for a minimum time to prevent flickering
-    const delay = hasCachedAuth ? 0 : 500;
+    // For cached authenticated users, complete faster
+    // For new users, allow time for video animation to play
+    const delay = hasCachedAuth ? 800 : 2500;
     
-    const timer = setTimeout(onComplete, delay);
+    const timer = setTimeout(() => {
+      if (!completedRef.current) {
+        completedRef.current = true;
+        onComplete();
+      }
+    }, delay);
+
     return () => clearTimeout(timer);
   }, [onComplete]);
+
+  const handleVideoLoad = () => {
+    setVideoLoaded(true);
+    // Start the crossfade transition after video is loaded
+    setTimeout(() => {
+      setShowVideo(true);
+    }, 100); // Small delay to ensure video is ready
+  };
+
+  const handleVideoError = () => {
+    setVideoError(true);
+  };
+
+  const handleVideoEnd = () => {
+    if (!completedRef.current) {
+      completedRef.current = true;
+      setTimeout(onComplete, 300);
+    }
+  };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black"
       aria-label="Mavrixfy splash screen"
     >
-      {/* Inline SVG to avoid network request and reduce LCP */}
-      <svg
-        viewBox="0 0 24 24"
-        width={96}
-        height={96}
-        className="h-24 w-24"
-        role="img"
-        aria-label="App icon"
-      >
-        <circle cx="12" cy="12" r="12" fill="#1DB954" />
-        <path
-          d="M17.52 17.34c-.24.36-.66.48-1.02.24-2.82-1.74-6.36-2.1-10.56-1.14-.42.12-.78-.18-.9-.54-.12-.42.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.48.66.3 1.02zm1.44-3.3c-.3.42-.84.6-1.26.3-3.24-1.98-8.16-2.58-11.94-1.38-.48.12-1.02-.12-1.14-.6-.12-.48.12-1.02.6-1.14 4.38-1.32 9.78-.66 13.5 1.62.36.18.54.78.24 1.2zm.12-3.36c-3.84-2.28-10.2-2.5-13.86-1.38-.6.12-1.2-.24-1.32-.84-.12-.6.24-1.2.84-1.32 4.26-1.26 11.28-1.02 15.72 1.62.54.3.78 1.02.42 1.56-.3.42-1.02.66-1.8.36z"
-          fill="#000"
+      {/* Container for perfect centering */}
+      <div className="relative w-40 h-40">
+        {/* Static Logo - Always rendered first */}
+        <img
+          src="/mavrixfy.png"
+          alt="Mavrixfy"
+          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ease-in-out ${
+            showVideo && !videoError ? 'opacity-0' : 'opacity-100'
+          }`}
+          role="img"
+          aria-label="Mavrixfy logo"
         />
-      </svg>
+        
+        {/* Video Animation - Only show when loaded and ready */}
+        {videoLoaded && !videoError && (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ease-in-out ${
+              showVideo ? 'opacity-100' : 'opacity-0'
+            }`}
+            onLoadedData={handleVideoLoad}
+            onError={handleVideoError}
+            onEnded={handleVideoEnd}
+            aria-label="Mavrixfy loading animation"
+            preload="auto"
+          >
+            <source src="/mavrixfy_loading.mp4" type="video/mp4" />
+          </video>
+        )}
+
+        {/* Hidden video for preloading */}
+        {!videoLoaded && !videoError && (
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="opacity-0 absolute inset-0 w-full h-full object-contain"
+            onLoadedData={handleVideoLoad}
+            onError={handleVideoError}
+            aria-label="Mavrixfy loading animation"
+            preload="auto"
+          >
+            <source src="/mavrixfy_loading.mp4" type="video/mp4" />
+          </video>
+        )}
+      </div>
     </div>
   );
 };

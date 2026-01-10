@@ -6,6 +6,7 @@ import { spotifyAutoSyncService } from './services/spotifyAutoSyncService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
+import { PageLoading, Loading } from './components/ui/loading';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
@@ -80,19 +81,11 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 
 		// If coming from login redirect, show minimal loading
 		if (isFromLoginRedirect) {
-			return (
-				<div className="flex items-center justify-center h-screen bg-background">
-					<div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-				</div>
-			);
+			return <Loading size="sm" />;
 		}
 
 		// Otherwise show loading indicator with smoother animation
-		return (
-			<div className="flex items-center justify-center h-screen bg-background">
-				<div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-			</div>
-		);
+		return <Loading size="md" />;
 	}
 
 	// If not authenticated, redirect to login with return URL
@@ -121,18 +114,10 @@ const LandingRedirector = () => {
 	if (loading && !hasCachedAuth) {
 		// Smaller spinner for login redirects
 		if (isFromLoginRedirect) {
-			return (
-				<div className="flex items-center justify-center h-screen bg-background">
-					<div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-				</div>
-			);
+			return <Loading size="sm" />;
 		}
 
-		return (
-			<div className="flex items-center justify-center h-screen bg-background">
-				<div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-			</div>
-		);
+		return <Loading size="md" />;
 	}
 
 	// Not authenticated, go to login
@@ -302,7 +287,7 @@ function AppContent() {
 	return (
 		<>
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
-			<Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div></div>}>
+			<Suspense fallback={<PageLoading text="Loading..." />}>
 				<RouterProvider
 					router={router}
 					future={{ v7_startTransition: true }}

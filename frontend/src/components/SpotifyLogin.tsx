@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Music2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { getLoginUrl, isAuthenticated as isSpotifyAuthenticated, logout as spotifyLogout } from '@/services/spotifyService';
 import { toast } from 'sonner';
+import { InlineLoading } from '@/components/ui/loading';
 
 interface SpotifyLoginProps {
   className?: string;
@@ -156,10 +157,7 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       size={size}
     >
       {isLoading ? (
-        <>
-          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-          Connecting...
-        </>
+        <InlineLoading text="Connecting..." />
       ) : (
         <>
           <Music2 className="h-4 w-4" />

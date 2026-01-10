@@ -6,7 +6,9 @@ import { useMusicStore } from '@/stores/useMusicStore';
 import { Song } from '@/types';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { addLikedSong } from '@/services/likedSongsService';
+import { addMultipleLikedSongs } from '@/services/likedSongsService';
+import { requestManager } from '@/services/requestManager';
+import { ContentLoading } from '@/components/ui/loading';
 
 interface LikedSongsFileUploaderProps {
   onClose: () => void;
@@ -32,7 +34,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
   const [isComplete, setIsComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { convertIndianSongToAppSong, searchIndianSongs } = useMusicStore();
+  const { convertIndianSongToAppSong } = useMusicStore();
 
   const handleUploadClick = () => {
     if (fileInputRef.current) {
@@ -40,83 +42,126 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
     }
   };
 
-  const parseCSV = (content: string): ParsedSong[] => {
-    const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-    const songs: ParsedSong[] = [];
+  // Optimized file parsing using Web Worker (if available) or chunked processing
+  const parseCSV = async (content: string): Promise<ParsedSong[]> => {
+    return new Promise((resolve) => {
+      // Use requestIdleCallback for non-blocking parsing
+      const parseChunk = (lines: string[], startIndex: number, chunkSize: number = 100): ParsedSong[] => {
+        const songs: ParsedSong[] = [];
+        const endIndex = Math.min(startIndex + chunkSize, lines.length);
+        
+        for (let i = startIndex; i < endIndex; i++) {
+          const line = lines[i];
+          const columns = line.split(',').map(col => col.trim());
+          
+          // Skip header line if it looks like a header
+          if (i === 0 && (columns[0].toLowerCase() === 'title' || columns[0].toLowerCase() === 'song')) {
+            continue;
+          }
+          
+          if (columns.length >= 2) {
+            songs.push({
+              title: columns[0] || 'Unknown Title',
+              artist: columns[1] || 'Unknown Artist',
+              duration: columns[2] || '0:00',
+              imageUrl: columns[3] || '',
+              audioUrl: columns[4] || '',
+              status: 'ready'
+            });
+          }
+        }
+        
+        return songs;
+      };
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const columns = line.split(',').map(col => col.trim());
+      const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+      const allSongs: ParsedSong[] = [];
+      let currentIndex = 0;
       
-      // Skip header line if it looks like a header
-      if (i === 0 && (columns[0].toLowerCase() === 'title' || columns[0].toLowerCase() === 'song')) {
-        continue;
-      }
+      const processNextChunk = () => {
+        if (currentIndex >= lines.length) {
+          resolve(allSongs);
+          return;
+        }
+        
+        const chunkSongs = parseChunk(lines, currentIndex);
+        allSongs.push(...chunkSongs);
+        currentIndex += 100;
+        
+        // Use setTimeout to yield control back to the browser
+        setTimeout(processNextChunk, 0);
+      };
       
-      if (columns.length >= 2) {
-        songs.push({
-          title: columns[0] || 'Unknown Title',
-          artist: columns[1] || 'Unknown Artist',
-          duration: columns[2] || '0:00',
-          imageUrl: columns[3] || '',
-          audioUrl: columns[4] || '',
-          status: 'ready'
-        });
-      }
-    }
-    
-    return songs;
+      processNextChunk();
+    });
   };
 
-  const parseTXT = (content: string): ParsedSong[] => {
-    const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-    const songs: ParsedSong[] = [];
-
-    for (const line of lines) {
-      // Try to split by common separators
-      let columns;
+  const parseTXT = async (content: string): Promise<ParsedSong[]> => {
+    return new Promise((resolve) => {
+      const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+      const songs: ParsedSong[] = [];
+      let currentIndex = 0;
       
-      if (line.includes(' - ')) {
-        // Format: Artist - Title
-        columns = line.split(' - ').map(part => part.trim());
-        if (columns.length >= 2) {
-          songs.push({
-            title: columns[1],
-            artist: columns[0],
-            status: 'ready'
-          });
+      const processNextChunk = () => {
+        const chunkSize = 100;
+        const endIndex = Math.min(currentIndex + chunkSize, lines.length);
+        
+        for (let i = currentIndex; i < endIndex; i++) {
+          const line = lines[i];
+          let columns;
+          
+          if (line.includes(' - ')) {
+            // Format: Artist - Title
+            columns = line.split(' - ').map(part => part.trim());
+            if (columns.length >= 2) {
+              songs.push({
+                title: columns[1],
+                artist: columns[0],
+                status: 'ready'
+              });
+            }
+          } else if (line.includes(' by ')) {
+            // Format: Title by Artist
+            columns = line.split(' by ').map(part => part.trim());
+            if (columns.length >= 2) {
+              songs.push({
+                title: columns[0],
+                artist: columns[1],
+                status: 'ready'
+              });
+            }
+          } else if (line.includes('\t')) {
+            // Tab-separated
+            columns = line.split('\t').map(part => part.trim());
+            if (columns.length >= 2) {
+              songs.push({
+                title: columns[0],
+                artist: columns[1],
+                status: 'ready'
+              });
+            }
+          } else {
+            // Just use as title with unknown artist
+            songs.push({
+              title: line,
+              artist: 'Unknown Artist',
+              status: 'ready'
+            });
+          }
         }
-      } else if (line.includes(' by ')) {
-        // Format: Title by Artist
-        columns = line.split(' by ').map(part => part.trim());
-        if (columns.length >= 2) {
-          songs.push({
-            title: columns[0],
-            artist: columns[1],
-            status: 'ready'
-          });
+        
+        currentIndex = endIndex;
+        
+        if (currentIndex >= lines.length) {
+          resolve(songs);
+        } else {
+          // Use setTimeout to yield control back to the browser
+          setTimeout(processNextChunk, 0);
         }
-      } else if (line.includes('\t')) {
-        // Tab-separated
-        columns = line.split('\t').map(part => part.trim());
-        if (columns.length >= 2) {
-          songs.push({
-            title: columns[0],
-            artist: columns[1],
-            status: 'ready'
-          });
-        }
-      } else {
-        // Just use as title with unknown artist
-        songs.push({
-          title: line,
-          artist: 'Unknown Artist',
-          status: 'ready'
-        });
-      }
-    }
-    
-    return songs;
+      };
+      
+      processNextChunk();
+    });
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,9 +176,9 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
       let songs: ParsedSong[] = [];
       
       if (file.name.toLowerCase().endsWith('.csv')) {
-        songs = parseCSV(content);
+        songs = await parseCSV(content);
       } else if (file.name.toLowerCase().endsWith('.txt')) {
-        songs = parseTXT(content);
+        songs = await parseTXT(content);
       } else {
         toast.error('Unsupported file format. Please upload a CSV or TXT file.');
         setIsUploading(false);
@@ -156,17 +201,25 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
     }
   };
 
-  // Search for song details using the music API
+  // Optimized search for song details using the request manager
   const searchForSongDetails = async (title: string, artist: string): Promise<any> => {
     try {
       const searchQuery = `${title} ${artist}`.trim();
-      await searchIndianSongs(searchQuery);
       
-      // Get search results from store
-      const results = useMusicStore.getState().indianSearchResults;
+      // Use request manager for better caching and deduplication
+      const response = await requestManager.request({
+        url: '/api/jiosaavn/search/songs',
+        method: 'GET',
+        params: { query: searchQuery, limit: 1 }
+      }, {
+        cache: true,
+        cacheTTL: 5 * 60 * 1000, // 5 minutes cache
+        deduplicate: true,
+        priority: 'normal'
+      }) as any;
       
-      if (results && results.length > 0) {
-        return results[0]; // Return the first result
+      if (response && response.data && response.data.results && response.data.results.length > 0) {
+        return response.data.results[0];
       }
       return null;
     } catch (error) {
@@ -175,6 +228,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
     }
   };
 
+  // Optimized batch processing of songs
   const addSongsToLikedSongs = async () => {
     if (parsedSongs.length === 0) return;
     
@@ -188,114 +242,127 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
       id: progressToastId,
     });
     
-    const updatedSongs = [...parsedSongs];
-    let addedCount = 0;
-    let errorCount = 0;
-    
-    for (let i = 0; i < updatedSongs.length; i++) {
-      const song = updatedSongs[i];
+    try {
+      // Convert parsed songs to app songs with search
+      const appSongs: Song[] = [];
+      const updatedSongs = [...parsedSongs];
       
-      // Skip already processed songs
-      if (song.status === 'added') {
-        addedCount++;
-        continue;
-      }
-      
-      if (song.status === 'error') {
-        errorCount++;
-        continue;
-      }
-      
-      try {
-        // Update status to searching
-        updatedSongs[i] = { ...song, status: 'searching', message: 'Searching for song...' };
-        setParsedSongs([...updatedSongs]);
+      // Process songs in batches for better performance
+      const batchSize = 5; // Smaller batches to prevent overwhelming
+      for (let i = 0; i < updatedSongs.length; i += batchSize) {
+        const batch = updatedSongs.slice(i, i + batchSize);
         
-        // Calculate and update progress
-        const currentProgress = Math.round(((i + 1) / updatedSongs.length) * 100);
+        // Process batch in parallel
+        const batchPromises = batch.map(async (song, batchIndex) => {
+          const globalIndex = i + batchIndex;
+          
+          try {
+            // Update status to searching
+            updatedSongs[globalIndex] = { ...song, status: 'searching', message: 'Searching for song...' };
+            setParsedSongs([...updatedSongs]);
+            
+            // Search for the song to get audio URL and other details
+            const searchResult = await searchForSongDetails(song.title, song.artist);
+            
+            // Create app song with found details or fallback to defaults
+            const appSong: Song = convertIndianSongToAppSong({
+              id: `liked-${Date.now()}-${globalIndex}`,
+              title: song.title,
+              artist: song.artist,
+              image: searchResult?.image || song.imageUrl || '/placeholder-song.jpg',
+              url: searchResult?.url || song.audioUrl || '',
+              duration: searchResult?.duration || song.duration || '0'
+            });
+            
+            return { appSong, index: globalIndex, searchResult };
+          } catch (error) {
+            console.error('Error processing song:', error);
+            return { appSong: null, index: globalIndex, error };
+          }
+        });
+        
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Add valid songs to the app songs array
+        batchResults.forEach(({ appSong, index, searchResult, error }) => {
+          if (appSong && !error) {
+            appSongs.push(appSong);
+            updatedSongs[index] = {
+              ...updatedSongs[index],
+              status: 'ready',
+              message: searchResult?.url ? 'Found with audio' : 'Found (no audio)',
+              imageUrl: searchResult?.image || updatedSongs[index].imageUrl,
+              audioUrl: searchResult?.url || updatedSongs[index].audioUrl
+            };
+          } else {
+            updatedSongs[index] = {
+              ...updatedSongs[index],
+              status: 'error',
+              message: 'Failed to process'
+            };
+          }
+        });
+        
+        // Update progress
+        const currentProgress = Math.round(((i + batch.length) / updatedSongs.length) * 50); // 50% for processing
         setProgress(currentProgress);
-        toast.loading(`Processing ${i + 1}/${updatedSongs.length}: ${song.title}`, { 
+        toast.loading(`Processing ${i + batch.length}/${updatedSongs.length} songs...`, { 
           id: progressToastId 
         });
         
-        // Search for the song to get audio URL and other details
-        const searchResult = await searchForSongDetails(song.title, song.artist);
+        setParsedSongs([...updatedSongs]);
         
-        // Create app song with found details or fallback to defaults
-        const appSong: Song = convertIndianSongToAppSong({
-          id: `liked-${Date.now()}-${i}`,
-          title: song.title,
-          artist: song.artist,
-          image: searchResult?.image || song.imageUrl || '/placeholder-song.jpg',
-          url: searchResult?.url || song.audioUrl || '',
-          duration: searchResult?.duration || song.duration || '0'
-        });
-        
-        // Add to liked songs with duplicate detection
-        const result = await addLikedSong(appSong);
-        
-        // Update status based on result
-        if (result.added) {
-          updatedSongs[i] = {
-            ...song,
-            status: 'added',
-            message: searchResult?.url ? 'Added with audio' : 'Added (no audio found)',
-            imageUrl: searchResult?.image || song.imageUrl,
-            audioUrl: searchResult?.url || song.audioUrl
-          };
-          addedCount++;
-        } else {
-          updatedSongs[i] = {
-            ...song,
-            status: 'error',
-            message: result.reason === 'Already exists' ? 'Already in liked songs' : 'Failed to add'
-          };
-          if (result.reason === 'Already exists') {
-            // Count as skipped, not error
-            addedCount++; // Don't increment error count for duplicates
-          } else {
-            errorCount++;
-          }
+        // Small delay between batches
+        if (i + batchSize < updatedSongs.length) {
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
-        
-        setAddedSongsCount(addedCount);
-      } catch (error) {
-        console.error('Error adding song to liked songs:', error);
-        
-        // Update status to error
-        updatedSongs[i] = {
-          ...song,
-          status: 'error',
-          message: 'Failed to add'
-        };
-        
-        errorCount++;
       }
       
-      // Update the UI
+      // Now batch add all songs to Firebase
+      toast.loading('Adding songs to your library...', { id: progressToastId });
+      
+      const result = await addMultipleLikedSongs(appSongs);
+      
+      // Update final status
+      let processedIndex = 0;
+      updatedSongs.forEach((song, index) => {
+        if (song.status === 'ready') {
+          if (processedIndex < result.added) {
+            updatedSongs[index] = { ...song, status: 'added', message: 'Added successfully' };
+          } else if (processedIndex < result.added + result.skipped) {
+            updatedSongs[index] = { ...song, status: 'error', message: 'Already exists' };
+          } else {
+            updatedSongs[index] = { ...song, status: 'error', message: 'Failed to add' };
+          }
+          processedIndex++;
+        }
+      });
+      
       setParsedSongs([...updatedSongs]);
+      setProgress(100);
+      setAddedSongsCount(result.added);
       
-      // Add a small delay between requests to avoid rate limiting
-      if (i < updatedSongs.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-    }
-    
-    // Hide the progress toast
-    toast.dismiss(progressToastId);
-    
-    // All songs processed, show completion status
-    setIsProcessing(false);
-    setIsComplete(true);
-    
-    if (addedCount > 0) {
-      if (errorCount > 0) {
-        toast.success(`Added ${addedCount} out of ${parsedSongs.length} songs to liked songs`);
+      // Hide the progress toast
+      toast.dismiss(progressToastId);
+      
+      // Show completion status
+      if (result.added > 0) {
+        if (result.errors > 0 || result.skipped > 0) {
+          toast.success(`Added ${result.added} out of ${parsedSongs.length} songs to liked songs`);
+        } else {
+          toast.success(`Successfully added all ${result.added} songs to liked songs!`);
+        }
       } else {
-        toast.success(`Successfully added all ${addedCount} songs to liked songs!`);
+        toast.error(`Failed to add songs. Please try again.`);
       }
-    } else if (errorCount > 0) {
-      toast.error(`Failed to add ${errorCount} songs. Please try again.`);
+      
+    } catch (error) {
+      console.error('Error in batch processing:', error);
+      toast.dismiss(progressToastId);
+      toast.error('Failed to process songs. Please try again.');
+    } finally {
+      setIsProcessing(false);
+      setIsComplete(true);
     }
   };
 
@@ -357,13 +424,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
 
       {/* File upload progress */}
       {isUploading && (
-        <div className="border rounded-lg p-6">
-          <div className="flex flex-col items-center justify-center text-center">
-            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-primary mb-4"></div>
-            <h3 className="text-lg font-medium mb-2">Reading file...</h3>
-            <p className="text-sm text-muted-foreground">{fileName}</p>
-          </div>
-        </div>
+        <ContentLoading text={`Reading file... ${fileName}`} height="border rounded-lg p-6" />
       )}
 
       {/* Parsed songs list */}

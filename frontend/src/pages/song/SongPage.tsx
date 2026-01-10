@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/button';
 import { Play, Heart, ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { resolveArtist } from '../../lib/resolveArtist';
+import { PageLoading } from '../../components/ui/loading';
 
 const SongPage = () => {
   const { songId } = useParams<{ songId: string }>();
@@ -104,14 +105,7 @@ const SongPage = () => {
   const isLiked = song ? Array.from(likedSongIds).includes(song._id || (song as any).id) : false;
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading song...</p>
-        </div>
-      </div>
-    );
+    return <PageLoading text="Loading song..." />;
   }
 
   if (error || !song) {

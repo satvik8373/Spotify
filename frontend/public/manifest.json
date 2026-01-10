@@ -13,19 +13,19 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/favicon.png",
+      "src": "/mavrixfy.png",
       "type": "image/png",
-      "sizes": "64x64",
+      "sizes": "any",
       "purpose": "any"
     },
     {
-      "src": "/spotify-icons/spotify-icon-maskable-192.png",
+      "src": "/mavrixfy.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "/spotify-icons/spotify-icon-maskable-512.png",
+      "src": "/mavrixfy.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
@@ -39,7 +39,7 @@
       "url": "/liked-songs",
       "icons": [
         {
-          "src": "/shortcut-liked-96.png",
+          "src": "/mavrixfy.png",
           "sizes": "96x96"
         }
       ]
@@ -51,7 +51,7 @@
       "url": "/search",
       "icons": [
         {
-          "src": "/shortcut-search-96.png",
+          "src": "/mavrixfy.png",
           "sizes": "96x96"
         }
       ]

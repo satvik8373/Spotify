@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '../../contexts/AuthContext';
 import IndianMusicPlayer from '@/components/IndianMusicPlayer';
+import { ContentLoading } from '@/components/ui/loading';
 import { PlaylistCard } from '@/components/playlist/PlaylistCard';
 import type { Playlist } from '@/types';
 import { cn } from '@/lib/utils';
@@ -538,9 +539,7 @@ const SearchPage = () => {
           </div>
 
         {isInitialLoad ? (
-          <div className="flex justify-center py-12">
-            <Loader className="w-8 h-8 animate-spin text-zinc-500" />
-          </div>
+          <ContentLoading text="Loading..." height="py-12" />
         ) : query ? (
           <div className="space-y-6">
             {/* Top Results - Featured Section */}
