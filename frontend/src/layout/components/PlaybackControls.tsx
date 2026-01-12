@@ -312,87 +312,25 @@ export const PlaybackControls = () => {
 
 						<div className="flex items-center gap-2 w-full">
 							<div className="text-[11px] text-muted-foreground w-[35px] text-right">{formatTime(currentTime)}</div>
-							<div className="w-full relative group/pc-progress">
+							<div className="w-full relative">
 								<div
-									className="relative w-full"
-									role="slider"
-									aria-label="Seek position"
-									aria-valuemin={0}
-									aria-valuemax={isNaN(duration) ? 0 : duration}
-									aria-valuenow={isNaN(currentTime) ? 0 : currentTime}
+									className="relative w-full cursor-pointer"
 									onClick={(e) => {
 										const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
 										const offsetX = e.clientX - rect.left;
 										const pct = Math.max(0, Math.min(1, offsetX / rect.width));
 										seekTo(pct * (isNaN(duration) ? 0 : duration));
 									}}
-									onTouchStart={(e) => {
-										e.stopPropagation();
-										const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-										const touch = e.touches[0];
-										if (!touch) return;
-										const offsetX = touch.clientX - rect.left;
-										const pct = Math.max(0, Math.min(1, offsetX / rect.width));
-										seekTo(pct * (isNaN(duration) ? 0 : duration));
-									}}
-									onTouchMove={(e) => {
-										const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-										const touch = e.touches[0];
-										if (!touch) return;
-										const offsetX = Math.max(0, Math.min(rect.width, touch.clientX - rect.left));
-										const pct = offsetX / rect.width;
-										seekTo(pct * (isNaN(duration) ? 0 : duration));
-									}}
 								>
-									<div className="absolute left-0 right-0 -top-3 -bottom-3" />
 									<div className="h-[3px] w-full rounded-full overflow-hidden bg-black/30 dark:bg-white/25">
 										<div
 											className="h-full bg-[#1ed760] rounded-full"
 											style={{ width: `${(isNaN(duration) || duration === 0) ? 0 : (currentTime / duration) * 100}%` }}
 										/>
 									</div>
-									<div
-										className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-white shadow-md ring-2 ring-[#1ed760] transition-transform duration-150 ease-out group-hover/pc-progress:scale-100 scale-95 cursor-pointer"
-										style={{ left: `calc(${(isNaN(duration) || duration === 0) ? 0 : (currentTime / duration) * 100}% - 6px)` }}
-										onMouseDown={(e) => {
-											e.stopPropagation();
-											const containerEl = (e.currentTarget as HTMLDivElement).parentElement as HTMLDivElement | null;
-											const handleMouseMove = (moveEvent: MouseEvent) => {
-												const rect = containerEl?.getBoundingClientRect();
-												if (!rect) return;
-												const offsetX = Math.max(0, Math.min(rect.width, moveEvent.clientX - rect.left));
-												const pct = offsetX / rect.width;
-												seekTo(pct * (isNaN(duration) ? 0 : duration));
-											};
-											const handleMouseUp = () => {
-												document.removeEventListener('mousemove', handleMouseMove);
-												document.removeEventListener('mouseup', handleMouseUp);
-											};
-											document.addEventListener('mousemove', handleMouseMove);
-											document.addEventListener('mouseup', handleMouseUp);
-										}}
-										onTouchStart={(e) => {
-											e.stopPropagation();
-											const containerEl = (e.currentTarget as HTMLDivElement).parentElement as HTMLDivElement | null;
-											const handleTouchMove = (touchEvent: TouchEvent) => {
-												if (touchEvent.cancelable) touchEvent.preventDefault();
-												const rect = containerEl?.getBoundingClientRect();
-												if (!rect || touchEvent.touches.length === 0) return;
-												const touch = touchEvent.touches[0];
-												const offsetX = Math.max(0, Math.min(rect.width, touch.clientX - rect.left));
-												const pct = offsetX / rect.width;
-												seekTo(pct * (isNaN(duration) ? 0 : duration));
-											};
-											const handleTouchEnd = () => {
-												document.removeEventListener('touchmove', handleTouchMove as any);
-												document.removeEventListener('touchend', handleTouchEnd as any);
-											};
-											document.addEventListener('touchmove', handleTouchMove as any, { passive: false });
-											document.addEventListener('touchend', handleTouchEnd as any);
-										}}
-									/>
 								</div>
 							</div>
+							<div className="text-[11px] text-muted-foreground w-[35px]">{formatTime(duration)}</div>
 						</div>
 					</div>
 

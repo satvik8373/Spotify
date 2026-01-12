@@ -25,9 +25,6 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
 
   const checkScrollButtons = useCallback(() => {
     if (!scrollRef.current) return;
@@ -64,55 +61,11 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
     });
   };
 
-  // Mouse drag functionality
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!scrollRef.current) return;
-    
-    setIsDragging(true);
-    setStartX(e.pageX - scrollRef.current.offsetLeft);
-    setScrollLeft(scrollRef.current.scrollLeft);
-    
-    // Prevent text selection
-    e.preventDefault();
-  };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging || !scrollRef.current) return;
-    
-    e.preventDefault();
-    const x = e.pageX - scrollRef.current.offsetLeft;
-    const walk = (x - startX) * 2; // Scroll speed multiplier
-    scrollRef.current.scrollLeft = scrollLeft - walk;
-  }, [isDragging, startX, scrollLeft]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
-
   return (
     <div 
       className="relative w-full overflow-hidden"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        handleMouseLeave();
-      }}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Left Arrow */}
       {showArrows && canScrollLeft && (
@@ -160,17 +113,14 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
           ref={scrollRef}
           className={cn(
             "flex gap-4 overflow-x-auto overflow-y-hidden",
-            "scrollbar-hide cursor-grab",
-            isDragging && "cursor-grabbing select-none",
+            "scrollbar-hide",
             snapToItems && "snap-x snap-mandatory",
             className
           )}
           style={{
-            scrollBehavior: isDragging ? 'auto' : 'smooth',
             WebkitOverflowScrolling: 'touch',
             overscrollBehaviorX: 'contain',
           }}
-          onMouseDown={handleMouseDown}
         >
           {children}
         </div>

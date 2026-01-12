@@ -52,7 +52,7 @@ const MemoizedSongItem = React.memo(({
   onUnlike: () => void;
 }) => {
   return (
-    <SwipeableSongItem onSwipeRight={onAddToQueue}>
+    <SwipeableSongItem>
       <div
         onClick={onPlay}
         className={cn(

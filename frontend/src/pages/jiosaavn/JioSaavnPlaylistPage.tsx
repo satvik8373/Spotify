@@ -448,9 +448,6 @@ const JioSaavnPlaylistPage: React.FC = () => {
                 return (
                   <SwipeableSongItem
                     key={song.id}
-                    onSwipeRight={() => {
-                      handleAddToQueue(song);
-                    }}
                     className="mx-[-16px]"
                   >
                     <div

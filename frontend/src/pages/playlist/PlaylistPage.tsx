@@ -940,16 +940,6 @@ export function PlaylistPage() {
                 return (
                 <SwipeableSongItem
                   key={song._id}
-                  onSwipeRight={() => {
-                    console.log('Swipe triggered for:', song.title);
-                    usePlayerStore.getState().playNextInQueue(song);
-                    toast.success(
-                      `Added "${song.title}" to play next`,
-                      {
-                        duration: 2000,
-                      }
-                    );
-                  }}
                   className="mx-[-16px]"
                 >
                   <div

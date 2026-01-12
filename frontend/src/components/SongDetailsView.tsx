@@ -50,14 +50,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const [isRepeating, setIsRepeating] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [isDraggingProgress, setIsDraggingProgress] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
-
-  // Swipe handling
-  const containerRef = useRef<HTMLDivElement>(null);
-  const touchStartY = useRef<number | null>(null);
-  const [swipeOffset, setSwipeOffset] = useState(0);
 
   // Update like status
   useEffect(() => {
@@ -96,30 +90,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     };
   }, [currentSong, storeCurrentTime, storeDuration, setStoreCurrentTime]);
 
-  // Swipe to close
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if ((e.target as HTMLElement).closest('.touch-none')) return;
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartY.current === null) return;
-    if ((e.target as HTMLElement).closest('.touch-none')) return;
-    
-    const deltaY = e.touches[0].clientY - touchStartY.current;
-    if (deltaY > 0) {
-      setSwipeOffset(deltaY);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (swipeOffset > 150) {
-      onClose();
-    }
-    setSwipeOffset(0);
-    touchStartY.current = null;
-  };
-
   const handleSeek = (clientX: number, rect: DOMRect) => {
     const offsetX = clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
@@ -135,25 +105,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     handleSeek(e.clientX, rect);
-  };
-
-  const handleProgressTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    setIsDraggingProgress(true);
-    const rect = e.currentTarget.getBoundingClientRect();
-    handleSeek(e.touches[0].clientX, rect);
-  };
-
-  const handleProgressTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isDraggingProgress) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    handleSeek(e.touches[0].clientX, rect);
-  };
-
-  const handleProgressTouchEnd = () => {
-    setIsDraggingProgress(false);
   };
 
   const handleLikeToggle = () => {
@@ -180,19 +131,13 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
   return (
     <div
-      ref={containerRef}
       className={cn(
-        'fixed inset-0 z-50 will-change-transform',
+        'fixed inset-0 z-50 transition-transform duration-300 ease-out',
         isOpen ? 'translate-y-0' : 'translate-y-full'
       )}
       style={{
-        transform: isOpen ? `translateY(${swipeOffset}px)` : 'translateY(100%)',
         background: `linear-gradient(180deg, ${albumColors.primary} 0%, ${albumColors.secondary} 100%)`,
-        transition: swipeOffset === 0 ? 'transform 0.3s ease-out' : 'none',
       }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 pt-6 relative">
@@ -281,29 +226,13 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       {/* Progress Bar */}
       <div className="px-6 mt-8">
         <div
-          className="relative w-full py-2 cursor-pointer group touch-none"
+          className="relative w-full py-2 cursor-pointer"
           onClick={handleProgressClick}
-          onTouchStart={handleProgressTouchStart}
-          onTouchMove={handleProgressTouchMove}
-          onTouchEnd={handleProgressTouchEnd}
         >
           <div className="relative w-full h-1 bg-white/20 rounded-full">
             <div
-              className="absolute h-full bg-white rounded-full will-change-[width]"
-              style={{ 
-                width: `${progress}%`,
-                transition: isDraggingProgress ? 'none' : 'width 0.1s linear'
-              }}
-            />
-            <div
-              className={cn(
-                "absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg will-change-[left,opacity]",
-                isDraggingProgress ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-              )}
-              style={{ 
-                left: `calc(${progress}% - 6px)`,
-                transition: isDraggingProgress ? 'opacity 0.15s' : 'left 0.1s linear, opacity 0.15s'
-              }}
+              className="absolute h-full bg-white rounded-full"
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
