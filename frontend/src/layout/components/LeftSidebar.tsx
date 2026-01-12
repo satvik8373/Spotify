@@ -158,6 +158,7 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
             )}
           </Link>
 
+
           {/* Favourite Playlists (from local likes) */}
           {!isCollapsed && <FavouritePlaylists />}
 

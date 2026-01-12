@@ -25,7 +25,7 @@ export function SharePlaylist({ playlist, trigger }: SharePlaylistProps) {
   
   // Generate shareable URL with playlist ID - direct link to playlist
   const shareUrl = `${window.location.origin}/playlist/${playlistId}`;
-  const shareText = `🎵 Check out "${playlist.name}" playlist with ${playlist.songs.length} songs on Mavrixfy!`;
+  const shareText = `Check out "${playlist.name}" playlist with ${playlist.songs.length} songs on Mavrixfy!`;
   
   // WhatsApp share URL
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`;

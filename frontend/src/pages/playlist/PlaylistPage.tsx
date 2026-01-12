@@ -24,7 +24,7 @@ import {
   Music2,
   Image as ImageIcon,
   ChevronLeft,
-  ListPlus
+  ListPlus,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
@@ -947,7 +947,6 @@ export function PlaylistPage() {
                       `Added "${song.title}" to play next`,
                       {
                         duration: 2000,
-                        icon: '🎵',
                       }
                     );
                   }}
@@ -1034,7 +1033,6 @@ export function PlaylistPage() {
                               `Added "${song.title}" to play next`,
                               {
                                 duration: 2000,
-                                icon: '🎵',
                               }
                             );
                           }}

@@ -6,6 +6,7 @@ import { spotifyAutoSyncService } from './services/spotifyAutoSyncService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
+import { cleanupOfflineData } from './utils/cleanupOfflineData';
 import { Loading } from './components/ui/loading';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
@@ -20,6 +21,11 @@ const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const About = lazy(() => import('./pages/About'));
+
+// JioSaavn pages
+const JioSaavnPlaylistPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistPage'));
+const JioSaavnPlaylistsPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistsPage'));
+const JioSaavnCategoriesPage = lazy(() => import('./pages/jiosaavn/JioSaavnCategoriesPage'));
 // import SharedSongPage from './pages/SharedSongPage';
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -163,6 +169,7 @@ const router = createBrowserRouter(
 					path: '/library',
 					element: <AuthGate><LibraryPage /></AuthGate>
 				},
+
 				{
 					path: '/liked-songs',
 					element: <AuthGate><LikedSongsPage /></AuthGate>
@@ -182,6 +189,18 @@ const router = createBrowserRouter(
 				{
 					path: '/song/:songId',
 					element: <AuthGate><SongPage /></AuthGate>
+				},
+				{
+					path: '/jiosaavn/playlist/:playlistId',
+					element: <AuthGate><JioSaavnPlaylistPage /></AuthGate>
+				},
+				{
+					path: '/jiosaavn/playlists',
+					element: <AuthGate><JioSaavnPlaylistsPage /></AuthGate>
+				},
+				{
+					path: '/jiosaavn/categories',
+					element: <AuthGate><JioSaavnCategoriesPage /></AuthGate>
 				},
 				{
 					path: '/debug/api',
@@ -218,6 +237,9 @@ function AppContent() {
 			try {
 				// Clear any Firebase auth redirect state to prevent errors
 				clearAuthRedirectState();
+
+				// Clean up any remaining offline download data
+				await cleanupOfflineData();
 
 				// Initialize performance optimizations
 				performanceService.addResourceHints();

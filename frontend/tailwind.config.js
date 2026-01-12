@@ -77,5 +77,34 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function({ addUtilities }) {
+      addUtilities({
+        '.scrollbar-hide': {
+          /* IE and Edge */
+          '-ms-overflow-style': 'none',
+          /* Firefox */
+          'scrollbar-width': 'none',
+          /* Safari and Chrome */
+          '&::-webkit-scrollbar': {
+            display: 'none'
+          }
+        },
+        '.scroll-smooth': {
+          'scroll-behavior': 'smooth',
+          '-webkit-overflow-scrolling': 'touch',
+        },
+        '.snap-x': {
+          'scroll-snap-type': 'x mandatory',
+        },
+        '.snap-center': {
+          'scroll-snap-align': 'center',
+        },
+        '.snap-start': {
+          'scroll-snap-align': 'start',
+        }
+      })
+    }
+  ],
 } 

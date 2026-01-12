@@ -384,7 +384,6 @@ const LikedSongsPage = () => {
     addSongToQueue(song);
     toast.success(`Added "${song.title}" to queue`, {
       duration: 2000,
-      icon: '🎵',
     });
   }, []);
 

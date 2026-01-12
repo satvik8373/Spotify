@@ -24,12 +24,10 @@ interface MusicStore {
   featuredSongs: Song[];
   madeForYouSongs: Song[];
   trendingSongs: Song[];
-  indianTrendingSongs: IndianSong[];
   indianNewReleases: IndianSong[];
   indianSearchResults: IndianSong[];
   bollywoodSongs: IndianSong[];
   hollywoodSongs: IndianSong[];
-  officialTrendingSongs: IndianSong[];
   hindiSongs: IndianSong[];
   isIndianMusicLoading: boolean;
   stats: Stats;
@@ -43,11 +41,9 @@ interface MusicStore {
   fetchSongs: () => Promise<void>;
 
   // Indian music methods
-  fetchIndianTrendingSongs: () => Promise<void>;
   fetchIndianNewReleases: () => Promise<void>;
   fetchBollywoodSongs: () => Promise<void>;
   fetchHollywoodSongs: () => Promise<void>;
-  fetchOfficialTrendingSongs: () => Promise<void>;
   fetchHindiSongs: () => Promise<void>;
   searchIndianSongs: (query: string) => Promise<void>;
   convertIndianSongToAppSong: (song: IndianSong) => Song;
@@ -180,12 +176,10 @@ export const useMusicStore = create<MusicStore>((set) => ({
   madeForYouSongs: [],
   featuredSongs: [],
   trendingSongs: [],
-  indianTrendingSongs: [],
   indianNewReleases: [],
   indianSearchResults: [],
   bollywoodSongs: [],
   hollywoodSongs: [],
-  officialTrendingSongs: [],
   hindiSongs: [],
   isIndianMusicLoading: false,
   stats: {
@@ -283,28 +277,6 @@ export const useMusicStore = create<MusicStore>((set) => ({
   },
 
   // Indian Music API Methods (optimized with request manager)
-  fetchIndianTrendingSongs: async () => {
-    const key = 'trending-songs';
-    return musicRequestManager.executeRequest(key, async () => {
-      set({ isIndianMusicLoading: true });
-      try {
-        const data = await fetchMusicJson('/jiosaavn/trending', { limit: 10 });
-        if (data?.data?.results && data.data.results.length > 0) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => convertSaavnTrack(item));
-          set({ indianTrendingSongs: formattedResults });
-        } else {
-          set({ indianTrendingSongs: [] });
-        }
-      } catch (error) {
-        set({ indianTrendingSongs: [] });
-      } finally {
-        set({ isIndianMusicLoading: false });
-      }
-    });
-  },
-
   fetchBollywoodSongs: async () => {
     const key = 'bollywood-songs';
     return musicRequestManager.executeRequest(key, async () => {
@@ -343,28 +315,6 @@ export const useMusicStore = create<MusicStore>((set) => ({
         }
       } catch (error) {
         set({ hollywoodSongs: [] });
-      } finally {
-        set({ isIndianMusicLoading: false });
-      }
-    });
-  },
-
-  fetchOfficialTrendingSongs: async () => {
-    const key = 'official-trending';
-    return musicRequestManager.executeRequest(key, async () => {
-      set({ isIndianMusicLoading: true });
-      try {
-        const data = await fetchMusicJson('/jiosaavn/trending', { limit: 15 });
-        if (data?.data?.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => convertSaavnTrack(item));
-          set({ officialTrendingSongs: formattedResults });
-        } else {
-          set({ officialTrendingSongs: [] });
-        }
-      } catch (error) {
-        set({ officialTrendingSongs: [] });
       } finally {
         set({ isIndianMusicLoading: false });
       }

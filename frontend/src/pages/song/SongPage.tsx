@@ -58,21 +58,9 @@ const SongPage = () => {
           setCurrentSong(foundSong as any);
           setIsPlaying(true);
         } else {
-          // Try searching with trending songs as fallback
-          await useMusicStore.getState().fetchIndianTrendingSongs();
-          const trendingSongs = useMusicStore.getState().indianTrendingSongs;
-          const trendingSong = trendingSongs.find((s: any) => 
-            s._id === songId || (s as any).id === songId
-          );
-
-          if (trendingSong) {
-            setSong(trendingSong);
-            setCurrentSong(trendingSong as any);
-            setIsPlaying(true);
-          } else {
-            setError('Song not found');
-            toast.error('Song not found. It may have been removed or is not available.');
-          }
+          // Song not found
+          setError('Song not found');
+          toast.error('Song not found. It may have been removed or is not available.');
         }
       } catch (err) {
         console.error('Error loading song:', err);

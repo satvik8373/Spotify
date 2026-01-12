@@ -1,7 +1,7 @@
 {
   "name": "Mavrixfy",
   "short_name": "Music App",
-  "description": "Discover, listen to, and organize music you love",
+  "description": "Discover, listen to, and organize music you love - now with offline downloads",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#121212",
@@ -27,6 +27,13 @@
       "description": "View your liked songs",
       "url": "/liked-songs",
       "icons": [{ "src": "/shortcut-liked-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Downloads",
+      "short_name": "Downloads",
+      "description": "View your offline downloads",
+      "url": "/downloads",
+      "icons": [{ "src": "/shortcut-download-96.png", "sizes": "96x96" }]
     },
     {
       "name": "Search",
@@ -72,5 +79,19 @@
     "src": "/service-worker.js",
     "scope": "/",
     "use_cache": false
-  }
+  },
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "audio/*": [".mp3", ".wav", ".ogg", ".m4a"]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+music",
+      "url": "/?track=%s"
+    }
+  ]
 } 

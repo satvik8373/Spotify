@@ -25,7 +25,7 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
   
   // Generate shareable URL with song title for better searchability
   const shareUrl = `${window.location.origin}/search?q=${encodeURIComponent(song.title)}&songId=${songId}`;
-  const shareText = `🎵 Check out "${song.title}" by ${song.artist} on Mavrixfy!`;
+  const shareText = `Check out "${song.title}" by ${song.artist} on Mavrixfy!`;
   
   // WhatsApp share URL
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`;

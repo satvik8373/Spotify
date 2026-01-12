@@ -33,7 +33,6 @@ export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
       // Show toast notifications for important events
       if (newStatus.type === 'completed' && newStatus.message.includes('Added')) {
         toast.success(newStatus.message, {
-          icon: '🎵',
           duration: 4000,
         });
       } else if (newStatus.type === 'error') {

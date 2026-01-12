@@ -72,6 +72,11 @@ export const usePlayerStore = create<PlayerState>()(
       skipRestoreUntilTs: 0,
 
       setCurrentSong: (song) => {
+        // Filter out blob URLs from old download system
+        if (song.audioUrl && song.audioUrl.startsWith('blob:')) {
+          console.warn('Skipping song with blob URL from old download system:', song.title);
+          return;
+        }
         set({ currentSong: song });
         // Removed immediate localStorage write - will be handled by batch save
       },
@@ -103,14 +108,22 @@ export const usePlayerStore = create<PlayerState>()(
       playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
 
-        // Validate index
-        const validIndex = Math.max(0, Math.min(initialIndex, songs.length - 1));
+        // Filter out songs with blob URLs from old download system
+        const validSongs = songs.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
+        
+        if (validSongs.length === 0) {
+          console.warn('No valid songs to play (all had blob URLs)');
+          return;
+        }
+
+        // Adjust initial index if songs were filtered out
+        const validIndex = Math.max(0, Math.min(initialIndex, validSongs.length - 1));
 
         // Set player state
         set({
-          queue: songs,
+          queue: validSongs,
           currentIndex: validIndex,
-          currentSong: songs[validIndex],
+          currentSong: validSongs[validIndex],
           currentTime: 0, // Reset time for new album
           hasUserInteracted: true // Assume user interaction when explicitly playing
         });
@@ -118,7 +131,7 @@ export const usePlayerStore = create<PlayerState>()(
         // Save to localStorage as a backup for components that need it directly
         try {
           const playerState = {
-            currentSong: songs[validIndex],
+            currentSong: validSongs[validIndex],
             currentTime: 0, // Reset time for new album
             timestamp: new Date().toISOString()
           };
@@ -419,6 +432,21 @@ export const usePlayerStore = create<PlayerState>()(
 setTimeout(() => {
   // Auto-restore interrupted playback state from before refresh
   const store = usePlayerStore.getState();
+  
+  // Clean up any blob URLs from the current song and queue
+  if (store.currentSong && store.currentSong.audioUrl && store.currentSong.audioUrl.startsWith('blob:')) {
+    console.log('Cleaning up blob URL from current song');
+    store.setCurrentSong({ ...store.currentSong, audioUrl: '' });
+  }
+  
+  if (store.queue.length > 0) {
+    const cleanQueue = store.queue.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
+    if (cleanQueue.length !== store.queue.length) {
+      console.log('Cleaned up blob URLs from queue');
+      usePlayerStore.setState({ queue: cleanQueue });
+    }
+  }
+
   // console.log('Player store initialized with:', store.currentSong?.title || 'no song');
 
   // If we have a song but no queue, try to reconstruct minimum queue

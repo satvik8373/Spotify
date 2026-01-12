@@ -283,3 +283,144 @@
 * {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
+
+/* Prevent horizontal overflow globally */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Smooth scrolling for all scroll containers */
+.scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Enhanced scrollbar hiding */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Prevent content from causing horizontal scroll */
+.overflow-x-hidden {
+  overflow-x: hidden !important;
+}
+
+/* Smooth gradient transitions */
+.gradient-transition {
+  transition: background 1500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Card hover effects */
+.card-hover-effect {
+  transition: all 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Mobile scroll fix */
+.mobile-scroll-fix {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Ensure no horizontal overflow on any element */
+* {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Fix for grid layouts to prevent overflow */
+.grid {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Ensure flex containers don't overflow */
+.flex {
+  min-width: 0;
+}
+
+/* Prevent text from causing overflow */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Smooth scrolling for main content */
+.main-content-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Spotify-style gradient flow */
+.spotify-gradient-flow {
+  background: linear-gradient(180deg, 
+    var(--gradient-color, #1ed760) 0%, 
+    color-mix(in srgb, var(--gradient-color, #1ed760) 85%, transparent) 10%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 70%, transparent) 20%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 55%, transparent) 30%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 40%, transparent) 40%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 25%, transparent) 50%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 15%, transparent) 60%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 8%, transparent) 70%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 4%, transparent) 80%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 2%, transparent) 90%,
+    transparent 100%
+  );
+  transition: background 1200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Enhanced card hover with better gradient integration */
+.recently-played-card {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 600ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.recently-played-card:hover {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Spotify-style gradient with subtle noise texture */
+.spotify-gradient-bg {
+  position: relative;
+}
+
+.spotify-gradient-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.01) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.015) 0%, transparent 50%);
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Smooth color transitions for dynamic backgrounds */
+.dynamic-bg-transition {
+  transition: background 1000ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: background;
+}
+
+/* Improved text contrast on gradient backgrounds */
+.gradient-text-shadow {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}

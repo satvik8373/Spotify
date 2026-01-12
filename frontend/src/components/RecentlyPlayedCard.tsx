@@ -48,9 +48,11 @@ export function RecentlyPlayedCard({
   return (
     <div
       className={cn(
-        'group relative h-[48px] md:h-[64px] w-full md:w-[calc(100%-4px)] rounded-[4px] overflow-hidden cursor-pointer',
-        'transition-all duration-500 ease-in-out',
-        isHovered ? 'bg-white/40' : 'bg-white/10 md:bg-white/15' // Brighter background on desktop default? Or keep verified.
+        'group relative h-[48px] md:h-[64px] w-full rounded-[4px] overflow-hidden cursor-pointer',
+        'recently-played-card',
+        isHovered 
+          ? 'bg-white/25' 
+          : 'bg-white/10 md:bg-white/15 hover:bg-white/20'
       )}
       onMouseEnter={() => {
         setIsHovered(true);

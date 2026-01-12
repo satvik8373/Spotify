@@ -1047,8 +1047,8 @@ const AudioPlayer = () => {
     const audio = audioRef.current;
     const songUrl = currentSong.audioUrl;
 
-    // Validate the URL
-    if (!isValidUrl(songUrl)) {
+    // Validate the URL and reject blob URLs from old download system
+    if (!isValidUrl(songUrl) || songUrl.startsWith('blob:')) {
       // Try to find audio for this song
 
       // Use setTimeout to avoid blocking the UI
@@ -2157,7 +2157,7 @@ const AudioPlayer = () => {
 
       <audio
         ref={audioRef}
-        src={currentSong?.audioUrl ? currentSong.audioUrl.replace(/^http:\/\//, 'https://') : undefined}
+        src={currentSong?.audioUrl && !currentSong.audioUrl.startsWith('blob:') ? currentSong.audioUrl.replace(/^http:\/\//, 'https://') : undefined}
         autoPlay={isPlaying}
         onLoadStart={() => {
           // Reset restoration flag when loading new audio

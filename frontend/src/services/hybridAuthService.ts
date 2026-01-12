@@ -201,7 +201,7 @@ async function syncWithBackend(idToken: string, firebaseUser: any) {
     axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
     
     // Sync user with backend (Firebase token verified server-side)
-    const response = await axiosInstance.post('/api/auth/firebase', {
+    const response = await axiosInstance.post('/auth/firebase', {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
@@ -250,7 +250,7 @@ export const register = async (email: string, password: string, fullName: string
         const idToken = await user.getIdToken();
         
         // Call backend API to create user
-        const response = await fetch(`${API_URL}/api/auth/register`, {
+        const response = await fetch(`${API_URL}/auth/register`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -296,7 +296,7 @@ export const signOut = async () => {
     
     // Sign out from backend if it's available (do in background)
     if (API_URL && userId) {
-      fetch(`${API_URL}/api/auth/logout`, {
+      fetch(`${API_URL}/auth/logout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -379,7 +379,7 @@ export const updateUserProfile = async (user: User, data: {
         const idToken = await user.getIdToken();
         
         // Call backend API to update user
-        const response = await fetch(`${API_URL}/api/auth/update-profile`, {
+        const response = await fetch(`${API_URL}/auth/update-profile`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -421,7 +421,7 @@ export const resetPassword = async (email: string) => {
     // Notify backend if it's available
     if (API_URL) {
       try {
-        const response = await fetch(`${API_URL}/api/auth/reset-password-request`, {
+        const response = await fetch(`${API_URL}/auth/reset-password-request`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -534,7 +534,7 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
         // Synchronize with backend (non-blocking)
         try {
           axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
-          await axiosInstance.post('/api/auth/firebase', {
+          await axiosInstance.post('/auth/firebase', {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName || user.email?.split('@')[0] || 'User',

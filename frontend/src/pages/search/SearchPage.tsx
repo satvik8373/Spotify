@@ -17,7 +17,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '../../contexts/AuthContext';
-import IndianMusicPlayer from '@/components/IndianMusicPlayer';
 import { ContentLoading } from '@/components/ui/loading';
 import { PlaylistCard } from '@/components/playlist/PlaylistCard';
 import type { Playlist } from '@/types';
@@ -593,12 +592,7 @@ const SearchPage = () => {
             {renderPlaylistResults()}
 
             {/* Song Results */}
-            {sortedIndianResults.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold tracking-tight mb-4">Songs</h2>
-                <IndianMusicPlayer />
-              </div>
-            )}
+            {/* Songs section removed - IndianMusicPlayer no longer needed */}
 
             {/* Show message if no results */}
             {sortedIndianResults.length === 0 && playlistResults.length === 0 && (

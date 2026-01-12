@@ -44,92 +44,67 @@ export function PlaylistCard({
 
   return (
     <>
-      {/* Spotify-style playlist card - minimal design matching Figma */}
+      {/* JioSaavn-style playlist card design */}
       <div 
         className={cn(
-          "group relative",
-          "w-full",
-          "rounded-sm md:rounded-md",
-          "transition-colors duration-200",
-          "cursor-pointer",
-          "p-3",
+          "group relative w-full rounded-sm md:rounded-md transition-colors duration-200 cursor-pointer p-2",
           className
         )}
         onClick={handleCardClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Hover background - smaller width */}
+        {/* Hover background */}
         <div 
           className={cn(
-            "absolute inset-0",
-            "bg-[#1a1a1a] rounded-sm md:rounded-md",
-            "transition-opacity duration-200",
-            "pointer-events-none",
+            "absolute inset-0 bg-card rounded-sm md:rounded-md transition-opacity duration-200 pointer-events-none",
             isHovered ? "opacity-100" : "opacity-0"
           )}
         />
         
-        {/* Content wrapper - relative positioning */}
         <div className="relative">
-          {/* Album Art Container */}
-          <div className="relative w-full aspect-square mb-1">
-          {/* Album Image */}
-          <div className="w-full h-full rounded-none md:rounded overflow-hidden shadow-lg">
-            <img
-              src={playlist.imageUrl || '/default-playlist.jpg'}
-              alt={playlist.name}
-              className="w-full h-full object-cover"
-              onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
-              loading="lazy"
-            />
-          </div>
-
-          {/* Play Button - Spotify Green - Desktop Only */}
-          <div 
-            className={cn(
-              "hidden md:block",
-              "absolute bottom-2 right-2",
-              "transition-all duration-300 ease-in-out",
-              isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-            )}
-          >
-            <button
-              onClick={handlePlayClick}
-              className={cn(
-                "w-12 h-12 rounded-full",
-                "bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105",
-                "flex items-center justify-center",
-                "shadow-2xl",
-                "transition-all duration-200"
-              )}
-              aria-label="Play playlist"
-            >
-              <Play 
-                className="w-5 h-5 ml-0.5" 
-                fill="black"
-                stroke="none"
+          {/* Playlist Image */}
+          <div className="relative w-full aspect-square mb-3">
+            <div className="w-full h-full rounded-md overflow-hidden shadow-lg">
+              <img
+                src={playlist.imageUrl || '/default-playlist.jpg'}
+                alt={playlist.name}
+                className="w-full h-full object-cover"
+                onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
+                loading="lazy"
               />
-            </button>
-          </div>
-        </div>
+            </div>
 
-        {/* Playlist Info - Fixed height for consistent hover background */}
-        <div className="px-0 mt-2 w-full overflow-hidden h-[40px] flex items-start">
-          {/* Playlist Title - using description styling */}
-          {showDescription && (
-            <p 
+            {/* Play Button */}
+            <div 
               className={cn(
-                "text-[#b3b3b3] text-xs font-normal",
-                "line-clamp-2",
-                "leading-snug",
-                "break-words"
+                "absolute bottom-2 right-2 transition-all duration-300 ease-in-out",
+                isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
               )}
             >
+              <button
+                onClick={handlePlayClick}
+                className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90 hover:scale-105 flex items-center justify-center shadow-2xl transition-all duration-200"
+                aria-label="Play playlist"
+              >
+                <Play className="w-4 h-4 ml-0.5 text-primary-foreground" fill="currentColor" stroke="none" />
+              </button>
+            </div>
+          </div>
+
+          {/* Playlist Info */}
+          <div className="space-y-1">
+            <h3 className="text-foreground text-sm font-medium line-clamp-2 leading-tight">
               {playlist.name}
-            </p>
-          )}
-        </div>
+            </h3>
+            
+            {showDescription && (
+              <p className="text-muted-foreground text-xs line-clamp-2">
+                {playlist.songs?.length || 0} songs
+                {playlist.description && ` • ${playlist.description}`}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
