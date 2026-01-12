@@ -675,8 +675,11 @@ const IndianMusicPlayer = () => {
       {/* Song Detail View */}
       <SongDetailView />
       
-      {/* Refresh Button */}
-      <div className="flex justify-end px-1">
+      {/* Refresh Button - Better positioned */}
+      <div className="flex justify-between items-center mb-4 px-3 md:px-8">
+        <h2 className="text-white text-lg md:text-xl font-bold">
+          Discover Music
+        </h2>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -685,7 +688,7 @@ const IndianMusicPlayer = () => {
                 size="icon"
                 onClick={refreshSongs}
                 disabled={isRefreshing}
-                className="rounded-full h-7 w-7"
+                className="rounded-full h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
               >
                 <RefreshCcw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               </Button>
@@ -707,19 +710,14 @@ const IndianMusicPlayer = () => {
         </div>
       )}
       
-      {/* Loading State */}
-      {isIndianMusicLoading && (
-        <div className="py-6 flex justify-center">
-          <Loader className="size-6 animate-spin text-muted-foreground" />
-        </div>
-      )}
+      {/* Loading State - Removed to eliminate homepage loading spinner */}
       
       {/* Trending Songs Section - Horizontal Slider */}
       {indianTrendingSongs.length > 0 && (
         <section className="mb-4">
           <SectionHeader title="Most Popular Songs" />
           <div className="relative -mx-3 md:-mx-8">
-            <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+            <div className="overflow-x-auto overflow-y-visible hidden-scroll px-3 md:px-8 py-2">
               <div className="flex gap-0">
                 {indianTrendingSongs.map(song => (
                   <div key={song.id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
@@ -737,7 +735,7 @@ const IndianMusicPlayer = () => {
         <section className="mb-4">
           <SectionHeader title="Bollywood Hits" />
           <div className="relative -mx-3 md:-mx-8">
-            <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+            <div className="overflow-x-auto overflow-y-visible hidden-scroll px-3 md:px-8 py-2">
               <div className="flex gap-0">
                 {bollywoodSongs.map(song => (
                   <div key={song.id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
@@ -755,7 +753,7 @@ const IndianMusicPlayer = () => {
         <section className="mb-4">
           <SectionHeader title="International Hits" />
           <div className="relative -mx-3 md:-mx-8">
-            <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+            <div className="overflow-x-auto overflow-y-visible hidden-scroll px-3 md:px-8 py-2">
               <div className="flex gap-0">
                 {hollywoodSongs.map(song => (
                   <div key={song.id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">

@@ -44,21 +44,18 @@ interface RecentPlaylist {
 
 const HomePage = () => {
   const {
-    featuredPlaylists,
     publicPlaylists,
-    userPlaylists,
-    fetchFeaturedPlaylists,
-    fetchUserPlaylists,
     fetchPublicPlaylists,
     createPlaylist,
   } = usePlaylistStore();
   const { isAuthenticated, userId } = useAuthStore();
   const navigate = useNavigate();
-  const { isOnline, user } = useAuth();
+  const { isOnline } = useAuth();
   const [showCreatePlaylistDialog, setShowCreatePlaylistDialog] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistDesc, setNewPlaylistDesc] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [recentPlaylists, setRecentPlaylists] = useState<RecentPlaylist[]>([]);
@@ -78,16 +75,33 @@ const HomePage = () => {
 
 
   useEffect(() => {
-    fetchFeaturedPlaylists();
-    fetchPublicPlaylists();
-    if (isAuthenticated) {
-      fetchUserPlaylists();
-    }
-    // Ensure Indian songs are available (will use mock data first then try network)
-    if (!indianTrendingSongs || indianTrendingSongs.length === 0) {
-      fetchIndianTrendingSongs().catch(() => { });
-    }
-  }, [fetchFeaturedPlaylists, fetchUserPlaylists, fetchPublicPlaylists, isAuthenticated, fetchIndianTrendingSongs, indianTrendingSongs?.length]);
+    const initializeHomePage = async () => {
+      try {
+        // Load all data in parallel for faster loading
+        await Promise.all([
+          fetchPublicPlaylists(),
+        ]);
+        
+        // Ensure Indian songs are available (will use mock data first then try network)
+        if (!indianTrendingSongs || indianTrendingSongs.length === 0) {
+          fetchIndianTrendingSongs().catch(() => { });
+        }
+        
+        // Small delay to ensure smooth transition from splash screen
+        setTimeout(() => {
+          setIsInitialLoading(false);
+        }, 100);
+      } catch (error) {
+        console.error('Error initializing homepage:', error);
+        // Still show content even if some requests fail
+        setTimeout(() => {
+          setIsInitialLoading(false);
+        }, 200);
+      }
+    };
+
+    initializeHomePage();
+  }, [fetchPublicPlaylists, isAuthenticated, fetchIndianTrendingSongs, indianTrendingSongs?.length]);
 
   // Load recent playlists from localStorage
   useEffect(() => {
@@ -196,7 +210,7 @@ const HomePage = () => {
       setNewPlaylistDesc('');
 
       // Refresh user playlists
-      fetchUserPlaylists();
+      fetchPublicPlaylists();
 
       // Navigate to library after creation
       navigate('/library');
@@ -228,12 +242,73 @@ const HomePage = () => {
 
   const activeColor = hoveredColor || likedSongsColor || '#121212';
 
+  // Show loading state with proper layout structure
+  if (isInitialLoading) {
+    return (
+      <main className="flex flex-col h-full overflow-hidden bg-[#121212]">
+        <ScrollArea className="flex-1 h-full smooth-scroll">
+          <div className="pt-4 pb-24 w-full max-w-[1950px] mx-auto px-3 md:px-8 box-border relative min-h-screen">
+            {/* Navigation Tabs Skeleton */}
+            <div className="mb-4 hidden md:flex gap-2">
+              <div className="px-3 py-1 rounded-full w-12 h-8 skeleton-pulse"></div>
+              <div className="px-3 py-1 rounded-full w-16 h-8 skeleton-pulse"></div>
+              <div className="px-3 py-1 rounded-full w-20 h-8 skeleton-pulse"></div>
+            </div>
+
+            {/* Recently played skeleton */}
+            <div className="mt-2 mb-8">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="h-[48px] md:h-[64px] w-full rounded-[4px] skeleton-pulse" 
+                    style={{animationDelay: `${i * 0.1}s`}}
+                  ></div>
+                ))}
+              </div>
+            </div>
+
+            {/* Section skeletons */}
+            {Array.from({ length: 2 }).map((_, sectionIndex) => (
+              <section key={sectionIndex} className="mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-8 rounded w-48 skeleton-pulse"></div>
+                  <div className="h-6 rounded w-20 skeleton-pulse"></div>
+                </div>
+                <div className="relative -mx-3 md:-mx-8">
+                  <div className="overflow-x-auto overflow-y-visible hidden-scroll px-3 md:px-8 py-2">
+                    <div className="flex gap-0">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
+                          <div className="p-3">
+                            <div 
+                              className="w-full aspect-square rounded skeleton-pulse mb-2" 
+                              style={{animationDelay: `${i * 0.1}s`}}
+                            ></div>
+                            <div 
+                              className="h-4 rounded skeleton-pulse" 
+                              style={{animationDelay: `${i * 0.1 + 0.1}s`}}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            ))}
+          </div>
+        </ScrollArea>
+      </main>
+    );
+  }
+
   return (
     <main
-      className="flex flex-col h-full overflow-hidden bg-[#121212]"
+      className="flex flex-col h-full overflow-hidden bg-[#121212] opacity-0 animate-[fadeIn_0.3s_ease-out_forwards]"
     >
-      <ScrollArea className="flex-1 h-full" ref={scrollRef}>
-        <div className="pt-4 pb-24 w-full max-w-[1950px] mx-auto px-3 md:px-8 box-border relative">
+      <ScrollArea className="flex-1 h-full smooth-scroll" ref={scrollRef}>
+        <div className="pt-4 pb-24 w-full max-w-[1950px] mx-auto px-3 md:px-8 box-border relative min-h-screen">
           {/* Gradient background container - Spotify-style dynamic background */}
 
 
@@ -354,78 +429,7 @@ const HomePage = () => {
               </div>
             )}
 
-            {/* Made For User - User's Created Playlists */}
-            {isOnline && isAuthenticated && userPlaylists.length > 0 && (
-              <section className="mb-4">
-                {/* Custom Header with Spotify-style "Made For" design */}
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className="text-white text-sm font-normal mb-1">Made For</p>
-                    <h2 className="text-white text-2xl md:text-[32px] font-bold tracking-tight leading-none">
-                      {user?.name || 'You'}
-                    </h2>
-                  </div>
-                  <button
-                    onClick={() => navigate('/library')}
-                    className="text-[#adadad] text-sm md:text-base font-bold tracking-wider uppercase hover:underline transition-all"
-                  >
-                    SHOW ALL
-                  </button>
-                </div>
 
-                {/* Horizontal Scrollable Playlist Slider - Shows 5.5 cards */}
-                <div className="relative -mx-3 md:-mx-8">
-                  <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
-                    <div className="flex gap-0">
-                      {userPlaylists
-                        .filter(playlist => playlist.createdBy?.uid === userId)
-                        .map((playlist) => (
-                          <div key={playlist._id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
-                            <PlaylistCard
-                              playlist={playlist}
-                              showDescription={true}
-                            />
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
-
-
-
-            {/* Featured Playlists Section */}
-            {featuredPlaylists.length > 0 && (
-              <section className="mb-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-white text-2xl md:text-[30px] font-bold tracking-tight leading-none">
-                    Made For You
-                  </h2>
-                  <button
-                    onClick={() => navigate('/library')}
-                    className="text-[#adadad] text-sm md:text-base font-bold tracking-wider uppercase hover:underline transition-all"
-                  >
-                    SHOW ALL
-                  </button>
-                </div>
-
-                <div className="relative -mx-3 md:-mx-8">
-                  <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
-                    <div className="flex gap-0">
-                      {featuredPlaylists.map((playlist) => (
-                        <div key={playlist._id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
-                          <PlaylistCard
-                            playlist={playlist}
-                            showDescription={true}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
 
             {/* All Public Playlists */}
             {isOnline && publicPlaylists.length > 0 && (
@@ -443,7 +447,7 @@ const HomePage = () => {
                 </div>
 
                 <div className="relative -mx-3 md:-mx-8">
-                  <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+                  <div className="overflow-x-auto overflow-y-visible hidden-scroll px-3 md:px-8 py-2">
                     <div className="flex gap-0">
                       {publicPlaylists.map((playlist) => (
                         <div key={playlist._id} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">
@@ -469,7 +473,7 @@ const HomePage = () => {
                 </div>
 
                 <div className="relative -mx-3 md:-mx-8">
-                  <div className="overflow-x-auto overflow-y-visible no-scrollbar px-3 md:px-8 py-2">
+                  <div className="overflow-x-auto overflow-y-visible hidden-scroll px-3 md:px-8 py-2">
                     <div className="flex gap-0">
                       {indianTrendingSongs.map((song, index) => (
                         <div key={song.id || index} className="flex-none w-[calc(100%/2.2)] sm:w-[calc(100%/3.3)] md:w-[calc(100%/4.3)] lg:w-[calc(100%/5.5)] xl:w-[calc(100%/5.5)]">

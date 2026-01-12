@@ -216,7 +216,7 @@ function AddSongsDialog({
           </Button>
         </div>
 
-        <ScrollArea className="h-[400px] pr-4 mt-4">
+        <ScrollArea className="h-[400px] pr-4 mt-4 thin-scroll">
           {isIndianMusicLoading ? (
             <ContentLoading text="Loading songs..." height="p-4" />
           ) : (
@@ -722,7 +722,7 @@ export function PlaylistPage() {
   return (
     <div className="flex flex-col h-full bg-background text-foreground playlist-fullscreen">
       {/* Main scrollable container */}
-      <div ref={containerRef} className="h-full overflow-y-auto playlist-content">
+      <div ref={containerRef} className="h-full overflow-y-auto playlist-content smooth-scroll">
         {/* Back button - visible only when not scrolled */}
         <div className={`absolute top-3 left-3 z-30`}>
           <Button

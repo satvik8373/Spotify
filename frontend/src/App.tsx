@@ -6,7 +6,7 @@ import { spotifyAutoSyncService } from './services/spotifyAutoSyncService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
-import { PageLoading, Loading } from './components/ui/loading';
+import { Loading } from './components/ui/loading';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
@@ -81,11 +81,11 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 
 		// If coming from login redirect, show minimal loading
 		if (isFromLoginRedirect) {
-			return <Loading size="sm" />;
+			return <Loading size="xs" />;
 		}
 
-		// Otherwise show loading indicator with smoother animation
-		return <Loading size="md" />;
+		// Otherwise show minimal loading indicator
+		return <Loading size="sm" />;
 	}
 
 	// If not authenticated, redirect to login with return URL
@@ -110,14 +110,14 @@ const LandingRedirector = () => {
 		return <Navigate to="/home" replace />;
 	}
 
-	// Still loading, but no cached auth - show loading indicator
+	// Still loading, but no cached auth - show minimal loading indicator
 	if (loading && !hasCachedAuth) {
 		// Smaller spinner for login redirects
 		if (isFromLoginRedirect) {
-			return <Loading size="sm" />;
+			return <Loading size="xs" />;
 		}
 
-		return <Loading size="md" />;
+		return <Loading size="sm" />;
 	}
 
 	// Not authenticated, go to login
@@ -239,8 +239,8 @@ function AppContent() {
 				const fromAuthRedirect = getSessionStorage('auth_redirect') === '1';
 
 				// Always show splash screen with video animation
-				// Just reduce the minimum time for authenticated users
-				const splashMinTime = (hasCachedAuth || fromAuthRedirect) ? 1500 : 2500;
+				// Reduced timing to prevent getting stuck
+				const splashMinTime = (hasCachedAuth || fromAuthRedirect) ? 500 : 1000;
 				
 				setTimeout(() => {
 					setInitialized(true);
@@ -276,14 +276,18 @@ function AppContent() {
 
 	// Always show splash screen on initial load until initialization completes
 	if (showSplash || !initialized) {
-		return <SplashScreen onComplete={() => initialized && setShowSplash(false)} />;
+		return (
+			<div className="fixed inset-0 bg-black">
+				<SplashScreen onComplete={() => initialized && setShowSplash(false)} />
+			</div>
+		);
 	}
 
-	// Always show main app content, login will be handled in the header
+	// Always show main app content with black background to prevent white flicker
 	return (
-		<>
+		<div className="min-h-screen bg-[#121212]">
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
-			<Suspense fallback={<PageLoading text="Loading..." />}>
+			<Suspense fallback={<Loading size="md" />}>
 				<RouterProvider
 					router={router}
 					future={{ v7_startTransition: true }}
@@ -312,7 +316,7 @@ function AppContent() {
 			/>
 			<PWAInstallPrompt />
 			<AndroidPWAHelper />
-		</>
+		</div>
 	);
 }
 

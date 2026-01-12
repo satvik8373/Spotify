@@ -103,10 +103,13 @@ async function handleSameOriginRequest(request) {
     // Try network first
     const networkResponse = await fetch(request);
     
-    // Cache successful responses
-    if (networkResponse.ok) {
+    // Only cache successful responses that are not partial (status 206)
+    if (networkResponse.ok && networkResponse.status !== 206) {
       const cache = await caches.open(DYNAMIC_CACHE);
-      cache.put(request, networkResponse.clone());
+      // Clone the response before caching to avoid consuming it
+      cache.put(request, networkResponse.clone()).catch(() => {
+        // Silently ignore cache errors for partial responses or other issues
+      });
     }
     
     return networkResponse;

@@ -101,7 +101,14 @@
 		<style>
 			/* Mobile-first critical CSS */
 			* { box-sizing: border-box; }
-			body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+			body { 
+				margin: 0; 
+				padding: 0; 
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+				background-color: #121212 !important; /* Prevent white flicker */
+				color: white;
+			}
+			html { background-color: #121212 !important; } /* Prevent white flicker */
 			.mobile-device { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 			.mobile-device * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 			.mobile-device input, .mobile-device textarea { -webkit-user-select: text; user-select: text; }
@@ -112,6 +119,33 @@
 			/* Mobile touch targets */
 			@media (max-width: 768px) {
 				button, a, input, select, textarea { min-width: 44px; min-height: 44px; }
+			}
+			
+			/* Smooth fade animation */
+			@keyframes fadeIn {
+				from { opacity: 0; }
+				to { opacity: 1; }
+			}
+			
+			/* YouTube-like skeleton animation - slower and smoother */
+			@keyframes skeletonPulse {
+				0% { 
+					opacity: 1; 
+					transform: translateX(0);
+				}
+				50% { 
+					opacity: 0.6; 
+					transform: translateX(0);
+				}
+				100% { 
+					opacity: 1; 
+					transform: translateX(0);
+				}
+			}
+			
+			.skeleton-pulse {
+				animation: skeletonPulse 2.5s ease-in-out infinite;
+				background: rgba(255, 255, 255, 0.1);
 			}
 		</style>
 	</head>
@@ -137,8 +171,8 @@
 			// Dynamic PWA theme color matching with homepage
 			function updatePWAThemeColors() {
 				const isDark = document.documentElement.classList.contains('dark');
-				const themeColor = isDark ? '#121212' : '#ffffff';
-				const statusBarStyle = isDark ? 'black-translucent' : 'default';
+				const themeColor = '#121212'; // Always use dark theme color
+				const statusBarStyle = 'black-translucent'; // Always use dark status bar
 				
 				// Update theme-color meta tag
 				const themeMeta = document.querySelector('meta[name="theme-color"]');
@@ -152,7 +186,7 @@
 					appleMeta.setAttribute('content', statusBarStyle);
 				}
 				
-				// Update body background to match homepage
+				// Update body background to match homepage - always dark
 				document.body.style.backgroundColor = themeColor;
 				document.body.style.transition = 'background-color 0.3s ease';
 			}

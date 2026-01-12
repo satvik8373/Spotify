@@ -486,7 +486,7 @@ const SearchPage = () => {
 
   return (
     <div className="h-full overflow-hidden bg-[#121212]">
-      <ScrollArea className="h-full">
+      <ScrollArea className="h-full smooth-scroll">
         <div className="pt-6 pb-24 w-full max-w-[1950px] mx-auto px-3 md:px-8 box-border">
           {/* Search Box - Spotify-style white design with speech recognition */}
           <div className="mb-6">

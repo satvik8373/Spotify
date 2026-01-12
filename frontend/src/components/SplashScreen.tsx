@@ -7,7 +7,6 @@ interface SplashScreenProps {
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [showVideo, setShowVideo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const completedRef = useRef(false);
 
@@ -18,9 +17,8 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated
     );
     
-    // For cached authenticated users, complete faster
-    // For new users, allow time for video animation to play
-    const delay = hasCachedAuth ? 1200 : 2800;
+    // Reduced timing for faster completion - don't get stuck
+    const delay = hasCachedAuth ? 600 : 1200;
     
     const timer = setTimeout(() => {
       if (!completedRef.current) {
@@ -34,21 +32,22 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
 
   const handleVideoLoad = () => {
     setVideoLoaded(true);
-    // Start the crossfade transition after video is loaded
-    setTimeout(() => {
-      setShowVideo(true);
-    }, 200); // Small delay to ensure video is ready
   };
 
   const handleVideoError = () => {
-    console.warn('Video failed to load, showing static logo');
+    console.warn('Video failed to load, showing fallback');
     setVideoError(true);
+    // If video fails, complete splash screen immediately
+    if (!completedRef.current) {
+      completedRef.current = true;
+      onComplete();
+    }
   };
 
   const handleVideoEnd = () => {
     if (!completedRef.current) {
       completedRef.current = true;
-      setTimeout(onComplete, 300);
+      setTimeout(onComplete, 100);
     }
   };
 
@@ -60,6 +59,20 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
     }
   }, []);
 
+  // Fallback mechanism - ensure splash screen never gets stuck
+  useEffect(() => {
+    const maxWaitTime = 3000; // Maximum 3 seconds
+    const fallbackTimer = setTimeout(() => {
+      if (!completedRef.current) {
+        console.warn('Splash screen timeout, forcing completion');
+        completedRef.current = true;
+        onComplete();
+      }
+    }, maxWaitTime);
+
+    return () => clearTimeout(fallbackTimer);
+  }, [onComplete]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black"
@@ -67,26 +80,15 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
     >
       {/* Container for perfect centering */}
       <div className="relative w-40 h-40">
-        {/* Static Logo - Always rendered first */}
-        <img
-          src="/mavrixfy.png"
-          alt="Mavrixfy"
-          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ease-in-out ${
-            showVideo && !videoError ? 'opacity-0' : 'opacity-100'
-          }`}
-          role="img"
-          aria-label="Mavrixfy logo"
-        />
-        
-        {/* Video Animation - Hidden until loaded */}
+        {/* Video Animation - Show only video, no static image */}
         <video
           ref={videoRef}
           autoPlay
           muted
           loop
           playsInline
-          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ease-in-out ${
-            showVideo && videoLoaded && !videoError ? 'opacity-100' : 'opacity-0'
+          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ease-out ${
+            videoLoaded && !videoError ? 'opacity-100' : 'opacity-0'
           }`}
           onLoadedData={handleVideoLoad}
           onCanPlayThrough={handleVideoLoad}
@@ -97,6 +99,17 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
         >
           <source src="/mavrixfy_loading.mp4" type="video/mp4" />
         </video>
+        
+        {/* Fallback static logo only if video fails to load */}
+        {videoError && (
+          <img
+            src="/mavrixfy.png"
+            alt="Mavrixfy"
+            className="absolute inset-0 w-full h-full object-contain opacity-100 animate-[fadeIn_0.3s_ease-out]"
+            role="img"
+            aria-label="Mavrixfy logo"
+          />
+        )}
       </div>
     </div>
   );

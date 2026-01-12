@@ -58,11 +58,11 @@ const MemoizedSongItem = React.memo(({
         className={cn(
           "group relative hover:bg-muted/50 rounded-md transition-colors cursor-pointer items-center",
           isMobile
-            ? "grid grid-cols-[auto_1fr_40px] gap-2 p-2"
+            ? "grid grid-cols-[auto_1fr_auto] gap-3 p-3 py-2"
             : "grid grid-cols-[16px_4fr_3fr_2fr_1fr_40px] gap-4 p-2 px-4"
         )}
       >
-        {/* Index/Play button */}
+        {/* Desktop Index/Play button */}
         {!isMobile && (
           <div className="flex items-center justify-center text-sm text-muted-foreground group-hover:text-foreground">
             {isSongPlaying ? (
@@ -96,62 +96,60 @@ const MemoizedSongItem = React.memo(({
           </div>
         )}
 
-        {/* Mobile play button */}
-        {isMobile && (
-          <div className="flex items-center justify-center">
-            {isSongPlaying ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 text-primary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTogglePlay();
-                }}
-              >
-                <Pause className="h-5 w-5 fill-current" />
-              </Button>
-            ) : (
-              <div className="h-10 w-10 flex items-center justify-center">
-                <span className="text-sm text-muted-foreground">{index + 1}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Song info */}
+        {/* Song info - Spotify-style with better album artwork */}
         <div className="flex items-center min-w-0">
           <div className={cn(
-            "flex-shrink-0 overflow-hidden mr-3 rounded-md shadow relative",
-            isMobile ? "w-12 h-12" : "w-10 h-10"
+            "flex-shrink-0 overflow-hidden rounded shadow-md relative group/artwork",
+            isMobile ? "w-14 h-14 mr-3" : "w-12 h-12 mr-3"
           )}>
             <img
               src={song.imageUrl || '/placeholder-song.jpg'}
               alt={song.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-transform duration-200 group-hover/artwork:scale-105"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = '/placeholder-song.jpg';
+                (e.currentTarget as HTMLImageElement).src = '/placeholder-song.jpg';
               }}
             />
             {/* Source indicator - show Spotify icon for Spotify-synced songs */}
             {(song as any).source === 'spotify' && (
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                <Music className="h-2 w-2 text-primary-foreground" />
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-background">
+                <Music className="h-2 w-2 text-white" />
+              </div>
+            )}
+            {/* Hover overlay for mobile play button */}
+            {isMobile && (
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPlay();
+                  }}
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                </Button>
               </div>
             )}
           </div>
           <div className="min-w-0 flex-1">
             <div className={cn(
               "font-medium truncate",
-              isSongPlaying ? "text-primary" : "text-foreground"
+              isSongPlaying ? "text-primary" : "text-foreground",
+              isMobile ? "text-base leading-tight" : ""
             )}>
               {song.title}
             </div>
-            <div className="text-sm text-muted-foreground truncate">
+            <div className={cn(
+              "text-muted-foreground truncate",
+              isMobile ? "text-sm leading-tight" : "text-sm"
+            )}>
               {song.artist}
             </div>
+            {/* Mobile album info - smaller and more compact */}
             {isMobile && (
-              <div className="text-xs text-muted-foreground truncate mt-1">
+              <div className="text-xs text-muted-foreground/70 truncate mt-0.5">
                 {song.albumId || 'Unknown Album'}
               </div>
             )}
@@ -182,7 +180,7 @@ const MemoizedSongItem = React.memo(({
           </div>
         )}
 
-        {/* Mobile actions */}
+        {/* Mobile actions - more compact */}
         {isMobile && (
           <div className="flex items-center justify-center">
             <DropdownMenu>
@@ -190,7 +188,7 @@ const MemoizedSongItem = React.memo(({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  className="h-8 w-8 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="h-4 w-4" />
@@ -488,84 +486,86 @@ const LikedSongsPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <div className="relative">
-        <div className="bg-gradient-to-b from-purple-600/40 via-purple-700/30 to-background p-6 pb-8">
-          <div className="flex items-end gap-6">
-            <div className="w-48 h-48 bg-gradient-to-br from-purple-500 via-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-2xl relative overflow-hidden">
-              {/* Gradient overlay for depth */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/20"></div>
-              {/* Heart icon */}
-              <Heart className="h-20 w-20 text-white fill-white relative z-10 drop-shadow-lg" />
-              {/* Subtle shine effect */}
-              <div className="absolute top-4 left-4 w-16 h-16 bg-white/20 rounded-full blur-xl"></div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white/80 mb-2">Playlist</p>
-              <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white drop-shadow-sm">Liked Songs</h1>
-              <div className="flex items-center gap-2 text-sm text-white/70">
-                <User className="h-4 w-4" />
-                <span>Satvik patel • {likedSongs.length} songs</span>
+      {/* Mobile Header */}
+      {isMobile ? (
+        <div className="relative">
+          {/* Mobile gradient header - Spotify-like */}
+          <div className="bg-gradient-to-b from-purple-600/80 via-purple-700/60 to-background px-4 pt-16 pb-6">
+            <div className="flex items-center gap-4">
+              {/* Spotify-style heart icon for mobile */}
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-400 via-purple-500 to-purple-600 rounded-md flex items-center justify-center shadow-2xl relative overflow-hidden flex-shrink-0">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30"></div>
+                <Heart className="h-10 w-10 text-white fill-white relative z-10 drop-shadow-lg" />
+                <div className="absolute top-2 left-2 w-6 h-6 bg-white/30 rounded-full blur-md"></div>
+              </div>
+              
+              {/* Mobile title section - Spotify style */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white/80 mb-1">Playlist</p>
+                <h1 className="text-3xl font-bold text-white drop-shadow-sm mb-2 leading-tight">Liked Songs</h1>
+                <div className="flex items-center gap-1 text-sm text-white/70">
+                  <User className="h-4 w-4" />
+                  <span>Satvik patel • {likedSongs.length} songs</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Controls */}
-        <div className="px-6 pb-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              size="icon"
-              className="h-14 w-14 rounded-full bg-green-500 hover:bg-green-400 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-              onClick={playAllSongs}
-              disabled={likedSongs.length === 0}
-            >
-              <Play className="h-6 w-6 fill-current ml-1 text-black" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10"
-              onClick={smartShuffle}
-              disabled={likedSongs.length === 0}
-            >
-              <Shuffle className="h-5 w-5" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10"
-              onClick={() => {
-                setActiveTab('upload');
-                setShowAddDialog(true);
-              }}
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
-
-            {/* Manual Spotify Sync Button */}
-            {isSpotifyConnected && (
+          {/* Mobile controls - Spotify-style */}
+          <div className="px-4 pb-4 flex items-center justify-between bg-gradient-to-b from-background/20 to-background">
+            <div className="flex items-center gap-4">
+              <Button
+                size="icon"
+                className="h-14 w-14 rounded-full bg-green-500 hover:bg-green-400 shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-105"
+                onClick={playAllSongs}
+                disabled={likedSongs.length === 0}
+              >
+                <Play className="h-6 w-6 fill-current ml-0.5 text-black" />
+              </Button>
+              
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10"
-                onClick={handleManualSync}
-                disabled={isLoading}
-                title="Sync with Spotify"
+                className="h-10 w-10 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
+                onClick={smartShuffle}
+                disabled={likedSongs.length === 0}
               >
-                <RefreshCw className={cn("h-5 w-5", isLoading && "animate-spin")} />
+                <Shuffle className="h-5 w-5" />
               </Button>
-            )}
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
+                onClick={() => {
+                  setActiveTab('upload');
+                  setShowAddDialog(true);
+                }}
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+
+              {isSpotifyConnected && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
+                  onClick={handleManualSync}
+                  disabled={isLoading}
+                  title="Sync with Spotify"
+                >
+                  <RefreshCw className={cn("h-5 w-5", isLoading && "animate-spin")} />
+                </Button>
+              )}
+            </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10">
-                  <MoreHorizontal className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/10">
+                  <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleSortChange('recent')}>
                   <Clock className="h-4 w-4 mr-2" />
                   Recently Added
@@ -582,29 +582,125 @@ const LikedSongsPage = () => {
             </DropdownMenu>
           </div>
         </div>
-      </div>
+      ) : (
+        /* Desktop Header - Spotify-style */
+        <div className="relative">
+          <div className="bg-gradient-to-b from-purple-600/60 via-purple-700/40 to-background p-8 pb-6">
+            <div className="flex items-end gap-6">
+              <div className="w-56 h-56 bg-gradient-to-br from-purple-400 via-purple-500 to-purple-600 rounded-md flex items-center justify-center shadow-2xl relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-black/25"></div>
+                <Heart className="h-24 w-24 text-white fill-white relative z-10 drop-shadow-lg" />
+                <div className="absolute top-6 left-6 w-20 h-20 bg-white/25 rounded-full blur-xl"></div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white/90 mb-3">Playlist</p>
+                <h1 className="text-5xl md:text-7xl font-black mb-6 text-white drop-shadow-sm tracking-tight">Liked Songs</h1>
+                <div className="flex items-center gap-2 text-sm text-white/80">
+                  <User className="h-4 w-4" />
+                  <span className="font-medium">Satvik patel</span>
+                  <span>•</span>
+                  <span>{likedSongs.length} songs</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      {/* Search */}
+          <div className="px-8 pb-6 flex items-center justify-between bg-gradient-to-b from-background/20 to-background">
+            <div className="flex items-center gap-6">
+              <Button
+                size="icon"
+                className="h-16 w-16 rounded-full bg-green-500 hover:bg-green-400 shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-105"
+                onClick={playAllSongs}
+                disabled={likedSongs.length === 0}
+              >
+                <Play className="h-7 w-7 fill-current ml-1 text-black" />
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
+                onClick={smartShuffle}
+                disabled={likedSongs.length === 0}
+              >
+                <Shuffle className="h-6 w-6" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
+                onClick={() => {
+                  setActiveTab('upload');
+                  setShowAddDialog(true);
+                }}
+              >
+                <Plus className="h-6 w-6" />
+              </Button>
+
+              {isSpotifyConnected && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10"
+                  onClick={handleManualSync}
+                  disabled={isLoading}
+                  title="Sync with Spotify"
+                >
+                  <RefreshCw className={cn("h-5 w-5", isLoading && "animate-spin")} />
+                </Button>
+              )}
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10">
+                    <MoreHorizontal className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => handleSortChange('recent')}>
+                    <Clock className="h-4 w-4 mr-2" />
+                    Recently Added
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleSortChange('title')}>
+                    <ArrowDownUp className="h-4 w-4 mr-2" />
+                    Title
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleSortChange('artist')}>
+                    <Music className="h-4 w-4 mr-2" />
+                    Artist
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Search - Spotify-style */}
       {likedSongs.length > 0 && (
-        <div className="px-6 pb-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className={cn("pb-4", isMobile ? "px-4" : "px-8")}>
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
             <Input
               placeholder="Search in liked songs"
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="pl-10"
+              className={cn(
+                "pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:bg-white/15 focus:border-white/30 transition-all duration-200",
+                isMobile ? "h-10 text-sm" : "h-11"
+              )}
             />
           </div>
         </div>
       )}
 
-      {/* Songs List */}
-      <div className="px-6">
+      {/* Songs List - Spotify-style */}
+      <div className={cn(isMobile ? "px-4" : "px-8")}>
         {isLoading ? (
           <ContentLoading text="Loading liked songs..." height="py-12" />
         ) : likedSongs.length > 0 ? (
-          <div className="pb-8">
+          <div className={cn("pb-8", isMobile ? "pb-24" : "")}>
             {/* Desktop header */}
             {!isMobile && (
               <div className="grid grid-cols-[16px_4fr_3fr_2fr_1fr_40px] gap-4 px-4 py-2 text-sm text-muted-foreground border-b mb-2">
@@ -647,19 +743,27 @@ const LikedSongsPage = () => {
         )}
       </div>
 
-      {/* Add Songs Dialog */}
+      {/* Add Songs Dialog - Mobile optimized */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>Add Songs to Liked Songs</DialogTitle>
-            <DialogDescription>
+        <DialogContent className={cn(
+          "overflow-hidden",
+          isMobile 
+            ? "max-w-[95vw] max-h-[85vh] w-full h-full rounded-t-xl rounded-b-none fixed bottom-0 left-0 right-0 top-auto transform-none"
+            : "max-w-4xl max-h-[80vh]"
+        )}>
+          <DialogHeader className={cn(isMobile ? "px-4 pt-4 pb-2" : "")}>
+            <DialogTitle className={cn(isMobile ? "text-lg" : "")}>Add Songs to Liked Songs</DialogTitle>
+            <DialogDescription className={cn(isMobile ? "text-sm" : "")}>
               Upload a file or sync from Spotify to add songs to your liked songs
             </DialogDescription>
           </DialogHeader>
           
           <div className="flex-1 overflow-hidden">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'upload' | 'spotify')} className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className={cn(
+                "grid w-full grid-cols-2",
+                isMobile ? "mx-4 mb-2" : ""
+              )}>
                 <TabsTrigger value="upload" className="flex items-center gap-1">
                   <FileText className="h-4 w-4" />
                   <span>Upload File</span>
@@ -671,13 +775,13 @@ const LikedSongsPage = () => {
               </TabsList>
               
               <TabsContent value="upload" className="flex-1 overflow-auto">
-                <ScrollArea className="h-full">
+                <ScrollArea className={cn("h-full", isMobile ? "px-4" : "")}>
                   <LikedSongsFileUploader onClose={() => setShowAddDialog(false)} />
                 </ScrollArea>
               </TabsContent>
               
               <TabsContent value="spotify" className="flex-1 overflow-auto">
-                <ScrollArea className="h-full">
+                <ScrollArea className={cn("h-full", isMobile ? "px-4" : "")}>
                   <SpotifyLikedSongsSync onClose={() => setShowAddDialog(false)} />
                 </ScrollArea>
               </TabsContent>

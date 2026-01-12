@@ -181,7 +181,7 @@ const LibraryPage = () => {
         {/* Library content */}
         <div
           ref={scrollAreaRef}
-          className="flex-1 pb-24 overflow-y-auto"
+          className="flex-1 pb-24 overflow-y-auto smooth-scroll"
           onScroll={handleScroll}
         >
           <div className="p-2 sm:p-4 pt-4">
