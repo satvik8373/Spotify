@@ -1,6 +1,117 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Paper, List, ListItem, ListItemText, Divider, Alert, CircularProgress } from '@mui/material';
-import { testApiConnection, testDatabaseConnection, getApiRoutes } from '../../utils/api-test';
+
+// Inline API test functions
+const testApiConnection = async () => {
+  const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+  
+  try {
+    console.log(`Testing API connection to ${API_URL}/test/health...`);
+    const response = await fetch(`${API_URL}/test/health`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('Response status:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to connect to API: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('API connection test result:', data);
+    return {
+      success: true,
+      data,
+      statusCode: response.status
+    };
+  } catch (error) {
+    console.error('API connection test failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      details: error
+    };
+  }
+};
+
+const testDatabaseConnection = async () => {
+  const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+  
+  try {
+    console.log(`Testing database connection via ${API_URL}/test/db-status...`);
+    const response = await fetch(`${API_URL}/test/db-status`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to check database status: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Database connection test result:', data);
+    return {
+      success: true,
+      data,
+      isConnected: data.database?.connected || false,
+      statusCode: response.status
+    };
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      details: error,
+      isConnected: false
+    };
+  }
+};
+
+const getApiRoutes = async () => {
+  const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+  
+  try {
+    console.log(`Getting API routes from ${API_URL}/test/routes...`);
+    const response = await fetch(`${API_URL}/test/routes`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get API routes: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('API routes:', data);
+    return {
+      success: true,
+      data,
+      routes: data.routes || [],
+      statusCode: response.status
+    };
+  } catch (error) {
+    console.error('Failed to get API routes:', error);
+    return {
+      success: false,
+      error: error.message,
+      details: error,
+      routes: []
+    };
+  }
+};
 
 const ApiDebugPage = () => {
   const [apiStatus, setApiStatus] = useState(null);

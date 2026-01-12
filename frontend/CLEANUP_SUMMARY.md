@@ -16,6 +16,14 @@
 - `/api/auth/update-profile` → `/auth/update-profile`
 - `/api/auth/reset-password-request` → `/auth/reset-password-request`
 
+## Build Fix
+
+**Issue:** Build failing with `Could not resolve "../../utils/api-test" from "src/pages/debug/ApiDebugPage.jsx"`
+
+**Root Cause:** `ApiDebugPage.jsx` was importing the deleted `api-test.js` file
+
+**Solution:** Moved the test functions inline to `ApiDebugPage.jsx` to remove the dependency
+
 ## Files Removed
 
 ### Test Files
@@ -30,6 +38,17 @@
 ### Unused Imports
 - Removed unused `Download` icon import from `PlaylistPage.tsx`
 
+## Files Modified
+
+### API Fixes
+- `frontend/src/services/hybridAuthService.ts` - Fixed double `/api` endpoints
+
+### Build Fixes
+- `frontend/src/pages/debug/ApiDebugPage.jsx` - Moved test functions inline
+
+### Import Cleanup
+- `frontend/src/pages/playlist/PlaylistPage.tsx` - Removed unused Download import
+
 ## What Remains
 
 The following "download" references are legitimate and were kept:
@@ -40,6 +59,7 @@ The following "download" references are legitimate and were kept:
 ## Result
 
 - ✅ API endpoints now work correctly (no more 404 errors)
+- ✅ Build process works without errors
 - ✅ All test files removed
 - ✅ All temporary cleanup files removed
 - ✅ No TypeScript compilation errors
