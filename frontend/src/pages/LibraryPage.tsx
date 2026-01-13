@@ -134,7 +134,12 @@ const LibraryPage = () => {
       if (isAuthenticated) {
         try {
           console.log('LibraryPage: Calling fetchUserPlaylists');
-          await fetchUserPlaylists();
+          // Check if we need to refresh data
+          if (usePlaylistStore.getState().shouldRefresh()) {
+            await usePlaylistStore.getState().refreshAllData();
+          } else {
+            await fetchUserPlaylists();
+          }
           console.log('LibraryPage: fetchUserPlaylists completed');
         } catch (error) {
           console.error('Error loading playlists', error);

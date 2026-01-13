@@ -15,6 +15,7 @@ interface PlaylistStore {
   isCreating: boolean;
   isUpdating: boolean;
   isDeleting: boolean;
+  lastRefresh: number;
 
   fetchPlaylists: () => Promise<void>;
   fetchUserPlaylists: () => Promise<void>;
@@ -35,6 +36,8 @@ interface PlaylistStore {
   deletePlaylist: (id: string) => Promise<void>;
   addSongToPlaylist: (playlistId: string, songIdOrObject: string | any) => Promise<void>;
   removeSongFromPlaylist: (playlistId: string, songId: string) => Promise<void>;
+  refreshAllData: () => Promise<void>;
+  shouldRefresh: () => boolean;
 }
 
 export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
@@ -49,6 +52,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   isCreating: false,
   isUpdating: false,
   isDeleting: false,
+  lastRefresh: 0,
 
   fetchPlaylists: async () => {
     try {
@@ -256,6 +260,28 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       const updatedPlaylist = await playlistService.removeSongFromPlaylist(playlistId, songId);
       set({ currentPlaylist: updatedPlaylist });
     } catch {}
+  },
+
+  refreshAllData: async () => {
+    try {
+      set({ isLoading: true });
+      await Promise.all([
+        get().fetchUserPlaylists(),
+        get().fetchPublicPlaylists(),
+        get().fetchFeaturedPlaylists()
+      ]);
+      set({ lastRefresh: Date.now(), isLoading: false });
+    } catch (error) {
+      console.error('Error refreshing playlist data:', error);
+      set({ isLoading: false });
+    }
+  },
+
+  shouldRefresh: () => {
+    const now = Date.now();
+    const lastRefresh = get().lastRefresh;
+    const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    return now - lastRefresh > REFRESH_INTERVAL;
   }
 }));
 

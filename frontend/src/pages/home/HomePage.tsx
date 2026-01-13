@@ -34,10 +34,38 @@ const HomePage = () => {
     loadLikedSongs();
   }, [loadLikedSongs]);
 
+  // Auto-refresh when app becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && usePlaylistStore.getState().shouldRefresh()) {
+        usePlaylistStore.getState().refreshAllData();
+      }
+    };
+
+    const handleFocus = () => {
+      if (usePlaylistStore.getState().shouldRefresh()) {
+        usePlaylistStore.getState().refreshAllData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
   useEffect(() => {
     const initializeHomePage = async () => {
       try {
-        await fetchPublicPlaylists();
+        // Check if we need to refresh data
+        if (usePlaylistStore.getState().shouldRefresh()) {
+          await usePlaylistStore.getState().refreshAllData();
+        } else {
+          await fetchPublicPlaylists();
+        }
         setTimeout(() => {
           setIsInitialLoading(false);
         }, 100);

@@ -25,13 +25,59 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<PlaylistCategory | null>(null);
+  const [lastRefresh, setLastRefresh] = useState(0);
   const navigate = useNavigate();
+
+  const shouldRefresh = () => {
+    const now = Date.now();
+    const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes for JioSaavn
+    return now - lastRefresh > REFRESH_INTERVAL;
+  };
 
   useEffect(() => {
     // Find the category
     const foundCategory = jioSaavnService.getCategoryById(categoryId);
     setCategory(foundCategory || null);
-    fetchPlaylists();
+    
+    // Check if we need to refresh or if we have cached data
+    const cachedData = localStorage.getItem(`jiosaavn-${categoryId}`);
+    const cachedTime = localStorage.getItem(`jiosaavn-${categoryId}-time`);
+    
+    if (cachedData && cachedTime && !shouldRefresh()) {
+      try {
+        const parsed = JSON.parse(cachedData);
+        setPlaylists(parsed);
+        setLastRefresh(parseInt(cachedTime));
+      } catch (error) {
+        console.error('Error parsing cached JioSaavn data:', error);
+        fetchPlaylists();
+      }
+    } else {
+      fetchPlaylists();
+    }
+  }, [categoryId, limit]);
+
+  // Auto-refresh when app becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && shouldRefresh()) {
+        fetchPlaylists();
+      }
+    };
+
+    const handleFocus = () => {
+      if (shouldRefresh()) {
+        fetchPlaylists();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [categoryId, limit]);
 
   const fetchPlaylists = async () => {
@@ -41,6 +87,12 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
 
       const data = await jioSaavnService.getPlaylistsByCategory(categoryId, limit);
       setPlaylists(data);
+      
+      // Cache the data
+      const now = Date.now();
+      localStorage.setItem(`jiosaavn-${categoryId}`, JSON.stringify(data));
+      localStorage.setItem(`jiosaavn-${categoryId}-time`, now.toString());
+      setLastRefresh(now);
     } catch (err) {
       console.error('Error fetching JioSaavn playlists:', err);
       setError('Failed to load playlists');

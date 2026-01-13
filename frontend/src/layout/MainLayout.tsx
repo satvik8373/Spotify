@@ -8,6 +8,7 @@ import Header from '@/components/Header';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import QueuePanel from '@/components/QueuePanel';
 import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
+import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
 
 const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -19,6 +20,9 @@ const MainLayout = () => {
   const isResizing = useRef(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const COLLAPSE_THRESHOLD = 120; // Width threshold to auto-collapse when dragging left
+
+  // Enable background refresh
+  useBackgroundRefresh();
 
   // Listen for queue toggle events
   useEffect(() => {
