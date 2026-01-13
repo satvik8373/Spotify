@@ -8,6 +8,7 @@ import { JioSaavnPlaylistCard } from '@/components/jiosaavn/JioSaavnPlaylistCard
 import { JioSaavnPlaylist, jioSaavnService, PLAYLIST_CATEGORIES, PlaylistCategory } from '@/services/jioSaavnService';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,6 +103,9 @@ const JioSaavnPlaylistsPage: React.FC = () => {
   };
 
   const handlePlaylistClick = (playlist: JioSaavnPlaylist) => {
+    // Add to recently played
+    recentlyPlayedService.addJioSaavnPlaylist(playlist);
+    
     navigate(`/jiosaavn/playlist/${playlist.id}`, {
       state: { playlist }
     });

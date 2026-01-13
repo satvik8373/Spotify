@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { formatTime } from '@/utils/formatTime';
 import '../../styles/playlist-page.css';
 import toast from 'react-hot-toast';
+import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -116,7 +117,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
       
       // Update playlist info if not available from state
       if (!playlist) {
-        setPlaylist({
+        const playlistData = {
           id: playlistDetails.id,
           name: playlistDetails.name,
           type: playlistDetails.type,
@@ -125,7 +126,14 @@ const JioSaavnPlaylistPage: React.FC = () => {
           songCount: playlistDetails.songCount,
           language: playlistDetails.language,
           explicitContent: playlistDetails.explicitContent,
-        });
+        };
+        setPlaylist(playlistData);
+        
+        // Add to recently played when playlist details are loaded
+        recentlyPlayedService.addJioSaavnPlaylist(playlistData);
+      } else {
+        // Add to recently played if playlist was passed from state
+        recentlyPlayedService.addJioSaavnPlaylist(playlist);
       }
       
       setSongs(playlistDetails.songs || []);

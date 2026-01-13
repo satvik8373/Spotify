@@ -8,6 +8,7 @@ import { useAlbumColors } from '../../hooks/useAlbumColors';
 import { Button } from '../../components/ui/button';
 import '../../styles/playlist-page.css';
 import { ContentLoading, InlineLoading, PageLoading } from '../../components/ui/loading';
+import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import {
   Play,
   Pencil,
@@ -126,6 +127,11 @@ function AddSongsDialog({
   const handleAddSong = async (song: Song) => {
     try {
       await usePlaylistStore.getState().addSongToPlaylist(playlistId, song._id);
+      
+      // Force refresh the playlist to show the new song immediately
+      setTimeout(async () => {
+        await usePlaylistStore.getState().forceRefreshPlaylistById(playlistId);
+      }, 100);
     } catch (error) {
       // Silent error handling
     }
@@ -138,6 +144,11 @@ function AddSongsDialog({
       
       // Add converted song directly to playlist without validation notification
       await usePlaylistStore.getState().addSongToPlaylist(playlistId, convertedSong);
+      
+      // Force refresh the playlist to show the new song immediately
+      setTimeout(async () => {
+        await usePlaylistStore.getState().forceRefreshPlaylistById(playlistId);
+      }, 100);
     } catch (error) {
       // Silent error handling
     }
@@ -217,7 +228,7 @@ function AddSongsDialog({
 
         <ScrollArea className="h-[400px] pr-4 mt-4 thin-scroll">
           {isIndianMusicLoading ? (
-            <ContentLoading text="Loading songs..." height="p-4" />
+            <div className="p-4"></div>
           ) : (
             <>
               {isSearching && (
@@ -251,7 +262,7 @@ export function PlaylistPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { userId, isAuthenticated } = useAuthStore();
-  const { currentPlaylist, fetchPlaylistById, deletePlaylist, isLoading, removeSongFromPlaylist } =
+  const { currentPlaylist, fetchPlaylistById, forceRefreshPlaylistById, deletePlaylist, isLoading, removeSongFromPlaylist } =
     usePlaylistStore();
   const { playAlbum, isPlaying: playerIsPlaying, currentSong } = usePlayerStore();
   // Removed unused addSongToPlaylist from store
@@ -307,7 +318,8 @@ export function PlaylistPage() {
 
   useEffect(() => {
     if (id) {
-      fetchPlaylistById(id);
+      // Use forceRefreshPlaylistById to bypass cache and get fresh data
+      forceRefreshPlaylistById(id);
       // Load metrics from localStorage
       try {
         const saved = localStorage.getItem('playlist_metrics') || '{}';
@@ -326,15 +338,14 @@ export function PlaylistPage() {
         // Silent error handling
       }
     }
+  }, [id, forceRefreshPlaylistById]);
 
-    // Cleanup function
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, [id, fetchPlaylistById]);
+  // Add playlist to recently played when it's loaded
+  useEffect(() => {
+    if (currentPlaylist && currentPlaylist._id === id) {
+      recentlyPlayedService.addPlaylist(currentPlaylist);
+    }
+  }, [currentPlaylist, id]);
 
   const updateMetrics = (metric: 'likes' | 'shares' | 'plays') => {
     if (!id) return;
@@ -677,7 +688,7 @@ export function PlaylistPage() {
         
         // Fetch the updated playlist to refresh our local state
         if (id) {
-          await usePlaylistStore.getState().fetchPlaylistById(id);
+          await usePlaylistStore.getState().forceRefreshPlaylistById(id);
         }
         
         toast.success('Playlist cover updated');
@@ -692,7 +703,7 @@ export function PlaylistPage() {
   };
 
   if (isLoading) {
-  return <PageLoading text="Loading playlist..." />;
+  return <div className="min-h-screen bg-[#121212]"></div>;
   }
 
   if (!currentPlaylist) {

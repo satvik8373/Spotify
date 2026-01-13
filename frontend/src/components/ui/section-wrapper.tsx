@@ -22,9 +22,9 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
   headerClassName,
 }) => {
   return (
-    <section className={cn("mb-8 w-full overflow-x-hidden", className)}>
+    <section className={cn("mb-4 w-full overflow-x-hidden", className)}>
       {/* Section Header */}
-      <div className={cn("flex items-center justify-between mb-6 px-4 md:px-6", headerClassName)}>
+      <div className={cn("flex items-center justify-between mb-4 px-4 md:px-6", headerClassName)}>
         <div className="flex-1 min-w-0">
           <h2 className="text-xl md:text-2xl font-bold text-foreground mb-1 truncate">
             {title}

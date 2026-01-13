@@ -292,13 +292,13 @@ const LikedSongsPage = () => {
     }
 
     try {
-      setIsLoading(true);
+      // Show content immediately, load data in background
+      setIsLoading(false);
       const songs = await loadLikedSongs();
       setLikedSongs(songs);
     } catch (error) {
       console.error('Error loading liked songs:', error);
       toast.error('Failed to load liked songs');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -672,7 +672,7 @@ const LikedSongsPage = () => {
       {/* Songs List - Spotify-style */}
       <div className={cn(isMobile ? "px-4 pb-32" : "px-8 pb-8")}>
         {isLoading ? (
-          <ContentLoading text="Loading liked songs..." height="py-12" />
+          <div className="py-12"></div>
         ) : likedSongs.length > 0 ? (
           <div className={cn("pb-8", isMobile ? "pb-32" : "")}>
             {/* Desktop header */}

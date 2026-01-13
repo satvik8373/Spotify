@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 const LibraryPage = () => {
   const { isAuthenticated, loading, user } = useAuth();
   const navigate = useNavigate();
-  const [isLibraryLoading, setIsLibraryLoading] = useState(true);
+  const [isLibraryLoading, setIsLibraryLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { userPlaylists, fetchUserPlaylists } = usePlaylistStore();
 
@@ -131,6 +131,9 @@ const LibraryPage = () => {
   useEffect(() => {
     const loadData = async () => {
       console.log('LibraryPage: loadData called, isAuthenticated:', isAuthenticated, 'user:', user?.id);
+      // Show content immediately
+      setIsLibraryLoading(false);
+      
       if (isAuthenticated) {
         try {
           console.log('LibraryPage: Calling fetchUserPlaylists');
@@ -147,7 +150,6 @@ const LibraryPage = () => {
       } else {
         console.log('LibraryPage: User not authenticated, skipping playlist fetch');
       }
-      setIsLibraryLoading(false);
     };
 
     loadData();
@@ -191,7 +193,7 @@ const LibraryPage = () => {
         >
           <div className="p-2 sm:p-4 pt-4">
             {isLibraryLoading || loading ? (
-              <ContentLoading text="Loading library..." height="h-64" />
+              <div className="h-64"></div>
             ) : !isAuthenticated ? (
               <div className="bg-card border border-border rounded-lg p-8 text-center">
                 <Library className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />

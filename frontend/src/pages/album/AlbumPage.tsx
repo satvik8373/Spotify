@@ -17,12 +17,13 @@ interface Album {
 const AlbumPage = () => {
   const { albumId } = useParams();
   const [album, setAlbum] = useState<Album | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const { setCurrentSong } = usePlayerStore();
 
   useEffect(() => {
     const fetchAlbum = async () => {
-      setIsLoading(true);
+      // Show content immediately, load data in background
+      setIsLoading(false);
       try {
         // Simulate API call
         // In a real application, you would fetch album data from your backend
@@ -34,11 +35,9 @@ const AlbumPage = () => {
             imageUrl: 'https://via.placeholder.com/400',
             songs: [],
           });
-          setIsLoading(false);
         }, 1000);
       } catch (error) {
         console.error('Error fetching album:', error);
-        setIsLoading(false);
       }
     };
 
@@ -50,7 +49,7 @@ const AlbumPage = () => {
       <ScrollArea className="h-[calc(100vh-180px)]">
         <div className="p-4 sm:p-6">
           {isLoading ? (
-            <ContentLoading text="Loading album..." height="h-80" />
+            <div className="h-80"></div>
           ) : album ? (
             <>
               <div className="flex flex-col md:flex-row gap-6 items-center md:items-start mb-8">

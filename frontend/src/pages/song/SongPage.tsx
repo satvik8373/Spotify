@@ -13,7 +13,7 @@ const SongPage = () => {
   const { songId } = useParams<{ songId: string }>();
   const navigate = useNavigate();
   const [song, setSong] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const { setCurrentSong, setIsPlaying, playAlbum } = usePlayerStore();
@@ -29,7 +29,8 @@ const SongPage = () => {
       }
 
       try {
-        setLoading(true);
+        // Show content immediately, load data in background
+        setLoading(false);
         
         // First, try to find the song in liked songs
         const likedSongs = await import('../../services/likedSongsService').then(m => m.loadLikedSongs());
@@ -40,7 +41,6 @@ const SongPage = () => {
           // Auto-play the song
           setCurrentSong(likedSong as any);
           setIsPlaying(true);
-          setLoading(false);
           return;
         }
 
@@ -66,7 +66,6 @@ const SongPage = () => {
         console.error('Error loading song:', err);
         setError('Failed to load song');
         toast.error('Failed to load song. Please try again.');
-      } finally {
         setLoading(false);
       }
     };
@@ -93,7 +92,7 @@ const SongPage = () => {
   const isLiked = song ? Array.from(likedSongIds).includes(song._id || (song as any).id) : false;
 
   if (loading) {
-    return <PageLoading text="Loading song..." />;
+    return <div className="min-h-screen bg-[#121212]"></div>;
   }
 
   if (error || !song) {

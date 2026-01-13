@@ -79,9 +79,9 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 		return <>{children}</>;
 	}
 
-	// Show minimal loading while auth is being determined
+	// Show minimal loading while auth is being determined - invisible background
 	if (loading) {
-		return <Loading size="sm" />;
+		return <div className="min-h-screen bg-[#121212]" />;
 	}
 
 	// If not authenticated, redirect to login
@@ -102,9 +102,9 @@ const LandingRedirector = () => {
 		return <Navigate to="/home" replace />;
 	}
 
-	// If still loading auth state, show minimal loading
+	// If still loading auth state, show minimal loading - invisible background
 	if (loading) {
-		return <Loading size="sm" />;
+		return <div className="min-h-screen bg-[#121212]" />;
 	}
 
 	// Not authenticated, go to login
@@ -210,6 +210,7 @@ const router = createBrowserRouter(
 
 function AppContent() {
 	const [showSplash, setShowSplash] = useState(true);
+	const [splashFading, setSplashFading] = useState(false);
 	const [appReady, setAppReady] = useState(false);
 
 	// Initialize app and handle splash screen
@@ -225,28 +226,33 @@ function AppContent() {
 				// Initialize performance optimizations
 				performanceService.addResourceHints();
 
-				// Check if coming from auth redirect for faster loading
-				const fromAuthRedirect = getSessionStorage('auth_redirect') === '1';
-				const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
+				// Preload critical components during splash screen
+				const preloadPromises = [
+					import('./layout/MainLayout'),
+					import('./pages/home/HomePage'),
+					import('./pages/search/SearchPage'),
+					import('./pages/LibraryPage')
+				];
 
-				// Determine splash screen duration
-				let splashDuration = 1500; // Default 1.5 seconds
-				
-				if (fromAuthRedirect) {
-					splashDuration = 300; // Very fast for auth redirects
-				} else if (hasCachedAuth) {
-					splashDuration = 800; // Faster for returning users
-				}
-
-				// Set app as ready after initialization
+				// Set app as ready immediately
 				setAppReady(true);
 
-				// Hide splash screen after duration
+				// Start preloading and show splash for 1 second
+				Promise.all(preloadPromises).catch(() => {
+					// Ignore preload errors, app will still work
+				});
+
+				// Start fade out after 400ms, then hide after fade completes
 				setTimeout(() => {
-					setShowSplash(false);
-				}, splashDuration);
+					setSplashFading(true);
+					// Hide splash screen after fade animation completes
+					setTimeout(() => {
+						setShowSplash(false);
+					}, 300); // 300ms fade duration
+				}, 400); // Total: 400ms + 300ms = 700ms
 
 				// Initialize auto-sync service if user was previously authenticated
+				const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 				if (hasCachedAuth) {
 					setTimeout(() => {
 						const autoSyncConfig = spotifyAutoSyncService.getConfig();
@@ -260,52 +266,32 @@ function AppContent() {
 				console.error("Error initializing app:", error);
 				// Always continue even if initialization fails
 				setAppReady(true);
-				setTimeout(() => setShowSplash(false), 1000);
+				setTimeout(() => {
+					setSplashFading(true);
+					setTimeout(() => setShowSplash(false), 300);
+				}, 400);
 			}
 		};
 
 		initializeApp();
 	}, []);
 
-	// Prefetch critical routes
-	useEffect(() => {
-		if (appReady) {
-			const idle = (cb: () => void) => {
-				if ('requestIdleCallback' in window) {
-					(window as any).requestIdleCallback(cb, { timeout: 1000 });
-				} else {
-					setTimeout(cb, 500);
-				}
-			};
+	// No additional prefetching needed - components are preloaded during splash
 
-			idle(() => {
-				import('./layout/MainLayout');
-				import('./pages/home/HomePage');
-				import('./pages/search/SearchPage');
-			});
-		}
-	}, [appReady]);
-
-	// Show splash screen until both app is ready and splash duration has passed
-	if (showSplash || !appReady) {
+	// Show splash screen for exactly 1 second with smooth fade
+	if (showSplash) {
 		return (
-			<div className="fixed inset-0 bg-black">
-				<SplashScreen 
-					onComplete={() => {
-						if (appReady) {
-							setShowSplash(false);
-						}
-					}} 
-				/>
+			<div className={`fixed inset-0 bg-black transition-opacity duration-300 ease-out ${splashFading ? 'opacity-0' : 'opacity-100'}`}>
+				<SplashScreen />
 			</div>
 		);
 	}
 
-	// Main app content
+	// Main app content - no loading fallback for seamless transition
 	return (
 		<div className="min-h-screen bg-[#121212]">
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
-			<Suspense fallback={<Loading size="md" />}>
+			<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
 				<RouterProvider
 					router={router}
 					future={{ v7_startTransition: true }}

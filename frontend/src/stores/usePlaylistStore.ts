@@ -22,6 +22,7 @@ interface PlaylistStore {
   fetchFeaturedPlaylists: () => Promise<void>;
   fetchPublicPlaylists: () => Promise<void>;
   fetchPlaylistById: (id: string) => Promise<Playlist | null>;
+  forceRefreshPlaylistById: (id: string) => Promise<Playlist | null>;
   searchPlaylists: (query: string) => Promise<Playlist[]>;
   createPlaylist: (
     name: string,
@@ -145,6 +146,24 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     }
   },
 
+  // Force refresh a playlist by bypassing cache
+  forceRefreshPlaylistById: async (id: string) => {
+    try {
+      set({ isLoading: true });
+      // Clear any cached data for this playlist
+      const { playlistsService } = await import('../services/firestore');
+      playlistsService.clearCache();
+      
+      const playlist = await playlistService.getPlaylistById(id);
+      set({ currentPlaylist: playlist, isLoading: false });
+      return playlist;
+    } catch (error) {
+      console.error('Error force refreshing playlist:', error);
+      set({ isLoading: false });
+      return null;
+    }
+  },
+
   searchPlaylists: async (query: string) => {
     if (!query.trim()) {
       set({ searchResults: [] });
@@ -243,6 +262,12 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const userPlaylists = get().userPlaylists.map(p => (p._id === playlistId ? updatedPlaylist : p));
         const playlists = get().playlists.map(p => (p._id === playlistId ? updatedPlaylist : p));
         set({ userPlaylists, playlists });
+        
+        // Force refresh the current playlist to ensure we have the latest data
+        setTimeout(async () => {
+          await get().forceRefreshPlaylistById(playlistId);
+        }, 500);
+        
       } catch {
         const updatedSongs = [...playlist.songs, song];
         const updatedPlaylist = { ...playlist, songs: updatedSongs } as Playlist;

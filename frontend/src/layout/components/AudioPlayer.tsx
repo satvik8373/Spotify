@@ -1144,6 +1144,10 @@ const AudioPlayer = () => {
         // CRITICAL: Immediately reset currentTime to 0 to stop previous song audio
         audio.currentTime = 0;
         
+        // Force stop any ongoing playback by setting src to empty first
+        audio.src = '';
+        audio.load();
+        
         // Also reset the local time state immediately
         setLocalCurrentTime(0);
         if (setCurrentTime) {

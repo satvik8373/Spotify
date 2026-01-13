@@ -78,17 +78,21 @@ export const usePlayerStore = create<PlayerState>()(
           return;
         }
         
+        // Get the current audio element and stop it immediately
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+          // Clear the src to stop any ongoing loading/playback
+          audio.src = '';
+          audio.load();
+        }
+        
         // Immediately reset current time when switching songs
         set({ 
           currentSong: song,
           currentTime: 0 // Reset time immediately for new song
         });
-        
-        // Also reset the audio element's currentTime immediately if it exists
-        const audio = document.querySelector('audio');
-        if (audio) {
-          audio.currentTime = 0;
-        }
       },
 
       setIsPlaying: (isPlaying) => {
@@ -134,6 +138,9 @@ export const usePlayerStore = create<PlayerState>()(
         if (audio) {
           audio.pause();
           audio.currentTime = 0;
+          // Clear the src to completely stop the previous song
+          audio.src = '';
+          audio.load();
         }
 
         // Set player state
@@ -175,6 +182,9 @@ export const usePlayerStore = create<PlayerState>()(
         if (audio) {
           audio.pause();
           audio.currentTime = 0;
+          // Clear the src to completely stop the previous song
+          audio.src = '';
+          audio.load();
         }
 
         // First check if we should repeat the current song
@@ -356,6 +366,9 @@ export const usePlayerStore = create<PlayerState>()(
         if (audio) {
           audio.pause();
           audio.currentTime = 0;
+          // Clear the src to completely stop the previous song
+          audio.src = '';
+          audio.load();
         }
 
         // Check if current song has played less than 3 seconds

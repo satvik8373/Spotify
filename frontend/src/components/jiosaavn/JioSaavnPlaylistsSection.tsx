@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
 import { SectionWrapper } from '@/components/ui/section-wrapper';
+import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 
 interface JioSaavnPlaylistsSectionProps {
   title?: string;
@@ -25,59 +26,34 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<PlaylistCategory | null>(null);
-  const [lastRefresh, setLastRefresh] = useState(0);
   const navigate = useNavigate();
-
-  const shouldRefresh = () => {
-    const now = Date.now();
-    const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes for JioSaavn
-    return now - lastRefresh > REFRESH_INTERVAL;
-  };
 
   useEffect(() => {
     // Find the category
     const foundCategory = jioSaavnService.getCategoryById(categoryId);
     setCategory(foundCategory || null);
     
-    // Check if we need to refresh or if we have cached data
+    // Try to load from cache first
     const cachedData = localStorage.getItem(`jiosaavn-${categoryId}`);
-    const cachedTime = localStorage.getItem(`jiosaavn-${categoryId}-time`);
+    const cachedTimeStr = localStorage.getItem(`jiosaavn-${categoryId}-time`);
     
-    if (cachedData && cachedTime && !shouldRefresh()) {
+    if (cachedData && cachedTimeStr) {
       try {
         const parsed = JSON.parse(cachedData);
-        setPlaylists(parsed);
-        setLastRefresh(parseInt(cachedTime));
+        const cacheAge = Date.now() - parseInt(cachedTimeStr);
+        
+        // Use cache if it's less than 24 hours old (much longer cache)
+        if (cacheAge < 24 * 60 * 60 * 1000 && parsed.length > 0) {
+          setPlaylists(parsed);
+          return; // Don't fetch if we have valid cache
+        }
       } catch (error) {
-        console.error('Error parsing cached JioSaavn data:', error);
-        fetchPlaylists();
+        console.error('Error parsing cached data:', error);
       }
-    } else {
-      fetchPlaylists();
     }
-  }, [categoryId, limit]);
-
-  // Auto-refresh when app becomes visible
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && shouldRefresh()) {
-        fetchPlaylists();
-      }
-    };
-
-    const handleFocus = () => {
-      if (shouldRefresh()) {
-        fetchPlaylists();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
+    
+    // Only fetch if no valid cache exists
+    fetchPlaylists();
   }, [categoryId, limit]);
 
   const fetchPlaylists = async () => {
@@ -85,14 +61,41 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       setIsLoading(true);
       setError(null);
 
-      const data = await jioSaavnService.getPlaylistsByCategory(categoryId, limit);
+      let data: JioSaavnPlaylist[];
+      
+      // Use optimized methods with timeout for better performance
+      const fetchPromise = categoryId === 'trending' 
+        ? jioSaavnService.getJioSaavnTrendingPlaylists()
+        : jioSaavnService.getFreshPlaylistsByCategory(categoryId, limit);
+
+      // Add timeout to prevent slow loading
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
+      try {
+        data = await Promise.race([fetchPromise, timeoutPromise]);
+      } catch (timeoutError) {
+        console.warn(`Timeout fetching ${categoryId} playlists, using fallback`);
+        // Fast fallback
+        if (categoryId === 'trending') {
+          data = await jioSaavnService.searchPlaylists('trending now', limit);
+        } else {
+          data = await jioSaavnService.searchPlaylists(categoryId, limit);
+        }
+      }
+      
+      // Limit the results if needed
+      if (data.length > limit) {
+        data = data.slice(0, limit);
+      }
+      
       setPlaylists(data);
       
-      // Cache the data
+      // Cache the data for 24 hours
       const now = Date.now();
       localStorage.setItem(`jiosaavn-${categoryId}`, JSON.stringify(data));
       localStorage.setItem(`jiosaavn-${categoryId}-time`, now.toString());
-      setLastRefresh(now);
     } catch (err) {
       console.error('Error fetching JioSaavn playlists:', err);
       setError('Failed to load playlists');
@@ -103,6 +106,9 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   };
 
   const handlePlaylistClick = (playlist: JioSaavnPlaylist) => {
+    // Add to recently played
+    recentlyPlayedService.addJioSaavnPlaylist(playlist);
+    
     // Navigate to JioSaavn playlist page
     navigate(`/jiosaavn/playlist/${playlist.id}`, {
       state: { playlist }
@@ -144,6 +150,9 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   };
 
   const handleRefresh = () => {
+    // Clear cache and fetch fresh data
+    localStorage.removeItem(`jiosaavn-${categoryId}`);
+    localStorage.removeItem(`jiosaavn-${categoryId}-time`);
     fetchPlaylists();
   };
 

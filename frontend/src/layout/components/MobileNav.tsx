@@ -319,7 +319,7 @@ const MobileNav = () => {
 
       {/* Mobile Header - Spotify style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
-        <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden">
+        <div className="fixed top-0 left-0 right-0 z-30 bg-[#0C0A09] dark:bg-[#0C0A09] md:hidden">
           {isLibraryRoute ? (
             <div className="flex items-center justify-between px-4 h-12">
               <div className="flex items-center gap-2.5">
@@ -576,8 +576,8 @@ const MobileNav = () => {
         <div
           className="relative grid grid-cols-4 h-14 px-2 pt-0 pb-2"
           style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.88)',
-            background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
+            backgroundColor: '#0C0A09',
+            background: 'linear-gradient(0deg, #0C0A09 0%, rgba(12, 10, 9, 0.95) 10%, rgba(12, 10, 9, 0.9) 25%, rgba(12, 10, 9, 0.8) 40%, rgba(12, 10, 9, 0.6) 60%, rgba(12, 10, 9, 0.4) 75%, rgba(12, 10, 9, 0.2) 85%, rgba(12, 10, 9, 0.1) 95%, transparent 100%)',
             border: 'none',
             boxShadow: 'none',
           }}

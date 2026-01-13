@@ -77,7 +77,7 @@ const SearchPage = () => {
   const { searchIndianSongs, indianSearchResults } = useMusicStore();
   const { searchPlaylists, searchResults: playlistResults } = usePlaylistStore();
   const { isAuthenticated, user } = useAuth();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(false);
 
   // Recent searches state
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -538,7 +538,7 @@ const SearchPage = () => {
           </div>
 
         {isInitialLoad ? (
-          <ContentLoading text="Loading..." height="py-12" />
+          <div className="py-12"></div>
         ) : query ? (
           <div className="space-y-6">
             {/* Top Results - Featured Section */}

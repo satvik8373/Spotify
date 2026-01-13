@@ -32,7 +32,7 @@ class FirestoreService<T extends FirebaseDocument> {
   private collectionName: string;
   private cache: Map<string, T | T[]> = new Map();
   private cacheTimestamps: Map<string, number> = new Map();
-  private cacheDuration: number = 300000; // Cache for 5 minutes
+  private cacheDuration: number = 60000; // Cache for 1 minute instead of 5
   
   constructor(collectionName: string) {
     this.collectionName = collectionName;
@@ -138,18 +138,25 @@ class FirestoreService<T extends FirebaseDocument> {
   // Update document
   async update(id: string, data: Partial<T>): Promise<T> {
     try {
+      // Invalidate cache before update to ensure fresh data
+      this.invalidateCache();
+      
       await updateDoc(this.getDocRef(id), {
         ...data,
         updatedAt: serverTimestamp()
       });
       
-      // Get updated document
-      const updatedDoc = await this.getById(id);
-      this.invalidateCache();
+      // Get updated document directly from Firestore (bypassing cache)
+      const docSnap = await getDoc(this.getDocRef(id));
       
-      if (!updatedDoc) {
+      if (!docSnap.exists()) {
         throw new Error(`${this.collectionName} document not found after update`);
       }
+      
+      const updatedDoc = { id: docSnap.id, ...docSnap.data() } as T;
+      
+      // Update cache with fresh data
+      this.setCachedData(id, updatedDoc);
       
       return updatedDoc;
     } catch (error) {
@@ -216,6 +223,11 @@ class FirestoreService<T extends FirebaseDocument> {
   private invalidateCache(): void {
     this.cache.clear();
     this.cacheTimestamps.clear();
+  }
+  
+  // Public method to manually invalidate cache
+  public clearCache(): void {
+    this.invalidateCache();
   }
 }
 
@@ -438,6 +450,9 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
   // Add song to playlist
   async addSongToPlaylist(playlistId: string, song: FirestoreSong): Promise<FirestorePlaylist> {
     try {
+      // Invalidate cache before fetching to ensure fresh data
+      this.invalidateCache();
+      
       const playlist = await this.getById(playlistId);
       
       if (!playlist) {
@@ -462,6 +477,9 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
   // Remove song from playlist
   async removeSongFromPlaylist(playlistId: string, songId: string): Promise<FirestorePlaylist> {
     try {
+      // Invalidate cache before fetching to ensure fresh data
+      this.invalidateCache();
+      
       const playlist = await this.getById(playlistId);
       
       if (!playlist) {

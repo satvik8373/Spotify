@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
 import { SectionWrapper } from '@/components/ui/section-wrapper';
+import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 
 // Interface for recent playlist
 interface RecentPlaylist {
@@ -21,8 +22,8 @@ interface RecentPlaylist {
 const HomePage = () => {
   const { publicPlaylists, fetchPublicPlaylists } = usePlaylistStore();
   const { isOnline } = useAuth();
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [recentPlaylists, setRecentPlaylists] = useState<RecentPlaylist[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [displayItems, setDisplayItems] = useState<any[]>([]);
   const navigate = useNavigate();
   const { loadLikedSongs } = useLikedSongsStore();
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
@@ -60,91 +61,49 @@ const HomePage = () => {
   useEffect(() => {
     const initializeHomePage = async () => {
       try {
+        // Show content immediately, load data in background
+        setIsInitialLoading(false);
+        
         // Check if we need to refresh data
         if (usePlaylistStore.getState().shouldRefresh()) {
           await usePlaylistStore.getState().refreshAllData();
         } else {
           await fetchPublicPlaylists();
         }
-        setTimeout(() => {
-          setIsInitialLoading(false);
-        }, 100);
       } catch (error) {
         console.error('Error initializing homepage:', error);
-        setTimeout(() => {
-          setIsInitialLoading(false);
-        }, 200);
+        // Still show content even if data loading fails
+        setIsInitialLoading(false);
       }
     };
 
     initializeHomePage();
   }, [fetchPublicPlaylists]);
 
-  // Load recent playlists from localStorage
+  // Load recent playlists from the new service
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('recent_playlists');
-      if (saved) {
-        const items = JSON.parse(saved);
-        setRecentPlaylists(items);
-      }
-    } catch (error) {
-      console.error('Error loading recent playlists:', error);
-    }
-  }, []);
+    const updateDisplayItems = () => {
+      const items = recentlyPlayedService.getDisplayItems(publicPlaylists);
+      setDisplayItems(items);
+    };
 
-  // Function to add a playlist to recent
-  const addToRecentPlaylists = (playlist: any) => {
-    try {
-      const newRecent = {
-        _id: playlist._id,
-        name: playlist.name,
-        imageUrl: playlist.imageUrl,
-        lastPlayed: Date.now(),
-      };
+    // Initial load
+    updateDisplayItems();
 
-      setRecentPlaylists(current => {
-        // Remove if already exists
-        const filtered = current.filter(p => p._id !== playlist._id);
-        // Add to beginning
-        const updated = [newRecent, ...filtered].slice(0, 5);
-        // Save to localStorage
-        localStorage.setItem('recent_playlists', JSON.stringify(updated));
-        return updated;
-      });
-    } catch (error) {
-      console.error('Error updating recent playlists:', error);
-    }
-  };
+    // Listen for updates to recently played
+    const handleRecentlyPlayedUpdated = () => {
+      updateDisplayItems();
+    };
 
-  // Function to get displayed items (prefer recent; fallback to public playlists)
+    document.addEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
+    return () => {
+      document.removeEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
+    };
+  }, [publicPlaylists]);
+
+  // Function to get displayed items (now using the service)
   const getDisplayedItems = () => {
-    const items = [];
-
-    // Add recent playlists only if they exist
-    if (recentPlaylists.length > 0) {
-      items.push(
-        ...recentPlaylists.map(playlist => ({
-          _id: playlist._id,
-          name: playlist.name,
-          imageUrl: playlist.imageUrl,
-          path: `/playlist/${playlist._id}`,
-        }))
-      );
-    }
-
-    // If we don't have enough recent playlists, add public playlists
-    // Limit to 7 items (7 + 1 Liked Songs = 8 total cards)
-    if (items.length < 7 && publicPlaylists.length > 0) {
-      const remainingSlots = 7 - items.length;
-      const additional = publicPlaylists
-        .filter(p => !recentPlaylists.some(rp => rp._id === p._id))
-        .slice(0, remainingSlots)
-        .map(p => ({ _id: p._id, name: p.name, imageUrl: p.imageUrl, path: `/playlist/${p._id}` }));
-      items.push(...additional);
-    }
-
-    return items.slice(0, 7); // 7 items + 1 Liked Songs = 8 total cards
+    return displayItems;
   };
 
   // Handle color changes with ultra-smooth transitions
@@ -202,23 +161,47 @@ const HomePage = () => {
     console.log('Liked songs color:', likedSongsColor);
   }, [activeColor, hoveredColor, likedSongsColor]);
 
-  // Handle playlist click (only for real playlists, no demo data)
-  const handlePlaylistClick = (playlist: any) => {
-    // Only handle real playlists with valid IDs
-    if (playlist._id) {
-      // Add to recent playlists
-      addToRecentPlaylists(playlist);
-
-      // Navigate to playlist
-      navigate(`/playlist/${playlist._id}`);
+  // Handle playlist click (works for both regular and JioSaavn playlists)
+  const handlePlaylistClick = (item: any) => {
+    // Only handle items with valid IDs
+    if (item._id) {
+      if (item.type === 'jiosaavn-playlist') {
+        // Add JioSaavn playlist to recent
+        recentlyPlayedService.addJioSaavnPlaylist(item.data || {
+          id: item._id,
+          name: item.name,
+          image: item.imageUrl
+        });
+        // Navigate to JioSaavn playlist
+        navigate(`/jiosaavn/playlist/${item._id}`, {
+          state: { playlist: item.data }
+        });
+      } else if (item.type === 'album') {
+        // Add album to recent
+        recentlyPlayedService.addAlbum({
+          _id: item._id,
+          name: item.name,
+          imageUrl: item.imageUrl
+        });
+        // Navigate to album
+        navigate(`/albums/${item._id}`);
+      } else {
+        // Regular playlist
+        recentlyPlayedService.addPlaylist({
+          _id: item._id,
+          name: item.name,
+          imageUrl: item.imageUrl,
+          isPublic: true
+        });
+        // Navigate to playlist
+        navigate(`/playlist/${item._id}`);
+      }
     }
   };
 
   if (isInitialLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <div className="min-h-screen bg-[#121212]"></div>
     );
   }
 
@@ -264,17 +247,11 @@ const HomePage = () => {
         </>
       )}
 
-      <div className="py-6 space-y-8 relative w-full z-10 pb-32 md:pb-8">
+      <div className="py-4 space-y-4 relative w-full z-10 pb-32 md:pb-8">
         <div className="w-full overflow-x-hidden">
           {/* Recently Played Section */}
           {isOnline && getDisplayedItems().length > 0 && (
-            <section className="px-4 md:px-6 mb-8 w-full">
-              <div className="mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-foreground mb-4 gradient-text-shadow">
-                  Good afternoon
-                </h2>
-              </div>
-
+            <section className="px-4 md:px-6 mb-6 w-full">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 w-full max-w-full">
                 {/* Liked Songs Card - Pinned First */}
                 <RecentlyPlayedCard
