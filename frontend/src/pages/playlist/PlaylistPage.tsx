@@ -28,10 +28,12 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
-import { TouchSafeDropdownMenu } from '../../components/ui/touch-safe-dropdown';
 import toast from 'react-hot-toast';
 import { EditPlaylistDialog } from '../../components/playlist/EditPlaylistDialog';
 import { formatTime } from '../../utils/formatTime';
@@ -48,7 +50,6 @@ import {
 import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import SwipeableSongItem from '@/components/SwipeableSongItem';
 import { SongFileUploader } from '../../components/playlist/SongFileUploader';
 import { updatePlaylistCoverFromSongs } from '../../services/playlistService';
 
@@ -774,7 +775,7 @@ export function PlaylistPage() {
               
               {/* Description and metadata */}
               {currentPlaylist.description && (
-                <p className="text-sm text-muted-foreground mb-4 max-w-xl mx-auto md:mx-0">{currentPlaylist.description}</p>
+                <p className="text-sm text-muted-foreground mb-4 max-w-xl mx-auto md:mx-0 truncate">{currentPlaylist.description}</p>
               )}
               
               <div className="flex items-center gap-1 text-sm text-muted-foreground justify-center md:justify-start flex-wrap">
@@ -811,8 +812,8 @@ export function PlaylistPage() {
                 </>
               )}
 
-              <TouchSafeDropdownMenu
-                trigger={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -820,47 +821,47 @@ export function PlaylistPage() {
                   >
                     <MoreHorizontal className="h-6 w-6" />
                   </Button>
-                }
-                contentClassName="bg-popover text-popover-foreground border-border"
-              >
-                <DropdownMenuItem onClick={() => openAddSongsDialog('search')} className="hover:bg-accent">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add songs
-                </DropdownMenuItem>
-                {isOwner && (
-                  <DropdownMenuItem 
-                    onClick={() => setShowRegenerateCoverDialog(true)} 
-                    className="hover:bg-accent"
-                  >
-                    <ImageIcon className="h-4 w-4 mr-2" />
-                    Generate cover
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-popover text-popover-foreground border-border">
+                  <DropdownMenuItem onClick={() => openAddSongsDialog('search')} className="hover:bg-accent">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add songs
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => openAddSongsDialog('upload')} className="hover:bg-accent">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Import from File
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="hover:bg-accent">
-                  <SharePlaylist 
-                    playlist={currentPlaylist} 
-                    trigger={
-                      <div className="flex items-center w-full">
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Share
-                      </div>
-                    }
-                  />
-                </DropdownMenuItem>
-                {isOwner && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleDeletePlaylist} className="text-red-500 hover:text-red-500/90 hover:bg-accent">
-                      <Trash className="h-4 w-4 mr-2" />
-                      Delete playlist
+                  {isOwner && (
+                    <DropdownMenuItem 
+                      onClick={() => setShowRegenerateCoverDialog(true)} 
+                      className="hover:bg-accent"
+                    >
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      Generate cover
                     </DropdownMenuItem>
-                  </>
-                )}
-              </TouchSafeDropdownMenu>
+                  )}
+                  <DropdownMenuItem onClick={() => openAddSongsDialog('upload')} className="hover:bg-accent">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Import from File
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="hover:bg-accent">
+                    <SharePlaylist 
+                      playlist={currentPlaylist} 
+                      trigger={
+                        <div className="flex items-center w-full">
+                          <Share2 className="h-4 w-4 mr-2" />
+                          Share
+                        </div>
+                      }
+                    />
+                  </DropdownMenuItem>
+                  {isOwner && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleDeletePlaylist} className="text-red-500 hover:text-red-500/90 hover:bg-accent">
+                        <Trash className="h-4 w-4 mr-2" />
+                        Delete playlist
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Right side play button */}
@@ -937,7 +938,7 @@ export function PlaylistPage() {
                 const isThisSongPlaying = isCurrentSong && playerIsPlaying;
                 
                 return (
-                <SwipeableSongItem
+                <div
                   key={song._id}
                   className="mx-[-16px]"
                 >
@@ -986,17 +987,17 @@ export function PlaylistPage() {
                           className="h-full w-full object-cover"
                       />
                         </div>
-                      <div className="flex flex-col min-w-0">
+                      <div className="flex flex-col min-w-0 flex-1">
                         <span className={cn(
                           "font-medium truncate text-base",
                           isCurrentSong && "text-green-500"
                         )}>
                           {song.title}
                         </span>
-                        <span className="text-sm text-muted-foreground truncate">
-                        {song.artist}
-                      </span>
-                    </div>
+                        <span className="text-sm text-muted-foreground truncate whitespace-nowrap overflow-hidden">
+                          {song.artist}
+                        </span>
+                      </div>
                   </div>
                     
                     {/* Date added (desktop only) */}
@@ -1067,7 +1068,7 @@ export function PlaylistPage() {
                       )}
                     </div>
                   </div>
-                </SwipeableSongItem>
+                </div>
                 );
               })}
             </div>

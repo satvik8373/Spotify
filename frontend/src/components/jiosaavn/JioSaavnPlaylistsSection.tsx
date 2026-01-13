@@ -143,26 +143,26 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       onViewAll={handleViewAll}
     >
       <HorizontalScroll
-        itemWidth={180}
-        gap={16}
+        itemWidth={120}
+        gap={10}
         showArrows={true}
         snapToItems={false}
       >
         {isLoading ? (
           // Loading skeleton
           Array.from({ length: 8 }).map((_, i) => (
-            <ScrollItem key={i} width={180}>
-              <div className="space-y-3 p-2">
+            <ScrollItem key={i} width={120}>
+              <div className="space-y-2 p-1">
                 <div 
                   className="w-full aspect-square rounded-md bg-muted animate-pulse" 
                   style={{animationDelay: `${i * 0.1}s`}}
                 />
                 <div 
-                  className="h-4 rounded bg-muted animate-pulse" 
+                  className="h-3 rounded bg-muted animate-pulse" 
                   style={{animationDelay: `${i * 0.1 + 0.1}s`}}
                 />
                 <div 
-                  className="h-3 rounded bg-muted animate-pulse w-3/4" 
+                  className="h-2 rounded bg-muted animate-pulse w-3/4" 
                   style={{animationDelay: `${i * 0.1 + 0.2}s`}}
                 />
               </div>
@@ -171,7 +171,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
         ) : (
           // Actual playlist cards
           playlists.map((playlist) => (
-            <ScrollItem key={playlist.id} width={180}>
+            <ScrollItem key={playlist.id} width={120}>
               <JioSaavnPlaylistCard
                 playlist={playlist}
                 onClick={handlePlaylistClick}

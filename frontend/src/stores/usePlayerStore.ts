@@ -77,8 +77,18 @@ export const usePlayerStore = create<PlayerState>()(
           console.warn('Skipping song with blob URL from old download system:', song.title);
           return;
         }
-        set({ currentSong: song });
-        // Removed immediate localStorage write - will be handled by batch save
+        
+        // Immediately reset current time when switching songs
+        set({ 
+          currentSong: song,
+          currentTime: 0 // Reset time immediately for new song
+        });
+        
+        // Also reset the audio element's currentTime immediately if it exists
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.currentTime = 0;
+        }
       },
 
       setIsPlaying: (isPlaying) => {
@@ -119,6 +129,13 @@ export const usePlayerStore = create<PlayerState>()(
         // Adjust initial index if songs were filtered out
         const validIndex = Math.max(0, Math.min(initialIndex, validSongs.length - 1));
 
+        // Immediately stop current audio and reset time
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+        }
+
         // Set player state
         set({
           queue: validSongs,
@@ -153,10 +170,16 @@ export const usePlayerStore = create<PlayerState>()(
           return;
         }
 
+        // Immediately stop current audio and reset time
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+        }
+
         // First check if we should repeat the current song
         if (isRepeating) {
           // Just restart the current song
-          const audio = document.querySelector('audio');
           if (audio) {
             audio.currentTime = 0;
             audio.dataset.ending = 'false'; // Reset ending flag
@@ -328,9 +351,15 @@ export const usePlayerStore = create<PlayerState>()(
 
         if (queue.length === 0) return;
 
+        // Immediately stop current audio and reset time
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+        }
+
         // Check if current song has played less than 3 seconds
         // If so, go to previous song, otherwise restart current song
-        const audio = document.querySelector('audio');
         const currentTime = audio?.currentTime || 0;
 
         if (currentTime > 3 && !isRepeating) {

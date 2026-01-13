@@ -22,10 +22,11 @@ import { formatTime } from '@/utils/formatTime';
 import '../../styles/playlist-page.css';
 import toast from 'react-hot-toast';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TouchSafeDropdownMenu } from '@/components/ui/touch-safe-dropdown';
-import SwipeableSongItem from '@/components/SwipeableSongItem';
 
 const JioSaavnPlaylistPage: React.FC = () => {
   const { playlistId } = useParams<{ playlistId: string }>();
@@ -343,8 +344,8 @@ const JioSaavnPlaylistPage: React.FC = () => {
           <div className="flex items-center justify-between">
             {/* Left side tools */}
             <div className="flex items-center gap-3 sm:gap-4">
-              <TouchSafeDropdownMenu
-                trigger={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -352,14 +353,14 @@ const JioSaavnPlaylistPage: React.FC = () => {
                   >
                     <MoreHorizontal className="h-6 w-6" />
                   </Button>
-                }
-                contentClassName="bg-popover text-popover-foreground border-border"
-              >
-                <DropdownMenuItem onClick={handleShare} className="hover:bg-accent">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </DropdownMenuItem>
-              </TouchSafeDropdownMenu>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-popover text-popover-foreground border-border">
+                  <DropdownMenuItem onClick={handleShare} className="hover:bg-accent">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Right side play button */}
@@ -445,7 +446,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
                 const isThisSongPlaying = isCurrentSong && playerIsPlaying;
                 
                 return (
-                  <SwipeableSongItem
+                  <div
                     key={song.id}
                     className="mx-[-16px]"
                   >
@@ -538,8 +539,8 @@ const JioSaavnPlaylistPage: React.FC = () => {
                         </div>
 
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <TouchSafeDropdownMenu
-                            trigger={
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -548,37 +549,38 @@ const JioSaavnPlaylistPage: React.FC = () => {
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
-                            }
-                          >
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddToQueue(song);
-                              }}
-                            >
-                              <ListPlus className="h-4 w-4 mr-2" />
-                              Add to Queue
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const downloadUrl = song.downloadUrl.find(url => url.quality === '320kbps')?.url ||
-                                                   song.downloadUrl[0]?.url;
-                                if (downloadUrl) {
-                                  window.open(downloadUrl, '_blank');
-                                } else {
-                                  toast.error('Download not available');
-                                }
-                              }}
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Download
-                            </DropdownMenuItem>
-                          </TouchSafeDropdownMenu>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddToQueue(song);
+                                }}
+                              >
+                                <ListPlus className="h-4 w-4 mr-2" />
+                                Add to Queue
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const downloadUrl = song.downloadUrl.find(url => url.quality === '320kbps')?.url ||
+                                                     song.downloadUrl[0]?.url;
+                                  if (downloadUrl) {
+                                    window.open(downloadUrl, '_blank');
+                                  } else {
+                                    toast.error('Download not available');
+                                  }
+                                }}
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </div>
-                  </SwipeableSongItem>
+                  </div>
                 );
               })}
             </div>

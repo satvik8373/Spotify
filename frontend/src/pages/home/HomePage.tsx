@@ -289,14 +289,14 @@ const HomePage = () => {
             onViewAll={() => navigate('/library')}
           >
             <HorizontalScroll
-              itemWidth={180}
-              gap={16}
+              itemWidth={120}
+              gap={10}
               showArrows={true}
               snapToItems={false}
             >
               {publicPlaylists.length > 0 ? (
                 publicPlaylists.slice(0, 20).map((playlist) => (
-                  <ScrollItem key={playlist._id} width={180}>
+                  <ScrollItem key={playlist._id} width={120}>
                     <PlaylistCard
                       playlist={playlist}
                       showDescription={true}
@@ -306,11 +306,11 @@ const HomePage = () => {
                 ))
               ) : (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <ScrollItem key={i} width={180}>
-                    <div className="space-y-3 p-2">
+                  <ScrollItem key={i} width={120}>
+                    <div className="space-y-3 p-1">
                       <div className="w-full aspect-square rounded-md bg-muted animate-pulse" />
-                      <div className="h-4 rounded bg-muted animate-pulse" />
-                      <div className="h-3 rounded bg-muted animate-pulse w-3/4" />
+                      <div className="h-3 rounded bg-muted animate-pulse" />
+                      <div className="h-2 rounded bg-muted animate-pulse w-3/4" />
                     </div>
                   </ScrollItem>
                 ))

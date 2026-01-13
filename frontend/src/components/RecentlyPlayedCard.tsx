@@ -48,7 +48,7 @@ export function RecentlyPlayedCard({
   return (
     <div
       className={cn(
-        'group relative h-[48px] md:h-[64px] w-full rounded-[4px] overflow-hidden cursor-pointer',
+        'group relative h-[48px] md:h-[64px] w-full rounded-md overflow-hidden cursor-pointer',
         'recently-played-card',
         isHovered 
           ? 'bg-white/25' 
@@ -80,7 +80,7 @@ export function RecentlyPlayedCard({
       <div className="relative flex items-center h-full z-10">
         {/* Image with Spotify-style glow effect */}
         <div className="relative w-[48px] md:w-[63px] h-full flex-shrink-0">
-          <div className="relative w-full h-full rounded-l-[4px] overflow-hidden shadow-sm">
+          <div className="relative w-full h-full rounded-l-md overflow-hidden shadow-sm">
             {imageUrl ? (
               <img
                 ref={imgRef}

@@ -8,7 +8,6 @@ import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
 import { Loading } from './components/ui/loading';
-import './styles/touch-fixes.css';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
@@ -72,32 +71,21 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 	const { isAuthenticated, loading } = useAuth();
 	const location = useLocation();
 
-	// Check if we previously saved auth info in localStorage as a quick check
-	// before the full authentication process completes
+	// Quick check for cached auth to avoid unnecessary loading states
 	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 
-	// Check if we're coming from a login redirect (smooth transition)
-	const isFromLoginRedirect = getSessionStorage('auth_redirect') === '1';
+	// If we have cached auth, show content immediately for better UX
+	if (hasCachedAuth && !loading) {
+		return <>{children}</>;
+	}
 
-	// Don't redirect while auth is still loading
+	// Show minimal loading while auth is being determined
 	if (loading) {
-		// If we have cached auth, render children optimistically for smooth UX
-		if (hasCachedAuth) {
-			return <>{children}</>;
-		}
-
-		// If coming from login redirect, show minimal loading
-		if (isFromLoginRedirect) {
-			return <Loading size="xs" />;
-		}
-
-		// Otherwise show minimal loading indicator
 		return <Loading size="sm" />;
 	}
 
-	// If not authenticated, redirect to login with return URL
+	// If not authenticated, redirect to login
 	if (!isAuthenticated) {
-		// Store the redirect path so we can redirect back after login
 		return <Navigate to="/login" state={{ from: location.pathname }} replace />;
 	}
 
@@ -109,21 +97,13 @@ const LandingRedirector = () => {
 	const { isAuthenticated, loading } = useAuth();
 	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 
-	// Check if we're coming from a login redirect (smooth transition)
-	const isFromLoginRedirect = getSessionStorage('auth_redirect') === '1';
-
-	// If we have cached auth or are authenticated, redirect to home immediately
-	if (hasCachedAuth || isAuthenticated) {
+	// If authenticated (cached or confirmed), go to home
+	if (isAuthenticated || hasCachedAuth) {
 		return <Navigate to="/home" replace />;
 	}
 
-	// Still loading, but no cached auth - show minimal loading indicator
-	if (loading && !hasCachedAuth) {
-		// Smaller spinner for login redirects
-		if (isFromLoginRedirect) {
-			return <Loading size="xs" />;
-		}
-
+	// If still loading auth state, show minimal loading
+	if (loading) {
 		return <Loading size="sm" />;
 	}
 
@@ -230,9 +210,9 @@ const router = createBrowserRouter(
 
 function AppContent() {
 	const [showSplash, setShowSplash] = useState(true);
-	const [initialized, setInitialized] = useState(false);
+	const [appReady, setAppReady] = useState(false);
 
-	// Initialize Firestore data and check if user is already logged in
+	// Initialize app and handle splash screen
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
@@ -244,69 +224,84 @@ function AppContent() {
 
 				// Initialize performance optimizations
 				performanceService.addResourceHints();
-				// Mobile performance service initializes automatically
 
-				// Initialize auto-sync service if user was previously authenticated
+				// Check if coming from auth redirect for faster loading
+				const fromAuthRedirect = getSessionStorage('auth_redirect') === '1';
 				const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
-				if (hasCachedAuth) {
-					// Check if auto-sync was previously enabled and start it
-					const autoSyncConfig = spotifyAutoSyncService.getConfig();
-					if (autoSyncConfig.enabled) {
-						// Delay auto-sync start to avoid blocking app initialization
-						setTimeout(() => {
-							spotifyAutoSyncService.startAutoSync(autoSyncConfig.intervalMinutes);
-						}, 3000);
-					}
+
+				// Determine splash screen duration
+				let splashDuration = 1500; // Default 1.5 seconds
+				
+				if (fromAuthRedirect) {
+					splashDuration = 300; // Very fast for auth redirects
+				} else if (hasCachedAuth) {
+					splashDuration = 800; // Faster for returning users
 				}
 
-				const fromAuthRedirect = getSessionStorage('auth_redirect') === '1';
+				// Set app as ready after initialization
+				setAppReady(true);
 
-				// Always show splash screen with video animation
-				// Reduced timing to prevent getting stuck
-				const splashMinTime = (hasCachedAuth || fromAuthRedirect) ? 500 : 1000;
-				
+				// Hide splash screen after duration
 				setTimeout(() => {
-					setInitialized(true);
-				}, splashMinTime);
+					setShowSplash(false);
+				}, splashDuration);
+
+				// Initialize auto-sync service if user was previously authenticated
+				if (hasCachedAuth) {
+					setTimeout(() => {
+						const autoSyncConfig = spotifyAutoSyncService.getConfig();
+						if (autoSyncConfig.enabled) {
+							spotifyAutoSyncService.startAutoSync(autoSyncConfig.intervalMinutes);
+						}
+					}, 2000);
+				}
+
 			} catch (error) {
 				console.error("Error initializing app:", error);
-				// Continue anyway in case of initialization errors
-				setInitialized(true);
+				// Always continue even if initialization fails
+				setAppReady(true);
+				setTimeout(() => setShowSplash(false), 1000);
 			}
 		};
 
 		initializeApp();
 	}, []);
 
-	// Prefetch critical lazy routes to reduce render delay for first navigation
+	// Prefetch critical routes
 	useEffect(() => {
-		// Only prefetch after first paint to avoid blocking FCP
-		const idle = (cb: () => void) => {
-			if ('requestIdleCallback' in window) {
-				(window as any).requestIdleCallback(cb, { timeout: 1500 });
-			} else {
-				setTimeout(cb, 800);
-			}
-		};
+		if (appReady) {
+			const idle = (cb: () => void) => {
+				if ('requestIdleCallback' in window) {
+					(window as any).requestIdleCallback(cb, { timeout: 1000 });
+				} else {
+					setTimeout(cb, 500);
+				}
+			};
 
-		idle(() => {
-			// Warm important route chunks
-			import('./layout/MainLayout');
-			import('./pages/home/HomePage');
-			import('./pages/search/SearchPage');
-		});
-	}, []);
+			idle(() => {
+				import('./layout/MainLayout');
+				import('./pages/home/HomePage');
+				import('./pages/search/SearchPage');
+			});
+		}
+	}, [appReady]);
 
-	// Always show splash screen on initial load until initialization completes
-	if (showSplash || !initialized) {
+	// Show splash screen until both app is ready and splash duration has passed
+	if (showSplash || !appReady) {
 		return (
 			<div className="fixed inset-0 bg-black">
-				<SplashScreen onComplete={() => initialized && setShowSplash(false)} />
+				<SplashScreen 
+					onComplete={() => {
+						if (appReady) {
+							setShowSplash(false);
+						}
+					}} 
+				/>
 			</div>
 		);
 	}
 
-	// Always show main app content with black background to prevent white flicker
+	// Main app content
 	return (
 		<div className="min-h-screen bg-[#121212]">
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />

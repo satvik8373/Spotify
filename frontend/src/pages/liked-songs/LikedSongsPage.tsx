@@ -56,7 +56,7 @@ const MemoizedSongItem = React.memo(({
       className={cn(
         "group relative hover:bg-muted/50 rounded-md transition-colors cursor-pointer items-center",
         isMobile
-          ? "grid grid-cols-[auto_1fr_48px] gap-3 p-3 py-2"
+          ? "flex gap-3 p-3 py-2"
           : "grid grid-cols-[16px_4fr_3fr_2fr_1fr_48px] gap-4 p-2 px-4"
       )}
     >
@@ -95,7 +95,7 @@ const MemoizedSongItem = React.memo(({
       )}
 
       {/* Song info - Spotify-style with better album artwork */}
-      <div className="flex items-center min-w-0">
+      <div className="flex items-center min-w-0 flex-1">
         <div className={cn(
           "flex-shrink-0 overflow-hidden rounded shadow-md relative group/artwork",
           isMobile ? "w-14 h-14 mr-3" : "w-12 h-12 mr-3"
@@ -133,60 +133,30 @@ const MemoizedSongItem = React.memo(({
         </div>
         <div className="min-w-0 flex-1">
           <div className={cn(
-            "font-medium truncate",
-            isSongPlaying ? "text-primary" : "text-foreground",
-            isMobile ? "text-base leading-tight" : ""
+            "font-medium text-base",
+            isSongPlaying ? "text-green-500" : "text-foreground",
+            isMobile ? "leading-tight" : "truncate"
           )}>
             {song.title}
           </div>
           <div className={cn(
-            "text-muted-foreground truncate",
-            isMobile ? "text-sm leading-tight" : "text-sm"
+            "text-muted-foreground text-sm truncate whitespace-nowrap overflow-hidden",
+            isMobile ? "leading-tight" : ""
           )}>
             {song.artist}
           </div>
-          {/* Mobile album info - smaller and more compact */}
-          {isMobile && (
-            <div className="text-xs text-muted-foreground/70 truncate mt-0.5">
-              {song.albumId || 'Unknown Album'}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Desktop album */}
-      {!isMobile && (
-        <div className="flex items-center text-muted-foreground truncate">
-          {song.albumId || 'Unknown Album'}
-        </div>
-      )}
-
-      {/* Desktop date added */}
-      {!isMobile && (
-        <div className="flex items-center text-muted-foreground text-sm">
-          {(song as any).likedAt ? 
-            new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric',
-              year: new Date().getFullYear() !== new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).getFullYear() ? 'numeric' : undefined
-            }) :
-            new Date().toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric'
-            })
-          }
-        </div>
-      )}
-
-      {/* Mobile actions - simple dropdown */}
+      {/* Mobile actions - positioned on the right */}
       {isMobile && (
-        <div className="flex justify-end">
+        <div className="flex-shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                className="h-8 w-8 opacity-60 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -214,6 +184,30 @@ const MemoizedSongItem = React.memo(({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+      )}
+
+      {/* Desktop album */}
+      {!isMobile && (
+        <div className="flex items-center text-muted-foreground truncate">
+          {song.albumId || 'Unknown Album'}
+        </div>
+      )}
+
+      {/* Desktop date added */}
+      {!isMobile && (
+        <div className="flex items-center text-muted-foreground text-sm">
+          {(song as any).likedAt ? 
+            new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric',
+              year: new Date().getFullYear() !== new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).getFullYear() ? 'numeric' : undefined
+            }) :
+            new Date().toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric'
+            })
+          }
         </div>
       )}
 

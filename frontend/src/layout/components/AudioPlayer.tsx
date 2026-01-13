@@ -1140,6 +1140,15 @@ const AudioPlayer = () => {
 
         // Pause current playback before changing source to prevent conflicts
         audio.pause();
+        
+        // CRITICAL: Immediately reset currentTime to 0 to stop previous song audio
+        audio.currentTime = 0;
+        
+        // Also reset the local time state immediately
+        setLocalCurrentTime(0);
+        if (setCurrentTime) {
+          setCurrentTime(0);
+        }
 
         // Set up event listeners for this specific load sequence
         const handleCanPlay = () => {
