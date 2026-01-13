@@ -918,7 +918,7 @@ export function PlaylistPage() {
         </div>
 
         {/* Songs list with Spotify-style design */}
-        <div className="px-4 sm:px-6 pb-24">
+        <div className="px-4 sm:px-6 pb-32 md:pb-24">
           {currentPlaylist.songs.length > 0 ? (
             <div className="mt-4">
               {/* Spotify-style header row */}
@@ -945,7 +945,7 @@ export function PlaylistPage() {
                   <div
                     className={cn(
                       'grid grid-cols-[40px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)_48px] items-center py-2 px-4 rounded-md group',
-                      'hover:bg-white/10 transition-colors duration-200',
+                      'md:hover:bg-white/10 md:transition-colors md:duration-200 active:bg-white/5',
                       isCurrentSong && 'bg-white/10',
                       !song.audioUrl && 'opacity-60'
                     )}
@@ -959,11 +959,11 @@ export function PlaylistPage() {
                         </div>
                       ) : (
                         <>
-                          <span className="text-gray-400 group-hover:hidden flex items-center justify-center w-8">{index + 1}</span>
+                          <span className="text-gray-400 md:group-hover:hidden flex items-center justify-center w-8">{index + 1}</span>
                         <Button
                           variant="ghost"
                           size="sm"
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-white p-0 hidden group-hover:flex"
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-white p-0 hidden md:group-hover:flex"
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePlaySong(song, index);
@@ -1015,7 +1015,7 @@ export function PlaylistPage() {
                     {/* Actions column */}
                     <div className="flex items-center justify-end gap-2">
                       {/* Add to Queue button - visible on desktop */}
-                      <div className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="hidden md:block md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -1038,7 +1038,7 @@ export function PlaylistPage() {
                       </div>
 
                       {isOwner && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1057,7 +1057,7 @@ export function PlaylistPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-0"
+                          className="h-8 w-8 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity text-muted-foreground hover:text-foreground p-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFindAudio(song, index, e);

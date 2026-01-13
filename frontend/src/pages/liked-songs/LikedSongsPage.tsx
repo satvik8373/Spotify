@@ -54,10 +54,10 @@ const MemoizedSongItem = React.memo(({
     <div
       onClick={onPlay}
       className={cn(
-        "group relative hover:bg-muted/50 rounded-md transition-colors cursor-pointer items-center",
+        "group relative rounded-md cursor-pointer items-center",
         isMobile
-          ? "flex gap-3 p-3 py-2"
-          : "grid grid-cols-[16px_4fr_3fr_2fr_1fr_48px] gap-4 p-2 px-4"
+          ? "flex gap-3 p-3 py-2 active:bg-muted/30"
+          : "grid grid-cols-[16px_4fr_3fr_2fr_1fr_48px] gap-4 p-2 px-4 hover:bg-muted/50 transition-colors"
       )}
     >
       {/* Desktop Index/Play button */}
@@ -112,22 +112,6 @@ const MemoizedSongItem = React.memo(({
           {(song as any).source === 'spotify' && (
             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-background">
               <Music className="h-2 w-2 text-white" />
-            </div>
-          )}
-          {/* Hover overlay for mobile play button */}
-          {isMobile && (
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPlay();
-                }}
-              >
-                <Play className="h-4 w-4 fill-current" />
-              </Button>
             </div>
           )}
         </div>
@@ -686,11 +670,11 @@ const LikedSongsPage = () => {
       )}
 
       {/* Songs List - Spotify-style */}
-      <div className={cn(isMobile ? "px-4" : "px-8")}>
+      <div className={cn(isMobile ? "px-4 pb-32" : "px-8 pb-8")}>
         {isLoading ? (
           <ContentLoading text="Loading liked songs..." height="py-12" />
         ) : likedSongs.length > 0 ? (
-          <div className={cn("pb-8", isMobile ? "pb-24" : "")}>
+          <div className={cn("pb-8", isMobile ? "pb-32" : "")}>
             {/* Desktop header */}
             {!isMobile && (
               <div className="grid grid-cols-[16px_4fr_3fr_2fr_1fr_48px] gap-4 px-4 py-2 text-sm text-muted-foreground border-b mb-2">

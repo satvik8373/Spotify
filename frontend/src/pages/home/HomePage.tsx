@@ -236,7 +236,7 @@ const HomePage = () => {
         </>
       )}
 
-      <div className="py-6 space-y-8 relative w-full z-10">
+      <div className="py-6 space-y-8 relative w-full z-10 pb-32 md:pb-8">
         <div className="w-full overflow-x-hidden">
           {/* Recently Played Section */}
           {isOnline && getDisplayedItems().length > 0 && (

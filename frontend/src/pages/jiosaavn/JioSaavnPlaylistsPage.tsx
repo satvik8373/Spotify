@@ -162,7 +162,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#121212] text-white">
       <ScrollArea className="h-screen">
-        <div className="pb-24">
+        <div className="pb-32 md:pb-24">
           {/* Header */}
           <div className="sticky top-0 z-10 bg-[#121212]/95 backdrop-blur-sm border-b border-white/10">
             <div className="flex items-center gap-4 p-4">

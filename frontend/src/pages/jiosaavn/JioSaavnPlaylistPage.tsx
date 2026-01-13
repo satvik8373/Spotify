@@ -415,7 +415,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
         </div>
 
         {/* Songs list */}
-        <div className="px-4 sm:px-6 pb-24">
+        <div className="px-4 sm:px-6 pb-32 md:pb-24">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
