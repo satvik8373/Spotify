@@ -14,12 +14,13 @@ import { cn } from '@/lib/utils';
 import { LikedSongsFileUploader } from '@/components/liked-songs/LikedSongsFileUploader';
 import { SpotifyLikedSongsSync } from '@/components/liked-songs/SpotifyLikedSongsSync';
 import { useSpotify } from '@/contexts/SpotifyContext';
-import SwipeableSongItem from '@/components/SwipeableSongItem';
 import './liked-songs.css';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TouchSafeDropdownMenu } from '@/components/ui/touch-safe-dropdown';
 import { ContentLoading } from '@/components/ui/loading';
 
 // Format time
@@ -50,222 +51,218 @@ const MemoizedSongItem = React.memo(({
   onUnlike: () => void;
 }) => {
   return (
-    <SwipeableSongItem>
-      <div
-        onClick={onPlay}
-        className={cn(
-          "group relative hover:bg-muted/50 rounded-md transition-colors cursor-pointer items-center liked-songs-item",
-          isMobile
-            ? "grid grid-cols-[auto_1fr_48px] gap-3 p-3 py-2"
-            : "grid grid-cols-[16px_4fr_3fr_2fr_1fr_48px] gap-4 p-2 px-4"
-        )}
-      >
-        {/* Desktop Index/Play button */}
-        {!isMobile && (
-          <div className="flex items-center justify-center text-sm text-muted-foreground group-hover:text-foreground">
-            {isSongPlaying ? (
+    <div
+      onClick={onPlay}
+      className={cn(
+        "group relative hover:bg-muted/50 rounded-md transition-colors cursor-pointer items-center",
+        isMobile
+          ? "grid grid-cols-[auto_1fr_48px] gap-3 p-3 py-2"
+          : "grid grid-cols-[16px_4fr_3fr_2fr_1fr_48px] gap-4 p-2 px-4"
+      )}
+    >
+      {/* Desktop Index/Play button */}
+      {!isMobile && (
+        <div className="flex items-center justify-center text-sm text-muted-foreground group-hover:text-foreground">
+          {isSongPlaying ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-primary hover:text-primary/80"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTogglePlay();
+              }}
+            >
+              <Pause className="h-4 w-4 fill-current" />
+            </Button>
+          ) : (
+            <>
+              <span className="group-hover:hidden">{index + 1}</span>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-primary hover:text-primary/80"
+                className="h-8 w-8 hidden group-hover:flex"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onTogglePlay();
+                  onPlay();
                 }}
               >
-                <Pause className="h-4 w-4 fill-current" />
+                <Play className="h-4 w-4 fill-current" />
               </Button>
-            ) : (
-              <>
-                <span className="group-hover:hidden">{index + 1}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 hidden group-hover:flex"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPlay();
-                  }}
-                >
-                  <Play className="h-4 w-4 fill-current" />
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Song info - Spotify-style with better album artwork */}
-        <div className="flex items-center min-w-0 song-title-column">
-          <div className={cn(
-            "flex-shrink-0 overflow-hidden rounded shadow-md relative group/artwork",
-            isMobile ? "w-14 h-14 mr-3" : "w-12 h-12 mr-3"
-          )}>
-            <img
-              src={song.imageUrl || '/placeholder-song.jpg'}
-              alt={song.title}
-              className="w-full h-full object-cover transition-transform duration-200 group-hover/artwork:scale-105"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = '/placeholder-song.jpg';
-              }}
-            />
-            {/* Source indicator - show Spotify icon for Spotify-synced songs */}
-            {(song as any).source === 'spotify' && (
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-background">
-                <Music className="h-2 w-2 text-white" />
-              </div>
-            )}
-            {/* Hover overlay for mobile play button */}
-            {isMobile && (
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPlay();
-                  }}
-                >
-                  <Play className="h-4 w-4 fill-current" />
-                </Button>
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className={cn(
-              "font-medium truncate",
-              isSongPlaying ? "text-primary" : "text-foreground",
-              isMobile ? "text-base leading-tight" : ""
-            )}>
-              {song.title}
-            </div>
-            <div className={cn(
-              "text-muted-foreground truncate",
-              isMobile ? "text-sm leading-tight" : "text-sm"
-            )}>
-              {song.artist}
-            </div>
-            {/* Mobile album info - smaller and more compact */}
-            {isMobile && (
-              <div className="text-xs text-muted-foreground/70 truncate mt-0.5">
-                {song.albumId || 'Unknown Album'}
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
+      )}
 
-        {/* Desktop album */}
-        {!isMobile && (
-          <div className="flex items-center text-muted-foreground truncate">
-            {song.albumId || 'Unknown Album'}
-          </div>
-        )}
-
-        {/* Desktop date added */}
-        {!isMobile && (
-          <div className="flex items-center text-muted-foreground text-sm">
-            {(song as any).likedAt ? 
-              new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric',
-                year: new Date().getFullYear() !== new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).getFullYear() ? 'numeric' : undefined
-              }) :
-              new Date().toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric'
-              })
-            }
-          </div>
-        )}
-
-        {/* Mobile actions - more compact */}
-        {isMobile && (
-          <div className="song-actions-column flex justify-end">
-            <TouchSafeDropdownMenu
-              trigger={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              }
-              align="end"
-              side="bottom"
-            >
-              <DropdownMenuItem
+      {/* Song info - Spotify-style with better album artwork */}
+      <div className="flex items-center min-w-0">
+        <div className={cn(
+          "flex-shrink-0 overflow-hidden rounded shadow-md relative group/artwork",
+          isMobile ? "w-14 h-14 mr-3" : "w-12 h-12 mr-3"
+        )}>
+          <img
+            src={song.imageUrl || '/placeholder-song.jpg'}
+            alt={song.title}
+            className="w-full h-full object-cover transition-transform duration-200 group-hover/artwork:scale-105"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = '/placeholder-song.jpg';
+            }}
+          />
+          {/* Source indicator - show Spotify icon for Spotify-synced songs */}
+          {(song as any).source === 'spotify' && (
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-background">
+              <Music className="h-2 w-2 text-white" />
+            </div>
+          )}
+          {/* Hover overlay for mobile play button */}
+          {isMobile && (
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAddToQueue();
+                  onPlay();
                 }}
               >
-                <ListPlus className="h-4 w-4 mr-2" />
-                Add to Queue
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onUnlike();
-                }}
-                className="text-red-400"
-              >
-                <Heart className="h-4 w-4 mr-2" />
-                Remove from Liked Songs
-              </DropdownMenuItem>
-            </TouchSafeDropdownMenu>
+                <Play className="h-4 w-4 fill-current" />
+              </Button>
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className={cn(
+            "font-medium truncate",
+            isSongPlaying ? "text-primary" : "text-foreground",
+            isMobile ? "text-base leading-tight" : ""
+          )}>
+            {song.title}
           </div>
-        )}
-
-        {/* Duration */}
-        {!isMobile && (
-          <div className="flex items-center text-muted-foreground text-sm justify-end">
-            {formatTime(song.duration || 0)}
+          <div className={cn(
+            "text-muted-foreground truncate",
+            isMobile ? "text-sm leading-tight" : "text-sm"
+          )}>
+            {song.artist}
           </div>
-        )}
-
-        {/* Desktop actions */}
-        {!isMobile && (
-          <div className="song-actions-column flex justify-end">
-            <TouchSafeDropdownMenu
-              trigger={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              }
-              align="end"
-              side="bottom"
-            >
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddToQueue();
-                }}
-              >
-                <ListPlus className="h-4 w-4 mr-2" />
-                Add to Queue
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onUnlike();
-                }}
-                className="text-red-400"
-              >
-                <Heart className="h-4 w-4 mr-2" />
-                Remove from Liked Songs
-              </DropdownMenuItem>
-            </TouchSafeDropdownMenu>
-          </div>
-        )}
+          {/* Mobile album info - smaller and more compact */}
+          {isMobile && (
+            <div className="text-xs text-muted-foreground/70 truncate mt-0.5">
+              {song.albumId || 'Unknown Album'}
+            </div>
+          )}
+        </div>
       </div>
-    </SwipeableSongItem>
+
+      {/* Desktop album */}
+      {!isMobile && (
+        <div className="flex items-center text-muted-foreground truncate">
+          {song.albumId || 'Unknown Album'}
+        </div>
+      )}
+
+      {/* Desktop date added */}
+      {!isMobile && (
+        <div className="flex items-center text-muted-foreground text-sm">
+          {(song as any).likedAt ? 
+            new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric',
+              year: new Date().getFullYear() !== new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).getFullYear() ? 'numeric' : undefined
+            }) :
+            new Date().toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric'
+            })
+          }
+        </div>
+      )}
+
+      {/* Mobile actions - simple dropdown */}
+      {isMobile && (
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToQueue();
+                }}
+              >
+                <ListPlus className="h-4 w-4 mr-2" />
+                Add to Queue
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnlike();
+                }}
+                className="text-red-400"
+              >
+                <Heart className="h-4 w-4 mr-2" />
+                Remove from Liked Songs
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
+      {/* Duration */}
+      {!isMobile && (
+        <div className="flex items-center text-muted-foreground text-sm justify-end">
+          {formatTime(song.duration || 0)}
+        </div>
+      )}
+
+      {/* Desktop actions - simple dropdown */}
+      {!isMobile && (
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToQueue();
+                }}
+              >
+                <ListPlus className="h-4 w-4 mr-2" />
+                Add to Queue
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnlike();
+                }}
+                className="text-red-400"
+              >
+                <Heart className="h-4 w-4 mr-2" />
+                Remove from Liked Songs
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+    </div>
   );
 });
 
@@ -558,27 +555,27 @@ const LikedSongsPage = () => {
               )}
             </div>
 
-            <TouchSafeDropdownMenu
-              trigger={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/10">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
-              }
-              align="end"
-            >
-              <DropdownMenuItem onClick={() => handleSortChange('recent')}>
-                <Clock className="h-4 w-4 mr-2" />
-                Recently Added
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSortChange('title')}>
-                <ArrowDownUp className="h-4 w-4 mr-2" />
-                Title
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSortChange('artist')}>
-                <Music className="h-4 w-4 mr-2" />
-                Artist
-              </DropdownMenuItem>
-            </TouchSafeDropdownMenu>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleSortChange('recent')}>
+                  <Clock className="h-4 w-4 mr-2" />
+                  Recently Added
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSortChange('title')}>
+                  <ArrowDownUp className="h-4 w-4 mr-2" />
+                  Title
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSortChange('artist')}>
+                  <Music className="h-4 w-4 mr-2" />
+                  Artist
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       ) : (
@@ -650,27 +647,27 @@ const LikedSongsPage = () => {
                 </Button>
               )}
 
-              <TouchSafeDropdownMenu
-                trigger={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10">
                     <MoreHorizontal className="h-5 w-5" />
                   </Button>
-                }
-                align="start"
-              >
-                <DropdownMenuItem onClick={() => handleSortChange('recent')}>
-                  <Clock className="h-4 w-4 mr-2" />
-                  Recently Added
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSortChange('title')}>
-                  <ArrowDownUp className="h-4 w-4 mr-2" />
-                  Title
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSortChange('artist')}>
-                  <Music className="h-4 w-4 mr-2" />
-                  Artist
-                </DropdownMenuItem>
-              </TouchSafeDropdownMenu>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => handleSortChange('recent')}>
+                    <Clock className="h-4 w-4 mr-2" />
+                    Recently Added
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleSortChange('title')}>
+                    <ArrowDownUp className="h-4 w-4 mr-2" />
+                    Title
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleSortChange('artist')}>
+                    <Music className="h-4 w-4 mr-2" />
+                    Artist
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
