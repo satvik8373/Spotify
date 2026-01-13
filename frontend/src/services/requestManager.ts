@@ -4,6 +4,8 @@
  * Prevents multiple simultaneous calls to the same endpoint
  */
 
+import axiosInstance from '../lib/axios';
+
 interface RequestConfig {
   url: string;
   method: string;
@@ -168,43 +170,27 @@ class RequestManager {
       }
     }
 
-    // Create the actual request function
+    // Create the actual request function using axios
     const makeRequest = async (): Promise<T> => {
       try {
         const { url, method, params, body, headers = {} } = config;
         
-        // Build URL with params
-        const urlObj = new URL(url, window.location.origin);
-        if (params) {
-          Object.entries(params).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) {
-              urlObj.searchParams.append(key, String(value));
-            }
-          });
-        }
-
-        const fetchOptions: RequestInit = {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            ...headers
-          }
+        const axiosConfig: any = {
+          method: method.toLowerCase(),
+          url,
+          headers,
+          params
         };
 
         if (body && method !== 'GET') {
-          fetchOptions.body = JSON.stringify(body);
+          axiosConfig.data = body;
         }
 
-        const response = await fetch(urlObj.toString(), fetchOptions);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const response = await axiosInstance(axiosConfig);
+        const data = response.data;
 
         // Cache successful responses
-        if (cache && response.ok) {
+        if (cache && response.status >= 200 && response.status < 300) {
           this.setCache(key, data, cacheTTL);
         }
 

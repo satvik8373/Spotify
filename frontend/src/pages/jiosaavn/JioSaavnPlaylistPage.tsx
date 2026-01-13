@@ -429,13 +429,14 @@ const JioSaavnPlaylistPage: React.FC = () => {
           ) : songs.length > 0 ? (
             <div className="mt-4">
               {/* Spotify-style header row */}
-              <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_2fr_minmax(120px,1fr)] border-b border-border text-sm text-muted-foreground py-2 px-4 mb-2">
+              <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[24px_4fr_2fr_minmax(120px,1fr)_48px] border-b border-border text-sm text-muted-foreground py-2 px-4 mb-2">
                 <div className="flex items-center justify-center">#</div>
                 <div>Title</div>
                 <div className="hidden md:block">Album</div>
-                <div className="flex justify-end pr-8">
+                <div className="flex justify-end">
                   <Clock className="h-4 w-4" />
                 </div>
+                <div></div>
               </div>
 
               {/* Songs list */}
@@ -450,7 +451,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
                   >
                     <div
                       className={cn(
-                        'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)] items-center py-2 px-4 rounded-md group',
+                        'grid grid-cols-[40px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)_48px] items-center py-2 px-4 rounded-md group',
                         'hover:bg-white/10 transition-colors duration-200 cursor-pointer',
                         isCurrentSong && 'bg-white/10'
                       )}
@@ -514,7 +515,12 @@ const JioSaavnPlaylistPage: React.FC = () => {
                       </div>
                       
                       {/* Duration and actions */}
-                      <div className="flex items-center justify-end gap-2 sm:gap-4 text-muted-foreground">
+                      <div className="flex items-center justify-end text-muted-foreground">
+                        <span className="text-sm">{formatTime(song.duration)}</span>
+                      </div>
+                      
+                      {/* Actions column */}
+                      <div className="flex items-center justify-end gap-2">
                         {/* Add to Queue button - visible on desktop */}
                         <div className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
@@ -570,8 +576,6 @@ const JioSaavnPlaylistPage: React.FC = () => {
                             </DropdownMenuItem>
                           </TouchSafeDropdownMenu>
                         </div>
-                        
-                        <span className="text-sm">{formatTime(song.duration)}</span>
                       </div>
                     </div>
                   </SwipeableSongItem>

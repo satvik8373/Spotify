@@ -11,21 +11,28 @@ const RAW_API_URL = import.meta.env.VITE_API_URL || "";
 const isProduction = window.location.hostname === 'mavrixfy.site' || 
                      window.location.hostname === 'www.mavrixfy.site';
 
-// Prefer explicit VITE_API_URL; otherwise fallback by environment
-let FINAL_API_URL = RAW_API_URL
-  ? RAW_API_URL
-  : (isProduction ? 'https://spotify-api-drab.vercel.app/api' : 'http://localhost:5000');
+// Force correct API URL for production
+let FINAL_API_URL = RAW_API_URL;
 
-// Ensure production URL always has /api suffix
-if (isProduction && !FINAL_API_URL.endsWith('/api')) {
+// If no explicit API URL is set, or if we're in production, ensure correct URL
+if (!RAW_API_URL || isProduction) {
+  FINAL_API_URL = isProduction 
+    ? 'https://spotify-api-drab.vercel.app/api' 
+    : 'http://localhost:5000/api';
+}
+
+// Ensure API URL has /api suffix
+if (!FINAL_API_URL.endsWith('/api')) {
   // If it's the production backend URL without /api, add it
   if (FINAL_API_URL.includes('spotify-api-drab.vercel.app') || FINAL_API_URL.includes('vercel.app')) {
+    FINAL_API_URL = FINAL_API_URL.replace(/\/?$/, '/api');
+  } else if (!FINAL_API_URL.includes('/api')) {
     FINAL_API_URL = FINAL_API_URL.replace(/\/?$/, '/api');
   }
 }
 
 // Remove trailing slash and ensure proper formatting
-const cleanApiUrl = FINAL_API_URL.replace(/\/$/, '');
+const cleanApiUrl = FINAL_API_URL.replace(/\/+$/, '');
 
 console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
 console.log('🔧 RAW_API_URL:', RAW_API_URL || '(not set)');

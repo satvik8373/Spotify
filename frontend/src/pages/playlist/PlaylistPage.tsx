@@ -921,13 +921,14 @@ export function PlaylistPage() {
           {currentPlaylist.songs.length > 0 ? (
             <div className="mt-4">
               {/* Spotify-style header row */}
-              <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)] md:grid-cols-[24px_4fr_2fr_minmax(120px,1fr)] border-b border-border text-sm text-muted-foreground py-2 px-4 mb-2">
+              <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[24px_4fr_2fr_minmax(120px,1fr)_48px] border-b border-border text-sm text-muted-foreground py-2 px-4 mb-2">
                 <div className="flex items-center justify-center">#</div>
                 <div>Title</div>
                 <div className="hidden md:block">Date added</div>
-                <div className="flex justify-end pr-8">
+                <div className="flex justify-end">
                   <Clock className="h-4 w-4" />
                 </div>
+                <div></div>
               </div>
 
               {/* Songs list */}
@@ -942,7 +943,7 @@ export function PlaylistPage() {
                 >
                   <div
                     className={cn(
-                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)] items-center py-2 px-4 rounded-md group',
+                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)_48px] items-center py-2 px-4 rounded-md group',
                       'hover:bg-white/10 transition-colors duration-200',
                       isCurrentSong && 'bg-white/10',
                       !song.audioUrl && 'opacity-60'
@@ -1006,7 +1007,12 @@ export function PlaylistPage() {
                     </div>
                     
                     {/* Duration and actions */}
-                    <div className="flex items-center justify-end gap-2 sm:gap-4 text-muted-foreground">
+                    <div className="flex items-center justify-end text-muted-foreground">
+                      <span className="text-sm">{formatTime(song.duration)}</span>
+                    </div>
+                    
+                    {/* Actions column */}
+                    <div className="flex items-center justify-end gap-2">
                       {/* Add to Queue button - visible on desktop */}
                       <div className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
@@ -1030,20 +1036,20 @@ export function PlaylistPage() {
                         </Button>
                       </div>
 
-                    {isOwner && (
+                      {isOwner && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
                             onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveSong(song._id, e);
-                        }}
-                      >
+                              e.stopPropagation();
+                              handleRemoveSong(song._id, e);
+                            }}
+                          >
                             <Trash className="h-4 w-4" />
                           </Button>
-                    </div>
+                        </div>
                       )}
                       
                       {!song.audioUrl && (
@@ -1052,15 +1058,13 @@ export function PlaylistPage() {
                           size="icon"
                           className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-0"
                           onClick={(e) => {
-                          e.stopPropagation();
+                            e.stopPropagation();
                             handleFindAudio(song, index, e);
                           }}
                         >
                           <Search className="h-4 w-4" />
                         </Button>
                       )}
-                      
-                      <span className="text-sm">{formatTime(song.duration)}</span>
                     </div>
                   </div>
                 </SwipeableSongItem>

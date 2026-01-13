@@ -120,7 +120,7 @@ const musicRequestManager = new MusicRequestManager();
 // Optimized music API request function using request manager
 async function fetchMusicJson(endpoint: string, params: Record<string, any> = {}, cacheTTL: number = 5 * 60 * 1000): Promise<any> {
   return requestManager.request({
-    url: `/api${endpoint}`,
+    url: endpoint, // Don't add /api prefix since axiosInstance already has the correct baseURL
     method: 'GET',
     params
   }, {

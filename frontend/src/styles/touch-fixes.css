@@ -56,6 +56,60 @@ button,
   overscroll-behavior: contain;
 }
 
+/* Fixed positioning for three dots menu */
+.song-actions-column {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Ensure song title doesn't overflow into actions */
+.song-title-column {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.song-title-column * {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Specific fixes for liked songs page grid layout */
+.liked-songs-item {
+  display: grid !important;
+}
+
+/* Mobile grid layout - ensure actions column stays fixed */
+@media (max-width: 767px) {
+  .liked-songs-item {
+    grid-template-columns: auto 1fr 48px !important;
+    gap: 12px !important;
+  }
+  
+  .liked-songs-item .song-actions-column {
+    grid-column: 3;
+    justify-self: end;
+  }
+}
+
+/* Desktop grid layout - ensure actions column stays fixed */
+@media (min-width: 768px) {
+  .liked-songs-item {
+    grid-template-columns: 16px 4fr 3fr 2fr 1fr 48px !important;
+    gap: 16px !important;
+  }
+  
+  .liked-songs-item .song-actions-column {
+    grid-column: 6;
+    justify-self: end;
+  }
+}
+
 /* Improve touch responsiveness */
 @media (hover: none) and (pointer: coarse) {
   /* Mobile-specific styles */
@@ -67,5 +121,10 @@ button,
   .dropdown-trigger {
     min-height: 48px;
     min-width: 48px;
+  }
+  
+  /* Ensure three dots are always visible on mobile */
+  .song-item .opacity-60 {
+    opacity: 0.8 !important;
   }
 }

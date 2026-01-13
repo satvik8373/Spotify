@@ -54,10 +54,10 @@ const MemoizedSongItem = React.memo(({
       <div
         onClick={onPlay}
         className={cn(
-          "group relative hover:bg-muted/50 rounded-md transition-colors cursor-pointer items-center",
+          "group relative hover:bg-muted/50 rounded-md transition-colors cursor-pointer items-center liked-songs-item",
           isMobile
-            ? "grid grid-cols-[auto_1fr_auto] gap-3 p-3 py-2"
-            : "grid grid-cols-[16px_4fr_3fr_2fr_1fr_40px] gap-4 p-2 px-4"
+            ? "grid grid-cols-[auto_1fr_48px] gap-3 p-3 py-2"
+            : "grid grid-cols-[16px_4fr_3fr_2fr_1fr_48px] gap-4 p-2 px-4"
         )}
       >
         {/* Desktop Index/Play button */}
@@ -95,7 +95,7 @@ const MemoizedSongItem = React.memo(({
         )}
 
         {/* Song info - Spotify-style with better album artwork */}
-        <div className="flex items-center min-w-0">
+        <div className="flex items-center min-w-0 song-title-column">
           <div className={cn(
             "flex-shrink-0 overflow-hidden rounded shadow-md relative group/artwork",
             isMobile ? "w-14 h-14 mr-3" : "w-12 h-12 mr-3"
@@ -180,7 +180,7 @@ const MemoizedSongItem = React.memo(({
 
         {/* Mobile actions - more compact */}
         {isMobile && (
-          <div className="flex items-center justify-center">
+          <div className="song-actions-column flex justify-end">
             <TouchSafeDropdownMenu
               trigger={
                 <Button
@@ -227,7 +227,7 @@ const MemoizedSongItem = React.memo(({
 
         {/* Desktop actions */}
         {!isMobile && (
-          <div className="flex items-center justify-center">
+          <div className="song-actions-column flex justify-end">
             <TouchSafeDropdownMenu
               trigger={
                 <Button
@@ -702,7 +702,7 @@ const LikedSongsPage = () => {
           <div className={cn("pb-8", isMobile ? "pb-24" : "")}>
             {/* Desktop header */}
             {!isMobile && (
-              <div className="grid grid-cols-[16px_4fr_3fr_2fr_1fr_40px] gap-4 px-4 py-2 text-sm text-muted-foreground border-b mb-2">
+              <div className="grid grid-cols-[16px_4fr_3fr_2fr_1fr_48px] gap-4 px-4 py-2 text-sm text-muted-foreground border-b mb-2">
                 <div>#</div>
                 <div>Title</div>
                 <div>Album</div>
