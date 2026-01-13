@@ -24,7 +24,6 @@ export function RecentlyPlayedCard({
   onPlay,
   onHoverChange,
 }: RecentlyPlayedCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -49,30 +48,8 @@ export function RecentlyPlayedCard({
     <div
       className={cn(
         'group relative h-[48px] md:h-[64px] w-full rounded-md overflow-hidden cursor-pointer',
-        'recently-played-card',
-        isHovered 
-          ? 'bg-white/25' 
-          : 'bg-white/10 md:bg-white/15 hover:bg-white/20'
+        'recently-played-card bg-white/10 md:bg-white/15 md:hover:bg-white/20'
       )}
-      onMouseEnter={() => {
-        setIsHovered(true);
-        // Send primary color when hovering - always send for valid colors
-        if (imageLoaded && colors.primary) {
-          onHoverChange?.(colors.primary);
-        }
-      }
-      }
-      onMouseLeave={() => {
-        setIsHovered(false);
-        // Reset to Liked Songs color when leaving non-Liked Songs cards
-        if (id === 'liked-songs') {
-          // Keep Liked Songs color active
-          onHoverChange?.(colors.primary || null);
-        } else {
-          // Return to default
-          onHoverChange?.(null);
-        }
-      }}
       onClick={onClick}
     >
 
@@ -125,9 +102,7 @@ export function RecentlyPlayedCard({
               'bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105',
               'shadow-[0_8px_24px_rgba(0,0,0,0.5)]',
               'transition-all duration-300 ease-in-out z-20',
-              isHovered
-                ? 'opacity-100 translate-y-0'
-                : 'opacity-0 translate-y-2'
+              'opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2'
             )}
             onClick={handlePlayClick}
             aria-label="Play"

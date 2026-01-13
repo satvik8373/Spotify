@@ -18,7 +18,6 @@ export const JioSaavnPlaylistCard: React.FC<JioSaavnPlaylistCardProps> = ({
   className,
   showDescription = true,
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
   const imageUrl = jioSaavnService.getBestImageUrl(playlist.image);
 
   const handleClick = () => {
@@ -33,21 +32,11 @@ export const JioSaavnPlaylistCard: React.FC<JioSaavnPlaylistCardProps> = ({
   return (
     <div
       className={cn(
-        "group relative w-full rounded-md transition-colors duration-200 cursor-pointer p-1",
+        "group relative w-full rounded-md cursor-pointer p-1",
         className
       )}
       onClick={handleClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Hover background */}
-      <div 
-        className={cn(
-          "absolute inset-0 bg-card rounded-md transition-opacity duration-200 pointer-events-none",
-          isHovered ? "opacity-100" : "opacity-0"
-        )}
-      />
-      
       <div className="relative">
         {/* Playlist Image */}
         <div className="relative w-full aspect-square mb-2">
@@ -63,13 +52,8 @@ export const JioSaavnPlaylistCard: React.FC<JioSaavnPlaylistCardProps> = ({
             />
           </div>
 
-          {/* Play Button */}
-          <div 
-            className={cn(
-              "absolute bottom-1 right-1 transition-all duration-300 ease-in-out",
-              isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-            )}
-          >
+          {/* Play Button - Desktop Only */}
+          <div className="absolute bottom-1 right-1 hidden md:group-hover:block">
             <button
               onClick={handlePlayClick}
               className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-primary hover:bg-primary/90 hover:scale-105 flex items-center justify-center shadow-2xl transition-all duration-200"
