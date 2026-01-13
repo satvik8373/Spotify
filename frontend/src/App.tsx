@@ -8,6 +8,7 @@ import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
 import { Loading } from './components/ui/loading';
+import './styles/touch-fixes.css';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));

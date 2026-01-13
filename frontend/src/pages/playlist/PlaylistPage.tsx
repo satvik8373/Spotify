@@ -28,12 +28,10 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '../../components/ui/dropdown-menu';
+import { TouchSafeDropdownMenu } from '../../components/ui/touch-safe-dropdown';
 import toast from 'react-hot-toast';
 import { EditPlaylistDialog } from '../../components/playlist/EditPlaylistDialog';
 import { formatTime } from '../../utils/formatTime';
@@ -813,56 +811,56 @@ export function PlaylistPage() {
                 </>
               )}
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                <Button
+              <TouchSafeDropdownMenu
+                trigger={
+                  <Button
                     variant="ghost"
-                  size="icon"
+                    size="icon"
                     className="w-12 h-12 rounded-full text-muted-foreground hover:text-foreground transition-colors"
-                >
+                  >
                     <MoreHorizontal className="h-6 w-6" />
-                </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
-                  <DropdownMenuItem onClick={() => openAddSongsDialog('search')} className="hover:bg-accent">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add songs
+                  </Button>
+                }
+                contentClassName="bg-popover text-popover-foreground border-border"
+              >
+                <DropdownMenuItem onClick={() => openAddSongsDialog('search')} className="hover:bg-accent">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add songs
+                </DropdownMenuItem>
+                {isOwner && (
+                  <DropdownMenuItem 
+                    onClick={() => setShowRegenerateCoverDialog(true)} 
+                    className="hover:bg-accent"
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Generate cover
                   </DropdownMenuItem>
-                  {isOwner && (
-                    <DropdownMenuItem 
-                      onClick={() => setShowRegenerateCoverDialog(true)} 
-                      className="hover:bg-accent"
-                    >
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      Generate cover
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => openAddSongsDialog('upload')} className="hover:bg-accent">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Import from File
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="hover:bg-accent">
-                    <SharePlaylist 
-                      playlist={currentPlaylist} 
-                      trigger={
-                        <div className="flex items-center w-full">
-                          <Share2 className="h-4 w-4 mr-2" />
-                          Share
-                        </div>
-                      }
-                    />
-                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => openAddSongsDialog('upload')} className="hover:bg-accent">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Import from File
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="hover:bg-accent">
+                  <SharePlaylist 
+                    playlist={currentPlaylist} 
+                    trigger={
+                      <div className="flex items-center w-full">
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share
+                      </div>
+                    }
+                  />
+                </DropdownMenuItem>
                 {isOwner && (
                   <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleDeletePlaylist} className="text-red-500 hover:text-red-500/90 hover:bg-accent">
-                        <Trash className="h-4 w-4 mr-2" />
-                        Delete playlist
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleDeletePlaylist} className="text-red-500 hover:text-red-500/90 hover:bg-accent">
+                      <Trash className="h-4 w-4 mr-2" />
+                      Delete playlist
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </TouchSafeDropdownMenu>
             </div>
 
             {/* Right side play button */}

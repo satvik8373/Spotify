@@ -17,11 +17,9 @@ import { useSpotify } from '@/contexts/SpotifyContext';
 import SwipeableSongItem from '@/components/SwipeableSongItem';
 import './liked-songs.css';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { TouchSafeDropdownMenu } from '@/components/ui/touch-safe-dropdown';
 import { ContentLoading } from '@/components/ui/loading';
 
 // Format time
@@ -183,8 +181,8 @@ const MemoizedSongItem = React.memo(({
         {/* Mobile actions - more compact */}
         {isMobile && (
           <div className="flex items-center justify-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <TouchSafeDropdownMenu
+              trigger={
                 <Button
                   variant="ghost"
                   size="icon"
@@ -193,29 +191,30 @@ const MemoizedSongItem = React.memo(({
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="bottom" sideOffset={5}>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddToQueue();
-                  }}
-                >
-                  <ListPlus className="h-4 w-4 mr-2" />
-                  Add to Queue
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUnlike();
-                  }}
-                  className="text-red-400"
-                >
-                  <Heart className="h-4 w-4 mr-2" />
-                  Remove from Liked Songs
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              }
+              align="end"
+              side="bottom"
+            >
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToQueue();
+                }}
+              >
+                <ListPlus className="h-4 w-4 mr-2" />
+                Add to Queue
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnlike();
+                }}
+                className="text-red-400"
+              >
+                <Heart className="h-4 w-4 mr-2" />
+                Remove from Liked Songs
+              </DropdownMenuItem>
+            </TouchSafeDropdownMenu>
           </div>
         )}
 
@@ -229,8 +228,8 @@ const MemoizedSongItem = React.memo(({
         {/* Desktop actions */}
         {!isMobile && (
           <div className="flex items-center justify-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <TouchSafeDropdownMenu
+              trigger={
                 <Button
                   variant="ghost"
                   size="icon"
@@ -239,29 +238,30 @@ const MemoizedSongItem = React.memo(({
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="bottom" sideOffset={5}>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddToQueue();
-                  }}
-                >
-                  <ListPlus className="h-4 w-4 mr-2" />
-                  Add to Queue
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUnlike();
-                  }}
-                  className="text-red-400"
-                >
-                  <Heart className="h-4 w-4 mr-2" />
-                  Remove from Liked Songs
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              }
+              align="end"
+              side="bottom"
+            >
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToQueue();
+                }}
+              >
+                <ListPlus className="h-4 w-4 mr-2" />
+                Add to Queue
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnlike();
+                }}
+                className="text-red-400"
+              >
+                <Heart className="h-4 w-4 mr-2" />
+                Remove from Liked Songs
+              </DropdownMenuItem>
+            </TouchSafeDropdownMenu>
           </div>
         )}
       </div>
@@ -558,27 +558,27 @@ const LikedSongsPage = () => {
               )}
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <TouchSafeDropdownMenu
+              trigger={
                 <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/10">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleSortChange('recent')}>
-                  <Clock className="h-4 w-4 mr-2" />
-                  Recently Added
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSortChange('title')}>
-                  <ArrowDownUp className="h-4 w-4 mr-2" />
-                  Title
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSortChange('artist')}>
-                  <Music className="h-4 w-4 mr-2" />
-                  Artist
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              }
+              align="end"
+            >
+              <DropdownMenuItem onClick={() => handleSortChange('recent')}>
+                <Clock className="h-4 w-4 mr-2" />
+                Recently Added
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSortChange('title')}>
+                <ArrowDownUp className="h-4 w-4 mr-2" />
+                Title
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSortChange('artist')}>
+                <Music className="h-4 w-4 mr-2" />
+                Artist
+              </DropdownMenuItem>
+            </TouchSafeDropdownMenu>
           </div>
         </div>
       ) : (
@@ -650,27 +650,27 @@ const LikedSongsPage = () => {
                 </Button>
               )}
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <TouchSafeDropdownMenu
+                trigger={
                   <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10">
                     <MoreHorizontal className="h-5 w-5" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => handleSortChange('recent')}>
-                    <Clock className="h-4 w-4 mr-2" />
-                    Recently Added
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleSortChange('title')}>
-                    <ArrowDownUp className="h-4 w-4 mr-2" />
-                    Title
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleSortChange('artist')}>
-                    <Music className="h-4 w-4 mr-2" />
-                    Artist
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                }
+                align="start"
+              >
+                <DropdownMenuItem onClick={() => handleSortChange('recent')}>
+                  <Clock className="h-4 w-4 mr-2" />
+                  Recently Added
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSortChange('title')}>
+                  <ArrowDownUp className="h-4 w-4 mr-2" />
+                  Title
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSortChange('artist')}>
+                  <Music className="h-4 w-4 mr-2" />
+                  Artist
+                </DropdownMenuItem>
+              </TouchSafeDropdownMenu>
             </div>
           </div>
         </div>

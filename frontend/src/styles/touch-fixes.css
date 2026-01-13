@@ -1,0 +1,71 @@
+/* Touch-specific fixes to prevent accidental interactions and visual artifacts */
+
+/* Prevent touch callouts and selection on interactive elements */
+.touch-safe {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+/* Prevent tap highlight on mobile */
+button, 
+[role="button"],
+.dropdown-trigger,
+.song-item {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Ensure dropdown triggers have proper touch targets */
+[data-radix-dropdown-trigger] {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+
+/* Prevent accidental scrolling interference */
+.dropdown-menu-content {
+  touch-action: pan-y;
+}
+
+/* Remove any potential green backgrounds or highlights */
+* {
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Ensure song items don't have unwanted backgrounds */
+.song-item,
+.swipeable-song-item {
+  background: transparent !important;
+}
+
+.song-item:active,
+.swipeable-song-item:active {
+  background: transparent !important;
+}
+
+/* Prevent iOS bounce scrolling on dropdown menus */
+[data-radix-dropdown-content] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Improve touch responsiveness */
+@media (hover: none) and (pointer: coarse) {
+  /* Mobile-specific styles */
+  button:hover {
+    background-color: transparent;
+  }
+  
+  /* Increase touch targets for better accessibility */
+  .dropdown-trigger {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}

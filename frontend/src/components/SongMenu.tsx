@@ -8,11 +8,9 @@ import {
   Music 
 } from 'lucide-react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { TouchSafeDropdownMenu } from './ui/touch-safe-dropdown';
 import { useLikedSongsStore } from '../stores/useLikedSongsStore';
 import { AddToPlaylistDialog } from './playlist/AddToPlaylistDialog';
 import { ShareSong } from './ShareSong';
@@ -96,38 +94,37 @@ export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: 
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <TouchSafeDropdownMenu
+        trigger={
           <button 
             className={`flex items-center justify-center rounded-full hover:bg-accent transition-colors ${className}`}
-            onClick={(e) => e.stopPropagation()}
           >
             <MoreHorizontal className="h-5 w-5" />
             <span className="sr-only">Open song menu</span>
           </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={handleLikeSong}>
-            <Heart className={`mr-2 h-4 w-4 ${songLiked ? 'fill-green-500 text-green-500' : ''}`} />
-            {songLiked ? 'Remove from Liked Songs' : 'Add to Liked Songs'}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setShowAddToPlaylistDialog(true)}>
-            <ListPlus className="mr-2 h-4 w-4" />
-            Add to Playlist
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleShare}>
-            <Share2 className="mr-2 h-4 w-4" />
-            Share
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={(e) => {
-            e.stopPropagation();
-            window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(`${song.title} ${song.artist}`)}`, '_blank');
-          }}>
-            <Music className="mr-2 h-4 w-4" />
-            Find on YouTube
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        }
+        contentClassName="w-48"
+      >
+        <DropdownMenuItem onClick={handleLikeSong}>
+          <Heart className={`mr-2 h-4 w-4 ${songLiked ? 'fill-green-500 text-green-500' : ''}`} />
+          {songLiked ? 'Remove from Liked Songs' : 'Add to Liked Songs'}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setShowAddToPlaylistDialog(true)}>
+          <ListPlus className="mr-2 h-4 w-4" />
+          Add to Playlist
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleShare}>
+          <Share2 className="mr-2 h-4 w-4" />
+          Share
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => {
+          e.stopPropagation();
+          window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(`${song.title} ${song.artist}`)}`, '_blank');
+        }}>
+          <Music className="mr-2 h-4 w-4" />
+          Find on YouTube
+        </DropdownMenuItem>
+      </TouchSafeDropdownMenu>
       
       {showAddToPlaylistDialog && (
         <AddToPlaylistDialog

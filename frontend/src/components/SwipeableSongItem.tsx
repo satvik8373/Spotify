@@ -14,8 +14,9 @@ const SwipeableSongItem: React.FC<SwipeableSongItemProps> = ({
     className = ''
 }) => {
     // Simple wrapper without any swipe functionality
+    // Added touch-safe class to prevent visual artifacts
     return (
-        <div className={className}>
+        <div className={`touch-safe song-item ${className}`}>
             {children}
         </div>
     );
