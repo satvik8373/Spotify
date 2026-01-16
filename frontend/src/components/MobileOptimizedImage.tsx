@@ -37,7 +37,7 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= mobileBreakpoint);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -82,11 +82,11 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
 
   const generateMobileOptimizedSrc = (originalSrc: string): string => {
     if (!originalSrc) return '';
-    
+
     // Mobile-specific optimizations
     const mobileWidth = Math.min(width, 400); // Cap mobile width
     const mobileQuality = Math.min(quality, 80); // Lower quality for mobile
-    
+
     // Add mobile-specific transformations
     const transformations = [
       `w_${mobileWidth}`,
@@ -125,7 +125,7 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
   return (
     <div className={`relative overflow-hidden ${className}`}>
       {!isLoaded && !isError && (
-        <div 
+        <div
           className="flex items-center justify-center bg-gray-100 rounded-lg"
           style={{
             width: `${width}px`,
@@ -135,16 +135,14 @@ const MobileOptimizedImage: React.FC<MobileOptimizedImageProps> = ({
           <Spinner size="sm" />
         </div>
       )}
-      
+
       <img
         ref={imgRef}
         src={displaySrc}
         alt={alt}
-        className={`block max-w-full h-auto rounded-lg transition-opacity duration-300 ${
-          isLoaded ? 'opacity-100' : 'opacity-0'
-        } ${isError ? 'opacity-50' : ''} ${
-          isMobile ? 'w-full h-auto' : ''
-        }`}
+        className={`block max-w-full h-auto rounded-lg transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'
+          } ${isError ? 'opacity-50' : ''} ${isMobile ? 'w-full h-auto' : ''
+          }`}
         style={{
           width: isMobile ? '100%' : `${width}px`,
           height: isMobile ? 'auto' : `${height}px`,
