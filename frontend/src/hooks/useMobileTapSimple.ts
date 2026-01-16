@@ -11,15 +11,17 @@ export function useMobileTapSimple({
 }: UseMobileTapSimpleOptions) {
   const isMobile = useRef(false);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const TAP_MOVEMENT_THRESHOLD = 10; // px - max movement to still be considered a tap
 
   // Detect if device is mobile
   useEffect(() => {
     const checkMobile = () => {
-      isMobile.current = window.innerWidth < 768 || 
-        ('ontouchstart' in window) || 
+      isMobile.current = window.innerWidth < 768 ||
+        ('ontouchstart' in window) ||
         (navigator.maxTouchPoints > 0);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -35,8 +37,21 @@ export function useMobileTapSimple({
   }, []);
 
   const handleTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // Check if this was a tap or a swipe/scroll
+    if ('changedTouches' in e && touchStartPos.current) {
+      const touch = e.changedTouches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+
+      // If movement was too much, it's not a tap
+      if (deltaX > TAP_MOVEMENT_THRESHOLD || deltaY > TAP_MOVEMENT_THRESHOLD) {
+        touchStartPos.current = null;
+        return;
+      }
+    }
+
     e.preventDefault();
-    
+
     // Clear any existing timeout
     if (tapTimeoutRef.current) {
       clearTimeout(tapTimeoutRef.current);
@@ -51,12 +66,18 @@ export function useMobileTapSimple({
         onTap();
       }, tapDelay);
     }
+
+    touchStartPos.current = null;
   }, [onTap, tapDelay]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    // Prevent default to avoid 300ms click delay on mobile
-    if (isMobile.current) {
-      e.preventDefault();
+    // Store touch position to detect movement later
+    if (isMobile.current && e.touches.length > 0) {
+      touchStartPos.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      };
+      // Don't preventDefault here - let parent handlers (like SwipeCard) work
     }
   }, []);
 
