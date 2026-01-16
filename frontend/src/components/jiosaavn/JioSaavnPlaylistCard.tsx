@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Play } from 'lucide-react';
 import { JioSaavnPlaylist, jioSaavnService } from '@/services/jioSaavnService';
 import { cn } from '@/lib/utils';
-import { useMobileTapSimple } from '@/hooks/useMobileTapSimple';
 
 interface JioSaavnPlaylistCardProps {
   playlist: JioSaavnPlaylist;
@@ -30,20 +29,13 @@ export const JioSaavnPlaylistCard: React.FC<JioSaavnPlaylistCardProps> = ({
     onPlay?.(playlist);
   };
 
-  // Simple mobile tap behavior - single tap to open
-  const { isMobile, handleTap, handleTouchStart } = useMobileTapSimple({
-    onTap: handleClick,
-  });
-
   return (
     <div
       className={cn(
         "group relative w-full rounded-md cursor-pointer p-1 transition-all duration-200 active:scale-95 active:bg-primary/5",
         className
       )}
-      onClick={!isMobile ? handleClick : undefined}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={isMobile ? handleTap : undefined}
+      onClick={handleClick}
     >
       <div className="relative">
         {/* Playlist Image */}
@@ -77,7 +69,7 @@ export const JioSaavnPlaylistCard: React.FC<JioSaavnPlaylistCardProps> = ({
           <h3 className="text-foreground text-[10px] md:text-xs font-medium line-clamp-2 leading-tight">
             {playlist.name}
           </h3>
-          
+
           {showDescription && (
             <p className="text-muted-foreground text-[8px] md:text-[10px] line-clamp-2">
               {playlist.songCount} songs

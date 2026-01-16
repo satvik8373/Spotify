@@ -6,7 +6,6 @@ import { EditPlaylistDialog } from './EditPlaylistDialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Play } from 'lucide-react';
-import { useMobileTapSimple } from '../../hooks/useMobileTapSimple';
 
 interface PlaylistCardProps {
   playlist: Playlist;
@@ -14,8 +13,8 @@ interface PlaylistCardProps {
   className?: string;
 }
 
-export function PlaylistCard({ 
-  playlist, 
+export function PlaylistCard({
+  playlist,
   showDescription = true,
   className
 }: PlaylistCardProps) {
@@ -42,22 +41,15 @@ export function PlaylistCard({
     setIsPlaying(true);
   };
 
-  // Simple mobile tap behavior - single tap to open
-  const { isMobile, handleTap, handleTouchStart } = useMobileTapSimple({
-    onTap: handleCardClick,
-  });
-
   return (
     <>
       {/* JioSaavn-style playlist card design */}
-      <div 
+      <div
         className={cn(
           "group relative w-full rounded-md cursor-pointer p-1 md:p-2 transition-all duration-200 active:scale-95 active:bg-primary/5",
           className
         )}
-        onClick={!isMobile ? handleCardClick : undefined}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={isMobile ? handleTap : undefined}
+        onClick={handleCardClick}
       >
         <div className="relative">
           {/* Playlist Image */}
@@ -89,7 +81,7 @@ export function PlaylistCard({
             <h3 className="text-foreground text-[10px] md:text-xs font-medium line-clamp-2 leading-tight">
               {playlist.name}
             </h3>
-            
+
             {showDescription && (
               <p className="text-muted-foreground text-[8px] md:text-[10px] line-clamp-2">
                 {playlist.songs?.length || 0} songs

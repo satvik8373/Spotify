@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
-import { useMobileTapSimple } from '@/hooks/useMobileTapSimple';
 
 interface RecentlyPlayedCardProps {
   id: string;
@@ -47,11 +46,6 @@ export function RecentlyPlayedCard({
     onClick?.();
   };
 
-  // Simple mobile tap behavior - single tap to open
-  const { isMobile, handleTap, handleTouchStart } = useMobileTapSimple({
-    onTap: handleCardClick,
-  });
-
   // Simple background - no gradient, no glow
 
   return (
@@ -60,9 +54,7 @@ export function RecentlyPlayedCard({
         'group relative h-[48px] md:h-[64px] w-full rounded-md overflow-hidden cursor-pointer transition-all duration-200 active:scale-95 active:bg-white/20',
         'recently-played-card bg-white/10 md:bg-white/15 md:hover:bg-white/20'
       )}
-      onClick={!isMobile ? handleCardClick : undefined}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={isMobile ? handleTap : undefined}
+      onClick={handleCardClick}
     >
 
       {/* Content */}
