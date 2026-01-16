@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { PlaylistCard } from '../../components/playlist/PlaylistCard';
-import { useAuth } from '@/contexts/AuthContext';
-import { WifiOff } from 'lucide-react';
 import { JioSaavnPlaylistsSection } from '@/components/jiosaavn/JioSaavnPlaylistsSection';
 import { RecentlyPlayedCard } from '@/components/RecentlyPlayedCard';
 import { useNavigate } from 'react-router-dom';
@@ -21,7 +19,6 @@ interface RecentPlaylist {
 
 const HomePage = () => {
   const { publicPlaylists, fetchPublicPlaylists } = usePlaylistStore();
-  const { isOnline } = useAuth();
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [displayItems, setDisplayItems] = useState<any[]>([]);
   const navigate = useNavigate();
@@ -210,37 +207,33 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden relative">
       {/* Dynamic Background Setup - Spotify-style gradient flow */}
-      {isOnline && (
-        <>
-          {/* Main gradient background that flows from top and ends naturally */}
-          <div
-            className="absolute top-0 left-0 right-0 pointer-events-none hidden md:block"
-            style={{
-              height: '350px',
-              background: `linear-gradient(180deg, 
-                ${colorToRgba(activeColor, 0.4)} 0%, 
-                ${colorToRgba(activeColor, 0.35)} 10%, 
-                ${colorToRgba(activeColor, 0.28)} 20%, 
-                ${colorToRgba(activeColor, 0.22)} 30%, 
-                ${colorToRgba(activeColor, 0.17)} 40%, 
-                ${colorToRgba(activeColor, 0.13)} 50%, 
-                ${colorToRgba(activeColor, 0.09)} 60%, 
-                ${colorToRgba(activeColor, 0.06)} 70%, 
-                ${colorToRgba(activeColor, 0.04)} 80%, 
-                ${colorToRgba(activeColor, 0.02)} 90%, 
-                ${colorToRgba(activeColor, 0.01)} 95%, 
-                transparent 100%)`,
-              transition: 'background 3500ms cubic-bezier(0.25, 0.1, 0.25, 1)',
-              willChange: 'background'
-            }}
-          />
-        </>
-      )}
+      {/* Dynamic Background Setup - Spotify-style gradient flow */}
+      <div
+        className="absolute top-0 left-0 right-0 pointer-events-none hidden md:block"
+        style={{
+          height: '350px',
+          background: `linear-gradient(180deg, 
+            ${colorToRgba(activeColor, 0.4)} 0%, 
+            ${colorToRgba(activeColor, 0.35)} 10%, 
+            ${colorToRgba(activeColor, 0.28)} 20%, 
+            ${colorToRgba(activeColor, 0.22)} 30%, 
+            ${colorToRgba(activeColor, 0.17)} 40%, 
+            ${colorToRgba(activeColor, 0.13)} 50%, 
+            ${colorToRgba(activeColor, 0.09)} 60%, 
+            ${colorToRgba(activeColor, 0.06)} 70%, 
+            ${colorToRgba(activeColor, 0.04)} 80%, 
+            ${colorToRgba(activeColor, 0.02)} 90%, 
+            ${colorToRgba(activeColor, 0.01)} 95%, 
+            transparent 100%)`,
+          transition: 'background 3500ms cubic-bezier(0.25, 0.1, 0.25, 1)',
+          willChange: 'background'
+        }}
+      />
 
       <div className="py-4 space-y-4 relative w-full z-10 pb-32 md:pb-8">
         <div className="w-full overflow-x-hidden">
           {/* Recently Played Section */}
-          {isOnline && getDisplayedItems().length > 0 && (
+          {getDisplayedItems().length > 0 && (
             <section className="px-4 md:px-6 mb-6 w-full">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 w-full max-w-full">
                 {/* Liked Songs Card - Pinned First */}

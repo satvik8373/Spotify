@@ -63,7 +63,7 @@ const Header = ({ className }: HeaderProps) => {
 
   // Optimized debounced search with request cancellation
   const searchAbortController = useRef<AbortController | null>(null);
-  
+
   const debouncedSearch = useCallback(
     debounce((query: string) => {
       if (query.trim().length >= 2) {
@@ -71,10 +71,10 @@ const Header = ({ className }: HeaderProps) => {
         if (searchAbortController.current) {
           searchAbortController.current.abort();
         }
-        
+
         // Create new abort controller
         searchAbortController.current = new AbortController();
-        
+
         // Perform search with cancellation support
         searchIndianSongs(query);
       }

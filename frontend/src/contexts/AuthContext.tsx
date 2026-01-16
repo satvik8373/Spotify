@@ -160,7 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Set up auth state listener
   useEffect(() => {
-    // Network status listeners with debounce to prevent flickering
     // Network status listeners
     const updateOnline = () => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
