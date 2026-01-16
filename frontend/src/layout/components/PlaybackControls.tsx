@@ -7,6 +7,7 @@ import SongDetailsView from "@/components/SongDetailsView";
 import { cn } from "@/lib/utils";
 import { useLikedSongsStore } from "@/stores/useLikedSongsStore";
 import QueueDrawer from "@/components/QueueDrawer";
+import ElasticSlider from "@/components/ui/ElasticSlider";
 
 const formatTime = (seconds: number) => {
 	if (isNaN(seconds)) return "0:00";
@@ -361,38 +362,19 @@ export const PlaybackControls = () => {
 							</Button>
 						</div>
 
-						<div
-							className="flex items-center gap-2 relative"
-							ref={volumeControlRef}
-							onMouseEnter={() => setShowVolumeSlider(true)}
-							onMouseLeave={() => setShowVolumeSlider(false)}
-						>
-							<Button
-								size="icon"
-								variant="ghost"
-								className="hover:text-foreground text-muted-foreground h-8 w-8"
-								onClick={() => setVolume(volume === 0 ? 75 : 0)}
-							>
-								{volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-							</Button>
-
-							<div className={cn(
-								"transition-all duration-200 overflow-hidden",
-								showVolumeSlider ? "w-24 opacity-100" : "w-0 opacity-0"
-							)}>
-								<Slider
-									value={[volume]}
-									max={100}
-									step={1}
-									className="cursor-pointer"
-									onValueChange={(value) => {
-										setVolume(value[0]);
-										if (audioRef.current) {
-											audioRef.current.volume = value[0] / 100;
-										}
-									}}
-								/>
-							</div>
+						<div className="w-32 sm:w-48 ml-2">
+							<ElasticSlider
+								defaultValue={volume}
+								maxValue={100}
+								startingValue={0}
+								onValueChange={(val) => {
+									setVolume(val);
+									if (audioRef.current) {
+										audioRef.current.volume = val / 100;
+									}
+								}}
+								className="w-full"
+							/>
 						</div>
 					</div>
 				</div>

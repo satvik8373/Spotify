@@ -63,7 +63,7 @@ const HomePage = () => {
       try {
         // Show content immediately, load data in background
         setIsInitialLoading(false);
-        
+
         // Check if we need to refresh data
         if (usePlaylistStore.getState().shouldRefresh()) {
           await usePlaylistStore.getState().refreshAllData();
@@ -110,7 +110,7 @@ const HomePage = () => {
   const handleColorChange = (color: string | null, isLikedSongs: boolean = false) => {
     // Set transitioning state for smoother visual feedback
     setIsTransitioning(true);
-    
+
     // Add a longer delay for more elegant, slower transitions
     setTimeout(() => {
       setHoveredColor(color);
@@ -118,7 +118,7 @@ const HomePage = () => {
       if (isLikedSongs && color) {
         setLikedSongsColor(color);
       }
-      
+
       // Clear transitioning state after a delay
       setTimeout(() => {
         setIsTransitioning(false);
@@ -129,7 +129,7 @@ const HomePage = () => {
   // Function to convert any color format to rgba with opacity
   const colorToRgba = (color: string, opacity: number) => {
     if (!color || color === '#121212') return `rgba(18, 18, 18, ${opacity})`;
-    
+
     // If it's already an rgb() format, extract the values
     if (color.startsWith('rgb(')) {
       const rgbMatch = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
@@ -138,7 +138,7 @@ const HomePage = () => {
         return `rgba(${r}, ${g}, ${b}, ${opacity})`;
       }
     }
-    
+
     // If it's a hex color, convert it
     if (color.startsWith('#')) {
       const hex = color.replace('#', '');
@@ -147,7 +147,7 @@ const HomePage = () => {
       const b = parseInt(hex.substring(4, 6), 16);
       return `rgba(${r}, ${g}, ${b}, ${opacity})`;
     }
-    
+
     // Fallback
     return `rgba(18, 18, 18, ${opacity})`;
   };
@@ -205,17 +205,7 @@ const HomePage = () => {
     );
   }
 
-  if (!isOnline) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <WifiOff className="h-16 w-16 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold mb-2">No Internet Connection</h2>
-        <p className="text-muted-foreground">
-          Please check your connection and try again.
-        </p>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden relative">

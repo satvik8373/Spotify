@@ -161,22 +161,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Set up auth state listener
   useEffect(() => {
     // Network status listeners with debounce to prevent flickering
-    const updateOnline = () => {
-      const isNowOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
-
-      if (isNowOnline) {
-        // If coming back online, update immediately to restore functionality
-        setIsOnline(true);
-      } else {
-        // If going offline, wait 5 seconds before updating state
-        // This prevents UI flickering during brief connection drops (common on cellular/metro)
-        setTimeout(() => {
-          if (typeof navigator !== 'undefined' && !navigator.onLine) {
-            setIsOnline(false);
-          }
-        }, 5000);
-      }
-    };
+    // Network status listeners
+    const updateOnline = () => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
     updateOnline();
     window.addEventListener('online', updateOnline);
