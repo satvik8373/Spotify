@@ -17,7 +17,7 @@ interface RecentItem {
 export function RecentlyPlayed() {
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
-  const { setCurrentSong } = usePlayerStore();
+  const { setCurrentSong, setIsPlaying } = usePlayerStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -77,6 +77,7 @@ export function RecentlyPlayed() {
   const handleItemClick = (item: RecentItem) => {
     if (item.type === 'song' && item.data) {
       setCurrentSong(item.data);
+      setIsPlaying(true); // Auto-play the song
       addToRecentlyPlayed(item);
     } else if (item.type === 'playlist' && item.id) {
       navigate(`/playlist/${item.id}`);
@@ -92,7 +93,7 @@ export function RecentlyPlayed() {
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-xl font-bold">Recently played</h2>
         {recentItems.length > 0 && (
-          <button 
+          <button
             onClick={() => navigate('/history')}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -100,7 +101,7 @@ export function RecentlyPlayed() {
           </button>
         )}
       </div>
-      
+
       {/* Rectangular cards matching Spotify design - thumbnail on left, text on right */}
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-1.5">
         {recentItems.map(item => (

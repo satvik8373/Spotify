@@ -12,6 +12,7 @@ import { useMusicStore } from '@/stores/useMusicStore';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import OptimizedImage from '@/components/OptimizedImage';
 import { resolveArtist } from '@/lib/resolveArtist';
+import { usePhoneInterruption } from '@/hooks/usePhoneInterruption';
 
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
@@ -154,6 +155,9 @@ const AudioPlayer = () => {
 
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const albumColors = useAlbumColors(currentSong?.imageUrl);
+
+  // Use phone interruption hook for automatic pause/resume during calls
+  const audioFocusState = usePhoneInterruption(audioRef);
 
   // These may not exist in the store based on linter errors
   const playerStore = usePlayerStore();
@@ -492,126 +496,10 @@ const AudioPlayer = () => {
     };
   }, [isPlaying]);
 
-  // Enhanced phone call and audio focus handling
-  useEffect(() => {
-    // Define handler for audio interruptions
-    const handleAudioInterruption = () => {
-      // Handle when audio is interrupted (likely by a call)
-      const handleAudioPause = () => {
-        // Only track interruptions when we were actually playing
-        if (isPlaying && !audioRef.current?.ended) {
-          console.log("Audio interrupted while playing, marking for restoration");
-          usePlayerStore.setState({
-            wasPlayingBeforeInterruption: true
-          });
-        }
-      };
+  // Enhanced phone call and audio focus handling - NOW HANDLED BY usePhoneInterruption hook
+  // The old code (lines 496-612) has been replaced by the usePhoneInterruption hook
 
-      // Handle resuming audio after interruption ends
-      const handleAudioResume = () => {
-        // Get the latest state
-        const state = usePlayerStore.getState();
-
-        // Check if we were playing before the interruption
-        if (state.wasPlayingBeforeInterruption) {
-          console.log("Resuming audio after interruption");
-          // Resume playback with a delay to let the system stabilize
-          setTimeout(() => {
-            // Make sure user is marked as having interacted to enable autoplay
-            state.setUserInteracted();
-
-            // Force playing state to be true
-            state.setIsPlaying(true);
-
-            // Reset the flag
-            usePlayerStore.setState({ wasPlayingBeforeInterruption: false });
-
-            if (audioRef.current && audioRef.current.paused) {
-              // Try playing with multiple attempts in case of race conditions
-              const playAttempt = audioRef.current.play();
-              if (playAttempt) {
-                playAttempt.catch(() => {
-                  // Try again after a slight delay
-                  setTimeout(() => {
-                    if (audioRef.current) {
-                      audioRef.current.play().catch(() => {
-                        // If still failing, try one last time with current song reset
-                        const currentState = usePlayerStore.getState();
-                        const song = currentState.currentSong;
-                        if (song) {
-                          currentState.setCurrentSong(song);
-                          setTimeout(() => {
-                            if (audioRef.current) audioRef.current.play().catch(() => { });
-                          }, 200);
-                        }
-                      });
-                    }
-                  }, 500);
-                });
-              }
-            }
-          }, 300);
-        }
-      };
-
-      // Both visibilitychange and focus events can indicate interruption end
-      const handleVisibilityChange = () => {
-        // When document becomes visible again after being hidden
-        if (!document.hidden && usePlayerStore.getState().wasPlayingBeforeInterruption) {
-          handleAudioResume();
-        }
-      };
-
-      const handleFocusChange = () => {
-        // When window regains focus
-        if (document.hasFocus() && usePlayerStore.getState().wasPlayingBeforeInterruption) {
-          handleAudioResume();
-        }
-      };
-
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      window.addEventListener('focus', handleFocusChange);
-
-      // Handle audio interruptions via the audio event listeners
-      if (audioRef.current) {
-        audioRef.current.addEventListener('pause', handleAudioPause);
-        audioRef.current.addEventListener('play', handleAudioResume);
-      }
-
-      // Additional handlers for mobile device events
-      if ('onpageshow' in window) {
-        window.addEventListener('pageshow', (e) => {
-          // The persisted property indicates if the page is loaded from cache
-          if (e.persisted && usePlayerStore.getState().wasPlayingBeforeInterruption) {
-            handleAudioResume();
-          }
-        });
-      }
-
-      return () => {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-        window.removeEventListener('focus', handleFocusChange);
-
-        if (audioRef.current) {
-          audioRef.current.removeEventListener('pause', handleAudioPause);
-          audioRef.current.removeEventListener('play', handleAudioResume);
-        }
-
-        if ('onpageshow' in window) {
-          window.removeEventListener('pageshow', (e) => {
-            if (e.persisted && usePlayerStore.getState().wasPlayingBeforeInterruption) {
-              handleAudioResume();
-            }
-          });
-        }
-      };
-    };
-
-    const cleanup = handleAudioInterruption();
-    return cleanup;
-  }, [isPlaying]);
-
-  // Optimized background playback monitor - reduced frequency
+  // Optimized background playback monitor - reduced frequency and skip during interruptions
   useEffect(() => {
     if (!currentSong || !audioRef.current) return;
 
@@ -620,8 +508,13 @@ const AudioPlayer = () => {
       const audio = audioRef.current;
       if (!audio) return;
 
+      // Skip monitoring if we're interrupted (phone call, etc.)
+      if (audioFocusState.isInterrupted) {
+        return;
+      }
+
       // Simple checks with reduced frequency
-      if (audio.paused && state.isPlaying && !audio.ended) {
+      if (audio.paused && state.isPlaying && !audio.ended && !state.wasPlayingBeforeInterruption) {
         audio.play().catch(() => { });
       }
 
@@ -633,31 +526,34 @@ const AudioPlayer = () => {
           setTimeout(() => audioRef.current?.play().catch(() => { }), 100);
         }
       }
-    }, 1000); // Reduced from 250ms to 1000ms
+    }, 2000); // Increased from 1000ms to 2000ms for better battery life
 
     return () => clearInterval(backgroundPlaybackMonitor);
-  }, [currentSong, isPlaying]);
+  }, [currentSong, isPlaying, audioFocusState.isInterrupted]);
 
-  // Wake lock API to prevent device from sleeping and stopping audio
+  // Enhanced Wake Lock API - release during interruptions, request when playing
   useEffect(() => {
     let wakeLock: any = null;
 
     // Check if Wake Lock API is available
     const requestWakeLock = async () => {
-      if ('wakeLock' in navigator && isPlaying && currentSong) {
+      // Don't request wake lock if interrupted (phone call, etc.)
+      if ('wakeLock' in navigator && isPlaying && currentSong && !audioFocusState.isInterrupted) {
         try {
           // Request a screen wake lock
           wakeLock = await (navigator as any).wakeLock.request('screen');
+          console.log('Wake lock acquired');
 
           // Listen for wake lock release
           wakeLock.addEventListener('release', () => {
-            // If we're still playing, request it again
-            if (isPlaying && currentSong) {
-              requestWakeLock();
+            console.log('Wake lock released');
+            // If we're still playing and not interrupted, request it again
+            if (isPlaying && currentSong && !audioFocusState.isInterrupted) {
+              setTimeout(requestWakeLock, 1000);
             }
           });
         } catch (err) {
-          // Silent error handling - not all browsers support this
+          console.warn('Wake lock request failed:', err);
         }
       }
     };
@@ -672,8 +568,9 @@ const AudioPlayer = () => {
       }
     };
 
-    // Request wake lock when playing, release when paused
-    if (isPlaying && currentSong) {
+    // Request wake lock when playing and not interrupted
+    // Release wake lock when paused or interrupted
+    if (isPlaying && currentSong && !audioFocusState.isInterrupted) {
       requestWakeLock();
     } else {
       releaseWakeLock();
@@ -682,7 +579,7 @@ const AudioPlayer = () => {
     return () => {
       releaseWakeLock();
     };
-  }, [isPlaying, currentSong]);
+  }, [isPlaying, currentSong, audioFocusState.isInterrupted]);
 
   // Handle iOS-specific background playback issues 
   useEffect(() => {
@@ -1140,14 +1037,14 @@ const AudioPlayer = () => {
 
         // Pause current playback before changing source to prevent conflicts
         audio.pause();
-        
+
         // CRITICAL: Immediately reset currentTime to 0 to stop previous song audio
         audio.currentTime = 0;
-        
+
         // Force stop any ongoing playback by setting src to empty first
         audio.src = '';
         audio.load();
-        
+
         // Also reset the local time state immediately
         setLocalCurrentTime(0);
         if (setCurrentTime) {

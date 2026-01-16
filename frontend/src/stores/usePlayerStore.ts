@@ -4,6 +4,8 @@ import { Song } from '@/types';
 
 export type Queue = Song[];
 
+export type InterruptionReason = 'call' | 'bluetooth' | 'system' | 'notification' | null;
+
 export interface PlayerState {
   currentSong: Song | null;
   isPlaying: boolean;
@@ -17,6 +19,8 @@ export interface PlayerState {
   hasUserInteracted: boolean;
   autoplayBlocked: boolean;
   wasPlayingBeforeInterruption: boolean;
+  interruptionReason: InterruptionReason;
+  audioOutputDevice: string | null;
   lastPlayNextTime: number;
   skipRestoreUntilTs?: number;
 
@@ -68,6 +72,8 @@ export const usePlayerStore = create<PlayerState>()(
       hasUserInteracted: false,
       autoplayBlocked: false,
       wasPlayingBeforeInterruption: false,
+      interruptionReason: null,
+      audioOutputDevice: null,
       lastPlayNextTime: 0,
       skipRestoreUntilTs: 0,
 
@@ -77,7 +83,7 @@ export const usePlayerStore = create<PlayerState>()(
           console.warn('Skipping song with blob URL from old download system:', song.title);
           return;
         }
-        
+
         // Get the current audio element and stop it immediately
         const audio = document.querySelector('audio');
         if (audio) {
@@ -87,9 +93,9 @@ export const usePlayerStore = create<PlayerState>()(
           audio.src = '';
           audio.load();
         }
-        
+
         // Immediately reset current time when switching songs
-        set({ 
+        set({
           currentSong: song,
           currentTime: 0 // Reset time immediately for new song
         });
@@ -124,7 +130,7 @@ export const usePlayerStore = create<PlayerState>()(
 
         // Filter out songs with blob URLs from old download system
         const validSongs = songs.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
-        
+
         if (validSongs.length === 0) {
           console.warn('No valid songs to play (all had blob URLs)');
           return;
@@ -465,6 +471,8 @@ export const usePlayerStore = create<PlayerState>()(
         hasUserInteracted: state.hasUserInteracted,
         autoplayBlocked: state.autoplayBlocked,
         wasPlayingBeforeInterruption: state.wasPlayingBeforeInterruption,
+        interruptionReason: state.interruptionReason,
+        audioOutputDevice: state.audioOutputDevice,
       })
     }
   )
@@ -474,13 +482,13 @@ export const usePlayerStore = create<PlayerState>()(
 setTimeout(() => {
   // Auto-restore interrupted playback state from before refresh
   const store = usePlayerStore.getState();
-  
+
   // Clean up any blob URLs from the current song and queue
   if (store.currentSong && store.currentSong.audioUrl && store.currentSong.audioUrl.startsWith('blob:')) {
     console.log('Cleaning up blob URL from current song');
     store.setCurrentSong({ ...store.currentSong, audioUrl: '' });
   }
-  
+
   if (store.queue.length > 0) {
     const cleanQueue = store.queue.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
     if (cleanQueue.length !== store.queue.length) {
