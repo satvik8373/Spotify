@@ -50,7 +50,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const [isRepeating, setIsRepeating] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
 
   // Update like status
@@ -94,7 +96,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const offsetX = clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
     const newTime = percentage * duration;
-    
+
     if (audioRef.current) {
       audioRef.current.currentTime = newTime;
       setCurrentTime(newTime);
@@ -107,11 +109,59 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     handleSeek(e.clientX, rect);
   };
 
+  const handleProgressMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    const rect = e.currentTarget.getBoundingClientRect();
+    handleSeek(e.clientX, rect);
+  };
+
+  const handleProgressTouchStart = (e: React.TouchEvent) => {
+    setIsDragging(true);
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+    handleSeek(touch.clientX, rect);
+  };
+
+  // Handle dragging
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !progressRef.current) return;
+      const rect = progressRef.current.getBoundingClientRect();
+      handleSeek(e.clientX, rect);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging || !progressRef.current) return;
+      const touch = e.touches[0];
+      const rect = progressRef.current.getBoundingClientRect();
+      handleSeek(touch.clientX, rect);
+    };
+
+    const handleEnd = () => setIsDragging(false);
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleEnd);
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchend', handleEnd);
+      document.addEventListener('touchcancel', handleEnd);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleEnd);
+      document.removeEventListener('touchcancel', handleEnd);
+    };
+  }, [isDragging]);
+
   const handleLikeToggle = () => {
     if (!currentSong) return;
     const songId = (currentSong as any).id || currentSong._id;
     setIsLiked(!isLiked);
-    
+
     toggleLikeSong({
       _id: songId,
       title: currentSong.title,
@@ -132,7 +182,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 transition-transform duration-300 ease-out',
+        'fixed inset-0 z-50 transition-transform duration-300 ease-out flex flex-col',
         isOpen ? 'translate-y-0' : 'translate-y-full'
       )}
       style={{
@@ -140,28 +190,28 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 pt-6 relative">
+      <div className="flex items-center justify-between p-4 pt-6 sm:pt-8 relative flex-shrink-0">
         <button
           onClick={onClose}
           className="p-2 -ml-2 text-white/90 hover:text-white active:scale-95 transition-transform"
         >
-          <ChevronDown className="h-7 w-7" />
+          <ChevronDown className="h-6 w-6 sm:h-7 sm:w-7" />
         </button>
-        <span className="text-xs font-semibold text-white/70 uppercase tracking-widest">
+        <span className="text-xs sm:text-sm font-semibold text-white/70 uppercase tracking-widest">
           Now Playing
         </span>
-        <button 
+        <button
           onClick={() => setShowMenu(!showMenu)}
           className="p-2 -mr-2 text-white/90 hover:text-white active:scale-95 transition-transform"
         >
-          <MoreHorizontal className="h-6 w-6" />
+          <MoreHorizontal className="h-5 w-5 sm:h-6 sm:w-6" />
         </button>
 
         {/* Dropdown Menu */}
         {showMenu && (
           <>
-            <div 
-              className="fixed inset-0 z-40" 
+            <div
+              className="fixed inset-0 z-40"
               onClick={() => setShowMenu(false)}
             />
             <div className="absolute top-14 right-4 w-56 bg-[#282828] rounded-lg shadow-2xl z-50 overflow-hidden">
@@ -187,134 +237,155 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         )}
       </div>
 
-      {/* Album Art */}
-      <div className="px-6 mt-4">
-        <div className="aspect-square w-full rounded-lg overflow-hidden shadow-2xl">
-          <img
-            src={currentSong.imageUrl}
-            alt={currentSong.title}
-            className="w-full h-full object-cover"
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        {/* Album Art */}
+        <div className="px-4 sm:px-6 mt-4 sm:mt-6 md:mt-8">
+          <div className="aspect-square w-full max-w-md mx-auto rounded-lg overflow-hidden shadow-2xl">
+            <img
+              src={currentSong.imageUrl}
+              alt={currentSong.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+
+        {/* Song Info */}
+        <div className="px-4 sm:px-6 mt-6 sm:mt-8">
+          <div className="flex items-start justify-between gap-4 max-w-md mx-auto">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white truncate mb-2">
+                {currentSong.title}
+              </h1>
+              <p className="text-base sm:text-lg text-white/70 truncate">
+                {currentSong.artist}
+              </p>
+            </div>
+            <button
+              onClick={handleLikeToggle}
+              className="p-2 -mr-2 active:scale-90 transition-transform flex-shrink-0"
+            >
+              <Heart
+                className="h-6 w-6 sm:h-7 sm:w-7"
+                fill={isLiked ? '#1ed760' : 'none'}
+                stroke={isLiked ? '#1ed760' : 'white'}
+                strokeWidth={2}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Progress Bar - Enhanced with Drag Support */}
+        <div className="px-4 sm:px-6 mt-6 sm:mt-8">
+          <div className="max-w-md mx-auto">
+            <div
+              ref={progressRef}
+              className="relative w-full py-3 sm:py-4 cursor-pointer group"
+              onClick={handleProgressClick}
+              onMouseDown={handleProgressMouseDown}
+              onTouchStart={handleProgressTouchStart}
+            >
+              <div className={cn(
+                "relative w-full bg-white/30 rounded-full transition-all",
+                isDragging ? "h-1.5" : "h-1 group-hover:h-1.5"
+              )}>
+                <div
+                  className="absolute h-full bg-white rounded-full transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+                {/* Draggable thumb - shows on hover or drag */}
+                <div
+                  className={cn(
+                    "absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg transition-opacity",
+                    isDragging ? "opacity-100 scale-110" : "opacity-0 group-hover:opacity-100"
+                  )}
+                  style={{ left: `${progress}%`, marginLeft: '-6px' }}
+                />
+              </div>
+            </div>
+            <div className="flex justify-between mt-1 text-xs sm:text-sm text-white/60">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="px-4 sm:px-6 mt-6 sm:mt-8">
+          <div className="max-w-md mx-auto flex items-center justify-between mb-6 sm:mb-8">
+            <button
+              onClick={toggleShuffle}
+              className={cn(
+                "p-2 active:scale-90 transition-all flex-shrink-0",
+                isShuffled ? "text-[#1ed760]" : "text-white/70"
+              )}
+            >
+              <Shuffle className="h-5 w-5 sm:h-6 sm:w-6" />
+            </button>
+
+            <button
+              onClick={playPrevious}
+              className="p-2 text-white active:scale-90 transition-transform flex-shrink-0"
+            >
+              <SkipBack className="h-7 w-7 sm:h-8 sm:w-8" fill="white" />
+            </button>
+
+            <button
+              onClick={togglePlay}
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform shadow-xl flex-shrink-0"
+            >
+              {isPlaying ? (
+                <Pause className="h-7 w-7 sm:h-8 sm:w-8 text-black" fill="black" />
+              ) : (
+                <Play className="h-7 w-7 sm:h-8 sm:w-8 text-black ml-1" fill="black" />
+              )}
+            </button>
+
+            <button
+              onClick={playNext}
+              className="p-2 text-white active:scale-90 transition-transform flex-shrink-0"
+            >
+              <SkipForward className="h-7 w-7 sm:h-8 sm:w-8" fill="white" />
+            </button>
+
+            <button
+              onClick={() => setIsRepeating(!isRepeating)}
+              className={cn(
+                "p-2 active:scale-90 transition-all flex-shrink-0",
+                isRepeating ? "text-[#1ed760]" : "text-white/70"
+              )}
+            >
+              <Repeat className="h-5 w-5 sm:h-6 sm:w-6" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Actions - Fixed */}
+      <div className="px-4 sm:px-6 pb-6 sm:pb-8 flex items-center justify-between flex-shrink-0">
+        <div className="max-w-md mx-auto w-full flex items-center justify-between">
+          <button
+            onClick={() => setShowQueue(!showQueue)}
+            className="flex flex-col items-center gap-1 text-white/70 hover:text-white active:scale-95 transition-all"
+          >
+            <ListMusic className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="text-xs font-medium">Queue</span>
+          </button>
+
+          <ShareSong
+            song={currentSong}
+            trigger={
+              <button className="flex flex-col items-center gap-1 text-white/70 hover:text-white active:scale-95 transition-all">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                <span className="text-xs font-medium">Share</span>
+              </button>
+            }
           />
         </div>
       </div>
-
-      {/* Song Info */}
-      <div className="px-6 mt-8">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-white truncate mb-2">
-              {currentSong.title}
-            </h1>
-            <p className="text-base text-white/70 truncate">
-              {currentSong.artist}
-            </p>
-          </div>
-          <button
-            onClick={handleLikeToggle}
-            className="p-2 -mr-2 active:scale-90 transition-transform"
-          >
-            <Heart
-              className="h-7 w-7"
-              fill={isLiked ? '#1ed760' : 'none'}
-              stroke={isLiked ? '#1ed760' : 'white'}
-              strokeWidth={2}
-            />
-          </button>
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="px-6 mt-8">
-        <div
-          className="relative w-full py-2 cursor-pointer"
-          onClick={handleProgressClick}
-        >
-          <div className="relative w-full h-1 bg-white/20 rounded-full">
-            <div
-              className="absolute h-full bg-white rounded-full"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-        <div className="flex justify-between mt-2 text-xs text-white/60">
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className="px-6 mt-6">
-        <div className="flex items-center justify-between mb-8">
-          <button
-            onClick={toggleShuffle}
-            className={cn(
-              "p-2 active:scale-90 transition-all",
-              isShuffled ? "text-[#1ed760]" : "text-white/70"
-            )}
-          >
-            <Shuffle className="h-5 w-5" />
-          </button>
-
-          <button
-            onClick={playPrevious}
-            className="p-2 text-white active:scale-90 transition-transform"
-          >
-            <SkipBack className="h-8 w-8" fill="white" />
-          </button>
-
-          <button
-            onClick={togglePlay}
-            className="w-16 h-16 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform shadow-xl"
-          >
-            {isPlaying ? (
-              <Pause className="h-8 w-8 text-black" fill="black" />
-            ) : (
-              <Play className="h-8 w-8 text-black ml-1" fill="black" />
-            )}
-          </button>
-
-          <button
-            onClick={playNext}
-            className="p-2 text-white active:scale-90 transition-transform"
-          >
-            <SkipForward className="h-8 w-8" fill="white" />
-          </button>
-
-          <button
-            onClick={() => setIsRepeating(!isRepeating)}
-            className={cn(
-              "p-2 active:scale-90 transition-all",
-              isRepeating ? "text-[#1ed760]" : "text-white/70"
-            )}
-          >
-            <Repeat className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Bottom Actions */}
-      <div className="px-6 mt-auto pb-8 flex items-center justify-between">
-        <button
-          onClick={() => setShowQueue(!showQueue)}
-          className="flex flex-col items-center gap-1 text-white/70 hover:text-white active:scale-95 transition-all"
-        >
-          <ListMusic className="h-6 w-6" />
-          <span className="text-xs font-medium">Queue</span>
-        </button>
-
-        <ShareSong
-          song={currentSong}
-          trigger={
-            <button className="flex flex-col items-center gap-1 text-white/70 hover:text-white active:scale-95 transition-all">
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-              </svg>
-              <span className="text-xs font-medium">Share</span>
-            </button>
-          }
-        />
-      </div>
-    </div>
+    </div >
   );
 };
 

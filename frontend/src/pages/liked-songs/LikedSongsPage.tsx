@@ -31,15 +31,15 @@ const formatTime = (seconds: number) => {
 };
 
 // Memoized song item component to prevent unnecessary re-renders
-const MemoizedSongItem = React.memo(({ 
-  song, 
-  index, 
-  isMobile, 
-  isSongPlaying, 
-  onPlay, 
-  onTogglePlay, 
-  onAddToQueue, 
-  onUnlike 
+const MemoizedSongItem = React.memo(({
+  song,
+  index,
+  isMobile,
+  isSongPlaying,
+  onPlay,
+  onTogglePlay,
+  onAddToQueue,
+  onUnlike
 }: {
   song: Song;
   index: number;
@@ -181,14 +181,14 @@ const MemoizedSongItem = React.memo(({
       {/* Desktop date added */}
       {!isMobile && (
         <div className="flex items-center text-muted-foreground text-sm">
-          {(song as any).likedAt ? 
-            new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).toLocaleDateString('en-US', { 
-              month: 'short', 
+          {(song as any).likedAt ?
+            new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).toLocaleDateString('en-US', {
+              month: 'short',
               day: 'numeric',
               year: new Date().getFullYear() !== new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).getFullYear() ? 'numeric' : undefined
             }) :
-            new Date().toLocaleDateString('en-US', { 
-              month: 'short', 
+            new Date().toLocaleDateString('en-US', {
+              month: 'short',
               day: 'numeric'
             })
           }
@@ -241,6 +241,15 @@ const MemoizedSongItem = React.memo(({
         </div>
       )}
     </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for React.memo
+  // Return true if props are equal (skip re-render), false if different (do re-render)
+  return (
+    prevProps.song._id === nextProps.song._id &&
+    prevProps.index === nextProps.index &&
+    prevProps.isMobile === nextProps.isMobile &&
+    prevProps.isSongPlaying === nextProps.isSongPlaying // KEY: This ensures re-render when playing state changes
   );
 });
 
@@ -324,17 +333,17 @@ const LikedSongsPage = () => {
   // Optimized filtered and sorted songs with better memoization
   const visibleSongs = useMemo(() => {
     if (!likedSongs.length) return [];
-    
+
     const q = filterQuery.trim().toLowerCase();
     let filtered = likedSongs;
-    
+
     // Only filter if there's a query to avoid unnecessary work
     if (q) {
-      filtered = likedSongs.filter((s) => 
+      filtered = likedSongs.filter((s) =>
         `${s.title} ${s.artist}`.toLowerCase().includes(q)
       );
     }
-    
+
     return sortSongs(filtered, sortMethod);
   }, [likedSongs, filterQuery, sortMethod, sortSongs]);
 
@@ -397,7 +406,7 @@ const LikedSongsPage = () => {
   const smartShuffle = useCallback(() => {
     if (likedSongs.length > 0) {
       const songsToShuffle = [...likedSongs];
-      
+
       // Fisher-Yates shuffle algorithm
       for (let i = songsToShuffle.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -423,10 +432,10 @@ const LikedSongsPage = () => {
     try {
       setIsLoading(true);
       toast.loading('Syncing with Spotify...', { id: 'manual-sync' });
-      
+
       // Fetch saved tracks from Spotify
       const spotifyTracks = await fetchSavedTracks(50); // Get recent 50 tracks
-      
+
       if (spotifyTracks.length === 0) {
         toast.success('No new tracks to sync', { id: 'manual-sync' });
         return;
@@ -435,11 +444,11 @@ const LikedSongsPage = () => {
       // Process and add tracks (this would use the existing SpotifyLikedSongsSync logic)
       // For now, just show success message
       toast.success(`Found ${spotifyTracks.length} tracks from Spotify!`, { id: 'manual-sync' });
-      
+
       // Open the dialog to the Spotify tab for detailed sync
       setActiveTab('spotify');
       setShowAddDialog(true);
-      
+
     } catch (error) {
       console.error('Manual sync error:', error);
       toast.error('Failed to sync with Spotify', { id: 'manual-sync' });
@@ -472,7 +481,7 @@ const LikedSongsPage = () => {
                 <Heart className="h-10 w-10 text-white fill-white relative z-10 drop-shadow-lg" />
                 <div className="absolute top-2 left-2 w-6 h-6 bg-white/30 rounded-full blur-md"></div>
               </div>
-              
+
               {/* Mobile title section - Spotify style */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white/80 mb-1">Playlist</p>
@@ -496,7 +505,7 @@ const LikedSongsPage = () => {
               >
                 <Play className="h-6 w-6 fill-current ml-0.5 text-black" />
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -589,7 +598,7 @@ const LikedSongsPage = () => {
               >
                 <Play className="h-7 w-7 fill-current ml-1 text-black" />
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -721,7 +730,7 @@ const LikedSongsPage = () => {
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className={cn(
           "overflow-hidden",
-          isMobile 
+          isMobile
             ? "max-w-[95vw] max-h-[85vh] w-full h-full rounded-t-xl rounded-b-none fixed bottom-0 left-0 right-0 top-auto transform-none"
             : "max-w-4xl max-h-[80vh]"
         )}>
@@ -731,7 +740,7 @@ const LikedSongsPage = () => {
               Upload a file or sync from Spotify to add songs to your liked songs
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-hidden">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'upload' | 'spotify')} className="h-full flex flex-col">
               <TabsList className={cn(
@@ -747,13 +756,13 @@ const LikedSongsPage = () => {
                   <span>Spotify Sync</span>
                 </TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="upload" className="flex-1 overflow-auto">
                 <ScrollArea className={cn("h-full", isMobile ? "px-4" : "")}>
                   <LikedSongsFileUploader onClose={() => setShowAddDialog(false)} />
                 </ScrollArea>
               </TabsContent>
-              
+
               <TabsContent value="spotify" className="flex-1 overflow-auto">
                 <ScrollArea className={cn("h-full", isMobile ? "px-4" : "")}>
                   <SpotifyLikedSongsSync onClose={() => setShowAddDialog(false)} />
