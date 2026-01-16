@@ -28,12 +28,15 @@ export const useBackgroundRefresh = () => {
       }
     };
 
-    // Refresh when user comes back online
+    // Refresh when user comes back online (debounced)
     const handleOnline = () => {
-      if (usePlaylistStore.getState().shouldRefresh()) {
-        console.log('Back online: Refreshing playlist data');
-        usePlaylistStore.getState().refreshAllData();
-      }
+      // Wait 3 seconds to ensure connection is stable before refreshing
+      setTimeout(() => {
+        if (navigator.onLine && usePlaylistStore.getState().shouldRefresh()) {
+          console.log('Back online (stable): Refreshing playlist data');
+          usePlaylistStore.getState().refreshAllData();
+        }
+      }, 3000);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);

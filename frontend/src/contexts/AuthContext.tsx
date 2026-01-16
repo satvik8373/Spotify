@@ -26,7 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   isAuthenticated: false,
-  refreshUserData: async () => {},
+  refreshUserData: async () => { },
   isOnline: true
 });
 
@@ -46,25 +46,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadUser = useCallback(async (forceRefresh = false) => {
     // Prevent concurrent auth calls unless forced
     if (loadingRef.current && !forceRefresh) return;
-    
+
     try {
       loadingRef.current = true;
       // Only show loading if we don't have a cached user and haven't checked auth state yet
       if (!authStateCheckedRef.current && !user && !initialLoadCompletedRef.current) {
         setLoading(true);
       }
-      
+
       const firebaseUser = auth.currentUser;
-      
+
       if (firebaseUser) {
         try {
           // Get user's ID token for subsequent API requests
           await getIdToken(firebaseUser, true);
-          
+
           // Get additional user data from Firestore
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
           const userData = userDoc.data();
-          
+
           // Only update state if user info has changed or forced refresh
           if (forceRefresh || !user || user.id !== firebaseUser.uid) {
             const userObj = {
@@ -73,9 +73,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               name: userData?.fullName || firebaseUser.displayName || 'User',
               picture: userData?.imageUrl || firebaseUser.photoURL || ''
             };
-            
+
             setUser(userObj);
-            
+
             // Update auth store only if user changed
             const authStore = useAuthStore.getState();
             if (!authStore.isAuthenticated || authStore.userId !== firebaseUser.uid) {
@@ -85,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 userObj.picture
               );
             }
-            
+
             // Log success but not on every update
             // if (!user || user.id !== firebaseUser.uid) {
             //   console.log("User authenticated:", userObj.name);
@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (firestoreError) {
           console.error("Error fetching user data from Firestore:", firestoreError);
-          
+
           // Still set basic user data even if Firestore fails
           if (!user || user.id !== firebaseUser.uid) {
             const basicUser = {
@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               name: firebaseUser.displayName || 'User',
               picture: firebaseUser.photoURL || ''
             };
-            
+
             setUser(basicUser);
             useAuthStore.getState().setAuthStatus(true, firebaseUser.uid);
           }
@@ -117,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.error("Error loading user data:", err);
       setError(err instanceof Error ? err : new Error('Failed to load user'));
-      
+
       // Only clear user if an actual error happened (not just no current user)
       setUser(null);
       // Reset auth store
@@ -138,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.clearInterval(tokenRefreshIntervalRef.current);
         tokenRefreshIntervalRef.current = null;
       }
-      
+
       // Set up token refresh if user is authenticated
       if (user && auth.currentUser) {
         // Refresh token every 55 minutes (Firebase tokens expire after 60 min)
@@ -148,9 +148,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }, 55 * 60 * 1000);
       }
     };
-    
+
     setupTokenRefresh();
-    
+
     return () => {
       if (tokenRefreshIntervalRef.current) {
         window.clearInterval(tokenRefreshIntervalRef.current);
@@ -160,8 +160,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Set up auth state listener
   useEffect(() => {
-    // Network status listeners
-    const updateOnline = () => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    // Network status listeners with debounce to prevent flickering
+    const updateOnline = () => {
+      const isNowOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+      if (isNowOnline) {
+        // If coming back online, update immediately to restore functionality
+        setIsOnline(true);
+      } else {
+        // If going offline, wait 5 seconds before updating state
+        // This prevents UI flickering during brief connection drops (common on cellular/metro)
+        setTimeout(() => {
+          if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            setIsOnline(false);
+          }
+        }, 5000);
+      }
+    };
+
     updateOnline();
     window.addEventListener('online', updateOnline);
     window.addEventListener('offline', updateOnline);
@@ -185,7 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setLoading(false);
         });
       }
-    } catch {}
+    } catch { }
 
     // If cached user exists in auth store, use it immediately for smooth UX
     const authStore = useAuthStore.getState();
@@ -196,7 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: authStore.user?.fullName || 'User',
         picture: authStore.user?.imageUrl || ''
       };
-      
+
       setUser(cachedUser);
       setLoading(false); // Stop loading immediately with cached user
       // console.log("Using cached user from auth store while waiting for Firebase");
@@ -208,7 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!initialLoadCompletedRef.current && !user && !authStateCheckedRef.current) {
         setLoading(true);
       }
-      
+
       if (firebaseUser) {
         // User is signed in
         // console.log("Firebase auth state changed: User is signed in");
@@ -221,10 +237,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Reset auth store
         useAuthStore.getState().reset();
       }
-      
+
       authStateCheckedRef.current = true;
     });
-    
+
     // Cleanup subscription
     return () => unsubscribe();
   }, [loadUser, user]);
@@ -245,7 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
       }
     }, 10000); // Check every 10 seconds instead of 3 to reduce flickering
-    
+
     return () => clearInterval(checkInterval);
   }, [loadUser, user]);
 
@@ -255,10 +271,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      error, 
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      error,
       isAuthenticated: !!user,
       refreshUserData,
       isOnline
