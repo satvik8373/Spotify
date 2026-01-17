@@ -4,7 +4,6 @@ import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { ShareSong } from './ShareSong';
 import {
   ChevronDown,
-  Heart,
   MoreHorizontal,
   SkipBack,
   Play,
@@ -14,6 +13,8 @@ import {
   Shuffle,
   Repeat
 } from 'lucide-react';
+import { LikeButton } from './LikeButton';
+import { PingPongScroll } from './PingPongScroll';
 import { cn } from '@/lib/utils';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 
@@ -58,9 +59,45 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   // Update like status
   useEffect(() => {
     if (!currentSong) return;
-    const songId = (currentSong as any).id || currentSong._id;
-    const liked = songId ? likedSongIds?.has(songId) : false;
-    setIsLiked(liked);
+    const id = (currentSong as any).id;
+    const _id = currentSong._id;
+    const liked = (id && likedSongIds?.has(id)) || (_id && likedSongIds?.has(_id));
+    setIsLiked(!!liked);
+  }, [currentSong, likedSongIds]);
+
+  // Listen for like updates from other components
+  useEffect(() => {
+    const handleLikeUpdate = (e: Event) => {
+      if (!currentSong) return;
+
+      const songId = (currentSong as any).id || currentSong._id;
+
+      // Check if this event includes details about which song was updated
+      if (e instanceof CustomEvent && e.detail) {
+        // If we have details and it's not for our current song, ignore
+        if (e.detail.songId && e.detail.songId !== songId) {
+          return;
+        }
+
+        // If we have explicit like state in the event, use it
+        if (typeof e.detail.isLiked === 'boolean') {
+          setIsLiked(e.detail.isLiked);
+          return;
+        }
+      }
+
+      // Otherwise do a fresh check from the store
+      const freshCheck = songId ? likedSongIds?.has(songId) : false;
+      setIsLiked(freshCheck);
+    };
+
+    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
+    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
+
+    return () => {
+      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
+      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
+    };
   }, [currentSong, likedSongIds]);
 
   // Audio element sync
@@ -160,6 +197,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const handleLikeToggle = () => {
     if (!currentSong) return;
     const songId = (currentSong as any).id || currentSong._id;
+    
+    // Optimistically update the UI immediately
     setIsLiked(!isLiked);
 
     toggleLikeSong({
@@ -171,7 +210,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       audioUrl: currentSong.audioUrl,
       duration: currentSong.duration || 0,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      likedAt: new Date().toISOString()
     });
   };
 
@@ -252,26 +292,28 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
         {/* Song Info */}
         <div className="px-4 sm:px-6 mt-6 sm:mt-8">
-          <div className="flex items-start justify-between gap-4 max-w-md mx-auto">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-white truncate mb-2">
-                {currentSong.title}
-              </h1>
-              <p className="text-base sm:text-lg text-white/70 truncate">
-                {currentSong.artist}
-              </p>
-            </div>
-            <button
-              onClick={handleLikeToggle}
-              className="p-2 -mr-2 active:scale-90 transition-transform flex-shrink-0"
-            >
-              <Heart
-                className="h-6 w-6 sm:h-7 sm:w-7"
-                fill={isLiked ? '#1ed760' : 'none'}
-                stroke={isLiked ? '#1ed760' : 'white'}
-                strokeWidth={2}
+          <div className="flex items-center justify-between gap-3 max-w-md mx-auto">
+            <div className="flex-1 min-w-0 overflow-hidden mr-3">
+              {/* Title - PingPong Scroll */}
+              <PingPongScroll
+                text={currentSong.title}
+                className="text-xl sm:text-2xl font-black text-white mb-0.5 leading-normal tracking-tight py-1"
+                velocity={10}
               />
-            </button>
+
+              {/* Artist - PingPong Scroll */}
+              <PingPongScroll
+                text={currentSong.artist}
+                className="text-sm sm:text-base text-white/70 font-medium"
+                velocity={8}
+              />
+            </div>
+            <LikeButton
+              isLiked={isLiked}
+              onToggle={handleLikeToggle}
+              className="p-2 -mr-2 active:scale-90 transition-transform flex-shrink-0"
+              iconSize={window.innerWidth < 640 ? 32 : 40}
+            />
           </div>
         </div>
 

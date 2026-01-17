@@ -123,7 +123,12 @@ export const isSongAlreadyLiked = async (title: string, artist: string): Promise
 /**
  * Add a song to liked songs (with duplicate detection)
  */
-export const addLikedSong = async (song: Song, source: 'mavrixfy' | 'spotify' = 'mavrixfy', spotifyId?: string): Promise<{ added: boolean; reason?: string }> => {
+export const addLikedSong = async (
+  song: Song, 
+  source: 'mavrixfy' | 'spotify' = 'mavrixfy', 
+  spotifyId?: string,
+  customLikedAt?: string | Date
+): Promise<{ added: boolean; reason?: string }> => {
   const { isAuthenticated, userId } = useAuthStore.getState();
   
   if (!isAuthenticated || !userId) {
@@ -147,6 +152,16 @@ export const addLikedSong = async (song: Song, source: 'mavrixfy' | 'spotify' = 
           
           console.log(`🔒 Saving liked song to user subcollection: users/${userId}/likedSongs/${song._id}`);
           
+          // Determine the likedAt timestamp
+          let likedAtTimestamp;
+          if (customLikedAt) {
+            // Use custom date (for Spotify imports)
+            likedAtTimestamp = customLikedAt instanceof Date ? customLikedAt : new Date(customLikedAt);
+          } else {
+            // Use server timestamp for current time
+            likedAtTimestamp = serverTimestamp();
+          }
+
           const likedSongData: LikedSong = {
             id: song._id,
             title: song.title,
@@ -156,7 +171,7 @@ export const addLikedSong = async (song: Song, source: 'mavrixfy' | 'spotify' = 
             audioUrl: song.audioUrl,
             duration: song.duration,
             year: '',
-            likedAt: serverTimestamp(),
+            likedAt: likedAtTimestamp,
             source: source,
             ...(spotifyId && { spotifyId })
           };

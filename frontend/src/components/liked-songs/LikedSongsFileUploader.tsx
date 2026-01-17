@@ -456,7 +456,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
                 </thead>
                 <tbody>
                   {parsedSongs.map((song, index) => (
-                    <tr key={index} className="border-t border-gray-200 dark:border-gray-800">
+                    <tr key={`${song.title}-${song.artist}-${index}`} className="border-t border-gray-200 dark:border-gray-800">
                       <td className="p-2 text-xs sm:text-sm">{index + 1}</td>
                       <td className="p-2 text-xs sm:text-sm">
                         <div className="truncate max-w-[150px] sm:max-w-[200px]">{song.title}</div>
@@ -510,7 +510,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
             <div className="max-h-[30vh] overflow-y-auto border rounded-lg p-2">
               {parsedSongs.map((song, index) => (
                 <div
-                  key={index}
+                  key={`${song.title}-${song.artist}-${index}`}
                   className="flex items-center justify-between py-2 px-2 border-b last:border-0 text-xs sm:text-sm"
                 >
                   <div className="flex-1 min-w-0">

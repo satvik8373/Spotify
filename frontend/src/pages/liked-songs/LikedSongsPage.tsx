@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { loadLikedSongs, removeLikedSong } from '@/services/likedSongsService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { Song } from '@/types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ContentLoading } from '@/components/ui/loading';
+import { LikeButton } from '@/components/LikeButton';
 
 // Format time
 const formatTime = (seconds: number) => {
@@ -57,7 +59,7 @@ const MemoizedSongItem = React.memo(({
         "group relative rounded-md cursor-pointer items-center",
         isMobile
           ? "flex gap-3 p-3 py-2 active:bg-muted/30"
-          : "grid grid-cols-[16px_4fr_3fr_2fr_1fr_48px] gap-4 p-2 px-4 hover:bg-muted/50 transition-colors"
+          : "grid grid-cols-[16px_4fr_3fr_2fr_40px_1fr_48px] gap-4 p-2 px-4 hover:bg-muted/50 transition-colors"
       )}
     >
       {/* Desktop Index/Play button */}
@@ -109,11 +111,7 @@ const MemoizedSongItem = React.memo(({
             }}
           />
           {/* Source indicator - show Spotify icon for Spotify-synced songs */}
-          {(song as any).source === 'spotify' && (
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-background">
-              <Music className="h-2 w-2 text-white" />
-            </div>
-          )}
+
         </div>
         <div className="min-w-0 flex-1">
           <div className={cn(
@@ -134,7 +132,16 @@ const MemoizedSongItem = React.memo(({
 
       {/* Mobile actions - positioned on the right */}
       {isMobile && (
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 flex items-center gap-2">
+          <LikeButton
+            isLiked={true}
+            onToggle={(e) => {
+              e.stopPropagation();
+              onUnlike();
+            }}
+            iconSize={24}
+            className="mr-1"
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -181,17 +188,32 @@ const MemoizedSongItem = React.memo(({
       {/* Desktop date added */}
       {!isMobile && (
         <div className="flex items-center text-muted-foreground text-sm">
-          {(song as any).likedAt ?
-            new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).toLocaleDateString('en-US', {
+          {song.likedAt ?
+            new Date(song.likedAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
-              year: new Date().getFullYear() !== new Date((song as any).likedAt.toDate ? (song as any).likedAt.toDate() : (song as any).likedAt).getFullYear() ? 'numeric' : undefined
+              year: new Date().getFullYear() !== new Date(song.likedAt).getFullYear() ? 'numeric' : undefined
             }) :
-            new Date().toLocaleDateString('en-US', {
+            new Date(song.createdAt).toLocaleDateString('en-US', {
               month: 'short',
-              day: 'numeric'
+              day: 'numeric',
+              year: new Date().getFullYear() !== new Date(song.createdAt).getFullYear() ? 'numeric' : undefined
             })
           }
+        </div>
+      )}
+
+      {/* Desktop Like Button */}
+      {!isMobile && (
+        <div className="flex items-center justify-center">
+          <LikeButton
+            isLiked={true}
+            onToggle={(e) => {
+              e.stopPropagation();
+              onUnlike();
+            }}
+            iconSize={20}
+          />
         </div>
       )}
 
@@ -245,8 +267,11 @@ const MemoizedSongItem = React.memo(({
 }, (prevProps, nextProps) => {
   // Custom comparison function for React.memo
   // Return true if props are equal (skip re-render), false if different (do re-render)
+  const prevId = prevProps.song._id || (prevProps.song as any).id;
+  const nextId = nextProps.song._id || (nextProps.song as any).id;
+  
   return (
-    prevProps.song._id === nextProps.song._id &&
+    prevId === nextId &&
     prevProps.index === nextProps.index &&
     prevProps.isMobile === nextProps.isMobile &&
     prevProps.isSongPlaying === nextProps.isSongPlaying // KEY: This ensures re-render when playing state changes
@@ -256,7 +281,6 @@ const MemoizedSongItem = React.memo(({
 MemoizedSongItem.displayName = 'MemoizedSongItem';
 
 const LikedSongsPage = () => {
-  const [likedSongs, setLikedSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sortMethod, setSortMethod] = useState<'recent' | 'title' | 'artist'>('recent');
@@ -267,6 +291,9 @@ const LikedSongsPage = () => {
   const { currentSong, isPlaying, togglePlay, playAlbum, setIsPlaying, setUserInteracted } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
   const { isAuthenticated: isSpotifyConnected, fetchSavedTracks } = useSpotify();
+  
+  // Use the store instead of local state for liked songs
+  const { likedSongs, loadLikedSongs: loadLikedSongsFromStore, removeLikedSong: removeLikedSongFromStore } = useLikedSongsStore();
 
   // Load liked songs on mount
   useEffect(() => {
@@ -296,19 +323,15 @@ const LikedSongsPage = () => {
 
   const loadAndSetLikedSongs = async () => {
     if (!isAuthenticated) {
-      setLikedSongs([]);
       return;
     }
 
     try {
-      // Show content immediately, load data in background
-      setIsLoading(false);
-      const songs = await loadLikedSongs();
-      setLikedSongs(songs);
+      // Use the store method instead of direct service call
+      await loadLikedSongsFromStore();
     } catch (error) {
       console.error('Error loading liked songs:', error);
       toast.error('Failed to load liked songs');
-      setIsLoading(false);
     }
   };
 
@@ -319,8 +342,12 @@ const LikedSongsPage = () => {
     // Use a more efficient sorting approach
     switch (method) {
       case 'recent':
-        // Songs are already ordered by likedAt desc from Firestore
-        return songs;
+        // Sort by likedAt timestamp (most recent first)
+        return [...songs].sort((a, b) => {
+          const aDate = a.likedAt ? new Date(a.likedAt).getTime() : new Date(a.createdAt).getTime();
+          const bDate = b.likedAt ? new Date(b.likedAt).getTime() : new Date(b.createdAt).getTime();
+          return bDate - aDate; // Descending order (newest first)
+        });
       case 'title':
         return [...songs].sort((a, b) => a.title.localeCompare(b.title));
       case 'artist':
@@ -347,11 +374,35 @@ const LikedSongsPage = () => {
     return sortSongs(filtered, sortMethod);
   }, [likedSongs, filterQuery, sortMethod, sortSongs]);
 
+  // Define isSongPlaying first since it's used by other functions
+  const isSongPlaying = useCallback((song: Song) => {
+    if (!isPlaying || !currentSong) return false;
+    
+    // Get primary IDs for comparison - be more strict about ID matching
+    const currentSongId = currentSong._id || (currentSong as any).id;
+    const songId = song._id || (song as any).id;
+    
+    // Only return true if we have valid IDs and they match exactly
+    if (currentSongId && songId) {
+      return currentSongId === songId;
+    }
+    
+    // If no IDs available, fall back to exact title and artist match
+    // But be very strict to avoid false positives
+    if (currentSong.title && song.title && currentSong.artist && song.artist) {
+      return (
+        currentSong.title.trim().toLowerCase() === song.title.trim().toLowerCase() &&
+        currentSong.artist.trim().toLowerCase() === song.artist.trim().toLowerCase()
+      );
+    }
+    
+    return false;
+  }, [isPlaying, currentSong]);
+
   // Memoized callbacks to prevent child re-renders
   const handlePlaySong = useCallback((song: Song, index: number) => {
-    const songId = song._id;
-
-    if (currentSong && currentSong._id === songId) {
+    // Use the same comparison logic as isSongPlaying
+    if (currentSong && isSongPlaying(song)) {
       togglePlay();
       return;
     }
@@ -361,7 +412,7 @@ const LikedSongsPage = () => {
       setIsPlaying(true);
       setUserInteracted();
     }, 50);
-  }, [currentSong, togglePlay, playAlbum, visibleSongs, setIsPlaying, setUserInteracted]);
+  }, [currentSong, togglePlay, playAlbum, visibleSongs, setIsPlaying, setUserInteracted, isSongPlaying]);
 
   const handleAddToQueue = useCallback((song: Song) => {
     const { addToQueue: addSongToQueue } = usePlayerStore.getState();
@@ -373,18 +424,13 @@ const LikedSongsPage = () => {
 
   const handleUnlikeSong = useCallback(async (songId: string) => {
     try {
-      await removeLikedSong(songId);
-      setLikedSongs(prev => prev.filter(song => song._id !== songId));
+      // Use the store method instead of direct service call
+      await removeLikedSongFromStore(songId);
       toast.success('Removed from Liked Songs');
     } catch (error) {
       toast.error('Failed to remove song');
     }
-  }, []);
-
-  const isSongPlaying = useCallback((song: Song) => {
-    if (!isPlaying || !currentSong) return false;
-    return currentSong._id === song._id;
-  }, [isPlaying, currentSong]);
+  }, [removeLikedSongFromStore]);
 
   // Update sort method and re-sort songs
   const handleSortChange = useCallback((method: 'recent' | 'title' | 'artist') => {
@@ -686,29 +732,35 @@ const LikedSongsPage = () => {
           <div className={cn("pb-8", isMobile ? "pb-32" : "")}>
             {/* Desktop header */}
             {!isMobile && (
-              <div className="grid grid-cols-[16px_4fr_3fr_2fr_1fr_48px] gap-4 px-4 py-2 text-sm text-muted-foreground border-b mb-2">
+              <div className="grid grid-cols-[16px_4fr_3fr_2fr_40px_1fr_48px] gap-4 px-4 py-2 text-sm text-muted-foreground border-b mb-2">
                 <div>#</div>
                 <div>Title</div>
                 <div>Album</div>
                 <div>Date added</div>
+                <div></div>
                 <div><Clock className="h-4 w-4" /></div>
                 <div></div>
               </div>
             )}
 
-            {visibleSongs.map((song, index) => (
-              <MemoizedSongItem
-                key={song._id}
-                song={song}
-                index={index}
-                isMobile={isMobile}
-                isSongPlaying={isSongPlaying(song)}
-                onPlay={() => handlePlaySong(song, index)}
-                onTogglePlay={togglePlay}
-                onAddToQueue={() => handleAddToQueue(song)}
-                onUnlike={() => handleUnlikeSong(song._id)}
-              />
-            ))}
+            {visibleSongs.map((song, index) => {
+              // Create a unique key that handles edge cases
+              const uniqueKey = song._id || (song as any).id || `${song.title}-${song.artist}-${index}`;
+              
+              return (
+                <MemoizedSongItem
+                  key={uniqueKey}
+                  song={song}
+                  index={index}
+                  isMobile={isMobile}
+                  isSongPlaying={isSongPlaying(song)}
+                  onPlay={() => handlePlaySong(song, index)}
+                  onTogglePlay={togglePlay}
+                  onAddToQueue={() => handleAddToQueue(song)}
+                  onUnlike={() => handleUnlikeSong(song._id)}
+                />
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12 text-center">

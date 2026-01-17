@@ -9,6 +9,23 @@ type FirestoreSong = likedSongsFirestoreService.Song;
 
 // Helper function to convert between song types
 const convertToLocalSong = (firebaseSong: FirestoreSong): Song => {
+  // Convert Firebase Timestamp to ISO string if it exists
+  let likedAtString: string | undefined;
+  if (firebaseSong.likedAt) {
+    try {
+      // Handle both Firestore Timestamp and regular Date objects
+      if (firebaseSong.likedAt.toDate) {
+        likedAtString = firebaseSong.likedAt.toDate().toISOString();
+      } else if (firebaseSong.likedAt instanceof Date) {
+        likedAtString = firebaseSong.likedAt.toISOString();
+      } else if (typeof firebaseSong.likedAt === 'string') {
+        likedAtString = firebaseSong.likedAt;
+      }
+    } catch (error) {
+      console.warn('Error converting likedAt timestamp:', error);
+    }
+  }
+
   return {
     _id: firebaseSong.id,
     title: firebaseSong.title,
@@ -17,8 +34,9 @@ const convertToLocalSong = (firebaseSong: FirestoreSong): Song => {
     imageUrl: firebaseSong.imageUrl,
     audioUrl: firebaseSong.audioUrl,
     duration: firebaseSong.duration || 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: likedAtString || new Date().toISOString(),
+    updatedAt: likedAtString || new Date().toISOString(),
+    likedAt: likedAtString
   };
 };
 
@@ -105,8 +123,9 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Build songIds set for efficient lookups
           const songIds = new Set<string>();
           songs.forEach((song: any) => {
-            const possibleIds = [song._id, song.id].filter(Boolean) as string[];
-            possibleIds.forEach((sid) => songIds.add(sid));
+            // Add both _id and id if they exist to handle different song sources
+            if (song._id) songIds.add(song._id);
+            if (song.id) songIds.add(song.id);
           });
 
           // Only update state if songs actually changed
@@ -141,9 +160,10 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
         if (get().isSaving) return;
 
         try {
-          // Get the song ID consistently
-          const songId = song._id;
+          // Get the song ID consistently (handle both _id and id)
+          const songId = song._id || (song as any).id;
           if (!songId) {
+            console.warn('Cannot like song without ID:', song);
             return;
           }
 
@@ -155,13 +175,28 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
 
           set({ isSaving: true });
 
+          // Ensure song has _id and likedAt for internal consistency
+          const now = new Date().toISOString();
+          const songToSave = { 
+            ...song, 
+            _id: songId,
+            likedAt: song.likedAt || now, // Use existing likedAt or set current time
+            createdAt: song.createdAt || now,
+            updatedAt: now
+          };
+
           // Optimistically update local state immediately for better UX
-          const updatedSongs = [song, ...get().likedSongs];
+          const updatedSongs = [songToSave, ...get().likedSongs];
           const updatedSongIds = new Set(get().likedSongIds);
+          
           // Add both canonical and alternative IDs for global UI consistency
           updatedSongIds.add(songId);
-          const altId = (song as any).id;
-          if (altId) updatedSongIds.add(altId);
+          if ((song as any).id && (song as any).id !== songId) {
+            updatedSongIds.add((song as any).id);
+          }
+          if (song._id && song._id !== songId) {
+            updatedSongIds.add(song._id);
+          }
 
           // Update local state before Firestore to make UI response instant
           set({
@@ -170,20 +205,18 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           });
 
           // Always update local storage as a backup
-          localLikedSongsService.addLikedSong(song);
+          localLikedSongsService.addLikedSong(songToSave);
 
           // Update Firestore if user is authenticated - don't await to prevent UI blocking
           const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
-            likedSongsFirestoreService.addLikedSong({
-              id: songId,
-              title: song.title,
-              artist: song.artist,
-              imageUrl: song.imageUrl,
-              audioUrl: song.audioUrl,
-              duration: song.duration,
-              album: song.albumId || ''
-            }).catch(() => {
+            // Pass the song's likedAt date if it exists (for Spotify imports)
+            likedSongsFirestoreService.addLikedSong(
+              songToSave, 
+              'mavrixfy', 
+              undefined, 
+              songToSave.likedAt
+            ).catch(() => {
               // Error handled silently
             });
           }
@@ -206,24 +239,28 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
         try {
           set({ isSaving: true });
 
-          // Optimistically update local state immediately for better UX
-          const updatedSongs = get().likedSongs.filter(song => song._id !== songId);
+          // Optimistically update local state immediately
+          // Filter by checking both _id and id
+          const updatedSongs = get().likedSongs.filter(song =>
+            song._id !== songId && (song as any).id !== songId
+          );
+
           const updatedSongIds = new Set(get().likedSongIds);
           updatedSongIds.delete(songId);
+
           // Also remove any alternate id representation present in the set
+          // (Code logic for alt removal remains mostly same but verify ID matches against both)
           const altIdsToRemove: string[] = [];
           get().likedSongs.forEach((s: any) => {
-            const alt = s.id || s._id;
-            if (alt && alt !== songId && updatedSongIds.has(alt)) {
-              // if this song was removed and alt id matches, remove it
-              if (!updatedSongs.some(us => (us as any)._id === alt || (us as any).id === alt)) {
-                altIdsToRemove.push(alt);
-              }
+            const primary = s._id || s.id;
+            if (primary === songId) {
+              if (s._id) altIdsToRemove.push(s._id);
+              if (s.id) altIdsToRemove.push(s.id);
             }
           });
           altIdsToRemove.forEach(id => updatedSongIds.delete(id));
 
-          // Update local state before Firestore to make UI response instant
+          // Update local state before Firestore
           set({
             likedSongs: updatedSongs,
             likedSongIds: updatedSongIds
@@ -232,7 +269,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Always update local storage as a backup
           localLikedSongsService.removeLikedSong(songId);
 
-          // Update Firestore if user is authenticated - don't await to prevent UI blocking
+          // Update Firestore if user is authenticated
           const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
             likedSongsFirestoreService.removeLikedSong(songId).catch(() => {
@@ -252,7 +289,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
       },
 
       toggleLikeSong: async (song: Song) => {
-        const songId = song._id;
+        const songId = song._id || (song as any).id;
         if (!songId) {
           return;
         }
@@ -301,10 +338,9 @@ try {
     const songs: any[] = persisted?.state?.likedSongs || [];
     const rebuiltIds = new Set<string>();
     songs.forEach((song: any) => {
-      const primaryId = song?._id || song?.id;
-      if (primaryId) rebuiltIds.add(primaryId);
-      const altId = primaryId === song?._id ? song?.id : song?._id;
-      if (altId) rebuiltIds.add(altId);
+      // Add both _id and id if they exist
+      if (song._id) rebuiltIds.add(song._id);
+      if (song.id) rebuiltIds.add(song.id);
     });
     useLikedSongsStore.setState({ likedSongs: songs, likedSongIds: rebuiltIds });
     document.dispatchEvent(new CustomEvent('likedSongsUpdated', {

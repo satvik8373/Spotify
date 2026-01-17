@@ -223,11 +223,12 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
           artist: artist,
           image: searchResult?.image || track.album.images[0]?.url || '/placeholder-song.jpg',
           url: searchResult?.url || track.preview_url || '',
-          duration: searchResult?.duration || Math.floor(track.duration_ms / 1000).toString()
+          duration: searchResult?.duration || Math.floor(track.duration_ms / 1000).toString(),
+          likedAt: track.added_at // Use original Spotify liked date
         });
         
-        // Add to liked songs with duplicate detection
-        const result = await addLikedSong(appSong, 'spotify', track.id);
+        // Add to liked songs with duplicate detection, passing the original Spotify date
+        const result = await addLikedSong(appSong, 'spotify', track.id, track.added_at);
         
         // Update status based on result
         if (result.added) {

@@ -8,6 +8,7 @@ export interface Song {
 	duration: number;
 	createdAt: string;
 	updatedAt: string;
+	likedAt?: string; // When the song was added to liked songs
 }
 
 export interface Album {

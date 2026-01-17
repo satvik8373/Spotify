@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { usePlayerStore } from "@/stores/usePlayerStore";
-import { Heart, Laptop2, ListMusic, Mic2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Laptop2, ListMusic, Mic2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import SongDetailsView from "@/components/SongDetailsView";
+import { LikeButton } from "@/components/LikeButton";
 import { cn } from "@/lib/utils";
 import { useLikedSongsStore } from "@/stores/useLikedSongsStore";
 import QueueDrawer from "@/components/QueueDrawer";
@@ -46,10 +47,11 @@ export const PlaybackControls = () => {
 	useEffect(() => {
 		if (!currentSong) return;
 
-		const songId = (currentSong as any).id || currentSong._id;
-		const isCurrentSongLiked = songId ? likedSongIds?.has(songId) : false;
+		const id = (currentSong as any).id;
+		const _id = currentSong._id;
+		const isCurrentSongLiked = (id && likedSongIds?.has(id)) || (_id && likedSongIds?.has(_id));
 
-		setIsLiked(isCurrentSongLiked);
+		setIsLiked(!!isCurrentSongLiked);
 	}, [currentSong, likedSongIds]);
 
 	// Handle audio element events
@@ -245,14 +247,12 @@ export const PlaybackControls = () => {
 										{currentSong.artist}
 									</div>
 								</div>
-								<Button
-									size="icon"
-									variant="ghost"
-									className={`hover:text-foreground ${isLiked ? 'text-green-500' : 'text-muted-foreground'}`}
-									onClick={(e) => handleLikeToggle(e)}
-								>
-									<Heart className="h-4 w-4" fill={isLiked ? 'currentColor' : 'none'} />
-								</Button>
+								<LikeButton
+									isLiked={isLiked}
+									onToggle={(e) => handleLikeToggle(e)}
+									className="hover:scale-105"
+									iconSize={20}
+								/>
 							</>
 						)}
 					</div>

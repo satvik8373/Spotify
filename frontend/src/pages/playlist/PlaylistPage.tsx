@@ -497,7 +497,9 @@ export function PlaylistPage() {
 
     // Check if this is the currently playing song
     const playerStore = usePlayerStore.getState();
-    const isThisSongPlaying = playerStore.currentSong?._id === song._id && playerStore.isPlaying;
+    const currentSongId = playerStore.currentSong?._id || (playerStore.currentSong as any)?.id;
+    const songId = song._id || (song as any).id;
+    const isThisSongPlaying = currentSongId && songId && currentSongId === songId && playerStore.isPlaying;
     
     // If this song is already playing, pause it instead of replaying
     if (isThisSongPlaying) {
@@ -945,7 +947,9 @@ export function PlaylistPage() {
 
               {/* Songs list */}
               {currentPlaylist.songs.map((song, index) => {
-                const isCurrentSong = currentSong?._id === song._id;
+                const currentSongId = currentSong?._id || (currentSong as any)?.id;
+                const songId = song._id || (song as any).id;
+                const isCurrentSong = currentSongId && songId && currentSongId === songId;
                 const isThisSongPlaying = isCurrentSong && playerIsPlaying;
                 
                 return (

@@ -12,6 +12,7 @@ import { signOut } from '@/services/hybridAuthService';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { WhatsNewDialog } from '@/components/WhatsNewDialog';
 import ProfileDropdown from '@/components/ProfileDropdown';
+import { PingPongScroll } from '@/components/PingPongScroll';
 
 
 /**
@@ -47,7 +48,13 @@ const MobileNav = () => {
   const hasActiveSong = !!currentSong;
 
   // Check if current song is liked
-  const isLiked = currentSong ? likedSongIds?.has((currentSong as any).id || currentSong._id) : false;
+  // Check if current song is liked (robust check for both ID types)
+  const isLiked = React.useMemo(() => {
+    if (!currentSong) return false;
+    const id = (currentSong as any).id;
+    const _id = currentSong._id;
+    return (id && likedSongIds?.has(id)) || (_id && likedSongIds?.has(_id));
+  }, [currentSong, likedSongIds]);
 
   // State to track liked status independently
   const [songLiked, setSongLiked] = useState(isLiked);
@@ -79,8 +86,10 @@ const MobileNav = () => {
       }
 
       // Otherwise do a fresh check from the store
-      const freshCheck = songId ? likedSongIds?.has(songId) : false;
-      setSongLiked(freshCheck);
+      const id = (currentSong as any).id;
+      const _id = currentSong._id;
+      const freshCheck = (id && likedSongIds?.has(id)) || (_id && likedSongIds?.has(_id));
+      setSongLiked(!!freshCheck);
     };
 
     document.addEventListener('likedSongsUpdated', handleLikeUpdate);
@@ -241,7 +250,8 @@ const MobileNav = () => {
         audioUrl: currentSong.audioUrl,
         duration: currentSong.duration || 0,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        likedAt: new Date().toISOString()
       });
 
       // Also dispatch a direct event for immediate notification
@@ -321,23 +331,8 @@ const MobileNav = () => {
         .mobile-nav-gradient-container {
           background: linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%) !important;
         }
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-marquee-slow {
-          display: flex !important;
-          min-width: max-content !important;
-          animation: marquee 12s linear infinite !important;
-        }
-        .animate-marquee-slower {
-          display: flex !important;
-          min-width: max-content !important;
-          animation: marquee 16s linear infinite !important;
-        }
-        .mask-linear-fade {
-          mask-image: linear-gradient(to right, transparent 0%, black 12px, black calc(100% - 12px), transparent 100%);
-          -webkit-mask-image: linear-gradient(to right, transparent 0%, black 12px, black calc(100% - 12px), transparent 100%);
+        .mobile-nav-gradient-container {
+          background: linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%) !important;
         }
       `}</style>
 
@@ -536,42 +531,21 @@ const MobileNav = () => {
 
                     {/* Song Info - Smart Marquee */}
                     <div className="flex-1 min-w-0 overflow-hidden mr-2">
-                      {/* Title - Scroll only if long */}
-                      {(currentSong.title || '').length > 30 ? (
-                        <div className="w-full overflow-hidden">
-                          <div className="animate-marquee-slow min-w-full">
-                            <p className="text-sm font-medium leading-tight whitespace-nowrap mr-24" style={{ color: albumColors.text || '#ffffff' }}>
-                              {currentSong.title}
-                            </p>
-                            <p className="text-sm font-medium leading-tight whitespace-nowrap mr-24" style={{ color: albumColors.text || '#ffffff' }}>
-                              {currentSong.title}
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm font-medium truncate leading-tight" style={{ color: albumColors.text || '#ffffff' }}>
-                          {currentSong.title}
-                        </p>
-                      )}
+                      <div className="w-full overflow-hidden mb-0.5" style={{ color: albumColors.text || '#ffffff' }}>
+                        <PingPongScroll
+                          text={currentSong.title}
+                          className="text-sm font-medium leading-tight py-0.5"
+                          velocity={15}
+                        />
+                      </div>
 
-                      {/* Artist - Scroll only if long */}
-                      <div className="mt-0.5">
-                        {(currentSong.artist || '').length > 40 ? (
-                          <div className="w-full overflow-hidden">
-                            <div className="animate-marquee-slower min-w-full">
-                              <p className="text-xs leading-tight whitespace-nowrap mr-24" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 30%)' }}>
-                                {currentSong.artist}
-                              </p>
-                              <p className="text-xs leading-tight whitespace-nowrap mr-24" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 30%)' }}>
-                                {currentSong.artist}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-xs truncate leading-tight" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 30%)' }}>
-                            {currentSong.artist}
-                          </p>
-                        )}
+                      {/* Artist - PingPong Scroll */}
+                      <div className="mt-0.5" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 30%)' }}>
+                        <PingPongScroll
+                          text={currentSong.artist}
+                          className="text-xs leading-tight"
+                          velocity={12}
+                        />
                       </div>
                     </div>
                   </div>

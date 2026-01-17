@@ -15,10 +15,54 @@ const SongPage = () => {
   const [song, setSong] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLiked, setIsLiked] = useState(false);
   
   const { setCurrentSong, setIsPlaying, playAlbum } = usePlayerStore();
   const { searchIndianSongs } = useMusicStore();
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
+
+  // Update like status when song or likedSongIds changes
+  useEffect(() => {
+    if (!song) return;
+    const songIdToCheck = song._id || (song as any).id;
+    const liked = songIdToCheck ? likedSongIds?.has(songIdToCheck) : false;
+    setIsLiked(!!liked);
+  }, [song, likedSongIds]);
+
+  // Listen for like updates from other components
+  useEffect(() => {
+    const handleLikeUpdate = (e: Event) => {
+      if (!song) return;
+
+      const songIdToCheck = song._id || (song as any).id;
+
+      // Check if this event includes details about which song was updated
+      if (e instanceof CustomEvent && e.detail) {
+        // If we have details and it's not for our current song, ignore
+        if (e.detail.songId && e.detail.songId !== songIdToCheck) {
+          return;
+        }
+
+        // If we have explicit like state in the event, use it
+        if (typeof e.detail.isLiked === 'boolean') {
+          setIsLiked(e.detail.isLiked);
+          return;
+        }
+      }
+
+      // Otherwise do a fresh check from the store
+      const freshCheck = songIdToCheck ? likedSongIds?.has(songIdToCheck) : false;
+      setIsLiked(freshCheck);
+    };
+
+    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
+    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
+
+    return () => {
+      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
+      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
+    };
+  }, [song, likedSongIds]);
 
   useEffect(() => {
     const loadSong = async () => {
@@ -83,13 +127,15 @@ const SongPage = () => {
 
   const handleLike = () => {
     if (song) {
+      // Optimistically update UI
+      setIsLiked(!isLiked);
+      
       toggleLikeSong(song);
-      const isLiked = Array.from(likedSongIds).includes(song._id || (song as any).id);
       toast.success(isLiked ? 'Removed from liked songs' : 'Added to liked songs');
     }
   };
 
-  const isLiked = song ? Array.from(likedSongIds).includes(song._id || (song as any).id) : false;
+
 
   if (loading) {
     return <div className="min-h-screen bg-[#121212]"></div>;

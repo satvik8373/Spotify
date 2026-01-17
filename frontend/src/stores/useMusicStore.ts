@@ -13,6 +13,7 @@ interface IndianSong {
   duration?: string;
   image: string;
   url?: string;
+  likedAt?: string | Date; // For preserving original liked date (e.g., from Spotify)
 }
 
 interface MusicStore {
@@ -390,6 +391,11 @@ export const useMusicStore = create<MusicStore>((set) => ({
   },
 
   convertIndianSongToAppSong: (song) => {
+    const now = new Date().toISOString();
+    const likedAtDate = song.likedAt ? 
+      (song.likedAt instanceof Date ? song.likedAt.toISOString() : song.likedAt) : 
+      now;
+    
     return {
       _id: song.id || `indian-song-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       title: song.title || 'Unknown Title',
@@ -398,8 +404,9 @@ export const useMusicStore = create<MusicStore>((set) => ({
       imageUrl: song.image || '',
       audioUrl: song.url || '',
       duration: parseInt(song.duration || '0'),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
+      likedAt: likedAtDate, // Use custom likedAt or current time
     };
   },
 }));

@@ -48,7 +48,7 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
         const textWidth = textRef.current.scrollWidth;
         const needsScrolling = textWidth > containerWidth;
         setNeedsScroll(needsScrolling);
-        
+
         if (needsScrolling) {
           // Start animation after 3 seconds delay
           setStartAnimation(false);
@@ -80,8 +80,8 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
       {/* Fade gradients */}
       <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-black/50 to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-black/70 to-transparent z-10 pointer-events-none" />
-      
-      <div 
+
+      <div
         ref={textRef}
         className={className}
         style={{

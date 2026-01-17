@@ -334,7 +334,8 @@ class SpotifyAutoSyncService {
           artist: artist,
           image: searchResult?.image || track.album.images[0]?.url || '/placeholder-song.jpg',
           url: searchResult?.url || track.preview_url || '',
-          duration: searchResult?.duration || Math.floor(track.duration_ms / 1000).toString()
+          duration: searchResult?.duration || Math.floor(track.duration_ms / 1000).toString(),
+          likedAt: track.added_at // Use original Spotify liked date
         });
         
         appSongs.push(appSong);
