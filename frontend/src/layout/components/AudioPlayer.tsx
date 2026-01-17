@@ -230,13 +230,6 @@ const AudioPlayer = () => {
     });
   }, [equalizer]);
 
-  // Resume AudioContext on user interaction/playback
-  useEffect(() => {
-    if (isPlaying && audioContextRef.current?.state === 'suspended') {
-      audioContextRef.current.resume().catch(console.error);
-    }
-  }, [isPlaying]);
-
 
   // Clean up on unmount and save state before page unload
   useEffect(() => {

@@ -3,6 +3,7 @@ import { resolveArtist } from '@/lib/resolveArtist';
 import { Album, Song, Stats } from '@/types';
 import { create } from 'zustand';
 import { requestManager } from '@/services/requestManager';
+import { ensureHttps } from '@/utils/urlUtils';
 
 interface IndianSong {
   id: string;
@@ -142,7 +143,10 @@ function convertSaavnTrack(item: any): IndianSong {
       item.downloadUrl.find((d: any) => d.quality === '160kbps') ||
       item.downloadUrl.find((d: any) => d.quality === '96kbps') ||
       item.downloadUrl[item.downloadUrl.length - 1];
-    audioUrl = (downloadUrl?.link || '').replace(/^http:\/\//, 'https://');
+    audioUrl = downloadUrl?.link || '';
+    
+    // Convert HTTP URLs to HTTPS for production (fixes Mixed Content issues)
+    audioUrl = ensureHttps(audioUrl);
   }
 
   // Get the best quality image
@@ -151,9 +155,14 @@ function convertSaavnTrack(item: any): IndianSong {
     const image = item.image.find((i: any) => i.quality === '500x500') ||
       item.image.find((i: any) => i.quality === '150x150') ||
       item.image[item.image.length - 1];
-    imageUrl = (image?.link || '').replace(/^http:\/\//, 'https://');
+    imageUrl = image?.link || '';
+    
+    // Convert HTTP URLs to HTTPS for production (fixes Mixed Content issues)
+    imageUrl = ensureHttps(imageUrl);
   } else if (typeof item.image === 'string') {
-    imageUrl = item.image.replace(/^http:\/\//, 'https://');
+    imageUrl = item.image;
+    // Convert HTTP URLs to HTTPS for production
+    imageUrl = ensureHttps(imageUrl);
   }
 
   return {

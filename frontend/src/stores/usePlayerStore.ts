@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Song } from '@/types';
+import { ensureHttps } from '@/utils/urlUtils';
 
 export type Queue = Song[];
 
@@ -84,6 +85,13 @@ export const usePlayerStore = create<PlayerState>()(
           return;
         }
 
+        // Ensure audio URL is HTTPS for production (fixes Mixed Content issues)
+        const validatedSong = {
+          ...song,
+          audioUrl: song.audioUrl ? ensureHttps(song.audioUrl) : song.audioUrl,
+          imageUrl: song.imageUrl ? ensureHttps(song.imageUrl) : song.imageUrl
+        };
+
         // Get the current audio element and stop it immediately
         const audio = document.querySelector('audio');
         if (audio) {
@@ -96,7 +104,7 @@ export const usePlayerStore = create<PlayerState>()(
 
         // Immediately reset current time when switching songs
         set({
-          currentSong: song,
+          currentSong: validatedSong,
           currentTime: 0 // Reset time immediately for new song
         });
       },
@@ -128,12 +136,18 @@ export const usePlayerStore = create<PlayerState>()(
       playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
 
-        // Filter out songs with invalid blob URLs, not all blob URLs
-        const validSongs = songs.filter(song => 
-          !song.audioUrl || 
-          !song.audioUrl.startsWith('blob:') || 
-          song.audioUrl.includes('blob:http')
-        );
+        // Filter out songs with invalid blob URLs and validate URLs
+        const validSongs = songs
+          .filter(song => 
+            !song.audioUrl || 
+            !song.audioUrl.startsWith('blob:') || 
+            song.audioUrl.includes('blob:http')
+          )
+          .map(song => ({
+            ...song,
+            audioUrl: song.audioUrl ? ensureHttps(song.audioUrl) : song.audioUrl,
+            imageUrl: song.imageUrl ? ensureHttps(song.imageUrl) : song.imageUrl
+          }));
 
         if (validSongs.length === 0) {
           console.warn('No valid songs to play (all had blob URLs)');
