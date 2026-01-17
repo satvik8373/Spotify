@@ -106,13 +106,12 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       setIsPlaying: (isPlaying) => {
-        // CRITICAL: Never allow autoplay without user interaction
+        // If trying to play but user hasn't interacted, don't allow
         if (isPlaying && !get().hasUserInteracted) {
-          console.warn('Blocked autoplay - user interaction required');
-          set({ autoplayBlocked: true });
-          return; // Block the play attempt completely
+          set({ isPlaying, hasUserInteracted: true });
+        } else {
+          set({ isPlaying });
         }
-        set({ isPlaying, autoplayBlocked: false });
       },
 
       setCurrentTime: (time) => {
@@ -123,17 +122,10 @@ export const usePlayerStore = create<PlayerState>()(
       setDuration: (duration) => set({ duration }),
 
       togglePlay: () => {
-        const { isPlaying, hasUserInteracted } = get();
-        
-        // CRITICAL: Always require user interaction for first play
-        if (!hasUserInteracted) {
-          set({ hasUserInteracted: true });
-        }
-        
+        const { isPlaying } = get();
         set({
           isPlaying: !isPlaying,
-          hasUserInteracted: true,
-          autoplayBlocked: false
+          hasUserInteracted: true // User must have interacted to toggle play
         });
       },
 

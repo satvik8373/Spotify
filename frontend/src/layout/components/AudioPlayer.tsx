@@ -14,47 +14,24 @@ import OptimizedImage from '@/components/OptimizedImage';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { usePhoneInterruption } from '@/hooks/usePhoneInterruption';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { logAudioDebugInfo, checkCommonIssues } from '@/utils/audioDebugger';
-import AutoplayBlockedNotice from '@/components/AutoplayBlockedNotice';
-import { useIOSAudioFix } from '@/hooks/useIOSAudioFix';
 
-// Helper function to validate URLs - PRODUCTION SAFE
+// Helper function to validate URLs - more permissive for production
 const isValidUrl = (url: string): boolean => {
   if (!url || typeof url !== 'string') return false;
 
-  // Allow relative URLs
+  // Allow relative URLs and various protocols
   if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) return true;
 
   // Allow blob URLs (they're valid for audio playback)
   if (url.startsWith('blob:')) return true;
 
-  // Allow data URLs
-  if (url.startsWith('data:')) return true;
-
   try {
     const urlObj = new URL(url);
-    
-    // CRITICAL: In production (HTTPS), only allow secure protocols
-    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-      const allowedProtocols = ['https:', 'blob:', 'data:'];
-      if (!allowedProtocols.includes(urlObj.protocol)) {
-        console.warn('Insecure protocol detected in production:', urlObj.protocol);
-        return false;
-      }
-    }
-    
     // Allow http, https, data, and blob URLs
     return ['http:', 'https:', 'data:', 'blob:'].includes(urlObj.protocol);
   } catch (e) {
     // If URL constructor fails, check if it's a valid-looking URL string
-    const isValidPattern = /^(https?|blob|data):\/\/.+/.test(url);
-    
-    // CRITICAL: In production, be more strict
-    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-      return /^(https|blob|data):\/\/.+/.test(url);
-    }
-    
-    return isValidPattern;
+    return /^(https?|blob):\/\/.+/.test(url);
   }
 };
 
@@ -168,9 +145,6 @@ const AudioPlayer = () => {
   // Use phone interruption hook for automatic pause/resume during calls
   const audioFocusState = usePhoneInterruption(audioRef);
 
-  // Apply iOS-specific audio fixes
-  const { isIOS } = useIOSAudioFix(audioRef);
-
   // These may not exist in the store based on linter errors
   const playerStore = usePlayerStore();
   const setCurrentTime = playerStore.setCurrentTime;
@@ -257,30 +231,7 @@ const AudioPlayer = () => {
   }, [equalizer]);
 
 
-  // Debug function for production troubleshooting
-  useEffect(() => {
-    // Make debug function available globally for production troubleshooting
-    (window as any).debugMavrixfyAudio = () => {
-      const { hasUserInteracted } = usePlayerStore.getState();
-      const info = logAudioDebugInfo(audioRef.current, hasUserInteracted);
-      const issues = checkCommonIssues(audioRef.current, hasUserInteracted);
-      
-      if (issues.length > 0) {
-        console.group('🚨 Potential Issues');
-        issues.forEach((issue: string) => console.warn('⚠️', issue));
-        console.groupEnd();
-      } else {
-        console.log('✅ No obvious issues detected');
-      }
-      
-      return { info, issues };
-    };
-    
-    // Clean up on unmount
-    return () => {
-      delete (window as any).debugMavrixfyAudio;
-    };
-  }, []);
+  // Clean up on unmount and save state before page unload
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (audioRef.current && currentSong) {
@@ -745,34 +696,22 @@ const AudioPlayer = () => {
   // Update audio element configuration for better mobile support
   useEffect(() => {
     if (audioRef.current) {
-      const audio = audioRef.current;
-      
-      // CRITICAL: Configure audio element for production browser compatibility
-      audio.setAttribute('playsinline', 'true');
-      audio.setAttribute('webkit-playsinline', 'true');
-      audio.setAttribute('preload', 'metadata'); // Changed from 'auto' to 'metadata'
-      audio.crossOrigin = 'anonymous'; // Required for Web Audio API and CORS
-      
-      // CRITICAL: iOS Safari specific attributes
-      audio.setAttribute('x-webkit-airplay', 'allow');
-      audio.setAttribute('controlslist', 'nodownload');
-      
-      // CRITICAL: Ensure audio is not muted (iOS requirement)
-      audio.muted = false;
-      audio.volume = 1.0;
-      
-      // CRITICAL: Set proper MIME type handling
-      audio.setAttribute('type', 'audio/mpeg');
+      // Configure audio element for better mobile background playback
+      audioRef.current.setAttribute('playsinline', '');
+      audioRef.current.setAttribute('webkit-playsinline', '');
+      audioRef.current.setAttribute('preload', 'auto');
+      audioRef.current.crossOrigin = 'anonymous'; // Required for Web Audio API
+
+
+      // Critical for audio focus handling in iOS Safari
+      audioRef.current.setAttribute('x-webkit-airplay', 'allow');
 
       // Set up remote commands early
       if (isMediaSessionSupported()) {
         navigator.mediaSession.setActionHandler('play', () => {
-          // Only allow if user has interacted
-          if (usePlayerStore.getState().hasUserInteracted) {
-            setIsPlaying(true);
-            if (audioRef.current && audioRef.current.paused) {
-              audioRef.current.play().catch(() => { });
-            }
+          setIsPlaying(true);
+          if (audioRef.current && audioRef.current.paused) {
+            audioRef.current.play().catch(() => { });
           }
         });
 
@@ -784,12 +723,10 @@ const AudioPlayer = () => {
         });
 
         navigator.mediaSession.setActionHandler('previoustrack', () => {
-          usePlayerStore.getState().setUserInteracted();
           if (playPrevious) playPrevious();
         });
 
         navigator.mediaSession.setActionHandler('nexttrack', () => {
-          usePlayerStore.getState().setUserInteracted();
           playNext();
         });
       }
@@ -1012,28 +949,11 @@ const AudioPlayer = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreenMobile, playNext, playPrevious, playerStore]);
 
-  // handle play/pause logic - PRODUCTION SAFE
+  // handle play/pause logic
   useEffect(() => {
     if (!audioRef.current || isLoading || isHandlingPlayback.current) return;
 
-    const audio = audioRef.current;
-    const { hasUserInteracted, autoplayBlocked } = usePlayerStore.getState();
-
     if (isPlaying) {
-      // CRITICAL: Block autoplay if user hasn't interacted
-      if (!hasUserInteracted) {
-        console.warn('Autoplay blocked - user interaction required');
-        setIsPlaying(false);
-        usePlayerStore.setState({ autoplayBlocked: true });
-        return;
-      }
-
-      // CRITICAL: Don't attempt play if previously blocked
-      if (autoplayBlocked) {
-        console.warn('Autoplay still blocked - waiting for user interaction');
-        return;
-      }
-
       // Use a flag to prevent concurrent play/pause operations
       isHandlingPlayback.current = true;
 
@@ -1042,35 +962,21 @@ const AudioPlayer = () => {
         clearTimeout(playTimeoutRef.current);
       }
 
-      // CRITICAL: Ensure audio is not muted (iOS requirement)
-      audio.muted = false;
-      audio.volume = 1.0;
-
       // Small delay to ensure any previous pause operation is complete
       playTimeoutRef.current = setTimeout(() => {
-        const playPromise = audio.play();
+        const playPromise = audioRef.current?.play();
         if (playPromise) {
           playPromise
             .then(() => {
               isHandlingPlayback.current = false;
-              usePlayerStore.setState({ autoplayBlocked: false });
             })
             .catch((err) => {
-              console.warn('Play failed:', err.name, err.message);
-              
-              // Handle specific autoplay policy errors
-              if (err.name === 'NotAllowedError') {
-                console.warn('Autoplay policy blocked playback');
-                setIsPlaying(false);
-                usePlayerStore.setState({ autoplayBlocked: true });
-              } else if (err && typeof err.message === 'string' && err.message.includes('interrupted')) {
+              if (err && typeof err.message === 'string' && err.message.includes('interrupted')) {
                 // If the error was due to interruption, try again after a short delay
                 setTimeout(() => {
-                  if (hasUserInteracted) {
-                    audio.play().catch(() => {
-                      setIsPlaying(false);
-                    });
-                  }
+                  audioRef.current?.play().catch(() => {
+                    setIsPlaying(false);
+                  });
                 }, 300);
               } else {
                 setIsPlaying(false);
@@ -1090,7 +996,7 @@ const AudioPlayer = () => {
         clearTimeout(playTimeoutRef.current);
       }
 
-      audio.pause();
+      audioRef.current?.pause();
 
       // Release the flag after a short delay
       setTimeout(() => {
@@ -1567,27 +1473,15 @@ const AudioPlayer = () => {
     }));
   };
 
-  // Toggle play/pause - PRODUCTION SAFE
+  // Toggle play/pause
   const handlePlayPause = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    // CRITICAL: Mark user interaction immediately
-    usePlayerStore.getState().setUserInteracted();
-    
-    // Clear any autoplay blocks since user explicitly clicked
-    usePlayerStore.setState({ autoplayBlocked: false });
-    
     playerStore.togglePlay();
   };
 
-  // Skip back - PRODUCTION SAFE
+  // Skip back
   const handlePrevious = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    // CRITICAL: Mark user interaction
-    usePlayerStore.getState().setUserInteracted();
-    usePlayerStore.setState({ autoplayBlocked: false });
-    
     if (audioRef.current && audioRef.current.currentTime > 3) {
       audioRef.current.currentTime = 0;
     } else {
@@ -1595,14 +1489,9 @@ const AudioPlayer = () => {
     }
   };
 
-  // Skip forward - PRODUCTION SAFE
+  // Skip forward
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    // CRITICAL: Mark user interaction
-    usePlayerStore.getState().setUserInteracted();
-    usePlayerStore.setState({ autoplayBlocked: false });
-    
     playNext();
   };
 
@@ -1929,19 +1818,6 @@ const AudioPlayer = () => {
 
   return (
     <>
-      {/* Autoplay blocked notice */}
-      <AutoplayBlockedNotice 
-        onUserInteraction={() => {
-          // Try to resume playback after user interaction
-          if (currentSong && audioRef.current) {
-            usePlayerStore.getState().setIsPlaying(true);
-            audioRef.current.play().catch(() => {
-              console.warn('Failed to resume playback after user interaction');
-            });
-          }
-        }}
-      />
-
       {/* Show SongDetailsView using our existing component */}
       <SongDetailsView
         isOpen={showSongDetails}
@@ -2292,28 +2168,13 @@ const AudioPlayer = () => {
         </div>
       )}
 
-      {/* Single audio element - PRODUCTION SAFE */}
+      {/* Single audio element - always present */}
       <audio
         ref={audioRef}
-        src={currentSong?.audioUrl && isValidUrl(currentSong.audioUrl) ? 
-          // CRITICAL: Ensure HTTPS and proper quality parameter
-          (() => {
-            let url = currentSong.audioUrl;
-            // Force HTTPS for production
-            if (url.startsWith('http://')) {
-              url = url.replace('http://', 'https://');
-            }
-            // Add quality parameter if not a blob URL
-            if (!url.startsWith('blob:')) {
-              const separator = url.includes('?') ? '&' : '?';
-              const qualityParam = streamingQuality.toLowerCase().replace(/\s+/g, '_');
-              url = `${url}${separator}quality=${qualityParam}`;
-            }
-            return url;
-          })()
+        src={currentSong?.audioUrl && isValidUrl(currentSong.audioUrl) ?
+          `${currentSong.audioUrl.replace(/^http:\/\//, 'https://')}${currentSong.audioUrl.includes('?') ? '&' : '?'}quality=${streamingQuality.toLowerCase().replace(/\s+/g, '_')}`
           : undefined}
-        // CRITICAL: Never autoplay on page load
-        autoPlay={false}
+        autoPlay={isPlaying && !!currentSong}
         onLoadStart={() => {
           // Reset restoration flag when loading new audio
           if (audioRef.current) {
@@ -2446,13 +2307,10 @@ const AudioPlayer = () => {
           }, 500);
         }}
         onError={handleError}
-        // CRITICAL: Production-safe audio element attributes
-        preload="metadata"
-        playsInline={true}
+        preload="auto"
+        playsInline
         webkit-playsinline="true"
         x-webkit-airplay="allow"
-        crossOrigin="anonymous"
-        muted={false}
         loop={usePlayerStore.getState().isRepeating}
         data-testid="audio-element"
         onEnded={() => {
