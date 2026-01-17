@@ -1,6 +1,6 @@
 import React from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { Heart, SkipBack, SkipForward, Play, Pause, Shuffle, Bluetooth, Speaker, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -150,57 +150,85 @@ const AudioPlayer = () => {
   const filtersRef = useRef<BiquadFilterNode[]>([]);
   const isAudioContextInitialized = useRef(false);
 
-  // Initialize Web Audio API
-  useEffect(() => {
+  // Initialize Web Audio API only after user interaction
+  const initWebAudioAPI = useCallback(() => {
     if (!audioRef.current || isAudioContextInitialized.current) return;
 
-    try {
-      // 1. Create AudioContext
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioContextClass();
-      audioContextRef.current = ctx;
-
-      // 2. Create Source Node
-      const source = ctx.createMediaElementSource(audioRef.current);
-      sourceNodeRef.current = source;
-
-      // 3. Create Filters
-      const frequencies = [60, 150, 400, 1000, 2400, 15000];
-      const filters = frequencies.map((freq, index) => {
-        const filter = ctx.createBiquadFilter();
-        filter.frequency.value = freq;
-
-        // Type of filter based on frequency position
-        if (index === 0) {
-          filter.type = 'lowshelf';
-        } else if (index === frequencies.length - 1) {
-          filter.type = 'highshelf';
-        } else {
-          filter.type = 'peaking';
-          filter.Q.value = 1; // Default Q factor
-        }
-        return filter;
-      });
-      filtersRef.current = filters;
-
-      // 4. Connect Chain: Source -> Filter 1 -> ... -> Filter N -> Destination
-      source.connect(filters[0]);
-      for (let i = 0; i < filters.length - 1; i++) {
-        filters[i].connect(filters[i + 1]);
+    // Import the audio context manager
+    import('@/utils/audioContextManager').then(({ getAudioContext, isAudioContextReady }) => {
+      if (!isAudioContextReady()) {
+        console.warn('AudioContext not ready - user interaction required');
+        return;
       }
-      filters[filters.length - 1].connect(ctx.destination);
 
-      isAudioContextInitialized.current = true;
-    } catch (error) {
-      console.error('Failed to initialize Web Audio API:', error);
-    }
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) {
+          console.warn('Failed to get AudioContext');
+          return;
+        }
+
+        audioContextRef.current = ctx;
+
+        // 2. Create Source Node
+        const source = ctx.createMediaElementSource(audioRef.current);
+        sourceNodeRef.current = source;
+
+        // 3. Create Filters
+        const frequencies = [60, 150, 400, 1000, 2400, 15000];
+        const filters = frequencies.map((freq, index) => {
+          const filter = ctx.createBiquadFilter();
+          filter.frequency.value = freq;
+
+          // Type of filter based on frequency position
+          if (index === 0) {
+            filter.type = 'lowshelf';
+          } else if (index === frequencies.length - 1) {
+            filter.type = 'highshelf';
+          } else {
+            filter.type = 'peaking';
+            filter.Q.value = 1; // Default Q factor
+          }
+          return filter;
+        });
+        filtersRef.current = filters;
+
+        // 4. Connect Chain: Source -> Filter 1 -> ... -> Filter N -> Destination
+        source.connect(filters[0]);
+        for (let i = 0; i < filters.length - 1; i++) {
+          filters[i].connect(filters[i + 1]);
+        }
+        filters[filters.length - 1].connect(ctx.destination);
+
+        isAudioContextInitialized.current = true;
+        console.log('Web Audio API initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize Web Audio API:', error);
+      }
+    });
+  }, []);
+
+  // Initialize Web Audio API on first user interaction
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      initWebAudioAPI();
+      
+      // Remove listeners after first interaction
+      document.removeEventListener('touchstart', handleUserInteraction);
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+    };
+
+    document.addEventListener('touchstart', handleUserInteraction, { once: true, passive: true });
+    document.addEventListener('click', handleUserInteraction, { once: true, passive: true });
+    document.addEventListener('keydown', handleUserInteraction, { once: true, passive: true });
 
     return () => {
-      // Cleanup is tricky with audio contexts attached to elements, usually better to leave it
-      // or check if context state needs closing, but often reusing the audio element complicates full cleanup.
-      // We'll leave the graph intact as the component seems persistant.
+      document.removeEventListener('touchstart', handleUserInteraction);
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
     };
-  }, []);
+  }, [initWebAudioAPI]);
 
   // Update Filters when settings change
   useEffect(() => {

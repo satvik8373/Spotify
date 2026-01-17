@@ -347,6 +347,14 @@ function AppContent() {
 }
 
 function App() {
+	// Initialize audio context manager for proper autoplay policy compliance
+	useEffect(() => {
+		// Import and initialize audio context manager
+		import('./utils/audioContextManager').then(({ setupUserInteractionListeners }) => {
+			setupUserInteractionListeners();
+		});
+	}, []);
+
 	// Set CSS variable for viewport height to handle mobile browsers
 	useEffect(() => {
 		const setVh = () => {

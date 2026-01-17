@@ -1,3 +1,5 @@
+import { getAudioContext, markUserInteraction, isAudioContextReady } from './audioContextManager';
+
 /**
  * AudioFocusManager - Centralized audio focus and interruption handling
  * 
@@ -35,12 +37,17 @@ class AudioFocusManager {
     async initialize(callbacks: AudioFocusCallbacks): Promise<void> {
         this.callbacks = callbacks;
 
-        // Create or resume AudioContext for focus detection
+        // Use centralized AudioContext manager instead of creating directly
         try {
+            // Mark user interaction to enable AudioContext creation
+            markUserInteraction();
+            
+            // Get the shared AudioContext
+            this.audioContext = getAudioContext();
+            
             if (!this.audioContext) {
-                // @ts-ignore - AudioContext may need webkit prefix
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                this.audioContext = new AudioContextClass();
+                console.warn('AudioContext not available - user interaction may be required');
+                return;
             }
 
             // Resume if suspended
@@ -229,7 +236,13 @@ class AudioFocusManager {
      * Request audio focus (call before playing audio)
      */
     async requestAudioFocus(): Promise<boolean> {
+        // Ensure we have an AudioContext
         if (!this.audioContext) {
+            this.audioContext = getAudioContext();
+        }
+        
+        if (!this.audioContext) {
+            console.warn('AudioContext not available for focus request');
             return false;
         }
 

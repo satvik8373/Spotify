@@ -3,39 +3,31 @@
  * Handles production-specific audio issues including CORS, HTTPS, and browser compatibility
  */
 
-// Global audio context for production
-let globalAudioContext: AudioContext | null = null;
+import { markUserInteraction, getAudioContext, resumeAudioContext } from './audioContextManager';
 
 /**
  * Initialize audio context for production environment
+ * Only creates AudioContext after user interaction to comply with autoplay policy
  */
 export const initProductionAudio = (): void => {
   if (typeof window === 'undefined') return;
 
-  try {
-    // Create audio context if not exists
-    if (!globalAudioContext) {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      globalAudioContext = new AudioContextClass();
-    }
+  // Use the centralized audio context manager
+  markUserInteraction();
+};
+    
+    // Remove listeners after first interaction
+    document.removeEventListener('touchstart', handleUserInteraction);
+    document.removeEventListener('touchend', handleUserInteraction);
+    document.removeEventListener('click', handleUserInteraction);
+    document.removeEventListener('keydown', handleUserInteraction);
+  };
 
-    // Resume audio context on user interaction
-    const resumeAudio = () => {
-      if (globalAudioContext && globalAudioContext.state === 'suspended') {
-        globalAudioContext.resume().catch(() => {
-          // Silent error handling
-        });
-      }
-    };
-
-    // Add listeners for user interaction (required for autoplay policy)
-    document.addEventListener('touchstart', resumeAudio, { once: true });
-    document.addEventListener('touchend', resumeAudio, { once: true });
-    document.addEventListener('click', resumeAudio, { once: true });
-    document.addEventListener('keydown', resumeAudio, { once: true });
-  } catch (error) {
-    console.warn('Failed to initialize production audio context:', error);
-  }
+  // Add listeners for user interaction (required for autoplay policy)
+  document.addEventListener('touchstart', handleUserInteraction, { once: true, passive: true });
+  document.addEventListener('touchend', handleUserInteraction, { once: true, passive: true });
+  document.addEventListener('click', handleUserInteraction, { once: true, passive: true });
+  document.addEventListener('keydown', handleUserInteraction, { once: true, passive: true });
 };
 
 /**
@@ -131,9 +123,7 @@ export const loadAudioWithFallback = async (
 export const playAudioSafely = async (audio: HTMLAudioElement): Promise<void> => {
   try {
     // Resume audio context if suspended
-    if (globalAudioContext && globalAudioContext.state === 'suspended') {
-      await globalAudioContext.resume();
-    }
+    await resumeAudioContext();
 
     // Attempt to play
     const playPromise = audio.play();
@@ -220,8 +210,8 @@ export const getPreferredAudioFormat = (): string => {
   return 'mp3'; // Default fallback
 };
 
-// Initialize on module load
+// Initialize on module load - but don't create AudioContext immediately
 if (typeof window !== 'undefined') {
-  // Initialize after a short delay to ensure DOM is ready
-  setTimeout(initProductionAudio, 100);
+  // Just setup the user interaction listeners, don't create AudioContext yet
+  // The audioContextManager will handle this properly
 }

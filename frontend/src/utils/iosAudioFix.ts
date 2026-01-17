@@ -1,7 +1,9 @@
 /**
- * iOS Audio Playback Fixes
+ * iOS Audio Playbook Fixes
  * Handles iOS-specific audio restrictions and issues
  */
+
+import { markUserInteraction, getAudioContext, resumeAudioContext } from './audioContextManager';
 
 // Check if running on iOS
 export const isIOS = (): boolean => {
@@ -16,29 +18,10 @@ export const isPWA = (): boolean => {
 };
 
 // Initialize audio context for iOS (required for audio playback)
-let audioContext: AudioContext | null = null;
-
 export const initAudioContext = (): void => {
-  if (isIOS() && !audioContext) {
-    try {
-      // @ts-ignore - AudioContext might not be in types
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      audioContext = new AudioContextClass();
-      
-      // Resume audio context on user interaction
-      const resumeAudio = () => {
-        if (audioContext && audioContext.state === 'suspended') {
-          audioContext.resume();
-        }
-      };
-      
-      // Add listeners for user interaction
-      document.addEventListener('touchstart', resumeAudio, { once: true });
-      document.addEventListener('touchend', resumeAudio, { once: true });
-      document.addEventListener('click', resumeAudio, { once: true });
-    } catch (error) {
-      console.warn('Failed to initialize AudioContext:', error);
-    }
+  if (isIOS()) {
+    // Use the centralized audio context manager
+    markUserInteraction();
   }
 };
 
@@ -115,9 +98,7 @@ export const playAudioForIOS = async (audio: HTMLAudioElement): Promise<void> =>
   
   try {
     // Resume audio context if suspended
-    if (audioContext && audioContext.state === 'suspended') {
-      await audioContext.resume();
-    }
+    await resumeAudioContext();
     
     // Attempt to play
     await audio.play();
@@ -140,8 +121,8 @@ export const playAudioForIOS = async (audio: HTMLAudioElement): Promise<void> =>
 export const unlockAudioOnIOS = (): void => {
   if (!isIOS()) return;
   
-  // Initialize audio context
-  initAudioContext();
+  // Mark user interaction for audio context manager
+  markUserInteraction();
   
   // Create a silent audio element and play it
   const silentAudio = new Audio();
@@ -167,7 +148,8 @@ export const bypassServiceWorkerForAudio = (url: string): string => {
   return `${url}${separator}_t=${Date.now()}`;
 };
 
-// Initialize on module load
+// Initialize on module load - but don't create AudioContext immediately
 if (typeof window !== 'undefined') {
-  initAudioContext();
+  // Just setup the user interaction listeners, don't create AudioContext yet
+  // The audioContextManager will handle this properly
 }
