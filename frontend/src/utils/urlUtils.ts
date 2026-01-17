@@ -1,85 +1,70 @@
 /**
- * Utility functions for URL processing
+ * Utility functions for URL manipulation
  */
 
 /**
- * Convert HTTP URLs to HTTPS for production to avoid Mixed Content issues
+ * Ensures a URL uses HTTPS protocol instead of HTTP
+ * This is crucial for production environments to avoid Mixed Content errors
  * @param url - The URL to convert
- * @returns The HTTPS version of the URL
+ * @returns The URL with HTTPS protocol
  */
-export function ensureHttps(url: string): string {
+export const ensureHttps = (url: string): string => {
   if (!url) return url;
   
-  // Convert HTTP to HTTPS for production
-  if (url.startsWith('http://')) {
-    return url.replace('http://', 'https://');
+  // If it's already HTTPS or a different protocol (blob:, data:, etc.), return as is
+  if (!url.startsWith('http://')) {
+    return url;
   }
   
-  return url;
-}
+  // Convert HTTP to HTTPS
+  return url.replace('http://', 'https://');
+};
 
 /**
- * Convert multiple URLs to HTTPS
- * @param urls - Array of URLs to convert
- * @returns Array of HTTPS URLs
- */
-export function ensureHttpsMultiple(urls: string[]): string[] {
-  return urls.map(ensureHttps);
-}
-
-/**
- * Check if a URL is secure (HTTPS)
+ * Checks if a URL is secure (HTTPS or other secure protocols)
  * @param url - The URL to check
- * @returns True if the URL is HTTPS or relative, false if HTTP
+ * @returns True if the URL is secure
  */
-export function isSecureUrl(url: string): boolean {
-  if (!url) return true; // Empty URLs are considered safe
+export const isSecureUrl = (url: string): boolean => {
+  if (!url) return false;
   
-  // Relative URLs are safe
-  if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) {
-    return true;
-  }
-  
-  // Data URLs are safe
-  if (url.startsWith('data:')) {
-    return true;
-  }
-  
-  // Blob URLs are safe
-  if (url.startsWith('blob:')) {
-    return true;
-  }
-  
-  // Check if it's HTTPS
-  return url.startsWith('https://');
-}
+  return (
+    url.startsWith('https://') ||
+    url.startsWith('blob:') ||
+    url.startsWith('data:') ||
+    url.startsWith('file:') ||
+    url.startsWith('chrome-extension:') ||
+    url.startsWith('moz-extension:')
+  );
+};
 
 /**
- * Validate and fix audio URL for production use
- * @param audioUrl - The audio URL to validate
- * @returns The fixed audio URL or empty string if invalid
+ * Validates if a URL is safe to use in production
+ * @param url - The URL to validate
+ * @returns True if the URL is safe for production use
  */
-export function validateAudioUrl(audioUrl: string): string {
-  if (!audioUrl) return '';
+export const isProductionSafeUrl = (url: string): boolean => {
+  if (!url) return false;
   
-  // Convert to HTTPS if needed
-  const httpsUrl = ensureHttps(audioUrl);
+  // In production, we need HTTPS for external resources
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    return isSecureUrl(url);
+  }
   
-  // Additional validation can be added here
-  return httpsUrl;
-}
+  // In development, allow HTTP
+  return true;
+};
 
 /**
- * Validate and fix image URL for production use
- * @param imageUrl - The image URL to validate
- * @returns The fixed image URL or placeholder if invalid
+ * Logs a warning if an insecure URL is detected in production
+ * @param url - The URL to check
+ * @param context - Context information for debugging
  */
-export function validateImageUrl(imageUrl: string, placeholder = '/placeholder-song.jpg'): string {
-  if (!imageUrl) return placeholder;
-  
-  // Convert to HTTPS if needed
-  const httpsUrl = ensureHttps(imageUrl);
-  
-  // Additional validation can be added here
-  return httpsUrl;
-}
+export const warnInsecureUrl = (url: string, context: string = 'Unknown'): void => {
+  if (typeof window !== 'undefined' && 
+      window.location.protocol === 'https:' && 
+      url.startsWith('http://')) {
+    console.warn(`[Mixed Content Warning] Insecure HTTP URL detected in production (${context}):`, url);
+    console.warn('This may cause audio playback issues. URL has been converted to HTTPS.');
+  }
+};

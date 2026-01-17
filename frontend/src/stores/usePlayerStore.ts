@@ -1,8 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Song } from '@/types';
-import { ensureHttps } from '@/utils/urlUtils';
-import { backgroundPlaybackService, type BackgroundPlaybackCallbacks } from '@/services/backgroundPlaybackService';
+import { ensureHttps, warnInsecureUrl } from '@/utils/urlUtils';
 
 export type Queue = Song[];
 
@@ -86,13 +85,6 @@ export const usePlayerStore = create<PlayerState>()(
           return;
         }
 
-        // Ensure audio URL is HTTPS for production (fixes Mixed Content issues)
-        const validatedSong = {
-          ...song,
-          audioUrl: song.audioUrl ? ensureHttps(song.audioUrl) : song.audioUrl,
-          imageUrl: song.imageUrl ? ensureHttps(song.imageUrl) : song.imageUrl
-        };
-
         // Get the current audio element and stop it immediately
         const audio = document.querySelector('audio');
         if (audio) {
@@ -103,14 +95,24 @@ export const usePlayerStore = create<PlayerState>()(
           audio.load();
         }
 
+        // Validate and convert URLs to HTTPS for production
+        const validatedSong = {
+          ...song,
+          audioUrl: song.audioUrl ? (() => {
+            warnInsecureUrl(song.audioUrl, 'Player audio URL');
+            return ensureHttps(song.audioUrl);
+          })() : song.audioUrl,
+          imageUrl: song.imageUrl ? (() => {
+            warnInsecureUrl(song.imageUrl, 'Player image URL');
+            return ensureHttps(song.imageUrl);
+          })() : song.imageUrl
+        };
+
         // Immediately reset current time when switching songs
         set({
           currentSong: validatedSong,
           currentTime: 0 // Reset time immediately for new song
         });
-
-        // Notify background service of song change
-        backgroundPlaybackService.onSongChange();
       },
 
       setIsPlaying: (isPlaying) => {
@@ -119,13 +121,6 @@ export const usePlayerStore = create<PlayerState>()(
           set({ isPlaying, hasUserInteracted: true });
         } else {
           set({ isPlaying });
-        }
-
-        // Notify background service of playback state change
-        if (isPlaying) {
-          backgroundPlaybackService.onPlaybackStart();
-        } else {
-          backgroundPlaybackService.onPlaybackStop();
         }
       },
 
@@ -138,25 +133,16 @@ export const usePlayerStore = create<PlayerState>()(
 
       togglePlay: () => {
         const { isPlaying } = get();
-        const newPlayingState = !isPlaying;
-        
         set({
-          isPlaying: newPlayingState,
+          isPlaying: !isPlaying,
           hasUserInteracted: true // User must have interacted to toggle play
         });
-
-        // Notify background service of playback state change
-        if (newPlayingState) {
-          backgroundPlaybackService.onPlaybackStart();
-        } else {
-          backgroundPlaybackService.onPlaybackStop();
-        }
       },
 
       playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
 
-        // Filter out songs with invalid blob URLs and validate URLs
+        // Filter out songs with invalid blob URLs and convert URLs to HTTPS
         const validSongs = songs
           .filter(song => 
             !song.audioUrl || 
@@ -165,8 +151,14 @@ export const usePlayerStore = create<PlayerState>()(
           )
           .map(song => ({
             ...song,
-            audioUrl: song.audioUrl ? ensureHttps(song.audioUrl) : song.audioUrl,
-            imageUrl: song.imageUrl ? ensureHttps(song.imageUrl) : song.imageUrl
+            audioUrl: song.audioUrl ? (() => {
+              warnInsecureUrl(song.audioUrl, 'Queue audio URL');
+              return ensureHttps(song.audioUrl);
+            })() : song.audioUrl,
+            imageUrl: song.imageUrl ? (() => {
+              warnInsecureUrl(song.imageUrl, 'Queue image URL');
+              return ensureHttps(song.imageUrl);
+            })() : song.imageUrl
           }));
 
         if (validSongs.length === 0) {
@@ -195,9 +187,6 @@ export const usePlayerStore = create<PlayerState>()(
           currentTime: 0, // Reset time for new album
           hasUserInteracted: true // Assume user interaction when explicitly playing
         });
-
-        // Notify background service of song change
-        backgroundPlaybackService.onSongChange();
 
         // Save to localStorage as a backup for components that need it directly
         try {
@@ -272,10 +261,6 @@ export const usePlayerStore = create<PlayerState>()(
           lastPlayNextTime: now, // Track when we last called playNext
           skipRestoreUntilTs: now + 5000 // prevent time restore for 5s on track change
         });
-
-        // Notify background service of song change and playback start
-        backgroundPlaybackService.onSongChange();
-        backgroundPlaybackService.onPlaybackStart();
 
         // More reliable method to ensure the audio element updates
         // especially important for background/lock screen playback
@@ -446,10 +431,6 @@ export const usePlayerStore = create<PlayerState>()(
           skipRestoreUntilTs: Date.now() + 5000
         });
 
-        // Notify background service of song change and playback start
-        backgroundPlaybackService.onSongChange();
-        backgroundPlaybackService.onPlaybackStart();
-
         // CRITICAL: Reset audio currentTime immediately
         if (audio) {
           audio.currentTime = 0;
@@ -509,7 +490,8 @@ export const usePlayerStore = create<PlayerState>()(
     }),
     {
       name: 'player-store',
-      partialize: (state: PlayerState) => ({
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
         currentSong: state.currentSong,
         queue: state.queue,
         currentIndex: state.currentIndex,
@@ -525,50 +507,6 @@ export const usePlayerStore = create<PlayerState>()(
     }
   )
 );
-
-// Initialize background playback service after store creation
-setTimeout(() => {
-  const backgroundCallbacks: BackgroundPlaybackCallbacks = {
-    onPlay: () => {
-      usePlayerStore.getState().setIsPlaying(true);
-      usePlayerStore.setState({ hasUserInteracted: true });
-    },
-    onPause: () => {
-      usePlayerStore.getState().setIsPlaying(false);
-    },
-    onNext: () => {
-      usePlayerStore.getState().playNext();
-    },
-    onPrevious: () => {
-      usePlayerStore.getState().playPrevious();
-    },
-    onSeek: (position: number) => {
-      const audio = document.querySelector('audio');
-      if (audio) {
-        audio.currentTime = position;
-        usePlayerStore.getState().setCurrentTime(position);
-      }
-    },
-    getCurrentSong: () => {
-      const { currentSong, duration } = usePlayerStore.getState();
-      if (!currentSong) return null;
-      
-      return {
-        title: currentSong.title || 'Unknown Title',
-        artist: currentSong.artist || 'Unknown Artist',
-        album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
-        artwork: currentSong.imageUrl || undefined,
-        duration: duration
-      };
-    },
-    getCurrentTime: () => usePlayerStore.getState().currentTime,
-    getDuration: () => usePlayerStore.getState().duration,
-    getIsPlaying: () => usePlayerStore.getState().isPlaying
-  };
-
-  // Initialize background service
-  backgroundPlaybackService.initialize(backgroundCallbacks).catch(console.warn);
-}, 0);
 
 // Initialize the store by loading persisted data
 setTimeout(() => {

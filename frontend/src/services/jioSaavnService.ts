@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ensureHttps } from '@/utils/urlUtils';
+import { ensureHttps, warnInsecureUrl } from '@/utils/urlUtils';
 
 const BASE_URL = 'https://saavn.sumit.co/api';
 
@@ -700,10 +700,7 @@ class JioSaavnService {
                      images.find(img => img.quality === '150x150') ||
                      images[0];
 
-    let imageUrl = preferred?.url || '/placeholder-playlist.jpg';
-    
-    // Convert HTTP URLs to HTTPS for production (fixes Mixed Content issues)
-    return ensureHttps(imageUrl);
+    return preferred?.url || '/placeholder-playlist.jpg';
   }
 
   // Convert JioSaavn song to app song format
@@ -714,18 +711,20 @@ class JioSaavnService {
                            jioSong.downloadUrl.find(url => url.quality === '160kbps') ||
                            jioSong.downloadUrl[0];
 
-    // Convert HTTP URLs to HTTPS for production (fixes Mixed Content issues)
-    const audioUrl = ensureHttps(bestDownloadUrl?.url || '');
-    const imageUrl = ensureHttps(bestImageUrl);
-
     return {
       _id: `jiosaavn_${jioSong.id}`,
       title: jioSong.name,
       artist: primaryArtist?.name || 'Unknown Artist',
       albumId: jioSong.album.name,
       duration: jioSong.duration,
-      imageUrl: imageUrl,
-      audioUrl: audioUrl,
+      imageUrl: bestImageUrl ? (() => {
+        warnInsecureUrl(bestImageUrl, 'JioSaavn image URL');
+        return ensureHttps(bestImageUrl);
+      })() : '',
+      audioUrl: bestDownloadUrl?.url ? (() => {
+        warnInsecureUrl(bestDownloadUrl.url, 'JioSaavn audio URL');
+        return ensureHttps(bestDownloadUrl.url);
+      })() : '',
       source: 'jiosaavn',
       language: jioSong.language,
       year: jioSong.year,

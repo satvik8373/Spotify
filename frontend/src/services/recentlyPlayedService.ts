@@ -1,5 +1,3 @@
-import { ensureHttps } from '@/utils/urlUtils';
-
 interface RecentlyPlayedItem {
   id: string;
   name: string;
@@ -181,10 +179,7 @@ class RecentlyPlayedService {
 
   // Helper method to get best image URL for JioSaavn items
   private getBestImageUrl(image: any): string {
-    if (typeof image === 'string') {
-      // Convert HTTP URLs to HTTPS for production
-      return ensureHttps(image);
-    }
+    if (typeof image === 'string') return image;
     if (Array.isArray(image) && image.length > 0) {
       // Get the highest quality image
       const sorted = image.sort((a, b) => {
@@ -192,10 +187,7 @@ class RecentlyPlayedService {
         const qualityB = parseInt(b.quality?.replace('x', '') || '0');
         return qualityB - qualityA;
       });
-      const imageUrl = sorted[0].url || sorted[0].link || '';
-      
-      // Convert HTTP URLs to HTTPS for production
-      return ensureHttps(imageUrl);
+      return sorted[0].url || sorted[0].link || '';
     }
     return '';
   }
