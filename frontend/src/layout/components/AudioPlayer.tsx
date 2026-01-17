@@ -15,15 +15,23 @@ import { resolveArtist } from '@/lib/resolveArtist';
 import { usePhoneInterruption } from '@/hooks/usePhoneInterruption';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 
-// Helper function to validate URLs
+// Helper function to validate URLs - more permissive for production
 const isValidUrl = (url: string): boolean => {
-  if (!url) return false;
-
+  if (!url || typeof url !== 'string') return false;
+  
+  // Allow relative URLs and various protocols
+  if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) return true;
+  
+  // Allow blob URLs (they're valid for audio playback)
+  if (url.startsWith('blob:')) return true;
+  
   try {
-    new URL(url);
-    return true;
+    const urlObj = new URL(url);
+    // Allow http, https, data, and blob URLs
+    return ['http:', 'https:', 'data:', 'blob:'].includes(urlObj.protocol);
   } catch (e) {
-    return false;
+    // If URL constructor fails, check if it's a valid-looking URL string
+    return /^(https?|blob):\/\/.+/.test(url);
   }
 };
 
@@ -192,7 +200,8 @@ const AudioPlayer = () => {
 
       isAudioContextInitialized.current = true;
     } catch (error) {
-      console.error('Failed to initialize Web Audio API:', error);
+      console.warn('Failed to initialize Web Audio API (non-critical):', error);
+      // Continue without Web Audio API features
     }
 
     return () => {
@@ -1010,8 +1019,9 @@ const AudioPlayer = () => {
       songUrl = `${songUrl}${separator}quality=${qualityParam}`;
     }
 
-    // Validate the URL and reject blob URLs from old download system
-    if (!isValidUrl(songUrl) || songUrl.startsWith('blob:')) {
+    // Validate the URL - be more permissive for production
+    if (!isValidUrl(songUrl)) {
+      console.warn('Invalid audio URL, attempting to find alternative:', songUrl);
       // Try to find audio for this song
 
       // Use setTimeout to avoid blocking the UI
@@ -1069,10 +1079,11 @@ const AudioPlayer = () => {
             }, 500); // Faster skipping
           }
         } catch (error) {
+          console.warn('Error finding alternative audio source:', error);
           // Skip to the next song after a short delay
           setTimeout(() => {
             playNext();
-          }, 500); // Faster skipping
+          }, 500);
         }
       }, 50); // Faster processing
 
@@ -1221,20 +1232,48 @@ const AudioPlayer = () => {
     }
   }, [currentSong, isPlaying, setIsPlaying, playNext, setCurrentSong, streamingQuality]);
 
-  // Handle audio errors
+  // Handle audio errors - improved for production
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleError = (_e: ErrorEvent) => {
+    const handleError = (e: ErrorEvent) => {
+      console.warn('Audio playback error:', e);
       setIsLoading(false);
       setIsPlaying(false);
       isHandlingPlayback.current = false;
+      
+      // Try to recover by finding alternative audio source
+      if (currentSong) {
+        setTimeout(() => {
+          // Attempt to find alternative audio source
+          const searchQuery = `${currentSong.title} ${currentSong.artist}`.trim();
+          useMusicStore.getState().searchIndianSongs(searchQuery).then(() => {
+            const results = useMusicStore.getState().indianSearchResults;
+            if (results && results.length > 0) {
+              const foundSong = results[0];
+              const updatedSong = {
+                ...currentSong,
+                audioUrl: foundSong.url || (foundSong as any).audioUrl || '',
+              };
+              
+              // Update current song with new audio URL
+              usePlayerStore.getState().setCurrentSong(updatedSong);
+            } else {
+              // No alternative found, skip to next song
+              playNext();
+            }
+          }).catch(() => {
+            // Search failed, skip to next song
+            playNext();
+          });
+        }, 1000);
+      }
     };
 
     audio.addEventListener('error', handleError as any);
     return () => audio.removeEventListener('error', handleError as any);
-  }, [setIsPlaying]);
+  }, [setIsPlaying, currentSong, playNext]);
 
   // Try to restore playback state on mount
   useEffect(() => {
@@ -1770,15 +1809,9 @@ const AudioPlayer = () => {
     };
   }, [currentSong, isPlaying, playNext]);
 
-  if (!currentSong) {
-    return (
-      <audio
-        ref={audioRef}
-        preload="auto"
-      />
-    );
-  }
-
+  // Don't render anything if no current song - the audio element should always be present
+  // but just without a src when there's no song
+  
   return (
     <>
       {/* Show SongDetailsView using our existing component */}
@@ -2131,12 +2164,13 @@ const AudioPlayer = () => {
         </div>
       )}
 
+      {/* Single audio element - always present */}
       <audio
         ref={audioRef}
-        src={currentSong?.audioUrl && !currentSong.audioUrl.startsWith('blob:') ?
+        src={currentSong?.audioUrl && isValidUrl(currentSong.audioUrl) ?
           `${currentSong.audioUrl.replace(/^http:\/\//, 'https://')}${currentSong.audioUrl.includes('?') ? '&' : '?'}quality=${streamingQuality.toLowerCase().replace(/\s+/g, '_')}`
           : undefined}
-        autoPlay={isPlaying}
+        autoPlay={isPlaying && !!currentSong}
         onLoadStart={() => {
           // Reset restoration flag when loading new audio
           if (audioRef.current) {
