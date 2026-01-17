@@ -70,8 +70,8 @@ const corsOptions = {
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Range'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range', 'Accept-Ranges', 'Content-Length'],
   credentials: true, // Allow cookies to be sent with requests
   maxAge: 600
 };
@@ -169,6 +169,67 @@ app.use("/api/liked-songs", likedSongRoutes);
 app.use("/api/cloudinary", cloudinaryRoutes);
 app.use("/api/deezer", deezerRoutes);
 app.use("/api/jiosaavn", jiosaavnRoutes);
+
+// Audio proxy route to handle CORS issues
+app.get('/api/audio-proxy', async (req, res) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'URL parameter is required' });
+    }
+
+    // Ensure HTTPS for security
+    const audioUrl = url.startsWith('http://') ? url.replace('http://', 'https://') : url;
+    
+    // Set appropriate headers for audio streaming
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length');
+    res.setHeader('Accept-Ranges', 'bytes');
+    
+    // Forward range headers for partial content support
+    const headers = {};
+    if (req.headers.range) {
+      headers.Range = req.headers.range;
+    }
+
+    // Fetch the audio file
+    const response = await fetch(audioUrl, { headers });
+    
+    // Forward response headers
+    res.status(response.status);
+    response.headers.forEach((value, key) => {
+      if (['content-type', 'content-length', 'content-range', 'accept-ranges'].includes(key.toLowerCase())) {
+        res.setHeader(key, value);
+      }
+    });
+
+    // Stream the audio data
+    const reader = response.body.getReader();
+    
+    const pump = async () => {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          res.end();
+          return;
+        }
+        res.write(Buffer.from(value));
+        pump();
+      } catch (error) {
+        console.error('Audio streaming error:', error);
+        res.end();
+      }
+    };
+
+    pump();
+  } catch (error) {
+    console.error('Audio proxy error:', error);
+    res.status(500).json({ error: 'Failed to proxy audio' });
+  }
+});
 
 // Special route to handle Spotify callback directly
 app.get('/spotify-callback', (req, res) => {

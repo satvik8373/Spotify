@@ -397,6 +397,19 @@ export const useMusicStore = create<MusicStore>((set) => ({
       (song.likedAt instanceof Date ? song.likedAt.toISOString() : song.likedAt) :
       now;
 
+    // Handle audio URL - use proxy for CORS issues
+    let audioUrl = song.url || '';
+    if (audioUrl) {
+      warnInsecureUrl(audioUrl, 'Indian song audio URL');
+      audioUrl = ensureHttps(audioUrl);
+      
+      // Use audio proxy for JioSaavn URLs to handle CORS
+      if (audioUrl.includes('saavncdn.com') || audioUrl.includes('jiosaavn')) {
+        const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://spotify-api-drab.vercel.app/api';
+        audioUrl = `${apiBaseUrl}/audio-proxy?url=${encodeURIComponent(audioUrl)}`;
+      }
+    }
+
     return {
       _id: song.id || `indian-song-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       title: song.title || 'Unknown Title',
@@ -406,10 +419,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
         warnInsecureUrl(song.image, 'Indian song image URL');
         return ensureHttps(song.image);
       })() : '',
-      audioUrl: song.url ? (() => {
-        warnInsecureUrl(song.url, 'Indian song audio URL');
-        return ensureHttps(song.url);
-      })() : '',
+      audioUrl: audioUrl,
       duration: parseInt(song.duration || '0'),
       createdAt: now,
       updatedAt: now,

@@ -59,15 +59,37 @@ export default defineConfig(({ mode }) => {
 								},
 							},
 						},
-						// Audio files - NetworkOnly (no caching for iOS compatibility)
+						// Audio files - NetworkOnly (no caching for iOS compatibility and CORS issues)
 						{
 							urlPattern: /\.(mp3|mp4|m4a|aac|ogg|wav|flac)$/i,
 							handler: 'NetworkOnly',
+							options: {
+								networkTimeoutSeconds: 30,
+							},
 						},
-						// JioSaavn CDN - NetworkOnly for audio
+						// JioSaavn CDN - NetworkOnly for audio to avoid CORS issues
 						{
 							urlPattern: /^https:\/\/aac\.saavncdn\.com\/.*/i,
 							handler: 'NetworkOnly',
+							options: {
+								networkTimeoutSeconds: 30,
+							},
+						},
+						// Audio proxy routes - NetworkOnly to ensure fresh requests
+						{
+							urlPattern: /\/api\/audio-proxy\?url=.*/i,
+							handler: 'NetworkOnly',
+							options: {
+								networkTimeoutSeconds: 30,
+							},
+						},
+						// Handle HTTP to HTTPS redirects for audio
+						{
+							urlPattern: /^http:\/\/.*\.(mp3|mp4|m4a|aac|ogg|wav|flac)$/i,
+							handler: 'NetworkOnly',
+							options: {
+								networkTimeoutSeconds: 30,
+							},
 						},
 					],
 				},
