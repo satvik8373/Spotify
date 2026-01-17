@@ -144,7 +144,7 @@ function convertSaavnTrack(item: any): IndianSong {
       item.downloadUrl.find((d: any) => d.quality === '96kbps') ||
       item.downloadUrl[item.downloadUrl.length - 1];
     audioUrl = downloadUrl?.link || '';
-    
+
     // Convert HTTP URLs to HTTPS for production (fixes Mixed Content issues)
     audioUrl = ensureHttps(audioUrl);
   }
@@ -156,7 +156,7 @@ function convertSaavnTrack(item: any): IndianSong {
       item.image.find((i: any) => i.quality === '150x150') ||
       item.image[item.image.length - 1];
     imageUrl = image?.link || '';
-    
+
     // Convert HTTP URLs to HTTPS for production (fixes Mixed Content issues)
     imageUrl = ensureHttps(imageUrl);
   } else if (typeof item.image === 'string') {
@@ -205,7 +205,12 @@ export const useMusicStore = create<MusicStore>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await axiosInstance.get('/songs');
-      set({ songs: response.data });
+      const sanitizedSongs = response.data.map((song: Song) => ({
+        ...song,
+        audioUrl: ensureHttps(song.audioUrl),
+        imageUrl: ensureHttps(song.imageUrl)
+      }));
+      set({ songs: sanitizedSongs });
     } catch (error: any) {
       set({ error: error.message });
     } finally {
@@ -230,7 +235,16 @@ export const useMusicStore = create<MusicStore>((set) => ({
 
     try {
       const response = await axiosInstance.get('/albums');
-      set({ albums: response.data });
+      const sanitizedAlbums = response.data.map((album: Album) => ({
+        ...album,
+        imageUrl: ensureHttps(album.imageUrl),
+        songs: album.songs?.map((song: Song) => ({
+          ...song,
+          audioUrl: ensureHttps(song.audioUrl),
+          imageUrl: ensureHttps(song.imageUrl)
+        }))
+      }));
+      set({ albums: sanitizedAlbums });
     } catch (error: any) {
       set({ error: (error?.response?.data?.message) || 'Failed to load songs' });
     } finally {
@@ -242,7 +256,18 @@ export const useMusicStore = create<MusicStore>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await axiosInstance.get(`/albums/${id}`);
-      set({ currentAlbum: response.data });
+      const albumData = response.data;
+      if (albumData) {
+        albumData.imageUrl = ensureHttps(albumData.imageUrl);
+        if (albumData.songs) {
+          albumData.songs = albumData.songs.map((song: Song) => ({
+            ...song,
+            audioUrl: ensureHttps(song.audioUrl),
+            imageUrl: ensureHttps(song.imageUrl)
+          }));
+        }
+      }
+      set({ currentAlbum: albumData });
     } catch (error: any) {
       set({ error: (error?.response?.data?.message) || 'Failed to load trending songs' });
     } finally {
@@ -254,7 +279,12 @@ export const useMusicStore = create<MusicStore>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await axiosInstance.get('/songs/featured');
-      set({ featuredSongs: response.data });
+      const sanitizedSongs = response.data.map((song: Song) => ({
+        ...song,
+        audioUrl: ensureHttps(song.audioUrl),
+        imageUrl: ensureHttps(song.imageUrl)
+      }));
+      set({ featuredSongs: sanitizedSongs });
     } catch (error: any) {
       set({ error: error.response.data.message });
     } finally {
@@ -266,7 +296,12 @@ export const useMusicStore = create<MusicStore>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await axiosInstance.get('/songs/made-for-you');
-      set({ madeForYouSongs: response.data });
+      const sanitizedSongs = response.data.map((song: Song) => ({
+        ...song,
+        audioUrl: ensureHttps(song.audioUrl),
+        imageUrl: ensureHttps(song.imageUrl)
+      }));
+      set({ madeForYouSongs: sanitizedSongs });
     } catch (error: any) {
       set({ error: error.response.data.message });
     } finally {
@@ -278,7 +313,12 @@ export const useMusicStore = create<MusicStore>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await axiosInstance.get('/songs/trending');
-      set({ trendingSongs: response.data });
+      const sanitizedSongs = response.data.map((song: Song) => ({
+        ...song,
+        audioUrl: ensureHttps(song.audioUrl),
+        imageUrl: ensureHttps(song.imageUrl)
+      }));
+      set({ trendingSongs: sanitizedSongs });
     } catch (error: any) {
       set({ error: error.response.data.message });
     } finally {
