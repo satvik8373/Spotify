@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, LogOut, Play, Pause, ListMusic, Bell } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, Play, Pause, ListMusic, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -230,42 +230,7 @@ const MobileNav = () => {
 
   // (removed unused search click handler)
 
-  // Handle like toggle
-  const handleLikeToggle = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent opening song details
-    if (currentSong) {
-      // Get the song ID consistently
-      const songId = (currentSong as any).id || currentSong._id;
 
-      // Optimistically update UI
-      setSongLiked(!songLiked);
-
-      // Perform the actual toggle with the correct song format
-      toggleLikeSong({
-        _id: songId,
-        title: currentSong.title,
-        artist: currentSong.artist,
-        albumId: currentSong.albumId || null,
-        imageUrl: currentSong.imageUrl || '',
-        audioUrl: currentSong.audioUrl,
-        duration: currentSong.duration || 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        likedAt: new Date().toISOString()
-      });
-
-      // Also dispatch a direct event for immediate notification
-      document.dispatchEvent(new CustomEvent('songLikeStateChanged', {
-        detail: {
-          songId,
-          song: currentSong,
-          isLiked: !songLiked,
-          timestamp: Date.now(),
-          source: 'MobileNav'
-        }
-      }));
-    }
-  };
 
   // Handle song tap to open song details view
   const handleSongTap = () => {
@@ -498,7 +463,7 @@ const MobileNav = () => {
         } as React.CSSProperties}
       >
         {/* Spotify Mobile Player - Floating Design */}
-        {hasActiveSong && (
+        {hasActiveSong && location.pathname !== '/liked-songs/sync' && (
           <div className="px-2 pb-1">
             <div className="mobile-player-container relative rounded-lg overflow-hidden shadow-2xl mx-1">
               {/* Main Player Container - Compact */}

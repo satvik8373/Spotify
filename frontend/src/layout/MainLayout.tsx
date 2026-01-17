@@ -68,11 +68,13 @@ const MainLayout = () => {
   const MINI_PLAYER_PX = 47;
   const isMobileHeaderRoute = isMobile && (
     location.pathname === '/home' ||
-    location.pathname === '/' ||
-    location.pathname.startsWith('/library') ||
     location.pathname.startsWith('/search')
   );
-  const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + MOBILE_NAV_PX + (hasActiveSong ? MINI_PLAYER_PX : 0);
+
+  const isSyncPage = location.pathname === '/liked-songs/sync';
+  const showMiniPlayer = hasActiveSong && !isSyncPage;
+
+  const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + MOBILE_NAV_PX + (showMiniPlayer ? MINI_PLAYER_PX : 0);
 
   // Handle resize functionality
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

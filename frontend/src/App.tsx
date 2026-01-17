@@ -13,6 +13,7 @@ const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
 const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
+const SyncLikedSongsPage = lazy(() => import('./pages/liked-songs/SyncLikedSongsPage'));
 const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
 const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.PlaylistPage })));
 const SongPage = lazy(() => import('./pages/song/SongPage'));
@@ -149,6 +150,10 @@ const router = createBrowserRouter(
 				{
 					path: '/liked-songs',
 					element: <AuthGate><LikedSongsPage /></AuthGate>
+				},
+				{
+					path: '/liked-songs/sync',
+					element: <AuthGate><SyncLikedSongsPage /></AuthGate>
 				},
 				{
 					path: '/search',

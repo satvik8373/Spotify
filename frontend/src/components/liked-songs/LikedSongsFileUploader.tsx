@@ -3,14 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, FileText, X, CheckCircle, AlertCircle, Search, ArrowRight, Check, Music, Clock } from 'lucide-react';
+import { Upload, X, CheckCircle, AlertCircle, Search, ArrowRight, Check, Music, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { Song } from '@/types';
 import { addMultipleLikedSongs } from '@/services/likedSongsService';
 import { requestManager } from '@/services/requestManager';
 import { ContentLoading } from '@/components/ui/loading';
-import { cn } from '@/lib/utils';
+
 
 interface LikedSongsFileUploaderProps {
   onClose: () => void;
@@ -35,7 +35,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
   const [addedSongsCount, setAddedSongsCount] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const { convertIndianSongToAppSong } = useMusicStore();
 
   const handleUploadClick = () => {
@@ -51,16 +51,16 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
       const parseChunk = (lines: string[], startIndex: number, chunkSize: number = 100): ParsedSong[] => {
         const songs: ParsedSong[] = [];
         const endIndex = Math.min(startIndex + chunkSize, lines.length);
-        
+
         for (let i = startIndex; i < endIndex; i++) {
           const line = lines[i];
           const columns = line.split(',').map(col => col.trim());
-          
+
           // Skip header line if it looks like a header
           if (i === 0 && (columns[0].toLowerCase() === 'title' || columns[0].toLowerCase() === 'song')) {
             continue;
           }
-          
+
           if (columns.length >= 2) {
             songs.push({
               title: columns[0] || 'Unknown Title',
@@ -72,28 +72,28 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
             });
           }
         }
-        
+
         return songs;
       };
 
       const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
       const allSongs: ParsedSong[] = [];
       let currentIndex = 0;
-      
+
       const processNextChunk = () => {
         if (currentIndex >= lines.length) {
           resolve(allSongs);
           return;
         }
-        
+
         const chunkSongs = parseChunk(lines, currentIndex);
         allSongs.push(...chunkSongs);
         currentIndex += 100;
-        
+
         // Use setTimeout to yield control back to the browser
         setTimeout(processNextChunk, 0);
       };
-      
+
       processNextChunk();
     });
   };
@@ -103,15 +103,15 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
       const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
       const songs: ParsedSong[] = [];
       let currentIndex = 0;
-      
+
       const processNextChunk = () => {
         const chunkSize = 100;
         const endIndex = Math.min(currentIndex + chunkSize, lines.length);
-        
+
         for (let i = currentIndex; i < endIndex; i++) {
           const line = lines[i];
           let columns;
-          
+
           if (line.includes(' - ')) {
             // Format: Artist - Title
             columns = line.split(' - ').map(part => part.trim());
@@ -151,9 +151,9 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
             });
           }
         }
-        
+
         currentIndex = endIndex;
-        
+
         if (currentIndex >= lines.length) {
           resolve(songs);
         } else {
@@ -161,7 +161,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
           setTimeout(processNextChunk, 0);
         }
       };
-      
+
       processNextChunk();
     });
   };
@@ -169,14 +169,14 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setIsUploading(true);
     setFileName(file.name);
-    
+
     try {
       const content = await file.text();
       let songs: ParsedSong[] = [];
-      
+
       if (file.name.toLowerCase().endsWith('.csv')) {
         songs = await parseCSV(content);
       } else if (file.name.toLowerCase().endsWith('.txt')) {
@@ -186,13 +186,13 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
         setIsUploading(false);
         return;
       }
-      
+
       if (songs.length === 0) {
         toast.error('No valid songs found in the file.');
         setIsUploading(false);
         return;
       }
-      
+
       setParsedSongs(songs);
       toast.success(`Found ${songs.length} songs in the file. Ready to add to liked songs.`);
     } catch (error) {
@@ -207,7 +207,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
   const searchForSongDetails = async (title: string, artist: string): Promise<any> => {
     try {
       const searchQuery = `${title} ${artist}`.trim();
-      
+
       // Use request manager for better caching and deduplication
       const response = await requestManager.request({
         url: '/api/jiosaavn/search/songs',
@@ -219,7 +219,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
         deduplicate: true,
         priority: 'normal'
       }) as any;
-      
+
       if (response && response.data && response.data.results && response.data.results.length > 0) {
         return response.data.results[0];
       }
@@ -233,39 +233,39 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
   // Optimized batch processing of songs
   const addSongsToLikedSongs = async () => {
     if (parsedSongs.length === 0) return;
-    
+
     setIsProcessing(true);
     setProgress(0);
     setAddedSongsCount(0);
     toast.dismiss();
-    
+
     const progressToastId = 'progress-toast';
     toast.loading('Processing songs...', {
       id: progressToastId,
     });
-    
+
     try {
       // Convert parsed songs to app songs with search
       const appSongs: Song[] = [];
       const updatedSongs = [...parsedSongs];
-      
+
       // Process songs in batches for better performance
       const batchSize = 5; // Smaller batches to prevent overwhelming
       for (let i = 0; i < updatedSongs.length; i += batchSize) {
         const batch = updatedSongs.slice(i, i + batchSize);
-        
+
         // Process batch in parallel
         const batchPromises = batch.map(async (song, batchIndex) => {
           const globalIndex = i + batchIndex;
-          
+
           try {
             // Update status to searching
             updatedSongs[globalIndex] = { ...song, status: 'searching', message: 'Searching for song...' };
             setParsedSongs([...updatedSongs]);
-            
+
             // Search for the song to get audio URL and other details
             const searchResult = await searchForSongDetails(song.title, song.artist);
-            
+
             // Create app song with found details or fallback to defaults
             const appSong: Song = convertIndianSongToAppSong({
               id: `liked-${Date.now()}-${globalIndex}`,
@@ -275,16 +275,16 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
               url: searchResult?.url || song.audioUrl || '',
               duration: searchResult?.duration || song.duration || '0'
             });
-            
+
             return { appSong, index: globalIndex, searchResult };
           } catch (error) {
             console.error('Error processing song:', error);
             return { appSong: null, index: globalIndex, error };
           }
         });
-        
+
         const batchResults = await Promise.all(batchPromises);
-        
+
         // Add valid songs to the app songs array
         batchResults.forEach(({ appSong, index, searchResult, error }) => {
           if (appSong && !error) {
@@ -304,27 +304,27 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
             };
           }
         });
-        
+
         // Update progress
         const currentProgress = Math.round(((i + batch.length) / updatedSongs.length) * 50); // 50% for processing
         setProgress(currentProgress);
-        toast.loading(`Processing ${i + batch.length}/${updatedSongs.length} songs...`, { 
-          id: progressToastId 
+        toast.loading(`Processing ${i + batch.length}/${updatedSongs.length} songs...`, {
+          id: progressToastId
         });
-        
+
         setParsedSongs([...updatedSongs]);
-        
+
         // Small delay between batches
         if (i + batchSize < updatedSongs.length) {
           await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
-      
+
       // Now batch add all songs to Firebase
       toast.loading('Adding songs to your library...', { id: progressToastId });
-      
+
       const result = await addMultipleLikedSongs(appSongs);
-      
+
       // Update final status
       let processedIndex = 0;
       updatedSongs.forEach((song, index) => {
@@ -339,14 +339,14 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
           processedIndex++;
         }
       });
-      
+
       setParsedSongs([...updatedSongs]);
       setProgress(100);
       setAddedSongsCount(result.added);
-      
+
       // Hide the progress toast
       toast.dismiss(progressToastId);
-      
+
       // Show completion status
       if (result.added > 0) {
         if (result.errors > 0 || result.skipped > 0) {
@@ -357,7 +357,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
       } else {
         toast.error(`Failed to add songs. Please try again.`);
       }
-      
+
     } catch (error) {
       console.error('Error in batch processing:', error);
       toast.dismiss(progressToastId);
@@ -374,7 +374,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
     setProgress(0);
     setAddedSongsCount(0);
     setIsComplete(false);
-    
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -387,10 +387,10 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
   };
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full flex flex-col space-y-4">
       {/* File upload area */}
       {!parsedSongs.length && !isUploading && (
-        <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+        <div className="h-full flex flex-col items-center justify-center">
           <input
             ref={fileInputRef}
             type="file"
@@ -398,33 +398,27 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
             onChange={handleFileChange}
             className="hidden"
           />
-          <div className="flex flex-col items-center justify-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-              <FileText className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Import Songs</h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-md">
-              Upload a file containing song titles and artists to add them to your liked songs.
-            </p>
-            <Button
-              onClick={handleUploadClick}
-              className="spotify-sync-button"
-              size="lg"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              <span>Select File</span>
-            </Button>
-            <div className="mt-6 p-4 bg-muted/30 rounded-lg max-w-md">
-              <p className="text-xs text-muted-foreground mb-2 font-medium">Supported formats:</p>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">CSV</Badge>
-                  <span>title,artist,duration,imageUrl,audioUrl</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">TXT</Badge>
-                  <span>Artist - Title or Title by Artist</span>
-                </div>
+
+          <div
+            onClick={handleUploadClick}
+            className="w-full max-w-xl group relative cursor-pointer"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+            <div className="relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-3xl p-12 text-center transition-all duration-300 group-hover:bg-card/80 group-hover:border-primary/50 group-hover:shadow-2xl hover:scale-[1.01]">
+              <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-primary/10 transition-colors duration-300">
+                <Upload className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors duration-300" />
+              </div>
+
+              <h3 className="text-2xl font-bold mb-3">Drop file or click to upload</h3>
+              <p className="text-muted-foreground max-w-sm mx-auto mb-8">
+                Support for .txt and .csv lists. We'll automatically match them with high-quality audio.
+              </p>
+
+              <div className="flex items-center justify-center gap-3">
+                <Badge variant="secondary" className="px-3 py-1">Artist - Title</Badge>
+                <Badge variant="secondary" className="px-3 py-1">CSV Export</Badge>
+                <Badge variant="secondary" className="px-3 py-1">Text List</Badge>
               </div>
             </div>
           </div>
@@ -440,7 +434,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
 
       {/* Parsed songs list */}
       {parsedSongs.length > 0 && !isProcessing && !isComplete && (
-        <div className="space-y-4">
+        <div className="space-y-4 flex flex-col h-full min-h-0">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg">
             <div>
@@ -457,10 +451,10 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
               Reset
             </Button>
           </div>
-          
+
           {/* Song list - Mobile optimized */}
-          <div className="border rounded-lg overflow-hidden">
-            <ScrollArea className="h-[50vh] max-h-[400px]">
+          <div className="border rounded-lg overflow-hidden flex-1 min-h-[300px]">
+            <ScrollArea className="h-full">
               <div className="divide-y divide-border">
                 {parsedSongs.map((song, index) => (
                   <div key={`${song.title}-${song.artist}-${index}`} className="flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors">
@@ -468,12 +462,12 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
                     <div className="w-6 text-xs text-muted-foreground text-center">
                       {index + 1}
                     </div>
-                    
+
                     {/* Placeholder album art */}
                     <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
                       <Music className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    
+
                     {/* Song info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm text-foreground truncate">
@@ -489,7 +483,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Duration and remove button */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {song.duration && (
@@ -512,7 +506,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
               </div>
             </ScrollArea>
           </div>
-          
+
           {/* Add button */}
           <div className="flex justify-center">
             <Button
@@ -542,11 +536,11 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
                 {addedSongsCount}/{parsedSongs.length} added
               </Badge>
             </div>
-            
+
             <Progress value={progress} className="h-2" />
-            
+
             {/* Song processing list */}
-            <ScrollArea className="h-[40vh] max-h-[300px] border rounded-lg">
+            <ScrollArea className="h-[300px] border rounded-lg">
               <div className="divide-y divide-border">
                 {parsedSongs.map((song, index) => (
                   <div
@@ -557,7 +551,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
                     <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
                       <Music className="h-3 w-3 text-muted-foreground" />
                     </div>
-                    
+
                     {/* Song info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm truncate">{song.title}</div>
@@ -570,7 +564,7 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Status icon */}
                     <div className="flex-shrink-0">
                       {song.status === 'added' && <CheckCircle className="h-4 w-4 text-green-500" />}

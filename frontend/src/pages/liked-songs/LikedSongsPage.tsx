@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Shuffle, Search, Plus, FileText, ListPlus, User, RefreshCw } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNavigate } from 'react-router-dom';
+import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Shuffle, Search, Plus, ListPlus, User, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { loadLikedSongs, removeLikedSong } from '@/services/likedSongsService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -12,8 +10,6 @@ import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { Song } from '@/types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { LikedSongsFileUploader } from '@/components/liked-songs/LikedSongsFileUploader';
-import { SpotifyLikedSongsSync } from '@/components/liked-songs/SpotifyLikedSongsSync';
 import { useSpotify } from '@/contexts/SpotifyContext';
 import './liked-songs.css';
 import {
@@ -269,7 +265,7 @@ const MemoizedSongItem = React.memo(({
   // Return true if props are equal (skip re-render), false if different (do re-render)
   const prevId = prevProps.song._id || (prevProps.song as any).id;
   const nextId = nextProps.song._id || (nextProps.song as any).id;
-  
+
   return (
     prevId === nextId &&
     prevProps.index === nextProps.index &&
@@ -285,13 +281,13 @@ const LikedSongsPage = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sortMethod, setSortMethod] = useState<'recent' | 'title' | 'artist'>('recent');
   const [filterQuery, setFilterQuery] = useState('');
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState<'upload' | 'spotify'>('upload');
+
+  const navigate = useNavigate();
 
   const { currentSong, isPlaying, togglePlay, playAlbum, setIsPlaying, setUserInteracted } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
   const { isAuthenticated: isSpotifyConnected, fetchSavedTracks } = useSpotify();
-  
+
   // Use the store instead of local state for liked songs
   const { likedSongs, loadLikedSongs: loadLikedSongsFromStore, removeLikedSong: removeLikedSongFromStore } = useLikedSongsStore();
 
@@ -377,16 +373,16 @@ const LikedSongsPage = () => {
   // Define isSongPlaying first since it's used by other functions
   const isSongPlaying = useCallback((song: Song) => {
     if (!isPlaying || !currentSong) return false;
-    
+
     // Get primary IDs for comparison - be more strict about ID matching
     const currentSongId = currentSong._id || (currentSong as any).id;
     const songId = song._id || (song as any).id;
-    
+
     // Only return true if we have valid IDs and they match exactly
     if (currentSongId && songId) {
       return currentSongId === songId;
     }
-    
+
     // If no IDs available, fall back to exact title and artist match
     // But be very strict to avoid false positives
     if (currentSong.title && song.title && currentSong.artist && song.artist) {
@@ -395,7 +391,7 @@ const LikedSongsPage = () => {
         currentSong.artist.trim().toLowerCase() === song.artist.trim().toLowerCase()
       );
     }
-    
+
     return false;
   }, [isPlaying, currentSong]);
 
@@ -491,9 +487,10 @@ const LikedSongsPage = () => {
       // For now, just show success message
       toast.success(`Found ${spotifyTracks.length} tracks from Spotify!`, { id: 'manual-sync' });
 
-      // Open the dialog to the Spotify tab for detailed sync
-      setActiveTab('spotify');
-      setShowAddDialog(true);
+      toast.success(`Found ${spotifyTracks.length} tracks from Spotify!`, { id: 'manual-sync' });
+
+      // Navigate to the sync page with spotify tab active
+      navigate('/liked-songs/sync');
 
     } catch (error) {
       console.error('Manual sync error:', error);
@@ -567,8 +564,7 @@ const LikedSongsPage = () => {
                 size="icon"
                 className="h-10 w-10 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
                 onClick={() => {
-                  setActiveTab('upload');
-                  setShowAddDialog(true);
+                  navigate('/liked-songs/sync');
                 }}
               >
                 <Plus className="h-5 w-5" />
@@ -660,8 +656,7 @@ const LikedSongsPage = () => {
                 size="icon"
                 className="h-12 w-12 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
                 onClick={() => {
-                  setActiveTab('upload');
-                  setShowAddDialog(true);
+                  navigate('/liked-songs/sync');
                 }}
               >
                 <Plus className="h-6 w-6" />
@@ -746,7 +741,7 @@ const LikedSongsPage = () => {
             {visibleSongs.map((song, index) => {
               // Create a unique key that handles edge cases
               const uniqueKey = song._id || (song as any).id || `${song.title}-${song.artist}-${index}`;
-              
+
               return (
                 <MemoizedSongItem
                   key={uniqueKey}
@@ -768,8 +763,7 @@ const LikedSongsPage = () => {
             <h3 className="text-xl font-semibold mb-2">No liked songs yet</h3>
             <p className="text-muted-foreground mb-6">Songs you like will appear here</p>
             <Button onClick={() => {
-              setActiveTab('upload');
-              setShowAddDialog(true);
+              navigate('/liked-songs/sync');
             }}>
               <Plus className="h-4 w-4 mr-2" />
               Add Songs
@@ -778,52 +772,7 @@ const LikedSongsPage = () => {
         )}
       </div>
 
-      {/* Add Songs Dialog - Mobile optimized */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className={cn(
-          "overflow-hidden",
-          isMobile
-            ? "max-w-[95vw] max-h-[85vh] w-full h-full rounded-t-xl rounded-b-none fixed bottom-0 left-0 right-0 top-auto transform-none"
-            : "max-w-4xl max-h-[80vh]"
-        )}>
-          <DialogHeader className={cn(isMobile ? "px-4 pt-4 pb-2" : "")}>
-            <DialogTitle className={cn(isMobile ? "text-lg" : "")}>Add Songs to Liked Songs</DialogTitle>
-            <DialogDescription className={cn(isMobile ? "text-sm" : "")}>
-              Upload a file or sync from Spotify to add songs to your liked songs
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-hidden">
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'upload' | 'spotify')} className="h-full flex flex-col">
-              <TabsList className={cn(
-                "grid w-full grid-cols-2",
-                isMobile ? "mx-4 mb-2" : ""
-              )}>
-                <TabsTrigger value="upload" className="flex items-center gap-1">
-                  <FileText className="h-4 w-4" />
-                  <span>Upload File</span>
-                </TabsTrigger>
-                <TabsTrigger value="spotify" className="flex items-center gap-1">
-                  <Music className="h-4 w-4" />
-                  <span>Spotify Sync</span>
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="upload" className="flex-1 overflow-auto">
-                <ScrollArea className={cn("h-full", isMobile ? "px-4" : "")}>
-                  <LikedSongsFileUploader onClose={() => setShowAddDialog(false)} />
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="spotify" className="flex-1 overflow-auto">
-                <ScrollArea className={cn("h-full", isMobile ? "px-4" : "")}>
-                  <SpotifyLikedSongsSync onClose={() => setShowAddDialog(false)} />
-                </ScrollArea>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Add Songs Dialog removed - replaced with /liked-songs/sync page */}
     </div>
   );
 };
