@@ -1,0 +1,1158 @@
+/* Import custom styles */
+@import './styles/spotify-sync.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 20 14.3% 4.1%;
+    --foreground: 0 0% 95%;
+    --card: 24 9.8% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 142.1 70.6% 45.3%;
+    --primary-foreground: 144.9 80.4% 10%;
+    --primary-rgb: 20, 184, 92;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 12 6.5% 15.1%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 85.7% 97.3%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 142.4 71.8% 29.2%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --radius: 0.5rem;
+    /* Prevent font size adjustments on orientation changes in iOS */
+    -webkit-text-size-adjust: 100%;
+    /* Improve font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full overflow-hidden m-0 p-0;
+    max-width: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
+    touch-action: manipulation; /* Prevents double-tap zoom */
+  }
+
+  /* Spotify-like main content area padding for mobile */
+  .overflow-auto.p-6 {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Spotify-like player styling */
+.slider-hover-effect [data-radix-slider-thumb] {
+  height: 12px;
+  width: 12px;
+  opacity: 1;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.slider-hover-effect [data-radix-slider-range] {
+  background-color: #1DB954;
+  height: 4px;
+}
+
+.slider-hover-effect [data-radix-slider-track] {
+  height: 4px;
+}
+
+/* Sidebar layout fixes */
+.h-full>div[data-panel] {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Error page styling */
+.error-page {
+  @apply flex flex-col items-center justify-center h-full bg-background text-foreground p-6 space-y-4;
+}
+
+.error-page h1 {
+  @apply text-2xl font-bold text-destructive mb-2;
+}
+
+.error-page p {
+  @apply text-center max-w-md mb-2;
+}
+
+.error-page .error-details {
+  @apply text-sm bg-muted p-3 rounded-md w-full max-w-lg overflow-auto text-muted-foreground;
+}
+
+.error-page button {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md mt-4 transition-colors duration-200;
+}
+
+/* PWA install prompt styling */
+.pwa-install-prompt {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding-bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
+  animation: slide-up 0.3s ease-out forwards;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Enhanced styles for Liked Songs page */
+@keyframes pull-indicator {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.group:active .group-hover\:hidden {
+  display: none;
+}
+
+.group:active .hidden.group-hover\:flex {
+  display: flex;
+}
+
+/* Improve scrolling experience on touch devices */
+@media (pointer: coarse) {
+  .h-\[calc\(100vh-5rem\)\] {
+    height: calc(100vh - 5rem - env(safe-area-inset-bottom, 0px));
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Apply subtle hover states on mobile */
+@media (hover: none) {
+  .hover\:bg-white\/5:hover {
+    background-color: transparent;
+  }
+
+  .hover\:bg-white\/5:active {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Better tap targets for mobile */
+@media (max-width: 640px) {
+  .grid-cols-\[16px_1fr_auto\] {
+    grid-template-columns: 20px 1fr auto;
+    gap: 12px;
+  }
+
+  .h-8.w-8 {
+    height: 36px;
+    width: 36px;
+  }
+
+  /* Fix content overflow on mobile */
+  main,
+  div {
+    max-width: 100vw;
+  }
+
+  /* Prevent double-tap zoom on interactive elements */
+  button, .cursor-pointer, [role="button"] {
+    touch-action: manipulation;
+  }
+}
+
+/* Utility classes */
+
+/* Smooth loading animations */
+@keyframes smooth-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes smooth-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Optimized splash screen fade animation */
+@keyframes splash-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Override Tailwind's fast animations with smooth ones */
+.animate-spin {
+  animation: smooth-spin 1s linear infinite;
+}
+
+.animate-pulse {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-fade-in {
+  animation: splash-fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Prevent flickering during state changes */
+.loading-smooth {
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Smooth spinner styles */
+.spinner-smooth {
+  border: 2px solid rgba(29, 185, 84, 0.2);
+  border-top: 2px solid #1DB954;
+  border-radius: 50%;
+  animation: smooth-spin 1s linear infinite;
+}
+
+/* Prevent layout shifts during loading */
+.loading-container {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Smooth transitions for state changes */
+.state-transition {
+  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+/* Prevent flickering during auth state changes */
+.auth-loading {
+  opacity: 0.8;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* YouTube-like skeleton loading */
+.skeleton-loading {
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.08) 25%, 
+    rgba(255, 255, 255, 0.15) 50%, 
+    rgba(255, 255, 255, 0.08) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* YouTube-style skeleton pulse animation */
+.skeleton-pulse {
+  animation: youtube-skeleton-pulse 2.5s ease-in-out infinite;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+@keyframes youtube-skeleton-pulse {
+  0% { 
+    opacity: 1; 
+  }
+  50% { 
+    opacity: 0.6; 
+  }
+  100% { 
+    opacity: 1; 
+  }
+}
+
+/* YouTube-style skeleton with shimmer effect */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: skeleton-wave 2.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Enhanced YouTube-like skeleton animations */
+.skeleton-youtube {
+  background: rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-youtube::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 20%,
+    rgba(255, 255, 255, 0.2) 60%,
+    transparent 100%
+  );
+  animation: youtube-shimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes youtube-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Staggered animation delays for multiple skeleton items */
+.skeleton-pulse:nth-child(1) { animation-delay: 0s; }
+.skeleton-pulse:nth-child(2) { animation-delay: 0.1s; }
+.skeleton-pulse:nth-child(3) { animation-delay: 0.2s; }
+.skeleton-pulse:nth-child(4) { animation-delay: 0.3s; }
+.skeleton-pulse:nth-child(5) { animation-delay: 0.4s; }
+.skeleton-pulse:nth-child(6) { animation-delay: 0.5s; }
+
+/* Smooth skeleton transitions */
+.skeleton-container {
+  animation: skeleton-fade-in 0.3s ease-out;
+}
+
+@keyframes skeleton-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+
+/* Album art styling */
+img.object-cover {
+  background-color: #333;
+}
+
+img.object-cover.bg-zinc-800 {
+  background-color: #27272a;
+}
+
+/* Audio player styling */
+.audio-player-button {
+  transition: transform 0.1s ease;
+}
+
+.audio-player-button:active {
+  transform: scale(0.95);
+}
+
+.audio-player-button.play-button:active {
+  transform: scale(0.9);
+}
+
+
+/* Mobile nav and player layout fixes */
+.fixed.bottom-0.z-30 {
+  bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile mini player styles */
+.player-active {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+/* Mini player play/pause button styles */
+.player-active button span.h-3.w-3 {
+  display: flex;
+  height: 8px;
+  width: 8px;
+}
+
+.player-active button span.h-0.w-0 {
+  display: none;
+}
+
+/* Ensure scrolling is smooth across devices */
+.pb-24 {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0rem));
+}
+
+/* Ensure content doesn't get hidden behind transparent nav */
+.h-screen {
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+}
+
+/* Transparent nav appearance improvements */
+.bg-black\/70 {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* Mobile scroll fixing */
+.mobile-scroll-fix {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+/* Fix for aspect ratio on smaller screens */
+@media (max-width: 768px) {
+  .aspect-square {
+    position: relative;
+    padding-bottom: 100%;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .aspect-square img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+/* Spotify-like gradients for different playlists */
+.spotify-liked-gradient {
+  background: linear-gradient(180deg, rgb(32, 65, 207) 0%, rgb(13, 23, 125) 40%, rgb(6, 16, 42) 70%, rgb(0, 0, 0) 100%);
+}
+
+/* New Spotify mobile liked songs header with proper gradient */
+.spotify-mobile-liked-header {
+  padding-top: 85px;
+  padding-bottom: 20px;
+  margin-bottom: 0;
+}
+
+.dark .spotify-mobile-liked-header {
+  background: linear-gradient(180deg, rgb(32, 65, 207) 0%, rgb(47, 73, 182) 40%, rgb(24, 32, 94) 70%, rgb(18, 18, 18) 100%);
+}
+
+.light .spotify-mobile-liked-header {
+  background: linear-gradient(180deg, rgb(200, 215, 255) 0%, rgb(230, 238, 255) 60%, rgb(255, 255, 255) 100%);
+}
+
+.spotify-mobile-liked-header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, var(--mask-end, rgba(0, 0, 0, 1)) 100%);
+  pointer-events: none;
+}
+
+.dark .spotify-mobile-liked-header::after {
+  --mask-end: rgba(0, 0, 0, 1);
+}
+
+.light .spotify-mobile-liked-header::after {
+  --mask-end: rgba(255, 255, 255, 1);
+}
+
+.spotify-playlist-header {
+  position: relative;
+  padding-top: 65px;
+  padding-bottom: 24px;
+}
+
+.spotify-playlist-header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 100%);
+  pointer-events: none;
+}
+
+/* Enhance mobile experience for Spotify-like pages */
+@media (max-width: 640px) {
+  .spotify-playlist-header {
+    padding-top: 85px;
+  }
+
+  .spotify-liked-song-row {
+    padding: 10px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+  }
+
+  .spotify-liked-song-row:active {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* removed liquid-glass visuals */
+
+
+
+/* Slider hover effect */
+.slider-hover-effect .bg-foreground {
+  height: 6px !important;
+  margin-top: -2px;
+}
+
+.slider-hover-effect .bg-foreground::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background-color: white;
+  border-radius: 50%;
+}
+
+/* Resizable panel styling */
+.resizable-handle {
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: background-color 0.2s;
+}
+
+.resizable-handle:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ===== PERFECT MODERN SCROLLBAR DESIGN ===== */
+
+/* Main Scrollbar - Modern & Elegant */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  margin: 2px;
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, 
+    rgba(255, 255, 255, 0.25) 0%, 
+    rgba(255, 255, 255, 0.15) 50%, 
+    rgba(255, 255, 255, 0.25) 100%
+  );
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, 
+    rgba(255, 255, 255, 0.4) 0%, 
+    rgba(255, 255, 255, 0.3) 50%, 
+    rgba(255, 255, 255, 0.4) 100%
+  );
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, 
+    rgba(255, 255, 255, 0.6) 0%, 
+    rgba(255, 255, 255, 0.5) 50%, 
+    rgba(255, 255, 255, 0.6) 100%
+  );
+  transform: scale(1.05);
+}
+
+::-webkit-scrollbar-corner {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+/* Firefox Modern Scrollbar */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.05);
+}
+
+/* Spotify-style Sidebar Scrollbar */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: all 0.2s ease;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.2);
+  box-shadow: 0 2px 6px rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* Thin Scrollbar for Cards & Small Areas */
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.thin-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 3px;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.3);
+}
+
+/* Premium Scrollbar with Spotify Green Glow */
+.premium-scroll::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+.premium-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 7px;
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+}
+
+.premium-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, 
+    #1DB954 0%, 
+    #1ed760 50%, 
+    #1DB954 100%
+  );
+  border-radius: 7px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 
+    0 0 10px rgba(29, 185, 84, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.premium-scroll::-webkit-scrollbar-thumb:hover {
+  box-shadow: 
+    0 0 15px rgba(29, 185, 84, 0.5),
+    0 0 25px rgba(29, 185, 84, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.premium-scroll::-webkit-scrollbar-thumb:active {
+  box-shadow: 
+    0 0 20px rgba(29, 185, 84, 0.7),
+    0 0 30px rgba(29, 185, 84, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Invisible Scrollbar (for special cases) */
+.invisible-scroll::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+
+.invisible-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Hidden Scrollbar for Sliders */
+.hidden-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.hidden-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Horizontal Scrollbar Styling */
+.horizontal-scroll::-webkit-scrollbar:horizontal {
+  height: 8px;
+}
+
+.horizontal-scroll::-webkit-scrollbar-track:horizontal {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.horizontal-scroll::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.25) 0%, 
+    rgba(255, 255, 255, 0.15) 50%, 
+    rgba(255, 255, 255, 0.25) 100%
+  );
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.horizontal-scroll::-webkit-scrollbar-thumb:horizontal:hover {
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.4) 0%, 
+    rgba(255, 255, 255, 0.3) 50%, 
+    rgba(255, 255, 255, 0.4) 100%
+  );
+}
+
+/* Dark Theme Scrollbar Adjustments */
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, 
+    rgba(255, 255, 255, 0.25) 0%, 
+    rgba(255, 255, 255, 0.15) 50%, 
+    rgba(255, 255, 255, 0.25) 100%
+  );
+}
+
+/* Light Theme Scrollbar Adjustments */
+.light ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, 
+    rgba(0, 0, 0, 0.25) 0%, 
+    rgba(0, 0, 0, 0.15) 50%, 
+    rgba(0, 0, 0, 0.25) 100%
+  );
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, 
+    rgba(0, 0, 0, 0.4) 0%, 
+    rgba(0, 0, 0, 0.3) 50%, 
+    rgba(0, 0, 0, 0.4) 100%
+  );
+}
+
+/* Smooth Scrolling Behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Custom Scrollbar Animation */
+@keyframes scrollbar-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(29, 185, 84, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(29, 185, 84, 0.6);
+  }
+}
+
+.animated-scroll::-webkit-scrollbar-thumb {
+  animation: scrollbar-glow 3s ease-in-out infinite;
+}
+/* ===== MOBILE LIKED SONGS PAGE OPTIMIZATIONS ===== */
+
+/* Mobile Liked Songs Header */
+@media (max-width: 768px) {
+  .liked-songs-mobile-header {
+    background: linear-gradient(180deg, 
+      rgba(147, 51, 234, 0.8) 0%, 
+      rgba(126, 34, 206, 0.6) 40%, 
+      rgba(88, 28, 135, 0.4) 70%, 
+      rgba(0, 0, 0, 0.9) 100%
+    );
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Mobile song item optimizations */
+  .mobile-song-item {
+    padding: 12px 16px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+  }
+
+  .mobile-song-item:active {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: scale(0.98);
+  }
+
+  /* Mobile song image */
+  .mobile-song-image {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Mobile song text */
+  .mobile-song-title {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.2;
+    margin-bottom: 2px;
+  }
+
+  .mobile-song-artist {
+    font-size: 14px;
+    opacity: 0.7;
+    line-height: 1.2;
+  }
+
+  .mobile-song-album {
+    font-size: 12px;
+    opacity: 0.5;
+    line-height: 1.2;
+    margin-top: 2px;
+  }
+
+  /* Mobile controls */
+  .mobile-controls {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .mobile-play-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #1DB954;
+    box-shadow: 0 4px 12px rgba(29, 185, 84, 0.4);
+  }
+
+  .mobile-play-button:hover {
+    background: #1ed760;
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(29, 185, 84, 0.5);
+  }
+
+  .mobile-control-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+  }
+
+  .mobile-control-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  /* Mobile search */
+  .mobile-search {
+    margin: 0 16px 12px 16px;
+  }
+
+  .mobile-search input {
+    height: 40px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 14px;
+  }
+
+  .mobile-search input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  /* Mobile dropdown menu */
+  .mobile-dropdown {
+    background: rgba(40, 40, 40, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Mobile spacing */
+  .mobile-content {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Mobile header compact */
+  .mobile-header-compact {
+    padding: 48px 16px 24px 16px;
+  }
+
+  .mobile-title-compact {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 4px;
+  }
+
+  .mobile-subtitle-compact {
+    font-size: 12px;
+    opacity: 0.7;
+    line-height: 1.2;
+  }
+
+  /* Mobile heart icon */
+  .mobile-heart-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #9333ea 0%, #7c3aed 50%, #6b21a8 100%);
+    box-shadow: 0 4px 16px rgba(147, 51, 234, 0.4);
+  }
+
+}
+
+/* Spotify-like mobile animations */
+@media (max-width: 768px) {
+  .mobile-song-item {
+    animation: mobile-fade-in 0.3s ease-out;
+    animation-fill-mode: backwards;
+  }
+
+  .mobile-song-item:nth-child(1) { animation-delay: 0.05s; }
+  .mobile-song-item:nth-child(2) { animation-delay: 0.1s; }
+  .mobile-song-item:nth-child(3) { animation-delay: 0.15s; }
+  .mobile-song-item:nth-child(4) { animation-delay: 0.2s; }
+  .mobile-song-item:nth-child(5) { animation-delay: 0.25s; }
+}
+
+@keyframes mobile-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile touch improvements */
+@media (max-width: 768px) {
+  .mobile-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .mobile-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mobile-ripple::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+  }
+
+  .mobile-ripple:active::after {
+    width: 100px;
+    height: 100px;
+  }
+}
+/* Netflix/Spotify-style horizontal scroll enhancements */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Enhanced horizontal scroll functionality */
+.horizontal-scroll-container {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Prevent text selection during drag */
+.horizontal-scroll-container.dragging {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Smooth cursor transitions */
+.horizontal-scroll-container {
+  transition: cursor 0.1s ease;
+}
+
+/* Better mobile touch scrolling */
+@media (hover: none) and (pointer: coarse) {
+  .horizontal-scroll-container {
+    cursor: default !important;
+  }
+}
+
+/* Ensure scroll items don't cause overflow */
+.horizontal-scroll-container > * {
+  flex-shrink: 0;
+}
+
+/* Better mobile touch scrolling */
+@media (max-width: 768px) {
+  .horizontal-scroll-container {
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+  }
+  
+  .scroll-snap-item {
+    scroll-snap-align: start;
+  }
+}
+
+/* Prevent horizontal overflow on the main container */
+.main-content-container {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Smooth scroll snap for better UX */
+.scroll-snap-x {
+  scroll-snap-type: x mandatory;
+}
+
+.scroll-snap-item {
+  scroll-snap-align: start;
+}
+
+/* Hover effects for scroll arrows */
+.scroll-arrow {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Prevent text selection during scroll */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}

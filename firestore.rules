@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update, delete: if isOwner(userId);
+      
+      // Liked Songs subcollection - each user has their own collection
+      match /likedSongs/{songId} {
+        allow read, write, delete: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // Spotify Sync metadata subcollection
+      match /spotifySync/{docId} {
+        allow read, write, delete: if isAuthenticated() && isOwner(userId);
+      }
+    }
+    
+    // Songs collection
+    match /songs/{songId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy.id);
+    }
+    
+    // Albums collection
+    match /albums/{albumId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy.id);
+    }
+    
+    // Playlists collection
+    match /playlists/{playlistId} {
+      // Allow read if authenticated and (playlist is public OR user is owner)
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.createdBy.id);
+    }
+  }
+} 

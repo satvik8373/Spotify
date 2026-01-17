@@ -1,0 +1,450 @@
+/* Theme CSS Variables */
+@layer base {
+  :root {
+    --background: 0 0% 70%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 142.1 76.2% 36.3%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    /* Spotify exact colors */
+    /* Main background: #121212 */
+    --background: 0 0% 7.1%;
+    --foreground: 0 0% 100%;
+
+    /* Cards/elevated surfaces: #181818 */
+    --card: 0 0% 9.4%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 9.4%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Spotify Green #1DB954 ~ hsl(141 73% 42%) */
+    --primary: 141 73% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary/muted surfaces: #181818 */
+    --secondary: 0 0% 9.4%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 9.4%;
+    /* Secondary text: #B3B3B3 */
+    --muted-foreground: 0 0% 70%;
+
+    /* Accent uses Spotify Green */
+    --accent: 141 73% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive */
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    /* Border: #282828 */
+    --border: 0 0% 15.7%;
+    --input: 0 0% 15.7%;
+
+    /* Focus ring follows primary */
+    --ring: 141 73% 42%;
+
+    /* Charts */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+/* Mobile nav player color transitions */
+.mobile-nav-glass {
+  transition: background-color 0.5s ease-in-out;
+}
+
+.mobile-player-glass {
+  transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
+}
+
+.mobile-player-glass * {
+  transition: color 0.5s ease-in-out, background-color 0.5s ease-in-out, opacity 0.5s ease-in-out;
+}
+
+/* Marquee animations for long text */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(var(--scroll-distance, -100%));
+  }
+}
+
+.animate-marquee {
+  animation: marquee 10s linear infinite;
+  /* Control timing in component via style prop instead */
+  animation: none;
+}
+
+/* Auto scroll for text that's too long */
+.text-auto-scroll {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+.text-auto-scroll-inner {
+  white-space: nowrap;
+  transition: transform 0.5s ease-out;
+  will-change: transform;
+  display: inline-block;
+  padding-right: 1rem;
+  /* Add some space after text */
+}
+
+/* Improved scrolling animation like Spotify */
+.text-auto-scroll-inner.scrolling {
+  animation: enhanced-spotify-scroll 12s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+  animation-delay: 1s;
+}
+
+/* Make scrolling activate on hover for desktop */
+@media (hover: hover) {
+  .text-auto-scroll:hover .text-auto-scroll-inner.hover\:scrolling {
+    animation: enhanced-spotify-scroll 12s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+    animation-delay: 0.5s;
+  }
+}
+
+/* New Spotify-like scrolling animation with pause at beginning and end */
+@keyframes spotify-scroll {
+
+  0%,
+  5% {
+    transform: translateX(0);
+  }
+
+  45% {
+    transform: translateX(var(--max-scroll, -100%));
+  }
+
+  55% {
+    transform: translateX(var(--max-scroll, -100%));
+  }
+
+  95%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Enhance marquee animation with better timing */
+@keyframes enhanced-spotify-scroll {
+
+  0%,
+  10% {
+    transform: translateX(0);
+  }
+
+  40%,
+  60% {
+    transform: translateX(var(--max-scroll, -100%));
+  }
+
+  90%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Removed liquid glass button styles */
+
+/* Mobile Nav Animation */
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px 0 rgba(74, 222, 128, 0.4);
+    transform: scale(1);
+  }
+
+  50% {
+    box-shadow: 0 0 8px 2px rgba(74, 222, 128, 0.6);
+    transform: scale(1.05);
+  }
+}
+
+.nav-icon-active {
+  animation: pulse-glow 2s infinite;
+  transition: all 0.3s ease;
+}
+
+/* Mini Player Glass Effect */
+.mobile-nav-glass:not([style*="--album-primary"]) {
+  background-color: rgba(24, 24, 27, 0.85);
+}
+
+/* Liquid Glass Buttons */
+.liquid-glass-button {
+  transition: all 0.3s ease;
+}
+
+.liquid-glass-button:active {
+  transform: scale(0.94);
+}
+
+/* Liquid Glass Album Art */
+.liquid-glass-album {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.liquid-glass-album:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Song title container in player */
+.song-title-container {
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Audio player song title styling */
+.song-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* Single line marquee for song details */
+.single-line-marquee {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Mask effect for the marquee */
+.has-mask {
+  position: relative;
+}
+
+.marquee-mask-left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.5), transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.marquee-mask-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.5), transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Only apply marquee when title overflows */
+.song-title.overflow {
+  animation: enhanced-spotify-scroll 12s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+  animation-delay: 1s;
+  display: inline-block;
+}
+
+/* Theme-specific styles for Spotify app */
+.dark .playback-controls-glass {
+  background: rgba(24, 24, 27, 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.light .playback-controls-glass {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Dynamic album color support for playback controls */
+.playback-controls-glass[style*="--album-primary"] {
+  background: rgba(var(--album-primary-rgb, 24, 24, 27), 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Smooth theme transitions */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Prevent horizontal overflow globally */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Smooth scrolling for all scroll containers */
+.scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Enhanced scrollbar hiding */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Prevent content from causing horizontal scroll */
+.overflow-x-hidden {
+  overflow-x: hidden !important;
+}
+
+/* Smooth gradient transitions */
+.gradient-transition {
+  transition: background 1500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Card hover effects */
+.card-hover-effect {
+  transition: all 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Mobile scroll fix */
+.mobile-scroll-fix {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Ensure no horizontal overflow on any element */
+* {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Fix for grid layouts to prevent overflow */
+.grid {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Ensure flex containers don't overflow */
+.flex {
+  min-width: 0;
+}
+
+/* Prevent text from causing overflow */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Smooth scrolling for main content */
+.main-content-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Spotify-style gradient flow */
+.spotify-gradient-flow {
+  background: linear-gradient(180deg, 
+    var(--gradient-color, #1ed760) 0%, 
+    color-mix(in srgb, var(--gradient-color, #1ed760) 85%, transparent) 10%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 70%, transparent) 20%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 55%, transparent) 30%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 40%, transparent) 40%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 25%, transparent) 50%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 15%, transparent) 60%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 8%, transparent) 70%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 4%, transparent) 80%,
+    color-mix(in srgb, var(--gradient-color, #1ed760) 2%, transparent) 90%,
+    transparent 100%
+  );
+  transition: background 1200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Enhanced card hover with better gradient integration */
+.recently-played-card {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 600ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.recently-played-card:hover {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Spotify-style gradient with subtle noise texture */
+.spotify-gradient-bg {
+  position: relative;
+}
+
+.spotify-gradient-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.01) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.015) 0%, transparent 50%);
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Smooth color transitions for dynamic backgrounds */
+.dynamic-bg-transition {
+  transition: background 1000ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: background;
+}
+
+/* Improved text contrast on gradient backgrounds */
+.gradient-text-shadow {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}

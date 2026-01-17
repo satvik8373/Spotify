@@ -1,0 +1,127 @@
+/* Custom Utility Classes */
+
+.pt-3 {
+  padding-top: 1.0rem;
+}
+
+.w-6 {
+  width: 2.5rem;
+}
+
+.h-6 {
+  height: 2.5rem;
+}
+
+.h-16 {
+    height: 4.5rem;
+}
+
+/* Additional utility classes for consistent spacing */
+.pb-6 {
+  padding-bottom: 1.5rem;
+}
+
+.max-w-full {
+  max-width: 100%;
+}
+
+.overflow-x-hidden {
+  overflow-x: hidden;
+}
+
+.px-\[6px\] {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* iOS Safe Area Support */
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 8px);
+}
+
+.pl-safe {
+  padding-left: max(env(safe-area-inset-left, 0px), 8px);
+}
+
+.pr-safe {
+  padding-right: max(env(safe-area-inset-right, 0px), 8px);
+}
+
+/* iOS Home Indicator Spacing */
+.ios-home-indicator {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+}
+
+/* Bottom Navigation Safe Area */
+.bottom-nav-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+
+/* PWA Background Colors - Match Homepage Exactly */
+.pwa-bg-light {
+  background-color: hsl(0 0% 100%); /* --background: 0 0% 100% */
+}
+
+.pwa-bg-dark {
+  background-color: hsl(20 14.3% 4.1%); /* --background: 20 14.3% 4.1% */
+}
+
+/* PWA Status Bar Colors */
+.pwa-status-light {
+  background-color: #ffffff;
+}
+
+.pwa-status-dark {
+  background-color: #191414;
+}
+
+/* Ensure PWA background matches homepage gradient */
+.pwa-homepage-match {
+  background: linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background) / 0.95));
+}
+
+.pwa-homepage-match.dark {
+  background: linear-gradient(to bottom, #191414, #191414);
+}
+
+/* Audio Player Title Color Utilities - Perfect Visibility */
+.audio-title-light {
+  color: #000000 !important;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.audio-title-dark {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.audio-title-adaptive {
+  /* Automatically adapts based on background brightness */
+  color: var(--audio-title-color, #ffffff);
+  text-shadow: var(--audio-title-shadow, 0 1px 2px rgba(0, 0, 0, 0.8));
+}
+
+/* Enhanced title visibility for different backgrounds */
+.audio-title-high-contrast {
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.audio-title-with-outline {
+  text-shadow: 
+    -1px -1px 0 rgba(0, 0, 0, 0.8),
+    1px -1px 0 rgba(0, 0, 0, 0.8),
+    -1px 1px 0 rgba(0, 0, 0, 0.8),
+    1px 1px 0 rgba(0, 0, 0, 0.8);
+}
+
+.audio-title-with-outline.light {
+  text-shadow: 
+    -1px -1px 0 rgba(255, 255, 255, 0.8),
+    1px -1px 0 rgba(255, 255, 255, 0.8),
+    -1px 1px 0 rgba(255, 255, 255, 0.8),
+    1px 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+

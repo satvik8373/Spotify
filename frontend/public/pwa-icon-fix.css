@@ -1,0 +1,123 @@
+/* PWA Icon Styling - Small Padding for Better Display */
+
+/* Style for the PWA icon when added to home screen */
+@media (display-mode: standalone) {
+  /* Add small padding around icons for better visual appearance */
+  link[rel="icon"],
+  link[rel="apple-touch-icon"] {
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    -webkit-mask-size: auto !important;
+    mask-size: auto !important;
+    -webkit-mask-repeat: initial !important;
+    mask-repeat: initial !important;
+    -webkit-mask-position: initial !important;
+    mask-position: initial !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+  
+  /* Fix for home screen icons - Small padding */
+  [class*="home-screen-icon"],
+  [class*="homescreen-icon"] {
+    border-radius: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    background-size: 85% !important; /* Add small padding by reducing size to 85% */
+    background-position: center !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+}
+
+/* Specific iOS fixes - Small Padding */
+@media (display-mode: standalone) and (-webkit-device-pixel-ratio: 2) {
+  /* High DPI iOS devices */
+  link[rel="apple-touch-icon"] {
+    background-color: transparent !important;
+    border-radius: 0 !important;
+    -webkit-mask-size: auto !important;
+    mask-size: auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+  
+  /* iOS home screen icon - Small padding */
+  [class*="apple-touch-icon"] {
+    background-size: 85% !important; /* Add small padding by reducing size to 85% */
+    border-radius: 0 !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+  
+  /* iOS specific icon fixes */
+  [class*="ios-icon"],
+  [class*="iphone-icon"],
+  [class*="ipad-icon"] {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    background-size: 85% !important; /* Add small padding */
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+}
+
+/* Android maskable icon improvements - Small Padding */
+@media (display-mode: standalone) and (-webkit-min-device-pixel-ratio: 1) {
+  /* Android devices */
+  link[rel="manifest"] + meta {
+    /* Ensure theme color is properly set */
+    content: "#1DB954" !important;
+  }
+
+  /* Fix Android icon corners - Small padding */
+  .app-icon {
+    border-radius: 0 !important;
+    background-size: 85% !important; /* Add small padding by reducing size to 85% */
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+}
+
+/* Additional small padding fixes */
+*[class*="icon"],
+*[class*="logo"],
+*[class*="app-icon"] {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background-size: 85% !important; /* Add small padding by reducing size to 85% */
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific */
+  link[rel="apple-touch-icon"],
+  [class*="apple-touch-icon"] {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    background-size: 85% !important; /* Add small padding */
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+} 

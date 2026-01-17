@@ -1,0 +1,10 @@
+node_modules/
+.next/
+dist/
+
+.vercel
+
+# Environment Files
+.env
+.env.*
+mavrixfy_flutter/
