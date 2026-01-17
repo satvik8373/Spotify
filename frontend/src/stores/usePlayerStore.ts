@@ -78,9 +78,15 @@ export const usePlayerStore = create<PlayerState>()(
       skipRestoreUntilTs: 0,
 
       setCurrentSong: (song) => {
+<<<<<<< HEAD
         // Filter out blob URLs from old download system
         if (song.audioUrl && song.audioUrl.startsWith('blob:')) {
           console.warn('Skipping song with blob URL from old download system:', song.title);
+=======
+        // Only skip songs with invalid blob URLs, not all blob URLs
+        if (song.audioUrl && song.audioUrl.startsWith('blob:') && !song.audioUrl.includes('blob:http')) {
+          console.warn('Skipping song with invalid blob URL:', song.title);
+>>>>>>> 563e72b99457c6add84a7c5c77100ecf29a18dc2
           return;
         }
 
@@ -128,8 +134,17 @@ export const usePlayerStore = create<PlayerState>()(
       playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
 
+<<<<<<< HEAD
         // Filter out songs with blob URLs from old download system
         const validSongs = songs.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
+=======
+        // Filter out songs with invalid blob URLs, not all blob URLs
+        const validSongs = songs.filter(song => 
+          !song.audioUrl || 
+          !song.audioUrl.startsWith('blob:') || 
+          song.audioUrl.includes('blob:http')
+        );
+>>>>>>> 563e72b99457c6add84a7c5c77100ecf29a18dc2
 
         if (validSongs.length === 0) {
           console.warn('No valid songs to play (all had blob URLs)');
@@ -483,14 +498,30 @@ setTimeout(() => {
   // Auto-restore interrupted playback state from before refresh
   const store = usePlayerStore.getState();
 
+<<<<<<< HEAD
   // Clean up any blob URLs from the current song and queue
   if (store.currentSong && store.currentSong.audioUrl && store.currentSong.audioUrl.startsWith('blob:')) {
     console.log('Cleaning up blob URL from current song');
+=======
+  // Clean up any invalid blob URLs from the current song and queue
+  if (store.currentSong && store.currentSong.audioUrl && 
+      store.currentSong.audioUrl.startsWith('blob:') && 
+      !store.currentSong.audioUrl.includes('blob:http')) {
+    console.log('Cleaning up invalid blob URL from current song');
+>>>>>>> 563e72b99457c6add84a7c5c77100ecf29a18dc2
     store.setCurrentSong({ ...store.currentSong, audioUrl: '' });
   }
 
   if (store.queue.length > 0) {
+<<<<<<< HEAD
     const cleanQueue = store.queue.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
+=======
+    const cleanQueue = store.queue.filter(song => 
+      !song.audioUrl || 
+      !song.audioUrl.startsWith('blob:') || 
+      song.audioUrl.includes('blob:http')
+    );
+>>>>>>> 563e72b99457c6add84a7c5c77100ecf29a18dc2
     if (cleanQueue.length !== store.queue.length) {
       console.log('Cleaned up blob URLs from queue');
       usePlayerStore.setState({ queue: cleanQueue });

@@ -379,6 +379,7 @@ export const PlaybackControls = () => {
 					</div>
 				</div>
 			</footer>
+<<<<<<< HEAD
 
 			{/* Mobile Player */}
 			<div
@@ -475,6 +476,8 @@ export const PlaybackControls = () => {
 					/>
 				</div>
 			</div>
+=======
+>>>>>>> 563e72b99457c6add84a7c5c77100ecf29a18dc2
 		</>
 	);
 };
