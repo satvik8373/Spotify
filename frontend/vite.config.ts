@@ -59,57 +59,15 @@ export default defineConfig(({ mode }) => {
 								},
 							},
 						},
-						// Audio files - NetworkFirst with timeout for better reliability
+						// Audio files - NetworkOnly (no caching for iOS compatibility)
 						{
 							urlPattern: /\.(mp3|mp4|m4a|aac|ogg|wav|flac)$/i,
-							handler: 'NetworkFirst',
-							options: {
-								cacheName: 'audio-files',
-								networkTimeoutSeconds: 30,
-								expiration: {
-									maxEntries: 10,
-									maxAgeSeconds: 60 * 60 * 2, // 2 hours
-								},
-							},
+							handler: 'NetworkOnly',
 						},
-						// JioSaavn CDN - NetworkFirst with timeout
+						// JioSaavn CDN - NetworkOnly for audio
 						{
 							urlPattern: /^https:\/\/aac\.saavncdn\.com\/.*/i,
-							handler: 'NetworkFirst',
-							options: {
-								cacheName: 'jiosaavn-audio',
-								networkTimeoutSeconds: 30,
-								expiration: {
-									maxEntries: 20,
-									maxAgeSeconds: 60 * 60 * 2, // 2 hours
-								},
-							},
-						},
-						// Audio proxy routes - NetworkFirst with timeout
-						{
-							urlPattern: /\/api\/audio-proxy\?url=.*/i,
-							handler: 'NetworkFirst',
-							options: {
-								cacheName: 'audio-proxy',
-								networkTimeoutSeconds: 30,
-								expiration: {
-									maxEntries: 10,
-									maxAgeSeconds: 60 * 60 * 1, // 1 hour
-								},
-							},
-						},
-						// Handle HTTP to HTTPS redirects for audio
-						{
-							urlPattern: /^http:\/\/.*\.(mp3|mp4|m4a|aac|ogg|wav|flac)$/i,
-							handler: 'NetworkFirst',
-							options: {
-								cacheName: 'audio-redirects',
-								networkTimeoutSeconds: 30,
-								expiration: {
-									maxEntries: 5,
-									maxAgeSeconds: 60 * 60 * 1, // 1 hour
-								},
-							},
+							handler: 'NetworkOnly',
 						},
 					],
 				},

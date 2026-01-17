@@ -35,26 +35,12 @@ class AudioFocusManager {
     async initialize(callbacks: AudioFocusCallbacks): Promise<void> {
         this.callbacks = callbacks;
 
-        // Set up event listeners first (they don't require AudioContext)
-        this.setupEventListeners();
-
-        // AudioContext will be created lazily when first needed after user interaction
-    }
-
-    /**
-     * Create AudioContext lazily after user interaction
-     */
-    private async createAudioContextIfNeeded(): Promise<void> {
-        if (this.audioContext) return;
-
+        // Create or resume AudioContext for focus detection
         try {
-            // @ts-ignore - AudioContext may need webkit prefix
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            this.audioContext = new AudioContextClass();
-
-            // Set up state change listener
-            if (this.audioContextStateChangeHandler) {
-                this.audioContext.addEventListener('statechange', this.audioContextStateChangeHandler);
+            if (!this.audioContext) {
+                // @ts-ignore - AudioContext may need webkit prefix
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                this.audioContext = new AudioContextClass();
             }
 
             // Resume if suspended
@@ -62,9 +48,9 @@ class AudioFocusManager {
                 await this.audioContext.resume();
             }
 
-            this.currentState = this.audioContext.state as AudioContextState;
+            this.setupEventListeners();
         } catch (error) {
-            console.warn('AudioContext creation failed:', error);
+            console.warn('AudioContext initialization failed:', error);
         }
     }
 
@@ -72,6 +58,8 @@ class AudioFocusManager {
      * Set up all event listeners for interruption detection
      */
     private setupEventListeners(): void {
+        if (!this.audioContext) return;
+
         // AudioContext state change - primary interruption detection
         this.audioContextStateChangeHandler = () => {
             if (!this.audioContext) return;
@@ -89,7 +77,7 @@ class AudioFocusManager {
             this.currentState = newState as AudioContextState;
         };
 
-        // Note: AudioContext event listener will be added when context is created
+        this.audioContext.addEventListener('statechange', this.audioContextStateChangeHandler);
 
         // Visibility change - detect app backgrounding
         this.visibilityChangeHandler = () => {
@@ -241,9 +229,6 @@ class AudioFocusManager {
      * Request audio focus (call before playing audio)
      */
     async requestAudioFocus(): Promise<boolean> {
-        // Create AudioContext lazily when first needed
-        await this.createAudioContextIfNeeded();
-
         if (!this.audioContext) {
             return false;
         }

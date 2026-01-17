@@ -31,6 +31,7 @@ const JioSaavnCategoriesPage = lazy(() => import('./pages/jiosaavn/JioSaavnCateg
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 //
+const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
 // DON'T lazy load auth pages to prevent flickering
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -39,8 +40,6 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
 import { SpotifyProvider } from './contexts/SpotifyContext';
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
 
 
 
@@ -184,7 +183,10 @@ const router = createBrowserRouter(
 					path: '/jiosaavn/categories',
 					element: <AuthGate><JioSaavnCategoriesPage /></AuthGate>
 				},
-				
+				{
+					path: '/debug/api',
+					element: <ApiDebugPage />
+				},
 				{
 					path: '/privacy',
 					element: <PrivacyPolicy />

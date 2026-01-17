@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Song } from '@/types';
-import { ensureHttps, warnInsecureUrl } from '@/utils/urlUtils';
 
 export type Queue = Song[];
 
@@ -85,22 +84,19 @@ export const usePlayerStore = create<PlayerState>()(
           return;
         }
 
-        // Validate and convert URLs to HTTPS for production
-        const validatedSong = {
-          ...song,
-          audioUrl: song.audioUrl ? (() => {
-            warnInsecureUrl(song.audioUrl, 'Player audio URL');
-            return ensureHttps(song.audioUrl);
-          })() : song.audioUrl,
-          imageUrl: song.imageUrl ? (() => {
-            warnInsecureUrl(song.imageUrl, 'Player image URL');
-            return ensureHttps(song.imageUrl);
-          })() : song.imageUrl
-        };
+        // Get the current audio element and stop it immediately
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+          // Clear the src to stop any ongoing loading/playback
+          audio.src = '';
+          audio.load();
+        }
 
         // Immediately reset current time when switching songs
         set({
-          currentSong: validatedSong,
+          currentSong: song,
           currentTime: 0 // Reset time immediately for new song
         });
       },
@@ -132,24 +128,12 @@ export const usePlayerStore = create<PlayerState>()(
       playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
 
-        // Filter out songs with invalid blob URLs and convert URLs to HTTPS
-        const validSongs = songs
-          .filter(song =>
-            !song.audioUrl ||
-            !song.audioUrl.startsWith('blob:') ||
-            song.audioUrl.includes('blob:http')
-          )
-          .map(song => ({
-            ...song,
-            audioUrl: song.audioUrl ? (() => {
-              warnInsecureUrl(song.audioUrl, 'Queue audio URL');
-              return ensureHttps(song.audioUrl);
-            })() : song.audioUrl,
-            imageUrl: song.imageUrl ? (() => {
-              warnInsecureUrl(song.imageUrl, 'Queue image URL');
-              return ensureHttps(song.imageUrl);
-            })() : song.imageUrl
-          }));
+        // Filter out songs with invalid blob URLs, not all blob URLs
+        const validSongs = songs.filter(song => 
+          !song.audioUrl || 
+          !song.audioUrl.startsWith('blob:') || 
+          song.audioUrl.includes('blob:http')
+        );
 
         if (validSongs.length === 0) {
           console.warn('No valid songs to play (all had blob URLs)');
@@ -158,6 +142,16 @@ export const usePlayerStore = create<PlayerState>()(
 
         // Adjust initial index if songs were filtered out
         const validIndex = Math.max(0, Math.min(initialIndex, validSongs.length - 1));
+
+        // Immediately stop current audio and reset time
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+          // Clear the src to completely stop the previous song
+          audio.src = '';
+          audio.load();
+        }
 
         // Set player state
         set({
@@ -182,7 +176,7 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       playNext: () => {
-        const { queue, currentIndex, isShuffled } = get();
+        const { queue, currentIndex, isShuffled, isRepeating } = get();
 
         if (queue.length === 0) return;
 
@@ -190,6 +184,27 @@ export const usePlayerStore = create<PlayerState>()(
         const now = Date.now();
         const lastPlayNext = get().lastPlayNextTime || 0;
         if (now - lastPlayNext < 500) { // 500ms cooldown
+          return;
+        }
+
+        // Immediately stop current audio and reset time
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+          // Clear the src to completely stop the previous song
+          audio.src = '';
+          audio.load();
+        }
+
+        // First check if we should repeat the current song
+        if (isRepeating) {
+          // Just restart the current song
+          if (audio) {
+            audio.currentTime = 0;
+            audio.dataset.ending = 'false'; // Reset ending flag
+            audio.play().catch(() => { });
+          }
           return;
         }
 
@@ -221,6 +236,121 @@ export const usePlayerStore = create<PlayerState>()(
           skipRestoreUntilTs: now + 5000 // prevent time restore for 5s on track change
         });
 
+        // More reliable method to ensure the audio element updates
+        // especially important for background/lock screen playback
+        const playNextAudio = () => {
+          const audio = document.querySelector('audio');
+          if (audio) {
+            // Reset ending flag to prevent conflicts
+            audio.dataset.ending = 'false';
+
+            // CRITICAL: Reset currentTime to 0 immediately
+            audio.currentTime = 0;
+
+            // Ensure the audio element has the latest src and is playing
+            const newAudioUrl = queue[newIndex].audioUrl || (queue[newIndex] as any).url;
+            if (audio.src !== newAudioUrl && newAudioUrl) {
+              audio.src = newAudioUrl;
+              audio.load(); // Important for mobile browsers
+              // Reset currentTime again after load
+              audio.currentTime = 0;
+            }
+
+            // Use a more forceful approach to ensure playback
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(() => {
+                // Retry playing after a short delay
+                setTimeout(() => {
+                  audio.play().catch(() => {
+                    // If it still fails, try with user activation flag
+                    set({ hasUserInteracted: true });
+                    setTimeout(() => audio.play().catch(() => { }), 100);
+                  });
+                }, 200);
+              });
+            }
+
+            // Update MediaSession for lock screen controls if available
+            if ('mediaSession' in navigator) {
+              navigator.mediaSession.metadata = new MediaMetadata({
+                title: queue[newIndex].title || 'Unknown Title',
+                artist: queue[newIndex].artist || 'Unknown Artist',
+                album: queue[newIndex].albumId ? String(queue[newIndex].albumId) : 'Unknown Album',
+                artwork: [
+                  {
+                    src: queue[newIndex].imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+                    sizes: '512x512',
+                    type: 'image/jpeg'
+                  }
+                ]
+              });
+
+              // Update playback state
+              navigator.mediaSession.playbackState = 'playing';
+
+              // Update position state if supported
+              if ('setPositionState' in navigator.mediaSession) {
+                try {
+                  // Initially set to 0 position for the new track
+                  navigator.mediaSession.setPositionState({
+                    duration: audio.duration || 0,
+                    playbackRate: audio.playbackRate || 1,
+                    position: 0
+                  });
+                } catch (e) {
+                  // Ignore position state errors
+                }
+              }
+
+              // Re-register media session handlers for better reliability in background
+              navigator.mediaSession.setActionHandler('nexttrack', () => {
+                // Directly access the store to avoid closure issues
+                const store = get();
+                store.setUserInteracted();
+                store.playNext();
+              });
+
+              navigator.mediaSession.setActionHandler('previoustrack', () => {
+                // Directly access the store to avoid closure issues
+                const store = get();
+                store.setUserInteracted();
+                store.playPrevious();
+              });
+
+              navigator.mediaSession.setActionHandler('play', () => {
+                set({ isPlaying: true });
+                if (audio.paused) {
+                  audio.play().catch(() => { });
+                }
+              });
+
+              navigator.mediaSession.setActionHandler('pause', () => {
+                set({ isPlaying: false });
+                if (!audio.paused) {
+                  audio.pause();
+                }
+              });
+            }
+          }
+        };
+
+        // Try playing immediately
+        playNextAudio();
+
+        // And also after a small delay to ensure it works in lock screen
+        setTimeout(playNextAudio, 50);
+
+        // Additional attempts with increasing delays for better reliability
+        [200, 500, 1000].forEach(delay => {
+          setTimeout(() => {
+            const audio = document.querySelector('audio');
+            if (audio && audio.paused && !audio.ended) {
+              audio.play().catch(() => { });
+            }
+          }, delay);
+        });
+
         // Save to localStorage as a backup
         try {
           const playerState = {
@@ -237,9 +367,32 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       playPrevious: () => {
-        const { queue, currentIndex } = get();
+        const { queue, currentIndex, isRepeating } = get();
 
         if (queue.length === 0) return;
+
+        // Immediately stop current audio and reset time
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+          // Clear the src to completely stop the previous song
+          audio.src = '';
+          audio.load();
+        }
+
+        // Check if current song has played less than 3 seconds
+        // If so, go to previous song, otherwise restart current song
+        const currentTime = audio?.currentTime || 0;
+
+        if (currentTime > 3 && !isRepeating) {
+          // If we're more than 3 seconds in, just restart the current song
+          if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(() => { });
+          }
+          return;
+        }
 
         const newIndex = (currentIndex - 1 + queue.length) % queue.length;
 
@@ -251,6 +404,18 @@ export const usePlayerStore = create<PlayerState>()(
           isPlaying: true, // Always ensure playback continues
           skipRestoreUntilTs: Date.now() + 5000
         });
+
+        // CRITICAL: Reset audio currentTime immediately
+        if (audio) {
+          audio.currentTime = 0;
+          const newAudioUrl = queue[newIndex].audioUrl || (queue[newIndex] as any).url;
+          if (audio.src !== newAudioUrl && newAudioUrl) {
+            audio.src = newAudioUrl;
+            audio.load();
+            audio.currentTime = 0;
+          }
+          audio.play().catch(() => { });
+        }
 
         // Save to localStorage as a backup
         try {
@@ -323,17 +488,17 @@ setTimeout(() => {
   const store = usePlayerStore.getState();
 
   // Clean up any invalid blob URLs from the current song and queue
-  if (store.currentSong && store.currentSong.audioUrl &&
-    store.currentSong.audioUrl.startsWith('blob:') &&
-    !store.currentSong.audioUrl.includes('blob:http')) {
+  if (store.currentSong && store.currentSong.audioUrl && 
+      store.currentSong.audioUrl.startsWith('blob:') && 
+      !store.currentSong.audioUrl.includes('blob:http')) {
     console.log('Cleaning up invalid blob URL from current song');
     store.setCurrentSong({ ...store.currentSong, audioUrl: '' });
   }
 
   if (store.queue.length > 0) {
-    const cleanQueue = store.queue.filter(song =>
-      !song.audioUrl ||
-      !song.audioUrl.startsWith('blob:') ||
+    const cleanQueue = store.queue.filter(song => 
+      !song.audioUrl || 
+      !song.audioUrl.startsWith('blob:') || 
       song.audioUrl.includes('blob:http')
     );
     if (cleanQueue.length !== store.queue.length) {

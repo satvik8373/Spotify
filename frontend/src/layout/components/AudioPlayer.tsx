@@ -14,48 +14,25 @@ import OptimizedImage from '@/components/OptimizedImage';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { usePhoneInterruption } from '@/hooks/usePhoneInterruption';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { logAudioDebug, getSuggestedFix } from '@/utils/audioDebugger';
-import { 
-  configureProductionAudio, 
-  playAudioSafely, 
-  fixAudioCORS, 
-  isAudioFormatSupported 
-} from '@/utils/productionAudioFix';
 
 // Helper function to validate URLs - more permissive for production
 const isValidUrl = (url: string): boolean => {
   if (!url || typeof url !== 'string') return false;
-
+  
   // Allow relative URLs and various protocols
   if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) return true;
-
+  
   // Allow blob URLs (they're valid for audio playback)
-  if (url.startsWith('blob:') || url.startsWith('data:')) return true;
-
+  if (url.startsWith('blob:')) return true;
+  
   try {
     const urlObj = new URL(url);
-    // Allow http, https, data, and blob URLs - be more permissive in production
+    // Allow http, https, data, and blob URLs
     return ['http:', 'https:', 'data:', 'blob:'].includes(urlObj.protocol);
   } catch (e) {
     // If URL constructor fails, check if it's a valid-looking URL string
-    // Be more permissive for production compatibility
-    return /^(https?|blob|data):\/\/.+/.test(url) || url.includes('saavncdn.com') || url.includes('jiosaavn');
+    return /^(https?|blob):\/\/.+/.test(url);
   }
-};
-
-// Enhanced URL processing for production compatibility
-const processAudioUrl = (url: string): string => {
-  if (!url) return url;
-  
-  // Use production audio CORS fix
-  url = fixAudioCORS(url);
-  
-  // Check if format is supported
-  if (!isAudioFormatSupported(url)) {
-    console.warn('Audio format may not be supported:', url);
-  }
-  
-  return url;
 };
 
 // Format time helper function
@@ -186,17 +163,12 @@ const AudioPlayer = () => {
     if (!audioRef.current || isAudioContextInitialized.current) return;
 
     try {
-      // 1. Create AudioContext - handle browser compatibility
+      // 1. Create AudioContext
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) {
-        console.warn('Web Audio API not supported in this browser');
-        return;
-      }
-
       const ctx = new AudioContextClass();
       audioContextRef.current = ctx;
 
-      // 2. Create Source Node - handle CORS issues
+      // 2. Create Source Node
       const source = ctx.createMediaElementSource(audioRef.current);
       sourceNodeRef.current = source;
 
@@ -229,8 +201,7 @@ const AudioPlayer = () => {
       isAudioContextInitialized.current = true;
     } catch (error) {
       console.warn('Failed to initialize Web Audio API (non-critical):', error);
-      // Continue without Web Audio API features - this is common in production
-      // due to CORS restrictions on audio sources
+      // Continue without Web Audio API features
     }
 
     return () => {
@@ -725,27 +696,22 @@ const AudioPlayer = () => {
   // Update audio element configuration for better mobile support
   useEffect(() => {
     if (audioRef.current) {
-      const audio = audioRef.current;
-      
-      // Use production audio configuration
-      configureProductionAudio(audio);
-      
-      // Enhanced CORS handling for production
-      if (currentSong?.audioUrl) {
-        const url = currentSong.audioUrl;
-        if (url.includes('saavncdn.com') || url.includes('jiosaavn.com')) {
-          audio.crossOrigin = 'anonymous';
-        }
-      }
+      // Configure audio element for better mobile background playback
+      audioRef.current.setAttribute('playsinline', '');
+      audioRef.current.setAttribute('webkit-playsinline', '');
+      audioRef.current.setAttribute('preload', 'auto');
+      audioRef.current.crossOrigin = 'anonymous'; // Required for Web Audio API
+
+
+      // Critical for audio focus handling in iOS Safari
+      audioRef.current.setAttribute('x-webkit-airplay', 'allow');
 
       // Set up remote commands early
       if (isMediaSessionSupported()) {
         navigator.mediaSession.setActionHandler('play', () => {
           setIsPlaying(true);
           if (audioRef.current && audioRef.current.paused) {
-            playAudioSafely(audioRef.current).catch(() => {
-              // Silent error handling
-            });
+            audioRef.current.play().catch(() => { });
           }
         });
 
@@ -771,7 +737,7 @@ const AudioPlayer = () => {
         (audioRef.current as any).mozAudioChannelType = 'content';
       }
     }
-  }, [currentSong?.audioUrl]);
+  }, []);
 
   // Handle audio focus changes on mobile
   useEffect(() => {
@@ -1046,24 +1012,16 @@ const AudioPlayer = () => {
     const audio = audioRef.current;
     let songUrl = currentSong.audioUrl;
 
-    // Process URL for production compatibility
-    if (songUrl) {
-      songUrl = processAudioUrl(songUrl);
-      
-      // Append quality parameter if valid HTTP/HTTPS URL
-      if (!songUrl.startsWith('blob:') && isValidUrl(songUrl)) {
-        const separator = songUrl.includes('?') ? '&' : '?';
-        const qualityParam = streamingQuality.toLowerCase().replace(/\s+/g, '_');
-        songUrl = `${songUrl}${separator}quality=${qualityParam}`;
-      }
+    // Append quality parameter if valid HTTP/HTTPS URL
+    if (songUrl && !songUrl.startsWith('blob:') && isValidUrl(songUrl)) {
+      const separator = songUrl.includes('?') ? '&' : '?';
+      const qualityParam = streamingQuality.toLowerCase().replace(/\s+/g, '_');
+      songUrl = `${songUrl}${separator}quality=${qualityParam}`;
     }
 
     // Validate the URL - be more permissive for production
     if (!isValidUrl(songUrl)) {
       console.warn('Invalid audio URL, attempting to find alternative:', songUrl);
-      logAudioDebug(songUrl, 'Invalid URL Detection');
-      console.log('Suggested fix:', getSuggestedFix(songUrl));
-      
       // Try to find audio for this song
 
       // Use setTimeout to avoid blocking the UI
@@ -1082,7 +1040,7 @@ const AudioPlayer = () => {
             // Update the currentSong with the found audio URL
             const updatedSong = {
               ...currentSong,
-              audioUrl: processAudioUrl(foundSong.url || ''),
+              audioUrl: foundSong.url || '',
               imageUrl: currentSong.imageUrl || foundSong.image
             };
 
@@ -1248,58 +1206,19 @@ const AudioPlayer = () => {
           }
         };
 
-        // Enhanced error handling for load failures
-        const handleLoadError = () => {
-          console.warn('Failed to load audio:', songUrl);
-          setIsLoading(false);
-          isHandlingPlayback.current = false;
-          
-          // Try to find alternative source
-          setTimeout(() => {
-            const searchQuery = `${currentSong.title} ${currentSong.artist}`.trim();
-            useMusicStore.getState().searchIndianSongs(searchQuery).then(() => {
-              const results = useMusicStore.getState().indianSearchResults;
-              if (results && results.length > 0) {
-                const foundSong = results[0];
-                const updatedSong = {
-                  ...currentSong,
-                  audioUrl: processAudioUrl(foundSong.url || ''),
-                };
-                usePlayerStore.getState().setCurrentSong(updatedSong);
-              } else {
-                playNext();
-              }
-            }).catch(() => {
-              playNext();
-            });
-          }, 1000);
-          
-          audio.removeEventListener('error', handleLoadError);
-        };
-
         // Listen for the canplay event which indicates the audio is ready
-        audio.addEventListener('canplay', handleCanPlay, { once: true });
-        audio.addEventListener('error', handleLoadError, { once: true });
+        audio.addEventListener('canplay', handleCanPlay);
 
-        // Set the new source with enhanced error handling
-        try {
-          // Log debug info for troubleshooting
-          logAudioDebug(songUrl, 'Loading New Song');
-          
-          audio.src = songUrl;
-          audio.load(); // Explicitly call load to begin fetching the new audio
-        } catch (error) {
-          console.warn('Error setting audio source:', error);
-          handleLoadError();
-        }
+        // Set the new source
+        audio.src = songUrl;
+        audio.load(); // Explicitly call load to begin fetching the new audio
 
         // Preload the next song if available
         const nextIndex = (usePlayerStore.getState().currentIndex + 1) % usePlayerStore.getState().queue.length;
         const nextSong = usePlayerStore.getState().queue[nextIndex];
         if (nextSong && nextSong.audioUrl) {
           const preloadAudio = new Audio();
-          preloadAudio.crossOrigin = 'anonymous';
-          preloadAudio.src = processAudioUrl(nextSong.audioUrl);
+          preloadAudio.src = nextSong.audioUrl;
           preloadAudio.load();
           // Discard after preloading starts
           setTimeout(() => {
@@ -1323,30 +1242,11 @@ const AudioPlayer = () => {
       setIsLoading(false);
       setIsPlaying(false);
       isHandlingPlayback.current = false;
-
-      // Try to recover by finding alternative audio source or using proxy
-      if (currentSong && currentSong.audioUrl) {
-        const originalUrl = currentSong.audioUrl;
-        
-        // If this is a direct JioSaavn URL, try using the proxy
-        if (originalUrl.includes('saavncdn.com') && !originalUrl.includes('/audio-proxy')) {
-          const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://spotify-api-drab.vercel.app/api';
-          const proxyUrl = `${apiBaseUrl}/audio-proxy?url=${encodeURIComponent(originalUrl)}`;
-          
-          console.log('Trying audio proxy for CORS issue:', proxyUrl);
-          
-          // Update the current song with proxy URL
-          const updatedSong = {
-            ...currentSong,
-            audioUrl: proxyUrl
-          };
-          
-          usePlayerStore.getState().setCurrentSong(updatedSong);
-          return;
-        }
-        
-        // Otherwise, try to find alternative audio source
+      
+      // Try to recover by finding alternative audio source
+      if (currentSong) {
         setTimeout(() => {
+          // Attempt to find alternative audio source
           const searchQuery = `${currentSong.title} ${currentSong.artist}`.trim();
           useMusicStore.getState().searchIndianSongs(searchQuery).then(() => {
             const results = useMusicStore.getState().indianSearchResults;
@@ -1356,7 +1256,7 @@ const AudioPlayer = () => {
                 ...currentSong,
                 audioUrl: foundSong.url || (foundSong as any).audioUrl || '',
               };
-
+              
               // Update current song with new audio URL
               usePlayerStore.getState().setCurrentSong(updatedSong);
             } else {
@@ -1582,11 +1482,7 @@ const AudioPlayer = () => {
   // Skip back
   const handlePrevious = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (audioRef.current && audioRef.current.currentTime > 3) {
-      audioRef.current.currentTime = 0;
-    } else {
-      playPrevious();
-    }
+    playPrevious();
   };
 
   // Skip forward
@@ -1915,7 +1811,7 @@ const AudioPlayer = () => {
 
   // Don't render anything if no current song - the audio element should always be present
   // but just without a src when there's no song
-
+  
   return (
     <>
       {/* Show SongDetailsView using our existing component */}
@@ -2272,12 +2168,9 @@ const AudioPlayer = () => {
       <audio
         ref={audioRef}
         src={currentSong?.audioUrl && isValidUrl(currentSong.audioUrl) ?
-          processAudioUrl(currentSong.audioUrl) + 
-          (currentSong.audioUrl.includes('?') ? '&' : '?') + 
-          `quality=${streamingQuality.toLowerCase().replace(/\s+/g, '_')}`
+          `${currentSong.audioUrl.replace(/^http:\/\//, 'https://')}${currentSong.audioUrl.includes('?') ? '&' : '?'}quality=${streamingQuality.toLowerCase().replace(/\s+/g, '_')}`
           : undefined}
         autoPlay={isPlaying && !!currentSong}
-        crossOrigin="anonymous"
         onLoadStart={() => {
           // Reset restoration flag when loading new audio
           if (audioRef.current) {

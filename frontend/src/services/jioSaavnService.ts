@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { ensureHttps, warnInsecureUrl } from '@/utils/urlUtils';
 
 const BASE_URL = 'https://saavn.sumit.co/api';
 
@@ -711,33 +710,14 @@ class JioSaavnService {
                            jioSong.downloadUrl.find(url => url.quality === '160kbps') ||
                            jioSong.downloadUrl[0];
 
-    // Handle audio URL with proxy for CORS issues
-    let audioUrl = '';
-    if (bestDownloadUrl?.url) {
-      warnInsecureUrl(bestDownloadUrl.url, 'JioSaavn audio URL');
-      audioUrl = ensureHttps(bestDownloadUrl.url);
-      
-      // Use audio proxy for JioSaavn URLs to handle CORS
-      if (audioUrl.includes('saavncdn.com') || audioUrl.includes('jiosaavn')) {
-        // Get API base URL from environment or use production URL
-        const apiBaseUrl = typeof window !== 'undefined' && window.location.hostname === 'mavrixfy.site' 
-          ? 'https://spotify-api-drab.vercel.app/api'
-          : (import.meta?.env?.VITE_API_URL || 'https://spotify-api-drab.vercel.app/api');
-        audioUrl = `${apiBaseUrl}/audio-proxy?url=${encodeURIComponent(audioUrl)}`;
-      }
-    }
-
     return {
       _id: `jiosaavn_${jioSong.id}`,
       title: jioSong.name,
       artist: primaryArtist?.name || 'Unknown Artist',
       albumId: jioSong.album.name,
       duration: jioSong.duration,
-      imageUrl: bestImageUrl ? (() => {
-        warnInsecureUrl(bestImageUrl, 'JioSaavn image URL');
-        return ensureHttps(bestImageUrl);
-      })() : '',
-      audioUrl: audioUrl,
+      imageUrl: bestImageUrl,
+      audioUrl: bestDownloadUrl?.url || '',
       source: 'jiosaavn',
       language: jioSong.language,
       year: jioSong.year,
