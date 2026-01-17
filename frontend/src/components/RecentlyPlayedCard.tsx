@@ -57,19 +57,25 @@ export function RecentlyPlayedCard({
   return (
     <div
       className={cn(
-        'group relative h-[48px] md:h-[64px] w-full rounded-md overflow-hidden cursor-pointer transition-all duration-200 active:scale-95 active:bg-white/20',
-        'recently-played-card bg-white/10 md:bg-white/15 md:hover:bg-white/20'
+        'group relative h-[44px] w-full rounded-[4px] overflow-hidden cursor-pointer transition-all duration-300 ease-in-out',
+        'recently-played-card bg-white/10 hover:bg-white/20'
       )}
       onClick={!isMobile ? handleCardClick : undefined}
       onTouchStart={handleTouchStart}
       onTouchEnd={isMobile ? handleTap : undefined}
+      onMouseEnter={() => {
+        if (colors?.primary) {
+          onHoverChange?.(colors.primary);
+        }
+      }}
+      onMouseLeave={() => onHoverChange?.(null)}
     >
 
       {/* Content */}
       <div className="relative flex items-center h-full z-10">
-        {/* Image with Spotify-style glow effect */}
-        <div className="relative w-[48px] md:w-[63px] h-full flex-shrink-0">
-          <div className="relative w-full h-full rounded-l-md overflow-hidden shadow-sm">
+        {/* Image */}
+        <div className="relative w-[44px] h-full flex-shrink-0">
+          <div className="relative w-full h-full rounded-[4px] overflow-hidden shadow-md">
             {imageUrl ? (
               <img
                 ref={imgRef}
@@ -85,41 +91,40 @@ export function RecentlyPlayedCard({
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center">
-                <span className="text-white text-xs font-bold">M</span>
+                <span className="text-white text-[10px] font-bold">M</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Text content */}
-        <div className="flex-1 min-w-0 pl-2 pr-1 md:px-3 py-2">
+        <div className="flex-1 min-w-0 pl-2.5 pr-2 py-1 flex items-center">
           <h3
             className={cn(
-              'font-bold text-[11.5px] md:text-[15px] leading-tight line-clamp-2 transition-colors duration-500 ease-in-out',
-              'text-white' // Always white text to match image
+              'font-bold text-[11px] md:text-[12.5px] leading-[1.2] line-clamp-2 transition-colors duration-300',
+              'text-white'
             )}
             title={title}
           >
             {title}
           </h3>
-          {/* Subtitle/Type removed for cleaner look at small size if needed, or kept with simpler styling */}
         </div>
 
         {/* Action buttons */}
-        <div className="hidden md:flex items-center gap-1 pr-3">
-          {/* Play button - Perfect Spotify design */}
+        <div className="hidden md:flex items-center pr-2">
+          {/* Play button */}
           <button
             className={cn(
-              'w-12 h-12 flex items-center justify-center rounded-full',
+              'w-7 h-7 flex items-center justify-center rounded-full',
               'bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105',
-              'shadow-[0_8px_24px_rgba(0,0,0,0.5)]',
-              'transition-all duration-300 ease-in-out z-20',
-              'opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2'
+              'shadow-[0_4px_12px_rgba(0,0,0,0.5)]',
+              'transition-all duration-300 ease-out z-20',
+              'opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0'
             )}
             onClick={handlePlayClick}
             aria-label="Play"
           >
-            <Play className="h-5 w-5 ml-0.5" fill="black" stroke="none" />
+            <Play className="h-3.5 w-3.5 ml-0.5 text-black fill-black" />
           </button>
         </div>
       </div>

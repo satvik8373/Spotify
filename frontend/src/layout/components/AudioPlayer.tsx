@@ -36,86 +36,63 @@ const formatTime = (seconds: number) => {
 
 // Create a new component for marquee text animation
 const MarqueeText = ({ text, className }: { text: string, className?: string }) => {
+  const [needsScroll, setNeedsScroll] = useState(false);
+  const [startAnimation, setStartAnimation] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
-  const [shouldScroll, setShouldScroll] = useState(false);
-  const [scrollDistance, setScrollDistance] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
 
-  // Detect mobile devices
   useEffect(() => {
-    const checkMobile = () => {
-      // Check for mobile devices based on screen width and touch capability
-      const isMobileDevice = window.innerWidth < 768 ||
-        ('ontouchstart' in window) ||
-        (navigator.maxTouchPoints > 0);
-      setIsMobile(isMobileDevice);
+    const checkIfScrollNeeded = () => {
+      if (containerRef.current && textRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const textWidth = textRef.current.scrollWidth;
+        const needsScrolling = textWidth > containerWidth;
+        setNeedsScroll(needsScrolling);
+        
+        if (needsScrolling) {
+          // Start animation after 3 seconds delay
+          setStartAnimation(false);
+          const timer = setTimeout(() => setStartAnimation(true), 3000);
+          return () => clearTimeout(timer);
+        } else {
+          setStartAnimation(false);
+        }
+      }
     };
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Check if text is overflowing and needs animation
-  useEffect(() => {
-    if (containerRef.current && textRef.current) {
-      const container = containerRef.current;
-      const textEl = textRef.current;
-
-      // Check if text overflows its container
-      const isOverflowing = textEl.scrollWidth > container.clientWidth;
-
-      // Calculate scroll distance if needed
-      if (isOverflowing) {
-        const distance = -(textEl.scrollWidth - container.clientWidth + 16); // Added small padding
-        setScrollDistance(distance);
-        setShouldScroll(true);
-      } else {
-        setShouldScroll(false);
-      }
-    }
+    checkIfScrollNeeded();
+    window.addEventListener('resize', checkIfScrollNeeded);
+    return () => window.removeEventListener('resize', checkIfScrollNeeded);
   }, [text]);
 
+  if (!needsScroll) {
+    return (
+      <div ref={containerRef} className="overflow-hidden w-full">
+        <div ref={textRef} className={`truncate ${className}`}>
+          {text}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        "text-auto-scroll",
-        "song-title-container",
-        shouldScroll && "has-mask",
-        className
-      )}
-      style={{
-        position: 'relative'
-      }}
-    >
-      <div
+    <div ref={containerRef} className="overflow-hidden w-full relative">
+      {/* Fade gradients */}
+      <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-black/50 to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-black/70 to-transparent z-10 pointer-events-none" />
+      
+      <div 
         ref={textRef}
-        className={cn(
-          "text-auto-scroll-inner",
-          "song-title",
-          shouldScroll && "overflow",
-          shouldScroll && (isMobile ? true : "hover:scrolling") && "scrolling"
-        )}
-        style={
-          shouldScroll ? {
-            '--max-scroll': `${scrollDistance}px`,
-            display: 'inline-block',
-            whiteSpace: 'nowrap',
-            paddingRight: '24px' // Add extra padding for better scroll appearance
-          } as React.CSSProperties :
-            undefined
-        }
+        className={className}
+        style={{
+          display: 'inline-block',
+          whiteSpace: 'nowrap',
+          paddingRight: '50px',
+          animation: startAnimation ? 'marqueeScroll 12s ease-in-out infinite' : 'none',
+        }}
       >
         {text}
       </div>
-      {shouldScroll && (
-        <>
-          <div className="marquee-mask-left" />
-          <div className="marquee-mask-right" />
-        </>
-      )}
     </div>
   );
 };
@@ -1789,7 +1766,7 @@ const AudioPlayer = () => {
 
       {/* Desktop mini player (only shows when not visible on mobile) */}
       <div
-        className="fixed bottom-0 left-0 right-0 bg-gradient-to-b from-zinc-900/80 to-black border-t border-zinc-800/50 h-16 z-40 hidden sm:block md:hidden transition-all duration-300"
+        className="fixed bottom-0 left-0 right-0 bg-gradient-to-b from-zinc-900/80 to-black border-t border-zinc-800/50 h-16 z-40 hidden transition-all duration-300"
         onClick={(e) => {
           e.preventDefault();
           setShowSongDetails(true);

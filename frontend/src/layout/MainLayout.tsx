@@ -9,6 +9,7 @@ import { usePlayerStore } from '@/stores/usePlayerStore';
 import QueuePanel from '@/components/QueuePanel';
 import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
+import DesktopFooter from '@/components/DesktopFooter';
 
 const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -165,6 +166,7 @@ const MainLayout = () => {
         <div className="flex-1 h-full overflow-hidden">
           <div className="h-full overflow-y-auto overflow-x-hidden mobile-scroll-fix bg-[#121212] md:rounded-lg">
             <Outlet />
+            <DesktopFooter />
           </div>
         </div>
 

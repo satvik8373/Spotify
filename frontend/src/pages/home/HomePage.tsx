@@ -18,7 +18,10 @@ interface RecentPlaylist {
 }
 
 const HomePage = () => {
-  const { publicPlaylists, fetchPublicPlaylists } = usePlaylistStore();
+  const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
+  const fetchPublicPlaylists = usePlaylistStore(state => state.fetchPublicPlaylists);
+  const isLoading = usePlaylistStore(state => state.isLoading);
+
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [displayItems, setDisplayItems] = useState<any[]>([]);
   const navigate = useNavigate();
@@ -79,9 +82,17 @@ const HomePage = () => {
 
   // Load recent playlists from the new service
   useEffect(() => {
+    let isMounted = true;
+
     const updateDisplayItems = () => {
+      if (!isMounted) return;
       const items = recentlyPlayedService.getDisplayItems(publicPlaylists);
-      setDisplayItems(items);
+
+      // Only update if items actually changed to prevent re-renders
+      setDisplayItems(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(items)) return prev;
+        return items;
+      });
     };
 
     // Initial load
@@ -94,6 +105,7 @@ const HomePage = () => {
 
     document.addEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
     return () => {
+      isMounted = false;
       document.removeEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
     };
   }, [publicPlaylists]);
@@ -105,22 +117,13 @@ const HomePage = () => {
 
   // Handle color changes with ultra-smooth transitions
   const handleColorChange = (color: string | null, isLikedSongs: boolean = false) => {
-    // Set transitioning state for smoother visual feedback
     setIsTransitioning(true);
-
-    // Add a longer delay for more elegant, slower transitions
-    setTimeout(() => {
-      setHoveredColor(color);
-      // If this is the Liked Songs card, save its color as default
-      if (isLikedSongs && color) {
-        setLikedSongsColor(color);
-      }
-
-      // Clear transitioning state after a delay
-      setTimeout(() => {
-        setIsTransitioning(false);
-      }, 500);
-    }, 150); // Longer delay for more elegant feel
+    setHoveredColor(color);
+    // If this is the Liked Songs card, save its color as default
+    if (isLikedSongs && color) {
+      setLikedSongsColor(color);
+    }
+    setTimeout(() => setIsTransitioning(false), 500);
   };
 
   // Function to convert any color format to rgba with opacity
@@ -150,13 +153,6 @@ const HomePage = () => {
   };
 
   const activeColor = hoveredColor || likedSongsColor || 'rgb(60, 40, 120)'; // More subtle default purple
-
-  // Debug logging
-  useEffect(() => {
-    console.log('Active color:', activeColor);
-    console.log('Hovered color:', hoveredColor);
-    console.log('Liked songs color:', likedSongsColor);
-  }, [activeColor, hoveredColor, likedSongsColor]);
 
   // Handle playlist click (works for both regular and JioSaavn playlists)
   const handlePlaylistClick = (item: any) => {
@@ -205,7 +201,7 @@ const HomePage = () => {
 
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden relative">
+    <div className="min-h-screen bg-[#121212] overflow-x-hidden relative">
       {/* Dynamic Background Setup - Spotify-style gradient flow */}
       {/* Dynamic Background Setup - Spotify-style gradient flow */}
       <div
@@ -225,17 +221,38 @@ const HomePage = () => {
             ${colorToRgba(activeColor, 0.02)} 90%, 
             ${colorToRgba(activeColor, 0.01)} 95%, 
             transparent 100%)`,
-          transition: 'background 3500ms cubic-bezier(0.25, 0.1, 0.25, 1)',
+          transition: 'background 1000ms ease',
           willChange: 'background'
         }}
       />
 
       <div className="py-4 space-y-4 relative w-full z-10 pb-32 md:pb-8">
+        {/* Top Filter Pills */}
+        <div className="px-4 md:px-6 hidden md:flex items-center gap-2 mb-1.5 sticky top-0 z-20 pt-2">
+          {/* Profile Placeholder from image */}
+          <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 mr-1 hidden md:block">
+            <img
+              src="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <button className="px-3 py-1.5 rounded-full bg-[#1ed760] text-black text-[13px] font-bold transition-colors">
+            All
+          </button>
+          <button className="px-3 py-1.5 rounded-full bg-white/10 text-white text-[13px] font-bold hover:bg-white/20 transition-colors">
+            Music
+          </button>
+          <button className="px-3 py-1.5 rounded-full bg-white/10 text-white text-[13px] font-bold hover:bg-white/20 transition-colors">
+            Podcasts
+          </button>
+        </div>
+
         <div className="w-full overflow-x-hidden">
           {/* Recently Played Section */}
           {getDisplayedItems().length > 0 && (
             <section className="px-4 md:px-6 mb-6 w-full">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 w-full max-w-full">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-[6px] w-full max-w-full">
                 {/* Liked Songs Card - Pinned First */}
                 <RecentlyPlayedCard
                   id="liked-songs"
@@ -292,7 +309,7 @@ const HomePage = () => {
                     />
                   </ScrollItem>
                 ))
-              ) : (
+              ) : isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <ScrollItem key={i} width={120}>
                     <div className="space-y-3 p-1">
@@ -302,6 +319,8 @@ const HomePage = () => {
                     </div>
                   </ScrollItem>
                 ))
+              ) : (
+                <div className="text-zinc-500 text-sm p-4 w-full text-center">No playlists found</div>
               )}
             </HorizontalScroll>
           </SectionWrapper>

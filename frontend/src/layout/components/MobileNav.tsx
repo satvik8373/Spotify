@@ -317,9 +317,33 @@ const MobileNav = () => {
         onClose={() => setShowQueue(false)}
       />
 
+      <style>{`
+        .mobile-nav-gradient-container {
+          background: linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%) !important;
+        }
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee-slow {
+          display: flex !important;
+          min-width: max-content !important;
+          animation: marquee 12s linear infinite !important;
+        }
+        .animate-marquee-slower {
+          display: flex !important;
+          min-width: max-content !important;
+          animation: marquee 16s linear infinite !important;
+        }
+        .mask-linear-fade {
+          mask-image: linear-gradient(to right, transparent 0%, black 12px, black calc(100% - 12px), transparent 100%);
+          -webkit-mask-image: linear-gradient(to right, transparent 0%, black 12px, black calc(100% - 12px), transparent 100%);
+        }
+      `}</style>
+
       {/* Mobile Header - Spotify style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
-        <div className="fixed top-0 left-0 right-0 z-30 bg-[#0C0A09] dark:bg-[#0C0A09] md:hidden">
+        <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden">
           {isLibraryRoute ? (
             <div className="flex items-center justify-between px-4 h-12">
               <div className="flex items-center gap-2.5">
@@ -481,10 +505,10 @@ const MobileNav = () => {
         {/* Spotify Mobile Player - Floating Design */}
         {hasActiveSong && (
           <div className="px-2 pb-1">
-            <div className="mobile-player-container relative rounded-xl overflow-hidden shadow-2xl mx-1">
+            <div className="mobile-player-container relative rounded-lg overflow-hidden shadow-2xl mx-1">
               {/* Main Player Container - Compact */}
               <div
-                className="relative px-3 py-1"
+                className="relative px-2 py-1"
                 style={{
                   backgroundColor: albumColors.primary || '#1a1a1a',
                   transition: 'background-color 300ms ease, color 300ms ease',
@@ -510,14 +534,45 @@ const MobileNav = () => {
                       />
                     </div>
 
-                    {/* Song Info - Compact */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate leading-tight" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
-                        {currentSong.title}
-                      </p>
-                      <p className="text-xs truncate leading-tight" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 30%)', transition: 'color 300ms ease' }}>
-                        {currentSong.artist}
-                      </p>
+                    {/* Song Info - Smart Marquee */}
+                    <div className="flex-1 min-w-0 overflow-hidden mr-2">
+                      {/* Title - Scroll only if long */}
+                      {(currentSong.title || '').length > 30 ? (
+                        <div className="w-full overflow-hidden">
+                          <div className="animate-marquee-slow min-w-full">
+                            <p className="text-sm font-medium leading-tight whitespace-nowrap mr-24" style={{ color: albumColors.text || '#ffffff' }}>
+                              {currentSong.title}
+                            </p>
+                            <p className="text-sm font-medium leading-tight whitespace-nowrap mr-24" style={{ color: albumColors.text || '#ffffff' }}>
+                              {currentSong.title}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm font-medium truncate leading-tight" style={{ color: albumColors.text || '#ffffff' }}>
+                          {currentSong.title}
+                        </p>
+                      )}
+
+                      {/* Artist - Scroll only if long */}
+                      <div className="mt-0.5">
+                        {(currentSong.artist || '').length > 40 ? (
+                          <div className="w-full overflow-hidden">
+                            <div className="animate-marquee-slower min-w-full">
+                              <p className="text-xs leading-tight whitespace-nowrap mr-24" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 30%)' }}>
+                                {currentSong.artist}
+                              </p>
+                              <p className="text-xs leading-tight whitespace-nowrap mr-24" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 30%)' }}>
+                                {currentSong.artist}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs truncate leading-tight" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 30%)' }}>
+                            {currentSong.artist}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -560,10 +615,10 @@ const MobileNav = () => {
               </div>
 
               {/* Ultra-thin Progress Bar - Floating Width */}
-              <div className="absolute bottom-0 left-0 right-0">
-                <div className="h-0.5 bg-white/20 relative">
+              <div className="absolute bottom-[1px] left-2 right-2">
+                <div className="h-0.5 bg-white/20 relative rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-white absolute top-0 left-0 transition-all duration-100 ease-linear"
+                    className="h-full bg-white absolute top-0 left-0 transition-all duration-100 ease-linear rounded-full"
                     style={{ width: `${progress || 0}%` }}
                   />
                 </div>
@@ -576,8 +631,8 @@ const MobileNav = () => {
         <div
           className="relative grid grid-cols-4 h-14 px-2 pt-0 pb-2"
           style={{
-            backgroundColor: '#0C0A09',
-            background: 'linear-gradient(0deg, #0C0A09 0%, rgba(12, 10, 9, 0.95) 10%, rgba(12, 10, 9, 0.9) 25%, rgba(12, 10, 9, 0.8) 40%, rgba(12, 10, 9, 0.6) 60%, rgba(12, 10, 9, 0.4) 75%, rgba(12, 10, 9, 0.2) 85%, rgba(12, 10, 9, 0.1) 95%, transparent 100%)',
+            backgroundColor: '#121212',
+            background: 'linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%)',
             border: 'none',
             boxShadow: 'none',
           }}

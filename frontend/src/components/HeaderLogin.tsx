@@ -29,7 +29,7 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
   // Check for authentication from both sources
   const isActuallyAuthenticated = isAuthenticated || storeAuthenticated;
 
-  // On initial load, check cached auth state
+  // On initial load, check cached auth state - ONLY ONCE
   useEffect(() => {
     try {
       const cachedAuthState = localStorage.getItem('cached_auth_state');
@@ -40,19 +40,13 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
       console.error('Error loading cached auth state:', e);
     }
     
-    // Attempt to refresh user data on component mount
-    if (!contextLoading) {
-      refreshUserData();
-    }
-    
-    // After 500ms, stop showing loading state even if auth is still loading
-    // This is to prevent prolonged loading states on slow connections
+    // Stop showing loading state after 500ms
     const timer = setTimeout(() => {
       setLocalLoading(false);
     }, 500);
     
     return () => clearTimeout(timer);
-  }, [contextLoading, refreshUserData]);
+  }, []); // EMPTY dependencies - only run once on mount
 
   // Update cached auth state when it changes
   useEffect(() => {

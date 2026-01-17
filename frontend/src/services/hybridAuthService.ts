@@ -96,55 +96,51 @@ export const login = async (email: string, password: string): Promise<UserProfil
       // Get fresh ID token with short timeout
       const idToken = await firebaseUser.getIdToken(true);
       
-      // Step 2: Fetch Firestore User Profile with retry
+      // Step 2: Fetch Firestore User Profile (optimized with timeout)
       let firestoreUser = null;
-      let retryCount = 0;
-      const MAX_RETRIES = 3;
       
-      while (retryCount < MAX_RETRIES) {
-        try {
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+      try {
+        // Use Promise.race to timeout Firestore read after 2 seconds
+        const firestorePromise = getDoc(doc(db, "users", firebaseUser.uid));
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Firestore timeout')), 2000)
+        );
+        
+        const userDoc = await Promise.race([firestorePromise, timeoutPromise]) as any;
+        
+        if (userDoc?.exists()) {
+          firestoreUser = userDoc.data() as FirestoreUser;
+        } else {
+          // Create basic profile if not found
+          console.warn("User document not found in Firestore. Using Firebase data...");
+          firestoreUser = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || email,
+            displayName: firebaseUser.displayName || email.split('@')[0],
+            photoURL: firebaseUser.photoURL || null,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          };
           
-          if (userDoc.exists()) {
-            firestoreUser = userDoc.data() as FirestoreUser;
-            break;
-          } else if (retryCount === MAX_RETRIES - 1) {
-            console.warn("User document not found in Firestore. Creating new profile...");
-            // Create a basic profile if not found on final retry
-            firestoreUser = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || email,
-              displayName: firebaseUser.displayName || email.split('@')[0],
-              photoURL: firebaseUser.photoURL || null,
-              createdAt: Timestamp.now(),
-              updatedAt: Timestamp.now(),
-            };
-            
-            await setDoc(doc(db, "users", firebaseUser.uid), firestoreUser);
-          }
-        } catch (error) {
-          console.error(`Error fetching user document (attempt ${retryCount + 1}):`, error);
-          retryCount++;
-          
-          if (retryCount === MAX_RETRIES) {
-            console.error("Max retries reached for fetching user document");
-            // Continue with available data instead of failing
-            firestoreUser = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || email,
-              displayName: firebaseUser.displayName || email.split('@')[0],
-              photoURL: firebaseUser.photoURL || null,
-              createdAt: Timestamp.now(),
-              updatedAt: Timestamp.now(),
-            };
-          } else {
-            // Wait before retrying
-            await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
-          }
+          // Create document in background
+          setDoc(doc(db, "users", firebaseUser.uid), firestoreUser).catch(() => {
+            // Ignore errors
+          });
         }
+      } catch (error) {
+        console.warn("Error fetching user document, using Firebase data:", error);
+        // Use Firebase data as fallback
+        firestoreUser = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || email,
+          displayName: firebaseUser.displayName || email.split('@')[0],
+          photoURL: firebaseUser.photoURL || null,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        };
       }
 
-      // Step 3: Update Auth Store
+      // Step 3: Update Auth Store IMMEDIATELY for instant UI response
       const userProfile: UserProfile = {
         id: firebaseUser.uid,
         email: firebaseUser.email || email,
@@ -152,26 +148,14 @@ export const login = async (email: string, password: string): Promise<UserProfil
         picture: firestoreUser?.photoURL || firebaseUser.photoURL || null,
       };
       
-      // Set user auth state in store before backend sync for faster UI updates
+      // Set user auth state in store BEFORE any async operations
       useAuthStore.getState().setAuthStatus(true, firebaseUser.uid);
       useAuthStore.getState().setUserProfile(userProfile.name, userProfile.picture || undefined);
       
-      // Step 4: Sync with Backend API (optional, do in background)
-      try {
-        // Attempt backend sync but don't block login process
-        await syncWithBackend(idToken, firebaseUser);
-      } catch (error) {
-        console.warn("Could not initiate backend sync, continuing with Firebase auth:", error);
-      }
-      
-      // Step 5: Handle Anonymous User Data Migration (if present)
-      try {
-        // This step is no longer needed as we are using Firestore exclusively
-        // await migrateAnonymousLikedSongs(firebaseUser.uid);
-      } catch (error) {
-        console.warn("Error migrating liked songs:", error);
-        // Continue without failing the login
-      }
+      // Step 4: Sync with Backend API in background (non-blocking)
+      syncWithBackend(idToken, firebaseUser).catch(() => {
+        // Ignore backend sync errors - user is already authenticated
+      });
       
       console.log("Login completed successfully for", email);
       return userProfile;

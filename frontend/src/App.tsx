@@ -31,9 +31,10 @@ import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 //
 const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+// DON'T lazy load auth pages to prevent flickering
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ResetPassword from './pages/ResetPassword';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
@@ -74,8 +75,8 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 	// Quick check for cached auth to avoid unnecessary loading states
 	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 
-	// If we have cached auth, show content immediately for better UX
-	if (hasCachedAuth && !loading) {
+	// If we have cached auth, show content immediately for better UX (optimistic rendering)
+	if (hasCachedAuth) {
 		return <>{children}</>;
 	}
 
@@ -94,20 +95,14 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 };
 
 const LandingRedirector = () => {
-	const { isAuthenticated, loading } = useAuth();
 	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 
-	// If authenticated (cached or confirmed), go to home
-	if (isAuthenticated || hasCachedAuth) {
+	// Check cache FIRST - instant redirect without waiting for Firebase
+	if (hasCachedAuth) {
 		return <Navigate to="/home" replace />;
 	}
 
-	// If still loading auth state, show minimal loading - invisible background
-	if (loading) {
-		return <div className="min-h-screen bg-[#121212]" />;
-	}
-
-	// Not authenticated, go to login
+	// No cached auth, go to login immediately
 	return <Navigate to="/login" replace />;
 };
 
@@ -212,21 +207,22 @@ function AppContent() {
 	const [showSplash, setShowSplash] = useState(true);
 	const [splashFading, setSplashFading] = useState(false);
 	const [appReady, setAppReady] = useState(false);
+	const { loading: authLoading } = useAuth();
+	const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
 	// Initialize app and handle splash screen
 	useEffect(() => {
 		const initializeApp = async () => {
+			console.time('AppInitialization');
+			console.log('🚀 App: initializeApp started at', new Date().toISOString());
 			try {
 				// Clear any Firebase auth redirect state to prevent errors
 				clearAuthRedirectState();
 
-				// Clean up any remaining offline download data
-				await cleanupOfflineData();
-
-				// Initialize performance optimizations
+				// Initialize performance optimizations immediately
 				performanceService.addResourceHints();
 
-				// Preload critical components during splash screen
+				// Preload critical components in parallel (non-blocking)
 				const preloadPromises = [
 					import('./layout/MainLayout'),
 					import('./pages/home/HomePage'),
@@ -234,24 +230,19 @@ function AppContent() {
 					import('./pages/LibraryPage')
 				];
 
-				// Set app as ready immediately
-				setAppReady(true);
-
-				// Start preloading and show splash for 1 second
+				// Start preloading but don't wait for it
 				Promise.all(preloadPromises).catch(() => {
-					// Ignore preload errors, app will still work
+					console.warn('⚠️ App: Component preload warning');
 				});
 
-				// Start fade out after 400ms, then hide after fade completes
+				// Set minimum timer for splash screen
 				setTimeout(() => {
-					setSplashFading(true);
-					// Hide splash screen after fade animation completes
-					setTimeout(() => {
-						setShowSplash(false);
-					}, 300); // 300ms fade duration
-				}, 400); // Total: 400ms + 300ms = 700ms
+					setMinTimeElapsed(true);
+				}, 500); // 500ms minimum display time
 
-				// Initialize auto-sync service if user was previously authenticated
+				// Clean up offline data and sync
+				cleanupOfflineData().catch(() => { });
+
 				const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 				if (hasCachedAuth) {
 					setTimeout(() => {
@@ -259,35 +250,57 @@ function AppContent() {
 						if (autoSyncConfig.enabled) {
 							spotifyAutoSyncService.startAutoSync(autoSyncConfig.intervalMinutes);
 						}
-					}, 2000);
+					}, 3000);
 				}
 
 			} catch (error) {
 				console.error("Error initializing app:", error);
-				// Always continue even if initialization fails
-				setAppReady(true);
-				setTimeout(() => {
-					setSplashFading(true);
-					setTimeout(() => setShowSplash(false), 300);
-				}, 400);
+				setMinTimeElapsed(true); // Ensure we don't get stuck
 			}
 		};
 
 		initializeApp();
 	}, []);
 
+	// Handle splash screen dismissal
+	useEffect(() => {
+		// Only dismiss when:
+		// 1. Minimum time has passed (to avoid flash)
+		// 2. Auth loading is complete (to avoid login page flash)
+		// 3. We are currently showing the splash
+		if (minTimeElapsed && !authLoading && showSplash && !splashFading) {
+			console.log('🏁 App: Conditions met (Time: %s, AuthLoaded: %s), fading splash', minTimeElapsed, !authLoading);
+			setSplashFading(true);
+
+			// Hide splash screen after fade animation completes
+			setTimeout(() => {
+				setShowSplash(false);
+				setAppReady(true);
+				console.timeEnd('AppInitialization');
+			}, 200);
+		}
+	}, [minTimeElapsed, authLoading, showSplash, splashFading]);
+
 	// No additional prefetching needed - components are preloaded during splash
 
-	// Show splash screen for exactly 1 second with smooth fade
+	// Show splash screen for 500ms total with smooth fade
 	if (showSplash) {
 		return (
-			<div className={`fixed inset-0 bg-black transition-opacity duration-300 ease-out ${splashFading ? 'opacity-0' : 'opacity-100'}`}>
+			<div
+				className={`fixed inset-0 bg-black transition-opacity duration-200 ease-out ${splashFading ? 'opacity-0' : 'opacity-100'}`}
+				style={{ willChange: 'opacity' }}
+			>
 				<SplashScreen />
 			</div>
 		);
 	}
 
-	// Main app content - no loading fallback for seamless transition
+	// Don't render router until app is ready to prevent login page flash
+	if (!appReady) {
+		return <div className="min-h-screen bg-[#121212]" />;
+	}
+
+	// Main app content - render only after splash completes
 	return (
 		<div className="min-h-screen bg-[#121212]">
 			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />

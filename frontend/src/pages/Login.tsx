@@ -11,20 +11,20 @@ import { useAuth } from '@/contexts/AuthContext';
 // Note: ArrowLeftIcon kept for possible header/back usage in other variants
 const ArrowLeftIcon = memo(({ size = 20 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 ));
 
 const EyeIcon = memo(({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="currentColor" strokeWidth="2" fill="none"/>
-    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="currentColor" strokeWidth="2" fill="none" />
+    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
   </svg>
 ));
 
 const EyeOffIcon = memo(({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.77 21.77 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.8 21.8 0 0 1-3.22 4.19M1 1l22 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.77 21.77 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.8 21.8 0 0 1-3.22 4.19M1 1l22 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 ));
 
@@ -39,33 +39,46 @@ const Login = () => {
   const location = useLocation();
   const { isAuthenticated, loading: authLoading } = useAuth();
 
-  // Fast path: if we have persisted auth in localStorage, redirect immediately
-  const hasLocalAuth = (() => {
+  // CRITICAL: Check cache IMMEDIATELY but adhere to Hook Rules
+  // We cannot return early here because it violates "Rules of Hooks"
+  // Instead, we'll perform the navigation inside a layout effect or effect
+
+  const hasCachedAuth = (() => {
+    // If user just logged out, ignore cache to prevent redirect loop
+    if ((location.state as any)?.fromLogout) return false;
+
     try {
       const raw = localStorage.getItem('auth-store');
       if (!raw) return false;
-      const parsed = JSON.parse(raw || '{}');
-      return Boolean(parsed?.isAuthenticated && parsed?.userId);
+      const parsed = JSON.parse(raw);
+      const state = parsed?.state || parsed;
+      return Boolean(state?.isAuthenticated && state?.userId);
     } catch {
       return false;
     }
   })();
 
-  if (hasLocalAuth) {
-    const redirectTo = (location.state as any)?.from || '/home';
-    return <Navigate to={redirectTo} replace />;
-  }
+  // Handle cached auth redirect safely
+  useEffect(() => {
+    if (hasCachedAuth) {
+      const redirectTo = (location.state as any)?.from || '/home';
+      navigate(redirectTo, { replace: true });
+    }
+  }, [hasCachedAuth, navigate, location.state]);
 
-  // Redirect if already authenticated (when context is ready)
+  // Handle standard auth redirect
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      
       // If we have a from location, use it, otherwise use home
       const redirectTo = location.state?.from || '/home';
       navigate(redirectTo, { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate, location.state]);
 
+  // If we have cached auth, we can return null to avoid rendering login form
+  // BUT only after all hooks have been called. 
+  // Since we shouldn't have conditional hooks below, we must be careful.
+  // The safest way is to just render a loader or null if we know we're redirecting.
   // Defer below-the-fold UI to idle time to improve LCP
   useEffect(() => {
     const idle = (cb: () => void) => {
@@ -78,23 +91,36 @@ const Login = () => {
     idle(() => setShowDeferred(true));
   }, []);
 
+  // If we have cached auth, we can return null to avoid rendering login form
+  // BUT only after all hooks have been called. 
+  // Since we shouldn't have conditional hooks below, we must be careful.
+  // The safest way is to just render a loader or null if we know we're redirecting.
+  if (hasCachedAuth) {
+    return <div className="min-h-screen bg-black" />;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast.error('Please fill in all fields');
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       await login(email, password);
-      toast.success('Logged in successfully');
-      navigate(location.state?.from || '/home'); // Navigate to the return URL
+
+      // Immediate navigation for smooth UX (Spotify-like)
+      const redirectTo = location.state?.from || '/home';
+      navigate(redirectTo, { replace: true });
+
+      // Show success toast after navigation starts
+      toast.success('Welcome back!');
     } catch (error: any) {
       console.error('Login error:', error);
-      
+
       // Handle specific Firebase error messages
       if (error.message.includes('user-not-found') || error.message.includes('wrong-password')) {
         toast.error('Invalid email or password');
@@ -103,7 +129,6 @@ const Login = () => {
       } else {
         toast.error(error.message || 'Failed to login');
       }
-    } finally {
       setLoading(false);
     }
   };
@@ -112,13 +137,16 @@ const Login = () => {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      toast.success('Logged in with Google successfully');
-      // Immediately navigate to the home page or return URL for faster perceived performance
-      navigate(location.state?.from || '/home', { replace: true });
+
+      // Immediate navigation for smooth UX (Spotify-like)
+      const redirectTo = location.state?.from || '/home';
+      navigate(redirectTo, { replace: true });
+
+      // Show success toast after navigation starts
+      toast.success('Welcome back!');
     } catch (error: any) {
       console.error('Google login error:', error);
       toast.error(error.message || 'Failed to login with Google');
-    } finally {
       setGoogleLoading(false);
     }
   };
@@ -126,7 +154,7 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-black flex flex-col items-center">
       <div className="w-full max-w-md px-6 py-8">
-        
+
         {/* Mavrixfy Logo */}
         <div className="flex justify-center mb-8">
           <img
@@ -135,7 +163,7 @@ const Login = () => {
             className="h-16 w-16 object-contain"
           />
         </div>
-        
+
         <div className="mb-6">
           <Button
             type="button"
@@ -152,7 +180,7 @@ const Login = () => {
             {googleLoading ? 'Logging in...' : 'Continue with Google'}
           </Button>
         </div>
-        
+
         {showDeferred && (
           <div className="relative mb-6" style={{ contentVisibility: 'auto' as any }}>
             <div className="absolute inset-0 flex items-center">
@@ -163,7 +191,7 @@ const Login = () => {
             </div>
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-white">Email</Label>
@@ -181,7 +209,7 @@ const Login = () => {
               required
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="password" className="text-white">Password</Label>
             <div className="relative">
@@ -208,7 +236,7 @@ const Login = () => {
               </Button>
             </div>
           </div>
-          
+
           <Button
             type="submit"
             className="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3"
@@ -217,7 +245,7 @@ const Login = () => {
             {loading ? 'Logging in...' : 'Log In'}
           </Button>
         </form>
-        
+
         {showDeferred && (
           <>
             <div className="mt-6 text-center" style={{ contentVisibility: 'auto' as any }}>
@@ -225,13 +253,13 @@ const Login = () => {
                 Forgot your password?
               </Link>
             </div>
-            
+
             <div className="border-t border-zinc-800 my-8" style={{ contentVisibility: 'auto' as any }}></div>
-            
+
             <div className="text-center" style={{ contentVisibility: 'auto' as any }}>
               <p className="text-zinc-400 mb-4">Don't have an account?</p>
-              <Link 
-                to="/register" 
+              <Link
+                to="/register"
                 className="inline-block border border-zinc-700 text-white rounded-full px-8 py-3 font-bold hover:border-white transition-colors"
               >
                 Sign up for Spotify

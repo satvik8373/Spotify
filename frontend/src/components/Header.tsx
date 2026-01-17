@@ -131,14 +131,18 @@ const Header = ({ className }: HeaderProps) => {
 
   const handleLogout = async () => {
     try {
-      // Navigate to welcome page first for faster perceived performance
-      navigate('/', { replace: true });
+      // CRITICAL: Clear auth storage SYNCHRONOUSLY before navigation
+      // This prevents the Login page from seeing old credentials and redirecting back
+      localStorage.removeItem('auth-store');
 
-      // Then perform the actual logout
-      const result = await signOut();
-      if (!result.success) {
-        console.error('Error during logout:', result.error);
-      }
+      // Navigate to login immediately with a flag indicating explicit logout
+      navigate('/login', {
+        replace: true,
+        state: { fromLogout: true }
+      });
+
+      // Then perform the actual Firebase logout in background
+      await signOut();
     } catch (error) {
       console.error('Error signing out:', error);
       // Still reset auth store in case of error
