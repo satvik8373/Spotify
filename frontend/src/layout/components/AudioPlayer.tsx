@@ -18,13 +18,13 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 // Helper function to validate URLs - more permissive for production
 const isValidUrl = (url: string): boolean => {
   if (!url || typeof url !== 'string') return false;
-  
+
   // Allow relative URLs and various protocols
   if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) return true;
-  
+
   // Allow blob URLs (they're valid for audio playback)
   if (url.startsWith('blob:')) return true;
-  
+
   try {
     const urlObj = new URL(url);
     // Allow http, https, data, and blob URLs
@@ -229,6 +229,13 @@ const AudioPlayer = () => {
       filter.gain.setTargetAtTime(eqValues[index], audioContextRef.current?.currentTime || 0, 0.1);
     });
   }, [equalizer]);
+
+  // Resume AudioContext on user interaction/playback
+  useEffect(() => {
+    if (isPlaying && audioContextRef.current?.state === 'suspended') {
+      audioContextRef.current.resume().catch(console.error);
+    }
+  }, [isPlaying]);
 
 
   // Clean up on unmount and save state before page unload
@@ -1242,7 +1249,7 @@ const AudioPlayer = () => {
       setIsLoading(false);
       setIsPlaying(false);
       isHandlingPlayback.current = false;
-      
+
       // Try to recover by finding alternative audio source
       if (currentSong) {
         setTimeout(() => {
@@ -1256,7 +1263,7 @@ const AudioPlayer = () => {
                 ...currentSong,
                 audioUrl: foundSong.url || (foundSong as any).audioUrl || '',
               };
-              
+
               // Update current song with new audio URL
               usePlayerStore.getState().setCurrentSong(updatedSong);
             } else {
@@ -1811,7 +1818,7 @@ const AudioPlayer = () => {
 
   // Don't render anything if no current song - the audio element should always be present
   // but just without a src when there's no song
-  
+
   return (
     <>
       {/* Show SongDetailsView using our existing component */}
