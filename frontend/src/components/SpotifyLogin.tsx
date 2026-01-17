@@ -1,20 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Music2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Music2, AlertCircle, CheckCircle2, Loader2, Heart } from 'lucide-react';
 import { getLoginUrl, isAuthenticated as isSpotifyAuthenticated, logout as spotifyLogout } from '@/services/spotifyService';
 import { toast } from 'sonner';
-import { InlineLoading } from '@/components/ui/loading';
+import { cn } from '@/lib/utils';
 
 interface SpotifyLoginProps {
   className?: string;
   variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  showDisconnect?: boolean;
+  compact?: boolean;
+}
+
+interface SpotifyLoginProps {
+  className?: string;
+  variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+  showDisconnect?: boolean;
+  compact?: boolean;
 }
 
 const SpotifyLogin: React.FC<SpotifyLoginProps> = ({ 
   className, 
   variant = 'default',
-  size = 'default'
+  size = 'default',
+  showDisconnect = true,
+  compact = false
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -49,20 +61,12 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
       const redirectUri = import.meta.env.VITE_REDIRECT_URI;
       
-      console.log('🔧 Spotify configuration check:');
-      console.log('🔑 VITE_SPOTIFY_CLIENT_ID:', clientId ? 'Present' : 'Missing');
-      console.log('🔗 VITE_REDIRECT_URI:', redirectUri || 'Not set (using fallback)');
-      console.log('🌍 Current hostname:', window.location.hostname);
-      
       if (!clientId) {
         setConfigError('Spotify CLIENT_ID is not configured');
-        console.error('❌ Spotify CLIENT_ID is missing in environment variables');
       } else if (window.location.hostname === 'mavrixfy.site' && !redirectUri) {
         setConfigError('Production redirect URI not configured');
-        console.error('❌ Production redirect URI not set for mavrixfy.site');
       } else {
         setConfigError(null);
-        console.log('✅ Spotify configuration looks good');
       }
     };
     
@@ -72,16 +76,8 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
   const handleLogin = async () => {
     try {
       setIsLoading(true);
-      console.log('🔄 Spotify login button clicked');
-      
-      // Check environment
-      const isProduction = window.location.hostname === 'mavrixfy.site' || 
-                          window.location.hostname === 'www.mavrixfy.site';
-      console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
-      console.log('📍 Current URL:', window.location.href);
       
       const loginUrl = await getLoginUrl();
-      console.log('🔗 Generated login URL:', loginUrl);
       
       if (!loginUrl || loginUrl === 'undefined' || loginUrl.includes('undefined')) {
         throw new Error('Invalid login URL generated');
@@ -91,10 +87,29 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       window.location.href = loginUrl;
       
     } catch (error) {
-      console.error('❌ Error getting Spotify login URL:', error);
+      console.error('Error getting Spotify login URL:', error);
       toast.error('Failed to connect with Spotify. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDisconnect = () => {
+    try {
+      spotifyLogout();
+      toast.success('Disconnected from Spotify');
+    } catch (error) {
+      console.error('Error disconnecting from Spotify:', error);
+      toast.error('Failed to disconnect from Spotify');
+    }
+  };
+
+  const handleSync = () => {
+    try {
+      sessionStorage.setItem('spotify_sync_prompt', '1');
+      window.location.href = '/liked-songs';
+    } catch (error) {
+      console.error('Error navigating to sync:', error);
     }
   };
 
@@ -103,46 +118,89 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
     return (
       <Button 
         disabled
-        className={`bg-red-500 text-white font-bold flex items-center gap-2 ${className}`}
-        variant={variant}
+        className={cn(
+          "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20",
+          compact && "h-8 px-3 text-xs",
+          className
+        )}
+        variant="outline"
         size={size}
         title={configError}
       >
-        <AlertCircle className="h-4 w-4" />
-        {size !== 'icon' && <span>Configuration Error</span>}
+        <AlertCircle className={cn("h-4 w-4", compact && "h-3 w-3")} />
+        {size !== 'icon' && !compact && <span className="ml-2">Config Error</span>}
       </Button>
     );
   }
 
   // Connected state with actions
   if (isAuth) {
+    if (compact) {
+      return (
+        <div className={cn("flex items-center gap-2", className)}>
+          <Button 
+            onClick={handleSync}
+            className={cn(
+              "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20",
+              "h-8 px-3 text-xs font-medium"
+            )}
+            variant="outline"
+            size="sm"
+            title="Sync your Spotify liked songs"
+          >
+            <Heart className="h-3 w-3 mr-1.5" />
+            Sync
+          </Button>
+          {showDisconnect && (
+            <Button 
+              onClick={handleDisconnect}
+              className="h-8 px-2 text-xs"
+              variant="ghost"
+              size="sm"
+              title="Disconnect from Spotify"
+            >
+              <CheckCircle2 className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+      );
+    }
+
     return (
-      <div className={`flex items-center gap-2 ${className || ''}`}>
+      <div className={cn("flex items-center gap-2 flex-wrap", className)}>
         <Button 
-          onClick={() => {
-            try { sessionStorage.setItem('spotify_sync_prompt', '1'); } catch {}
-            try { window.location.href = '/liked-songs'; } catch {}
-          }}
-          className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg"
+          onClick={handleSync}
+          className={cn(
+            "bg-green-500 hover:bg-green-600 text-white font-medium",
+            "flex items-center gap-2 min-h-[44px]", // Touch-friendly height
+            size === 'sm' && "h-9 px-3 text-sm",
+            size === 'lg' && "h-12 px-6 text-base"
+          )}
           variant={variant}
           size={size}
           title="Sync your Spotify liked songs"
         >
-          <Music2 className="h-4 w-4" />
+          <Heart className={cn("h-4 w-4", size === 'sm' && "h-3 w-3", size === 'lg' && "h-5 w-5")} />
           {size !== 'icon' && <span>Sync Spotify</span>}
         </Button>
-        <Button 
-          onClick={() => {
-            try { spotifyLogout(); } catch {}
-          }}
-          className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 font-medium px-4 py-2 rounded-lg"
-          variant="outline"
-          size={size}
-          title="Disconnect from Spotify"
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          {size !== 'icon' && <span>Disconnect</span>}
-        </Button>
+        
+        {showDisconnect && (
+          <Button 
+            onClick={handleDisconnect}
+            className={cn(
+              "border-red-500/30 text-red-500 hover:bg-red-500/10 hover:border-red-500/50",
+              "min-h-[44px]", // Touch-friendly height
+              size === 'sm' && "h-9 px-3 text-sm",
+              size === 'lg' && "h-12 px-6 text-base"
+            )}
+            variant="outline"
+            size={size}
+            title="Disconnect from Spotify"
+          >
+            <CheckCircle2 className={cn("h-4 w-4", size === 'sm' && "h-3 w-3", size === 'lg' && "h-5 w-5")} />
+            {size !== 'icon' && <span className="ml-2">Disconnect</span>}
+          </Button>
+        )}
       </div>
     );
   }
@@ -152,16 +210,29 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
     <Button 
       onClick={handleLogin} 
       disabled={isLoading}
-      className={`bg-[#1DB954] hover:bg-[#1ed760] text-white font-bold flex items-center gap-2 ${className}`}
+      className={cn(
+        "bg-[#1DB954] hover:bg-[#1ed760] text-white font-medium",
+        "flex items-center gap-2 min-h-[44px]", // Touch-friendly height
+        compact && "h-8 px-3 text-xs",
+        size === 'sm' && !compact && "h-9 px-3 text-sm",
+        size === 'lg' && "h-12 px-6 text-base",
+        className
+      )}
       variant={variant}
       size={size}
     >
       {isLoading ? (
-        <InlineLoading text="Connecting..." />
+        <>
+          <Loader2 className={cn("h-4 w-4 animate-spin", compact && "h-3 w-3")} />
+          {size !== 'icon' && !compact && <span>Connecting...</span>}
+          {compact && <span>...</span>}
+        </>
       ) : (
         <>
-          <Music2 className="h-4 w-4" />
-          {size !== 'icon' && <span>Connect with Spotify</span>}
+          <Music2 className={cn("h-4 w-4", compact && "h-3 w-3", size === 'lg' && "h-5 w-5")} />
+          {size !== 'icon' && (
+            <span>{compact ? 'Connect' : 'Connect Spotify'}</span>
+          )}
         </>
       )}
     </Button>

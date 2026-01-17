@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import custom styles */
+@import './styles/spotify-sync.css';
+
 @layer base {
   :root {
     --background: 20 14.3% 4.1%;

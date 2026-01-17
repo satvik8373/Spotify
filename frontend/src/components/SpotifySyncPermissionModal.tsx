@@ -2,7 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Music, Clock, Heart } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Music, Clock, Heart, Check, X, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 interface SpotifyTrack {
@@ -32,14 +35,24 @@ const SpotifySyncPermissionModal: React.FC<SpotifySyncPermissionModalProps> = ({
 }) => {
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(true);
+  const [filter, setFilter] = useState('');
 
   // Defensive: ensure we always work with an array
   const safeTracks: SpotifyTrack[] = useMemo(() => (Array.isArray(tracks) ? tracks : []), [tracks]);
 
+  // Filter tracks based on search
+  const filteredTracks = useMemo(() => {
+    if (!filter.trim()) return safeTracks;
+    const searchTerm = filter.toLowerCase();
+    return safeTracks.filter(track => 
+      track.title.toLowerCase().includes(searchTerm) ||
+      track.artist.toLowerCase().includes(searchTerm) ||
+      track.album.toLowerCase().includes(searchTerm)
+    );
+  }, [safeTracks, filter]);
+
   // Initialize with all tracks selected by default
   useEffect(() => {
-    // Build a stable key from ids to avoid infinite loops when parent recreates array
-    const ids = safeTracks.map(t => t.id).join('|');
     if (safeTracks.length > 0) {
       setSelectedTracks(new Set(safeTracks.map(track => track.id)));
       setSelectAll(true);
@@ -47,28 +60,27 @@ const SpotifySyncPermissionModal: React.FC<SpotifySyncPermissionModalProps> = ({
       setSelectedTracks(new Set());
       setSelectAll(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [safeTracks.length]);
+  }, [safeTracks]);
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedTracks(new Set(safeTracks.map(track => track.id)));
-      setSelectAll(true);
-    } else {
+  const handleSelectAll = () => {
+    if (selectAll) {
       setSelectedTracks(new Set());
       setSelectAll(false);
+    } else {
+      setSelectedTracks(new Set(filteredTracks.map(track => track.id)));
+      setSelectAll(true);
     }
   };
 
-  const handleTrackToggle = (trackId: string, checked: boolean) => {
+  const handleTrackToggle = (trackId: string) => {
     const newSelected = new Set(selectedTracks);
-    if (checked) {
-      newSelected.add(trackId);
-    } else {
+    if (newSelected.has(trackId)) {
       newSelected.delete(trackId);
+    } else {
+      newSelected.add(trackId);
     }
     setSelectedTracks(newSelected);
-    setSelectAll(newSelected.size === safeTracks.length);
+    setSelectAll(newSelected.size === filteredTracks.length);
   };
 
   const handleSync = () => {
@@ -78,6 +90,201 @@ const SpotifySyncPermissionModal: React.FC<SpotifySyncPermissionModalProps> = ({
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Today';
+    if (diffDays === 2) return 'Yesterday';
+    if (diffDays <= 7) return `${diffDays} days ago`;
+    if (diffDays <= 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className={cn(
+        "w-[95vw] max-w-2xl h-[85vh] max-h-[700px] p-0",
+        "sm:w-[90vw] sm:h-[80vh]",
+        "flex flex-col overflow-hidden"
+      )}>
+        {/* Header */}
+        <div className="flex-shrink-0 p-4 sm:p-6 border-b border-border/50">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center">
+                <Heart className="h-5 w-5 text-green-500" />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-semibold text-foreground">
+                  New Spotify Songs
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Recently added to your Spotify liked songs
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8 rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Search and Stats */}
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search new songs..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="pl-10 h-10"
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs">
+                  {filteredTracks.length} new songs
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {selectedTracks.size} selected
+                </Badge>
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSelectAll}
+                className="text-xs h-8"
+              >
+                {selectAll ? 'Deselect All' : 'Select All'}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Track List */}
+        <ScrollArea className="flex-1 px-2">
+          <div className="space-y-1 p-2">
+            {filteredTracks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Music className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">
+                  {filter ? 'No songs match your search' : 'No new songs found'}
+                </p>
+              </div>
+            ) : (
+              filteredTracks.map((track) => (
+                <div
+                  key={track.id}
+                  onClick={() => handleTrackToggle(track.id)}
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200",
+                    "hover:bg-accent/50 active:bg-accent/70",
+                    selectedTracks.has(track.id) 
+                      ? "bg-accent/30 border border-primary/20" 
+                      : "hover:bg-muted/30"
+                  )}
+                >
+                  {/* Checkbox */}
+                  <div className={cn(
+                    "w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
+                    selectedTracks.has(track.id)
+                      ? "bg-primary border-primary"
+                      : "border-muted-foreground/30 hover:border-primary/50"
+                  )}>
+                    {selectedTracks.has(track.id) && (
+                      <Check className="h-3 w-3 text-primary-foreground" />
+                    )}
+                  </div>
+
+                  {/* Album Art */}
+                  <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                    {track.imageUrl ? (
+                      <img 
+                        src={track.imageUrl} 
+                        alt={track.album}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Music className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Track Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm text-foreground truncate">
+                      {track.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {track.artist}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-xs px-1.5 py-0.5">
+                        {formatDate(track.addedAt)}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground/70 hidden sm:inline">
+                        {formatTime(track.duration)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Duration - Mobile */}
+                  <div className="sm:hidden text-xs text-muted-foreground flex items-center">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {formatTime(track.duration)}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 p-4 sm:p-6 border-t border-border/50">
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="flex-1 sm:flex-none"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSync}
+              disabled={selectedTracks.size === 0 || isLoading}
+              className="flex-1 sm:flex-none"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <Heart className="h-4 w-4 mr-2" />
+                  Add {selectedTracks.size} Songs
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 

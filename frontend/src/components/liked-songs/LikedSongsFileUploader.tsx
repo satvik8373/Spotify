@@ -1,14 +1,16 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, X, CheckCircle, AlertCircle, Search, ArrowRight, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Upload, FileText, X, CheckCircle, AlertCircle, Search, ArrowRight, Check, Music, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { Song } from '@/types';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { addMultipleLikedSongs } from '@/services/likedSongsService';
 import { requestManager } from '@/services/requestManager';
 import { ContentLoading } from '@/components/ui/loading';
+import { cn } from '@/lib/utils';
 
 interface LikedSongsFileUploaderProps {
   onClose: () => void;
@@ -385,10 +387,10 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
       {/* File upload area */}
       {!parsedSongs.length && !isUploading && (
-        <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
+        <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
           <input
             ref={fileInputRef}
             type="file"
@@ -397,26 +399,33 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
             className="hidden"
           />
           <div className="flex flex-col items-center justify-center">
-            <FileText className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Import Songs to Liked Songs</h3>
-            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-              Upload a TXT or CSV file containing song titles and artists to add them to your liked songs.
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+              <FileText className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Import Songs</h3>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md">
+              Upload a file containing song titles and artists to add them to your liked songs.
             </p>
             <Button
               onClick={handleUploadClick}
-              className="flex items-center gap-2"
-              size="sm"
+              className="spotify-sync-button"
+              size="lg"
             >
-              <Upload className="h-4 w-4" />
+              <Upload className="h-4 w-4 mr-2" />
               <span>Select File</span>
             </Button>
-            <div className="mt-4 text-xs text-muted-foreground">
-              <p className="mb-1">Supported formats:</p>
-              <ul className="list-disc list-inside">
-                <li>CSV: title,artist,duration,imageUrl,audioUrl</li>
-                <li>TXT: Artist - Title</li>
-                <li>TXT: Title by Artist</li>
-              </ul>
+            <div className="mt-6 p-4 bg-muted/30 rounded-lg max-w-md">
+              <p className="text-xs text-muted-foreground mb-2 font-medium">Supported formats:</p>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">CSV</Badge>
+                  <span>title,artist,duration,imageUrl,audioUrl</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">TXT</Badge>
+                  <span>Artist - Title or Title by Artist</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -424,70 +433,95 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
 
       {/* File upload progress */}
       {isUploading && (
-        <ContentLoading text={`Reading file... ${fileName}`} height="border rounded-lg p-6" />
+        <div className="border rounded-lg p-8">
+          <ContentLoading text={`Reading ${fileName}...`} />
+        </div>
       )}
 
       {/* Parsed songs list */}
       {parsedSongs.length > 0 && !isProcessing && !isComplete && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-medium">{parsedSongs.length} Songs Found</h3>
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg">
+            <div>
+              <h3 className="text-lg font-semibold">{parsedSongs.length} Songs Found</h3>
+              <p className="text-sm text-muted-foreground">Ready to add to your liked songs</p>
+            </div>
             <Button
               size="sm"
               variant="ghost"
               onClick={resetUpload}
-              className="h-8 px-2 text-xs sm:text-sm"
+              className="self-start sm:self-center"
             >
-              <X className="h-3 w-3 mr-1 sm:h-4 sm:w-4" />
-              <span>Reset</span>
+              <X className="h-4 w-4 mr-2" />
+              Reset
             </Button>
           </div>
           
+          {/* Song list - Mobile optimized */}
           <div className="border rounded-lg overflow-hidden">
-            <div className="max-h-[40vh] overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-secondary sticky top-0">
-                  <tr>
-                    <th className="text-left p-2 text-xs sm:text-sm font-medium">#</th>
-                    <th className="text-left p-2 text-xs sm:text-sm font-medium">Title</th>
-                    <th className="text-left p-2 text-xs sm:text-sm font-medium hidden sm:table-cell">Artist</th>
-                    <th className="w-8"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsedSongs.map((song, index) => (
-                    <tr key={`${song.title}-${song.artist}-${index}`} className="border-t border-gray-200 dark:border-gray-800">
-                      <td className="p-2 text-xs sm:text-sm">{index + 1}</td>
-                      <td className="p-2 text-xs sm:text-sm">
-                        <div className="truncate max-w-[150px] sm:max-w-[200px]">{song.title}</div>
-                      </td>
-                      <td className="p-2 text-xs sm:text-sm hidden sm:table-cell">
-                        <div className="truncate max-w-[100px] sm:max-w-[150px]">{song.artist}</div>
-                      </td>
-                      <td className="p-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => removeSong(index)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ScrollArea className="h-[50vh] max-h-[400px]">
+              <div className="divide-y divide-border">
+                {parsedSongs.map((song, index) => (
+                  <div key={`${song.title}-${song.artist}-${index}`} className="flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors">
+                    {/* Song number */}
+                    <div className="w-6 text-xs text-muted-foreground text-center">
+                      {index + 1}
+                    </div>
+                    
+                    {/* Placeholder album art */}
+                    <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                      <Music className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    
+                    {/* Song info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm text-foreground truncate">
+                        {song.title}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {song.artist}
+                      </div>
+                      {song.duration && (
+                        <div className="text-xs text-muted-foreground/70 sm:hidden">
+                          <Clock className="h-3 w-3 inline mr-1" />
+                          {song.duration}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Duration and remove button */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {song.duration && (
+                        <div className="hidden sm:flex items-center text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {song.duration}
+                        </div>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => removeSong(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
           
-          <div className="flex justify-between gap-3 mt-4">
+          {/* Add button */}
+          <div className="flex justify-center">
             <Button
               onClick={addSongsToLikedSongs}
-              className="flex items-center gap-2"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-3 h-12"
               disabled={parsedSongs.length === 0}
+              size="lg"
             >
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 mr-2" />
               <span>Add {parsedSongs.length} Songs</span>
             </Button>
           </div>
@@ -496,40 +530,58 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
 
       {/* Processing display */}
       {isProcessing && !isComplete && (
-        <div className="border rounded-lg p-6">
+        <div className="border rounded-lg p-4 sm:p-6">
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Adding Songs...</h3>
-              <Badge variant="outline">
-                {addedSongsCount}/{parsedSongs.length}
+            {/* Progress header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <h3 className="text-lg font-semibold">Adding Songs...</h3>
+              </div>
+              <Badge variant="outline" className="self-start sm:self-center">
+                {addedSongsCount}/{parsedSongs.length} added
               </Badge>
             </div>
             
             <Progress value={progress} className="h-2" />
             
-            <div className="max-h-[30vh] overflow-y-auto border rounded-lg p-2">
-              {parsedSongs.map((song, index) => (
-                <div
-                  key={`${song.title}-${song.artist}-${index}`}
-                  className="flex items-center justify-between py-2 px-2 border-b last:border-0 text-xs sm:text-sm"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                      <div className="font-medium truncate max-w-[200px]">{song.title}</div>
-                      <div className="text-muted-foreground truncate max-w-[150px] hidden sm:block">
+            {/* Song processing list */}
+            <ScrollArea className="h-[40vh] max-h-[300px] border rounded-lg">
+              <div className="divide-y divide-border">
+                {parsedSongs.map((song, index) => (
+                  <div
+                    key={`${song.title}-${song.artist}-${index}`}
+                    className="flex items-center gap-3 p-3"
+                  >
+                    {/* Placeholder album art */}
+                    <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
+                      <Music className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                    
+                    {/* Song info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{song.title}</div>
+                      <div className="text-xs text-muted-foreground truncate">
                         {song.artist}
                       </div>
+                      {song.message && (
+                        <div className="text-xs text-muted-foreground/70 truncate">
+                          {song.message}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Status icon */}
+                    <div className="flex-shrink-0">
+                      {song.status === 'added' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                      {song.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
+                      {song.status === 'searching' && <Search className="h-4 w-4 animate-pulse text-blue-500" />}
+                      {song.status === 'ready' && <div className="h-4 w-4" />}
                     </div>
                   </div>
-                  <div className="ml-2 flex-shrink-0">
-                    {song.status === 'added' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                    {song.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
-                    {song.status === 'searching' && <Search className="h-4 w-4 animate-pulse" />}
-                    {song.status === 'ready' && <div className="h-4 w-4" />}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         </div>
       )}
@@ -538,19 +590,21 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
       {isComplete && (
         <div className="border rounded-lg p-6 text-center">
           <div className="flex flex-col items-center justify-center">
-            <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
-              <Check className="h-6 w-6 text-green-600 dark:text-green-300" />
+            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-6">
+              <Check className="h-8 w-8 text-green-500" />
             </div>
-            <h3 className="text-lg font-medium mb-2">Import Complete</h3>
-            <p className="text-sm text-muted-foreground mb-4">
+            <h3 className="text-xl font-semibold mb-2">Import Complete!</h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
               Successfully added {addedSongsCount} songs to your liked songs.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button onClick={onClose}>
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+              <Button onClick={onClose} className="flex-1" size="lg">
+                <Music className="h-4 w-4 mr-2" />
                 View Liked Songs
               </Button>
-              <Button variant="outline" onClick={resetUpload}>
-                Import More Songs
+              <Button variant="outline" onClick={resetUpload} className="flex-1" size="lg">
+                <Upload className="h-4 w-4 mr-2" />
+                Import More
               </Button>
             </div>
           </div>
