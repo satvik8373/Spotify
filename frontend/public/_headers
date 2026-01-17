@@ -1,0 +1,32 @@
+# Netlify headers for audio files
+/*.mp3
+  Content-Type: audio/mpeg
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, HEAD, OPTIONS
+  Access-Control-Allow-Headers: Range, Content-Range, Content-Length
+  Accept-Ranges: bytes
+  Cache-Control: public, max-age=31536000
+
+/*.wav
+  Content-Type: audio/wav
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, HEAD, OPTIONS
+  Access-Control-Allow-Headers: Range, Content-Range, Content-Length
+  Accept-Ranges: bytes
+  Cache-Control: public, max-age=31536000
+
+/*.ogg
+  Content-Type: audio/ogg
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, HEAD, OPTIONS
+  Access-Control-Allow-Headers: Range, Content-Range, Content-Length
+  Accept-Ranges: bytes
+  Cache-Control: public, max-age=31536000
+
+/*.m4a
+  Content-Type: audio/mp4
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, HEAD, OPTIONS
+  Access-Control-Allow-Headers: Range, Content-Range, Content-Length
+  Accept-Ranges: bytes
+  Cache-Control: public, max-age=31536000
