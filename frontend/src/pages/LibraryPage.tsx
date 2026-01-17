@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Loader,
   Library,
   Heart,
   Music,
@@ -17,13 +16,14 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlaylistStore } from '../stores/usePlaylistStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { CreatePlaylistDialog } from '../components/playlist/CreatePlaylistDialog';
-import { ContentLoading } from '@/components/ui/loading';
 import { cn } from '@/lib/utils';
 
 const LibraryPage = () => {
   const { isAuthenticated, loading, user } = useAuth();
   const navigate = useNavigate();
+  const { compactLibraryLayout } = useSettingsStore();
   const [isLibraryLoading, setIsLibraryLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { userPlaylists, fetchUserPlaylists } = usePlaylistStore();
@@ -133,7 +133,7 @@ const LibraryPage = () => {
       console.log('LibraryPage: loadData called, isAuthenticated:', isAuthenticated, 'user:', user?.id);
       // Show content immediately
       setIsLibraryLoading(false);
-      
+
       if (isAuthenticated) {
         try {
           console.log('LibraryPage: Calling fetchUserPlaylists');
@@ -168,18 +168,7 @@ const LibraryPage = () => {
     });
   }, [userPlaylists]);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('LibraryPage: Auth state changed:', { isAuthenticated, loading, user: user?.id });
-  }, [isAuthenticated, loading, user]);
 
-  // Debug playlist store state
-  useEffect(() => {
-    console.log('LibraryPage: Playlist store state changed:', {
-      userPlaylistsCount: userPlaylists.length,
-      userPlaylists: userPlaylists.map(p => ({ id: p._id, name: p.name }))
-    });
-  }, [userPlaylists]);
 
 
   return (
@@ -257,11 +246,17 @@ const LibraryPage = () => {
                 {/* Liked Songs Card - Always at top */}
                 <div className="mb-4">
                   <div
-                    className="flex items-center gap-3 p-3 hover:bg-accent rounded-md cursor-pointer transition-colors"
+                    className={cn(
+                      "flex items-center hover:bg-accent rounded-md cursor-pointer transition-colors",
+                      compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
+                    )}
                     onClick={() => navigate('/liked-songs')}
                   >
-                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-blue-400 rounded-md flex items-center justify-center">
-                      <Heart className="h-6 w-6 text-white" fill="white" />
+                    <div className={cn(
+                      "bg-gradient-to-br from-indigo-600 to-blue-400 rounded-md flex items-center justify-center",
+                      compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
+                    )}>
+                      <Heart className={compactLibraryLayout ? "h-4 w-4 text-white" : "h-6 w-6 text-white"} fill="white" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground truncate">Liked Songs</h3>
@@ -287,13 +282,19 @@ const LibraryPage = () => {
                         {pinnedItems.map(playlist => (
                           <div
                             key={playlist._id}
-                            className="flex items-center gap-3 p-3 hover:bg-accent rounded-md cursor-pointer group transition-colors"
+                            className={cn(
+                              "flex items-center hover:bg-accent rounded-md cursor-pointer group transition-colors",
+                              compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
+                            )}
                             onClick={() => navigateToPlaylist(playlist._id)}
                           >
                             <img
                               src={playlist.imageUrl || '/default-playlist.jpg'}
                               alt={playlist.name}
-                              className="w-12 h-12 object-cover rounded-md"
+                              className={cn(
+                                "object-cover rounded-md",
+                                compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
+                              )}
                               loading="lazy"
                             />
                             <div className="flex-1 min-w-0">
@@ -314,14 +315,22 @@ const LibraryPage = () => {
                         ))}
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                      <div className={cn(
+                        "grid gap-4",
+                        compactLibraryLayout
+                          ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7"
+                          : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+                      )}>
                         {pinnedItems.map(playlist => (
                           <div
                             key={playlist._id}
-                            className="bg-card border border-border rounded-lg p-4 hover:bg-accent transition-colors cursor-pointer group relative"
+                            className={cn(
+                              "bg-card border border-border rounded-lg hover:bg-accent transition-colors cursor-pointer group relative",
+                              compactLibraryLayout ? "p-3" : "p-4"
+                            )}
                             onClick={() => navigateToPlaylist(playlist._id)}
                           >
-                            <div className="aspect-square mb-4 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
+                            <div className="aspect-square mb-3 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
                               <img
                                 src={playlist.imageUrl || '/default-playlist.jpg'}
                                 alt={playlist.name}
@@ -337,8 +346,8 @@ const LibraryPage = () => {
                                 <PinOff className="h-4 w-4" />
                               </button>
                             </div>
-                            <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
-                            <p className="text-sm text-muted-foreground truncate mt-1">
+                            <h3 className={cn("font-medium text-foreground truncate", compactLibraryLayout ? "text-sm" : "")}>{playlist.name}</h3>
+                            <p className={cn("text-muted-foreground truncate", compactLibraryLayout ? "text-xs mt-0.5" : "text-sm mt-1")}>
                               Playlist • {playlist.createdBy?.fullName || 'Unknown'}
                             </p>
                           </div>
@@ -362,13 +371,19 @@ const LibraryPage = () => {
                         {unpinnedItems.map(playlist => (
                           <div
                             key={playlist._id}
-                            className="flex items-center gap-3 p-3 hover:bg-accent rounded-md cursor-pointer group transition-colors"
+                            className={cn(
+                              "flex items-center hover:bg-accent rounded-md cursor-pointer group transition-colors",
+                              compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
+                            )}
                             onClick={() => navigateToPlaylist(playlist._id)}
                           >
                             <img
                               src={playlist.imageUrl || '/default-playlist.jpg'}
                               alt={playlist.name}
-                              className="w-12 h-12 object-cover rounded-md"
+                              className={cn(
+                                "object-cover rounded-md",
+                                compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
+                              )}
                               loading="lazy"
                             />
                             <div className="flex-1 min-w-0">
@@ -389,14 +404,22 @@ const LibraryPage = () => {
                         ))}
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                      <div className={cn(
+                        "grid gap-4",
+                        compactLibraryLayout
+                          ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7"
+                          : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+                      )}>
                         {unpinnedItems.map(playlist => (
                           <div
                             key={playlist._id}
-                            className="bg-card border border-border rounded-lg p-4 hover:bg-accent transition-colors cursor-pointer group relative"
+                            className={cn(
+                              "bg-card border border-border rounded-lg hover:bg-accent transition-colors cursor-pointer group relative",
+                              compactLibraryLayout ? "p-3" : "p-4"
+                            )}
                             onClick={() => navigateToPlaylist(playlist._id)}
                           >
-                            <div className="aspect-square mb-4 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
+                            <div className="aspect-square mb-3 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
                               <img
                                 src={playlist.imageUrl || '/default-playlist.jpg'}
                                 alt={playlist.name}
@@ -405,8 +428,8 @@ const LibraryPage = () => {
                               />
                               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
-                            <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
-                            <p className="text-sm text-muted-foreground truncate mt-1">
+                            <h3 className={cn("font-medium text-foreground truncate", compactLibraryLayout ? "text-sm" : "")}>{playlist.name}</h3>
+                            <p className={cn("text-muted-foreground truncate", compactLibraryLayout ? "text-xs mt-0.5" : "text-sm mt-1")}>
                               Playlist • {playlist.createdBy?.fullName || 'Unknown'}
                             </p>
                           </div>
@@ -445,6 +468,7 @@ function LikedPlaylistsSection() {
   } catch { }
 
   const { playlists } = usePlaylistStore();
+  const { compactLibraryLayout } = useSettingsStore();
   const navigate = useNavigate();
   const favs = playlists.filter(p => likedIds.includes(p._id)).slice(0, 6);
 
@@ -459,13 +483,19 @@ function LikedPlaylistsSection() {
         {favs.map((playlist) => (
           <div
             key={`fav-${playlist._id}`}
-            className="flex items-center gap-3 p-3 hover:bg-accent rounded-md cursor-pointer group transition-colors"
+            className={cn(
+              "flex items-center hover:bg-accent rounded-md cursor-pointer group transition-colors",
+              compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
+            )}
             onClick={() => navigate(`/playlist/${playlist._id}`)}
           >
             <img
               src={playlist.imageUrl || '/default-playlist.jpg'}
               alt={playlist.name}
-              className="w-12 h-12 object-cover rounded-md"
+              className={cn(
+                "object-cover rounded-md",
+                compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
+              )}
               loading="lazy"
             />
             <div className="flex-1 min-w-0">

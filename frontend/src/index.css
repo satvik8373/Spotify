@@ -1,9 +1,9 @@
+/* Import custom styles */
+@import './styles/spotify-sync.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import custom styles */
-@import './styles/spotify-sync.css';
 
 @layer base {
   :root {

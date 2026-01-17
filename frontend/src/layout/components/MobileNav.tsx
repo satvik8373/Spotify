@@ -5,7 +5,7 @@ import { Home, Search, Library, Heart, LogIn, User, Play, Pause, ListMusic, Bell
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
+
 import SongDetailsView from '@/components/SongDetailsView';
 import QueueDrawer from '@/components/QueueDrawer';
 import { signOut } from '@/services/hybridAuthService';
@@ -35,7 +35,6 @@ const MobileNav = () => {
   const navigate = useNavigate();
   const { currentSong, isPlaying, currentTime, duration } = usePlayerStore();
   const { isAuthenticated, user } = useAuth();
-  const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
@@ -47,59 +46,7 @@ const MobileNav = () => {
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
 
-  // Check if current song is liked
-  // Check if current song is liked (robust check for both ID types)
-  const isLiked = React.useMemo(() => {
-    if (!currentSong) return false;
-    const id = (currentSong as any).id;
-    const _id = currentSong._id;
-    return (id && likedSongIds?.has(id)) || (_id && likedSongIds?.has(_id));
-  }, [currentSong, likedSongIds]);
 
-  // State to track liked status independently
-  const [songLiked, setSongLiked] = useState(isLiked);
-
-  // Update songLiked whenever isLiked changes
-  useEffect(() => {
-    setSongLiked(isLiked);
-  }, [isLiked]);
-
-  // Listen for like updates from other components
-  useEffect(() => {
-    const handleLikeUpdate = (e: Event) => {
-      if (!currentSong) return;
-
-      const songId = (currentSong as any).id || currentSong._id;
-
-      // Check if this event includes details about which song was updated
-      if (e instanceof CustomEvent && e.detail) {
-        // If we have details and it's not for our current song, ignore
-        if (e.detail.songId && e.detail.songId !== songId) {
-          return;
-        }
-
-        // If we have explicit like state in the event, use it
-        if (typeof e.detail.isLiked === 'boolean') {
-          setSongLiked(e.detail.isLiked);
-          return;
-        }
-      }
-
-      // Otherwise do a fresh check from the store
-      const id = (currentSong as any).id;
-      const _id = currentSong._id;
-      const freshCheck = (id && likedSongIds?.has(id)) || (_id && likedSongIds?.has(_id));
-      setSongLiked(!!freshCheck);
-    };
-
-    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
-    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
-
-    return () => {
-      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
-      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
-    };
-  }, [currentSong, likedSongIds]);
 
   // Stable gradient background with isolation and theme-aware fallbacks
   const gradientStyle = React.useMemo(() => ({
@@ -269,7 +216,7 @@ const MobileNav = () => {
       className: `absolute top-full mt-1 w-36 bg-popover/95 backdrop-blur-sm rounded-md shadow-xl overflow-hidden z-50 border border-border ${position}`,
       style: {
         minWidth: '144px',
-        maxWidth: '200px',
+        maxWidth: '320px',
       }
     };
   };

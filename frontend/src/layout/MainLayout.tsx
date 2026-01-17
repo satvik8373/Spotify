@@ -11,6 +11,7 @@ import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
 import DesktopFooter from '@/components/DesktopFooter';
 
+
 const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
@@ -34,6 +35,8 @@ const MainLayout = () => {
     window.addEventListener('toggleQueue', handleToggleQueue);
     return () => window.removeEventListener('toggleQueue', handleToggleQueue);
   }, []);
+
+
 
   useEffect(() => {
     const checkMobile = () => {

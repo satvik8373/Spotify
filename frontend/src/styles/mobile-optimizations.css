@@ -230,7 +230,8 @@
     border-top-color: #333;
   }
   
-  .mobile-player {
+  /* Only apply dark background if no dynamic album colors are present */
+  .mobile-player:not([style*="--album-primary"]) {
     background: #1a1a1a;
     border-top-color: #333;
   }

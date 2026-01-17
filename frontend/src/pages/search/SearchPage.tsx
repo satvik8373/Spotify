@@ -490,126 +490,126 @@ const SearchPage = () => {
           {/* Search Box - Spotify-style white design with speech recognition */}
           <div className="mb-6">
             <form onSubmit={handleSearch} className="flex-1 max-w-xl flex items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="What do you want to listen to?"
-                value={searchQuery}
-                onChange={handleQueryChange}
-                className="w-full rounded-l-full bg-card text-foreground pl-10 pr-10 h-12 border border-border focus:outline-none focus:ring-1 focus:ring-primary font-medium"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={clearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <XCircle size={18} />
-                </button>
-              )}
-            </div>
-            <Button
-              type="submit"
-              className="h-12 rounded-none bg-card hover:bg-accent text-foreground font-medium px-5 border border-border"
-            >
-              Search
-            </Button>
-
-            {/* Speech recognition button */}
-            {speechSupported && (
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="What do you want to listen to?"
+                  value={searchQuery}
+                  onChange={handleQueryChange}
+                  className="w-full rounded-l-full bg-card text-foreground pl-10 pr-10 h-12 border border-border focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <XCircle size={18} />
+                  </button>
+                )}
+              </div>
               <Button
-                type="button"
-                onClick={toggleListening}
-                className={cn(
-                  "h-12 rounded-r-full bg-card hover:bg-accent text-foreground font-medium px-3 border border-border transition-all",
-                  isListening && "text-primary"
-                )}
-                title={isListening ? "Stop listening" : "Search with voice"}
+                type="submit"
+                className="h-12 rounded-none bg-card hover:bg-accent text-foreground font-medium px-5 border border-border"
               >
-                {isListening ? (
-                  <Mic className="h-5 w-5 animate-pulse" />
-                ) : (
-                  <Mic className="h-5 w-5" />
-                )}
+                Search
               </Button>
-            )}
-          </form>
+
+              {/* Speech recognition button */}
+              {speechSupported && (
+                <Button
+                  type="button"
+                  onClick={toggleListening}
+                  className={cn(
+                    "h-12 rounded-r-full bg-card hover:bg-accent text-foreground font-medium px-3 border border-border transition-all",
+                    isListening && "text-primary"
+                  )}
+                  title={isListening ? "Stop listening" : "Search with voice"}
+                >
+                  {isListening ? (
+                    <Mic className="h-5 w-5 animate-pulse" />
+                  ) : (
+                    <Mic className="h-5 w-5" />
+                  )}
+                </Button>
+              )}
+            </form>
           </div>
 
-        {isInitialLoad ? (
-          <div className="py-12"></div>
-        ) : query ? (
-          <div className="space-y-6">
-            {/* Top Results - Featured Section */}
-            {(sortedIndianResults.length > 0 || playlistResults.length > 0) && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold tracking-tight mb-4">Top Result</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Top Result Card */}
-                  {sortedIndianResults.length > 0 && (
-                    <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
-                      <div className="flex flex-col h-full">
-                        <div className="mb-4">
-                          <img
-                            src={sortedIndianResults[0].image}
-                            alt={sortedIndianResults[0].title}
-                            className="w-24 h-24 shadow-md rounded-md"
-                          />
-                        </div>
-                        <h3 className="text-xl font-bold text-foreground truncate">{sortedIndianResults[0].title}</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          {resolveArtist(sortedIndianResults[0])}
-                        </p>
-                        <div className="mt-auto">
-                          <Button
-                            className="rounded-full h-12 w-12 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-                            size="icon"
-                            onClick={() => usePlayerStore.getState().setCurrentSong(sortedIndianResults[0] as any)}
-                          >
-                            <Play className="h-6 w-6 ml-0.5" />
-                          </Button>
+          {isInitialLoad ? (
+            <div className="py-12"></div>
+          ) : query ? (
+            <div className="space-y-6">
+              {/* Top Results - Featured Section */}
+              {(sortedIndianResults.length > 0 || playlistResults.length > 0) && (
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold tracking-tight mb-4">Top Result</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Top Result Card */}
+                    {sortedIndianResults.length > 0 && (
+                      <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
+                        <div className="flex flex-col h-full">
+                          <div className="mb-4">
+                            <img
+                              src={sortedIndianResults[0].image}
+                              alt={sortedIndianResults[0].title}
+                              className="w-24 h-24 shadow-md rounded-md"
+                            />
+                          </div>
+                          <h3 className="text-xl font-bold text-foreground truncate">{sortedIndianResults[0].title}</h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            {resolveArtist(sortedIndianResults[0])}
+                          </p>
+                          <div className="mt-auto">
+                            <Button
+                              className="rounded-full h-12 w-12 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                              size="icon"
+                              onClick={() => usePlayerStore.getState().setCurrentSong(sortedIndianResults[0] as any)}
+                            >
+                              <Play className="h-6 w-6 ml-0.5" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Alternative Top Result - Playlist */}
-                  {indianSearchResults.length === 0 && playlistResults.length > 0 && (
-                    <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
-                      <PlaylistCard
-                        playlist={playlistResults[0]}
-                        showDescription={true}
-                        className="bg-transparent hover:bg-transparent"
-                      />
-                    </div>
-                  )}
+                    {/* Alternative Top Result - Playlist */}
+                    {indianSearchResults.length === 0 && playlistResults.length > 0 && (
+                      <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
+                        <PlaylistCard
+                          playlist={playlistResults[0]}
+                          showDescription={true}
+                          className="bg-transparent hover:bg-transparent"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Playlist Results */}
-            {renderPlaylistResults()}
+              {/* Playlist Results */}
+              {renderPlaylistResults()}
 
-            {/* Song Results */}
-            {/* Songs section removed - IndianMusicPlayer no longer needed */}
+              {/* Song Results */}
+              {/* Songs section removed - IndianMusicPlayer no longer needed */}
 
-            {/* Show message if no results */}
-            {sortedIndianResults.length === 0 && playlistResults.length === 0 && (
-              <div className="py-16 text-center bg-card rounded-lg border border-border">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="h-8 w-8 text-muted-foreground" />
+              {/* Show message if no results */}
+              {sortedIndianResults.length === 0 && playlistResults.length === 0 && (
+                <div className="py-16 text-center bg-card rounded-lg border border-border">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-foreground font-semibold text-lg">No results found for "{query}"</p>
+                  <p className="text-muted-foreground text-sm mt-2">Try different keywords or check the spelling</p>
+                  {/* Voice search button removed */}
                 </div>
-                <p className="text-foreground font-semibold text-lg">No results found for "{query}"</p>
-                <p className="text-muted-foreground text-sm mt-2">Try different keywords or check the spelling</p>
-                {/* Voice search button removed */}
-              </div>
-            )}
-          </div>
-        ) : (
-          // Empty state with recent searches and Instagram follow
-          renderEmptyState()
-        )}
+              )}
+            </div>
+          ) : (
+            // Empty state with recent searches and Instagram follow
+            renderEmptyState()
+          )}
         </div>
       </ScrollArea>
     </div>

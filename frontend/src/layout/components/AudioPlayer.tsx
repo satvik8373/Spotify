@@ -13,6 +13,7 @@ import { useAlbumColors } from '@/hooks/useAlbumColors';
 import OptimizedImage from '@/components/OptimizedImage';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { usePhoneInterruption } from '@/hooks/usePhoneInterruption';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
@@ -141,6 +142,85 @@ const AudioPlayer = () => {
   const setCurrentTime = playerStore.setCurrentTime;
   const setDuration = playerStore.setDuration;
   const playPrevious = playerStore.playPrevious;
+  const { streamingQuality, equalizer } = useSettingsStore();
+
+  // Web Audio API refs
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const filtersRef = useRef<BiquadFilterNode[]>([]);
+  const isAudioContextInitialized = useRef(false);
+
+  // Initialize Web Audio API
+  useEffect(() => {
+    if (!audioRef.current || isAudioContextInitialized.current) return;
+
+    try {
+      // 1. Create AudioContext
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
+      audioContextRef.current = ctx;
+
+      // 2. Create Source Node
+      const source = ctx.createMediaElementSource(audioRef.current);
+      sourceNodeRef.current = source;
+
+      // 3. Create Filters
+      const frequencies = [60, 150, 400, 1000, 2400, 15000];
+      const filters = frequencies.map((freq, index) => {
+        const filter = ctx.createBiquadFilter();
+        filter.frequency.value = freq;
+
+        // Type of filter based on frequency position
+        if (index === 0) {
+          filter.type = 'lowshelf';
+        } else if (index === frequencies.length - 1) {
+          filter.type = 'highshelf';
+        } else {
+          filter.type = 'peaking';
+          filter.Q.value = 1; // Default Q factor
+        }
+        return filter;
+      });
+      filtersRef.current = filters;
+
+      // 4. Connect Chain: Source -> Filter 1 -> ... -> Filter N -> Destination
+      source.connect(filters[0]);
+      for (let i = 0; i < filters.length - 1; i++) {
+        filters[i].connect(filters[i + 1]);
+      }
+      filters[filters.length - 1].connect(ctx.destination);
+
+      isAudioContextInitialized.current = true;
+    } catch (error) {
+      console.error('Failed to initialize Web Audio API:', error);
+    }
+
+    return () => {
+      // Cleanup is tricky with audio contexts attached to elements, usually better to leave it
+      // or check if context state needs closing, but often reusing the audio element complicates full cleanup.
+      // We'll leave the graph intact as the component seems persistant.
+    };
+  }, []);
+
+  // Update Filters when settings change
+  useEffect(() => {
+    if (!filtersRef.current.length) return;
+
+    const eqValues = [
+      equalizer['60Hz'],
+      equalizer['150Hz'],
+      equalizer['400Hz'],
+      equalizer['1KHz'],
+      equalizer['2.4KHz'],
+      equalizer['15KHz']
+    ];
+
+    filtersRef.current.forEach((filter, index) => {
+      // Smooth transition for gain changes
+      filter.gain.setTargetAtTime(eqValues[index], audioContextRef.current?.currentTime || 0, 0.1);
+    });
+  }, [equalizer]);
+
 
   // Clean up on unmount and save state before page unload
   useEffect(() => {
@@ -611,6 +691,8 @@ const AudioPlayer = () => {
       audioRef.current.setAttribute('playsinline', '');
       audioRef.current.setAttribute('webkit-playsinline', '');
       audioRef.current.setAttribute('preload', 'auto');
+      audioRef.current.crossOrigin = 'anonymous'; // Required for Web Audio API
+
 
       // Critical for audio focus handling in iOS Safari
       audioRef.current.setAttribute('x-webkit-airplay', 'allow');
@@ -919,7 +1001,14 @@ const AudioPlayer = () => {
     if (!audioRef.current || !currentSong) return;
 
     const audio = audioRef.current;
-    const songUrl = currentSong.audioUrl;
+    let songUrl = currentSong.audioUrl;
+
+    // Append quality parameter if valid HTTP/HTTPS URL
+    if (songUrl && !songUrl.startsWith('blob:') && isValidUrl(songUrl)) {
+      const separator = songUrl.includes('?') ? '&' : '?';
+      const qualityParam = streamingQuality.toLowerCase().replace(/\s+/g, '_');
+      songUrl = `${songUrl}${separator}quality=${qualityParam}`;
+    }
 
     // Validate the URL and reject blob URLs from old download system
     if (!isValidUrl(songUrl) || songUrl.startsWith('blob:')) {
@@ -1130,7 +1219,7 @@ const AudioPlayer = () => {
         isHandlingPlayback.current = false;
       }
     }
-  }, [currentSong, isPlaying, setIsPlaying, playNext, setCurrentSong]);
+  }, [currentSong, isPlaying, setIsPlaying, playNext, setCurrentSong, streamingQuality]);
 
   // Handle audio errors
   useEffect(() => {
@@ -2044,7 +2133,9 @@ const AudioPlayer = () => {
 
       <audio
         ref={audioRef}
-        src={currentSong?.audioUrl && !currentSong.audioUrl.startsWith('blob:') ? currentSong.audioUrl.replace(/^http:\/\//, 'https://') : undefined}
+        src={currentSong?.audioUrl && !currentSong.audioUrl.startsWith('blob:') ?
+          `${currentSong.audioUrl.replace(/^http:\/\//, 'https://')}${currentSong.audioUrl.includes('?') ? '&' : '?'}quality=${streamingQuality.toLowerCase().replace(/\s+/g, '_')}`
+          : undefined}
         autoPlay={isPlaying}
         onLoadStart={() => {
           // Reset restoration flag when loading new audio

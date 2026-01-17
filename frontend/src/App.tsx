@@ -5,9 +5,8 @@ import { performanceService } from './services/performanceService';
 import { spotifyAutoSyncService } from './services/spotifyAutoSyncService';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
-import { getLocalStorageJSON, getSessionStorage } from './utils/storageUtils';
+import { getLocalStorageJSON } from './utils/storageUtils';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
-import { Loading } from './components/ui/loading';
 const MainLayout = lazy(() => import('./layout/MainLayout'));
 const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
@@ -22,6 +21,7 @@ const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const About = lazy(() => import('./pages/About'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 // JioSaavn pages
 const JioSaavnPlaylistPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistPage'));
@@ -198,6 +198,10 @@ const router = createBrowserRouter(
 				{
 					path: '/about',
 					element: <About />
+				},
+				{
+					path: '/settings',
+					element: <AuthGate><SettingsPage /></AuthGate>
 				},
 				{
 					path: '*',

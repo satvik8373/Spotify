@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { useAlbumColors } from '@/hooks/useAlbumColors';
 import {
   Play,
   Pause,
@@ -44,6 +45,11 @@ export function Player() {
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+
+  // Get album colors for dynamic theming
+  const song = currentSong as any;
+  const coverImage = song?.imageUrl || song?.image || song?.coverImageUrl || '/placeholder-image.jpg';
+  const albumColors = useAlbumColors(coverImage);
 
   // Set up document-wide interaction listener
   useEffect(() => {
@@ -177,21 +183,25 @@ export function Player() {
 
   if (!currentSong) return null;
 
-  const song = currentSong as any;
   const title = song.title || song.name || 'Unknown';
   const artist = song.artist || song.primaryArtists || song.artistName || 'Unknown Artist';
-  const coverImage = song.imageUrl || song.image || song.coverImageUrl || '/placeholder-image.jpg';
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-zinc-900/90 backdrop-blur-lg border-t border-zinc-800 p-2 pb-3 md:p-4 z-50">
+    <div 
+      className="fixed bottom-0 left-0 right-0 backdrop-blur-lg border-t border-white/20 p-2 pb-3 md:p-4 z-50"
+      style={{
+        background: `linear-gradient(180deg, ${albumColors.primary}dd 0%, ${albumColors.secondary}dd 100%)`,
+        ...albumColors.cssVars
+      }}
+    >
       {showPlaybackError && (
-        <Alert className="mb-2 bg-amber-900/20 border-amber-800 text-amber-400">
+        <Alert className="mb-2 bg-black/20 border-white/30 text-white">
           <AlertDescription className="flex items-center text-sm">
             <span>⚠️ Click any button first to enable playback (browser autoplay restriction)</span>
             <Button
               variant="ghost"
               size="sm"
-              className="text-amber-400 hover:text-amber-300 ml-auto"
+              className="text-white hover:text-white/80 ml-auto"
               onClick={() => setShowPlaybackError(false)}
             >
               Dismiss
@@ -215,8 +225,8 @@ export function Player() {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="truncate text-sm font-medium">{title}</div>
-            <div className="truncate text-xs text-zinc-400">{artist}</div>
+            <div className="truncate text-sm font-medium text-white">{title}</div>
+            <div className="truncate text-xs text-white/70">{artist}</div>
           </div>
         </div>
 
@@ -229,11 +239,11 @@ export function Player() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                    className="h-8 w-8 md:h-9 md:w-9 text-white/70 hover:text-white"
                     onClick={toggleShuffle}
                   >
                     <Shuffle
-                      className={cn('h-4 w-4 md:h-5 md:w-5', shuffle ? 'text-green-500' : '')}
+                      className={cn('h-4 w-4 md:h-5 md:w-5', shuffle ? 'text-green-400' : '')}
                     />
                   </Button>
                 </TooltipTrigger>
@@ -249,7 +259,7 @@ export function Player() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                    className="h-8 w-8 md:h-9 md:w-9 text-white/70 hover:text-white"
                     onClick={() => playPrevious()}
                   >
                     <SkipBack className="h-4 w-4 md:h-5 md:w-5" />
@@ -285,7 +295,7 @@ export function Player() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                    className="h-8 w-8 md:h-9 md:w-9 text-white/70 hover:text-white"
                     onClick={() => playNext()}
                   >
                     <SkipForward className="h-4 w-4 md:h-5 md:w-5" />
@@ -303,11 +313,11 @@ export function Player() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white"
+                    className="h-8 w-8 md:h-9 md:w-9 text-white/70 hover:text-white"
                     onClick={toggleRepeat}
                   >
                     <Repeat
-                      className={cn('h-4 w-4 md:h-5 md:w-5', repeat ? 'text-green-500' : '')}
+                      className={cn('h-4 w-4 md:h-5 md:w-5', repeat ? 'text-green-400' : '')}
                     />
                   </Button>
                 </TooltipTrigger>
@@ -319,7 +329,7 @@ export function Player() {
           </div>
 
           <div className="w-full flex items-center gap-2 px-2">
-            <span className="text-xs text-zinc-500 w-8 text-right">{formatTime(currentTime)}</span>
+            <span className="text-xs text-white/60 w-8 text-right">{formatTime(currentTime)}</span>
             <Slider
               value={[currentTime]}
               min={0}
@@ -328,7 +338,7 @@ export function Player() {
               className="flex-1"
               onValueChange={handleSeek}
             />
-            <span className="text-xs text-zinc-500 w-8">{formatTime(duration)}</span>
+            <span className="text-xs text-white/60 w-8">{formatTime(duration)}</span>
           </div>
         </div>
 
@@ -337,7 +347,7 @@ export function Player() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-zinc-400 hover:text-white"
+            className="h-8 w-8 text-white/70 hover:text-white"
             onClick={toggleMute}
           >
             {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}

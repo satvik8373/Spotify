@@ -496,7 +496,8 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
             {/* Compact Track List Container */}
             <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
               {/* Track List */}
-              <ScrollArea className="max-h-80">
+              {/* Track List - Natural Scroll */}
+              <div className="w-full">
                 <div className="p-4 space-y-2">
                   {(syncMode === 'new' ? newTracksOnly : spotifyTracks).slice(0, 5).map((track, index) => (
                     <div key={track.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/50 transition-colors">
@@ -534,13 +535,31 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
                     </div>
                   ))}
 
-                  {(syncMode === 'new' ? newTracksOnly : spotifyTracks).length > 5 && (
-                    <div className="text-center py-4 text-gray-400 text-sm">
-                      +{(syncMode === 'new' ? newTracksOnly : spotifyTracks).length - 5} more songs
+                  {/* Show ALL remaining songs, don't paginate, just list them or show a "View All" if list is huge? 
+                      Actually, better to show a reasonable amount or all if user drags.
+                      The current code slices to 5 then shows "+X more". 
+                      Let's show ALL of them since the user wants to "see properlly".
+                  */}
+                  {(syncMode === 'new' ? newTracksOnly : spotifyTracks).slice(5).map((track, index) => (
+                    <div key={track.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/50 transition-colors">
+                      <div className="text-gray-500 text-sm w-6">
+                        {String(index + 6).padStart(2, '0')}
+                      </div>
+
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
+                        {track.album.images[0] ? (
+                          <img src={track.album.images[0].url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        ) : <Music className="h-4 w-4 text-gray-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white font-medium truncate text-sm">{track.name}</div>
+                        <div className="text-gray-400 text-xs truncate">{track.artists.map(a => a.name).join(', ')}</div>
+                      </div>
+                      <div className="text-gray-500 text-xs">{formatDuration(track.duration_ms)}</div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </ScrollArea>
+              </div>
 
               {/* Next Button - Inside Container - More Prominent */}
               <div className="p-4 border-t border-gray-700/50 bg-gray-800/50">

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { formatTime } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
@@ -36,6 +37,11 @@ const MusicPlayer = () => {
   const [isRepeat, setIsRepeat] = useState(false);
   const [showPlaybackError, setShowPlaybackError] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Get album colors for dynamic theming
+  const song = currentSong as any;
+  const image = song?.coverImageUrl || song?.imageUrl || song?.image || 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
+  const albumColors = useAlbumColors(image);
 
   // Track user interaction across the whole document
   useEffect(() => {
@@ -206,20 +212,20 @@ const MusicPlayer = () => {
   }
 
   // Extract song details, handling different object structures
-  const song = currentSong as any;
   const title = song.title || song.name || 'Unknown Title';
   const artist = resolveArtist(song);
-  const image =
-    song.coverImageUrl ||
-    song.imageUrl ||
-    song.image ||
-    'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 playback-controls-glass p-2 pb-3 md:p-4 z-50">
+      <div 
+        className="fixed bottom-0 left-0 right-0 p-2 pb-3 md:p-4 z-50 backdrop-blur-lg border-t border-white/20"
+        style={{
+          background: `linear-gradient(180deg, ${albumColors.primary}dd 0%, ${albumColors.secondary}dd 100%)`,
+          ...albumColors.cssVars
+        }}
+      >
         {showPlaybackError && (
-          <Alert className="mb-2 bg-amber-900/20 border-amber-800 text-amber-500">
+          <Alert className="mb-2 bg-black/20 border-white/30 text-white">
             <AlertDescription className="flex items-center text-sm">
               <span>
                 ⚠️ Click any button first to enable playback (browser autoplay restriction)
@@ -227,7 +233,7 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-amber-500 hover:text-amber-400 ml-auto"
+                className="text-white hover:text-white/80 ml-auto"
                 onClick={() => setShowPlaybackError(false)}
               >
                 Dismiss
@@ -251,8 +257,8 @@ const MusicPlayer = () => {
               />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="truncate text-sm font-medium">{title}</div>
-              <div className="truncate text-xs text-zinc-400">{artist}</div>
+              <div className="truncate text-sm font-medium text-white">{title}</div>
+              <div className="truncate text-xs text-white/70">{artist}</div>
             </div>
           </div>
 
@@ -262,20 +268,20 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white rounded-full"
+                className="h-8 w-8 md:h-9 md:w-9 text-white/70 hover:text-white rounded-full"
                 onClick={() => toggleShuffle()}
                 title="Shuffle"
                 aria-label={isShuffled ? "Disable shuffle" : "Enable shuffle"}
               >
                 <Shuffle
-                  className={cn('h-4 w-4 md:h-5 md:w-5', isShuffled ? 'text-green-500' : '')}
+                  className={cn('h-4 w-4 md:h-5 md:w-5', isShuffled ? 'text-green-400' : '')}
                 />
               </Button>
 
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white rounded-full"
+                className="h-8 w-8 md:h-9 md:w-9 text-white/70 hover:text-white rounded-full"
                 onClick={playPrevious}
                 title="Previous"
                 disabled={queue.length <= 1}
@@ -288,7 +294,7 @@ const MusicPlayer = () => {
                 variant="default"
                 size="icon"
                 onClick={togglePlay}
-                className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-green-500 hover:bg-green-400 text-black transition"
+                className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-white hover:bg-white/90 text-black transition"
                 title={isPlaying ? 'Pause' : 'Play'}
                 aria-label={isPlaying ? "Pause" : "Play"}
               >
@@ -302,7 +308,7 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white rounded-full"
+                className="h-8 w-8 md:h-9 md:w-9 text-white/70 hover:text-white rounded-full"
                 onClick={() => playNext()}
                 title="Next"
                 disabled={queue.length <= 1}
@@ -314,18 +320,18 @@ const MusicPlayer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 md:h-9 md:w-9 text-zinc-400 hover:text-white rounded-full"
+                className="h-8 w-8 md:h-9 md:w-9 text-white/70 hover:text-white rounded-full"
                 onClick={handleToggleRepeat}
                 title="Repeat"
                 aria-label={isRepeat ? "Disable repeat" : "Enable repeat"}
               >
-                <Repeat className={cn('h-4 w-4 md:h-5 md:w-5', isRepeat ? 'text-green-500' : '')} />
+                <Repeat className={cn('h-4 w-4 md:h-5 md:w-5', isRepeat ? 'text-green-400' : '')} />
               </Button>
             </div>
 
             {/* Seek bar */}
             <div className="w-full flex items-center gap-2 px-2">
-              <span className="text-xs text-zinc-500 w-8 text-right">
+              <span className="text-xs text-white/60 w-8 text-right">
                 {formatTime(currentTime)}
               </span>
               <div className="flex-1 relative py-1">
@@ -337,9 +343,9 @@ const MusicPlayer = () => {
                   className="flex-1"
                   onValueChange={handleSeek}
                 />
-                <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
+                <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
               </div>
-              <span className="text-xs text-zinc-500 w-8">{formatTime(duration)}</span>
+              <span className="text-xs text-white/60 w-8">{formatTime(duration)}</span>
             </div>
           </div>
 
@@ -348,7 +354,7 @@ const MusicPlayer = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-zinc-400 hover:text-white rounded-full"
+              className="h-8 w-8 text-white/70 hover:text-white rounded-full"
               onClick={handleToggleMute}
               title={isMuted ? 'Unmute' : 'Mute'}
               aria-label={isMuted ? "Unmute" : "Mute"}
@@ -364,7 +370,7 @@ const MusicPlayer = () => {
                 className="flex-1"
                 onValueChange={value => setVolume(value[0])}
               />
-              <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-green-500/20 to-transparent pointer-events-none"></div>
+              <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
             </div>
           </div>
         </div>

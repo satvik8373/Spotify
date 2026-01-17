@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, XCircle, LogOut, User, Home, Bell } from 'lucide-react';
+import { Search, XCircle, User, Home, Bell, Megaphone } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -249,41 +249,82 @@ const Header = ({ className }: HeaderProps) => {
                       )}
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="min-w-[200px] bg-[#282828] border-none" align="end" sideOffset={8}>
+                  <DropdownMenuContent className="w-[320px] bg-[#282828] border-none p-1 shadow-xl" align="end" sideOffset={8}>
+
                     <DropdownMenuItem
-                      className="cursor-pointer text-white hover:bg-white/10"
-                      onClick={() => navigate('/profile')}
+                      className="cursor-pointer text-white hover:bg-white/10 p-3"
+                      onClick={() => navigate('/settings')}
                     >
-                      <User className="h-4 w-4 mr-2" />
-                      Profile
+                      Settings
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem
-                      className="cursor-pointer text-white hover:bg-white/10"
+                      className="cursor-pointer text-white hover:bg-white/10 p-3"
                       onClick={() => navigate('/about')}
                     >
                       About
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="cursor-pointer text-white hover:bg-white/10"
+                      className="cursor-pointer text-white hover:bg-white/10 p-3"
                       onClick={() => navigate('/privacy')}
                     >
                       Privacy Policy
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      className="cursor-pointer text-white hover:bg-white/10"
+                      className="cursor-pointer text-white hover:bg-white/10 p-3"
                       onClick={() => navigate('/terms')}
                     >
                       Terms of Service
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-white/10" />
+
+                    <DropdownMenuSeparator className="bg-white/10 my-1" />
+
                     <DropdownMenuItem
-                      className="cursor-pointer text-white hover:bg-white/10"
+                      className="cursor-pointer text-white hover:bg-white/10 p-3"
                       onClick={handleLogout}
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
                       Log out
                     </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="bg-white/10 my-1" />
+
+                    <div className="px-2 py-2">
+                      <div className="flex items-center justify-between mb-2 px-1">
+                        <h3 className="text-white font-bold text-sm">Your Updates</h3>
+                      </div>
+
+                      <div className="space-y-2">
+                        {/* Item 1 */}
+                        <div className="group flex gap-3 p-2 rounded-md hover:bg-white/5 cursor-pointer transition-colors relative">
+                          <img
+                            src="/mavrixfy.png"
+                            alt="Concert"
+                            className="w-12 h-12 rounded-md object-cover flex-shrink-0"
+                          />
+                          <div className="flex flex-col justify-center">
+                            <p className="text-white text-[13px] leading-tight line-clamp-2">
+                              Tickets on sale for Iqlipse Nova in Vadodara on Sat, Dec 20
+                            </p>
+                            <p className="text-[#a7a7a7] text-xs mt-1">6w</p>
+                          </div>
+                          <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                          </div>
+                        </div>
+
+                        {/* Item 2 */}
+                        <div className="group flex gap-3 p-2 rounded-md hover:bg-white/5 cursor-pointer transition-colors">
+                          <div className="w-12 h-12 rounded-md bg-[#333] flex items-center justify-center flex-shrink-0">
+                            <Megaphone className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex flex-col justify-center">
+                            <p className="text-white text-[13px] leading-tight line-clamp-2">
+                              Say hello to Your Updates. Check here for news on your followers, playlists, events and more
+                            </p>
+                            <p className="text-[#a7a7a7] text-xs mt-1">10w</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
 

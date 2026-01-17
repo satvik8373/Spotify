@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { ShareSong } from './ShareSong';
@@ -31,6 +32,7 @@ const formatTime = (seconds: number) => {
 };
 
 const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
+
   const {
     currentSong,
     isPlaying,
@@ -197,7 +199,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const handleLikeToggle = () => {
     if (!currentSong) return;
     const songId = (currentSong as any).id || currentSong._id;
-    
+
     // Optimistically update the UI immediately
     setIsLiked(!isLiked);
 
@@ -285,7 +287,10 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             <img
               src={currentSong.imageUrl}
               alt={currentSong.title}
-              className="w-full h-full object-cover"
+              className={cn(
+                "w-full h-full object-cover transition-transform ease-in-out scale-100"
+              )}
+              style={{ transitionDuration: '20s' }}
             />
           </div>
         </div>

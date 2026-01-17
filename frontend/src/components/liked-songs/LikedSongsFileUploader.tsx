@@ -453,58 +453,56 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
           </div>
 
           {/* Song list - Mobile optimized */}
-          <div className="border rounded-lg overflow-hidden flex-1 min-h-[300px]">
-            <ScrollArea className="h-full">
-              <div className="divide-y divide-border">
-                {parsedSongs.map((song, index) => (
-                  <div key={`${song.title}-${song.artist}-${index}`} className="flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors">
-                    {/* Song number */}
-                    <div className="w-6 text-xs text-muted-foreground text-center">
-                      {index + 1}
-                    </div>
-
-                    {/* Placeholder album art */}
-                    <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-                      <Music className="h-4 w-4 text-muted-foreground" />
-                    </div>
-
-                    {/* Song info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm text-foreground truncate">
-                        {song.title}
-                      </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {song.artist}
-                      </div>
-                      {song.duration && (
-                        <div className="text-xs text-muted-foreground/70 sm:hidden">
-                          <Clock className="h-3 w-3 inline mr-1" />
-                          {song.duration}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Duration and remove button */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {song.duration && (
-                        <div className="hidden sm:flex items-center text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {song.duration}
-                        </div>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => removeSong(index)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
+          <div className="border rounded-lg overflow-hidden flex-1">
+            <div className="divide-y divide-border">
+              {parsedSongs.map((song, index) => (
+                <div key={`${song.title}-${song.artist}-${index}`} className="flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors">
+                  {/* Song number */}
+                  <div className="w-6 text-xs text-muted-foreground text-center">
+                    {index + 1}
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
+
+                  {/* Placeholder album art */}
+                  <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                    <Music className="h-4 w-4 text-muted-foreground" />
+                  </div>
+
+                  {/* Song info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm text-foreground truncate">
+                      {song.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {song.artist}
+                    </div>
+                    {song.duration && (
+                      <div className="text-xs text-muted-foreground/70 sm:hidden">
+                        <Clock className="h-3 w-3 inline mr-1" />
+                        {song.duration}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Duration and remove button */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {song.duration && (
+                      <div className="hidden sm:flex items-center text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {song.duration}
+                      </div>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => removeSong(index)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Add button */}
