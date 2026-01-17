@@ -13,6 +13,9 @@ import { useAlbumColors } from '@/hooks/useAlbumColors';
 import OptimizedImage from '@/components/OptimizedImage';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { usePhoneInterruption } from '@/hooks/usePhoneInterruption';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { logAudioDebugInfo, checkCommonIssues } from '@/utils/audioDebugger';
+import AutoplayBlockedNotice from '@/components/AutoplayBlockedNotice';
 import { useIOSAudioFix } from '@/hooks/useIOSAudioFix';
 
 // Helper function to validate URLs - PRODUCTION SAFE
@@ -264,7 +267,7 @@ const AudioPlayer = () => {
       
       if (issues.length > 0) {
         console.group('🚨 Potential Issues');
-        issues.forEach(issue => console.warn('⚠️', issue));
+        issues.forEach((issue: string) => console.warn('⚠️', issue));
         console.groupEnd();
       } else {
         console.log('✅ No obvious issues detected');
