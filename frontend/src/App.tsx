@@ -39,8 +39,8 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { useLocation } from 'react-router-dom';
 import { SpotifyProvider } from './contexts/SpotifyContext';
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/react"
 
 
 
@@ -340,6 +340,8 @@ function AppContent() {
 			/>
 			<PWAInstallPrompt />
 			<AndroidPWAHelper />
+			<Analytics />
+			<SpeedInsights />
 		</div>
 	);
 }
