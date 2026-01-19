@@ -33,6 +33,9 @@ class BackgroundPlaybackManager {
     this.setupMediaSession();
     this.setupVisibilityHandlers();
     this.setupWakeLock();
+    
+    // Don't initialize AudioContext here - let it be created on demand
+    console.log('Background playback manager initialized');
   }
 
   /**

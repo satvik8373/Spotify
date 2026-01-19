@@ -157,7 +157,10 @@ const AudioPlayer = () => {
     if (!audioRef.current || isAudioContextInitialized.current) return;
 
     // Import the audio context manager
-    import('@/utils/audioContextManager').then(({ getAudioContext, isAudioContextReady }) => {
+    import('@/utils/audioContextManager').then(({ getAudioContext, isAudioContextReady, markUserInteraction }) => {
+      // Ensure user interaction is marked
+      markUserInteraction();
+      
       if (!isAudioContextReady()) {
         console.warn('AudioContext not ready - user interaction required');
         return;
@@ -166,7 +169,7 @@ const AudioPlayer = () => {
       try {
         const ctx = getAudioContext();
         if (!ctx) {
-          console.warn('Failed to get AudioContext');
+          console.warn('Failed to get AudioContext - will retry on next user interaction');
           return;
         }
 
@@ -207,28 +210,52 @@ const AudioPlayer = () => {
       } catch (error) {
         console.error('Failed to initialize Web Audio API:', error);
       }
+    }).catch((error) => {
+      console.warn('Failed to import audioContextManager:', error);
     });
   }, []);
 
-  // Initialize Web Audio API on first user interaction
+  // Initialize Web Audio API on first user interaction - more defensive approach
   useEffect(() => {
-    const handleUserInteraction = () => {
-      initWebAudioAPI();
+    let timeoutId: NodeJS.Timeout;
+    
+    const handleUserInteraction = (event: Event) => {
+      console.log('AudioPlayer: User interaction detected:', event.type);
+      
+      // Clear any existing timeout
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
+      // Delay initialization slightly to ensure user gesture is properly registered
+      timeoutId = setTimeout(() => {
+        initWebAudioAPI();
+      }, 100);
       
       // Remove listeners after first interaction
       document.removeEventListener('touchstart', handleUserInteraction);
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('keydown', handleUserInteraction);
+      document.removeEventListener('mousedown', handleUserInteraction);
+      document.removeEventListener('pointerdown', handleUserInteraction);
     };
 
+    // Add multiple interaction listeners for better coverage
     document.addEventListener('touchstart', handleUserInteraction, { once: true, passive: true });
     document.addEventListener('click', handleUserInteraction, { once: true, passive: true });
     document.addEventListener('keydown', handleUserInteraction, { once: true, passive: true });
+    document.addEventListener('mousedown', handleUserInteraction, { once: true, passive: true });
+    document.addEventListener('pointerdown', handleUserInteraction, { once: true, passive: true });
 
     return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       document.removeEventListener('touchstart', handleUserInteraction);
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('keydown', handleUserInteraction);
+      document.removeEventListener('mousedown', handleUserInteraction);
+      document.removeEventListener('pointerdown', handleUserInteraction);
     };
   }, [initWebAudioAPI]);
 

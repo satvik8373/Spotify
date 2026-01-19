@@ -7,16 +7,24 @@
 let globalAudioContext: AudioContext | null = null;
 let isAudioContextInitialized = false;
 let userHasInteracted = false;
+let interactionListenersSetup = false;
 
 /**
  * Initialize AudioContext only after user interaction
  * This prevents Chrome's autoplay policy violations
  */
 export const initAudioContextOnUserGesture = (): void => {
-  if (isAudioContextInitialized || typeof window === 'undefined') return;
+  if (isAudioContextInitialized || typeof window === 'undefined' || !userHasInteracted) {
+    return;
+  }
 
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) {
+      console.warn('AudioContext not supported in this browser');
+      return;
+    }
+
     globalAudioContext = new AudioContextClass();
     isAudioContextInitialized = true;
 
@@ -50,23 +58,30 @@ export const getAudioContext = (): AudioContext | null => {
 };
 
 /**
- * Mark that user has interacted and initialize AudioContext
+ * Mark that user has interacted - DO NOT create AudioContext immediately
  */
 export const markUserInteraction = (): void => {
   if (userHasInteracted) return;
 
   userHasInteracted = true;
-  initAudioContextOnUserGesture();
+  console.log('User interaction detected - AudioContext creation enabled');
+  // Don't create AudioContext here - wait for explicit request
 };
 
 /**
  * Resume AudioContext if suspended
  */
 export const resumeAudioContext = async (): Promise<void> => {
+  if (!userHasInteracted) {
+    console.warn('Cannot resume AudioContext - no user interaction yet');
+    return;
+  }
+
   const context = getAudioContext();
   if (context && context.state === 'suspended') {
     try {
       await context.resume();
+      console.log('AudioContext resumed successfully');
     } catch (error) {
       console.warn('Failed to resume AudioContext:', error);
     }
@@ -74,12 +89,13 @@ export const resumeAudioContext = async (): Promise<void> => {
 };
 
 /**
- * Setup user interaction listeners to initialize AudioContext
+ * Setup user interaction listeners to enable AudioContext creation
  */
 export const setupUserInteractionListeners = (): void => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || interactionListenersSetup) return;
 
-  const handleUserInteraction = () => {
+  const handleUserInteraction = (event: Event) => {
+    console.log('User interaction detected:', event.type);
     markUserInteraction();
     
     // Remove listeners after first interaction
@@ -88,6 +104,9 @@ export const setupUserInteractionListeners = (): void => {
     document.removeEventListener('click', handleUserInteraction);
     document.removeEventListener('keydown', handleUserInteraction);
     document.removeEventListener('mousedown', handleUserInteraction);
+    document.removeEventListener('pointerdown', handleUserInteraction);
+    
+    interactionListenersSetup = false;
   };
 
   // Add listeners for various user interaction events
@@ -96,13 +115,24 @@ export const setupUserInteractionListeners = (): void => {
   document.addEventListener('click', handleUserInteraction, { once: true, passive: true });
   document.addEventListener('keydown', handleUserInteraction, { once: true, passive: true });
   document.addEventListener('mousedown', handleUserInteraction, { once: true, passive: true });
+  document.addEventListener('pointerdown', handleUserInteraction, { once: true, passive: true });
+  
+  interactionListenersSetup = true;
+  console.log('User interaction listeners setup complete');
 };
 
 /**
  * Check if AudioContext is available and ready
  */
 export const isAudioContextReady = (): boolean => {
-  return userHasInteracted && isAudioContextInitialized && globalAudioContext !== null;
+  return userHasInteracted;
+};
+
+/**
+ * Check if AudioContext is actually initialized
+ */
+export const isAudioContextInitialized = (): boolean => {
+  return isAudioContextInitialized && globalAudioContext !== null;
 };
 
 /**
@@ -112,7 +142,23 @@ export const getAudioContextState = (): AudioContextState | null => {
   return globalAudioContext?.state || null;
 };
 
-// Initialize user interaction listeners when module loads
+/**
+ * Force cleanup of AudioContext (for testing/debugging)
+ */
+export const cleanupAudioContext = (): void => {
+  if (globalAudioContext) {
+    globalAudioContext.close().catch(() => {});
+    globalAudioContext = null;
+  }
+  isAudioContextInitialized = false;
+  userHasInteracted = false;
+  interactionListenersSetup = false;
+};
+
+// Only setup listeners when module loads - don't create AudioContext
 if (typeof window !== 'undefined') {
-  setupUserInteractionListeners();
+  // Setup listeners on next tick to avoid blocking initial render
+  setTimeout(() => {
+    setupUserInteractionListeners();
+  }, 0);
 }

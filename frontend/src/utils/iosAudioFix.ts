@@ -3,8 +3,6 @@
  * Handles iOS-specific audio restrictions and issues
  */
 
-import { markUserInteraction, getAudioContext, resumeAudioContext } from './audioContextManager';
-
 // Check if running on iOS
 export const isIOS = (): boolean => {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
@@ -20,8 +18,12 @@ export const isPWA = (): boolean => {
 // Initialize audio context for iOS (required for audio playback)
 export const initAudioContext = (): void => {
   if (isIOS()) {
-    // Use the centralized audio context manager
-    markUserInteraction();
+    // Use the centralized audio context manager - just mark interaction
+    import('./audioContextManager').then(({ markUserInteraction }) => {
+      markUserInteraction();
+    }).catch(() => {
+      console.warn('Failed to import audioContextManager');
+    });
   }
 };
 
@@ -54,7 +56,8 @@ export const playAudioForIOS = async (audio: HTMLAudioElement): Promise<void> =>
   }
   
   try {
-    // Resume audio context if suspended
+    // Resume audio context if suspended - import dynamically
+    const { resumeAudioContext } = await import('./audioContextManager');
     await resumeAudioContext();
     
     // Attempt to play
@@ -78,8 +81,12 @@ export const playAudioForIOS = async (audio: HTMLAudioElement): Promise<void> =>
 export const unlockAudioOnIOS = (): void => {
   if (!isIOS()) return;
   
-  // Mark user interaction for audio context manager
-  markUserInteraction();
+  // Mark user interaction for audio context manager - import dynamically
+  import('./audioContextManager').then(({ markUserInteraction }) => {
+    markUserInteraction();
+  }).catch(() => {
+    console.warn('Failed to import audioContextManager');
+  });
   
   // Create a silent audio element and play it
   const silentAudio = new Audio();

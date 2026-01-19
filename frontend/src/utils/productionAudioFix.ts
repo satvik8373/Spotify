@@ -3,17 +3,19 @@
  * Handles production-specific audio issues including CORS, HTTPS, and browser compatibility
  */
 
-import { markUserInteraction, getAudioContext, resumeAudioContext } from './audioContextManager';
-
 /**
  * Initialize audio context for production environment
- * Only creates AudioContext after user interaction to comply with autoplay policy
+ * Only marks user interaction - doesn't create AudioContext immediately
  */
 export const initProductionAudio = (): void => {
   if (typeof window === 'undefined') return;
 
-  // Use the centralized audio context manager
-  markUserInteraction();
+  // Use the centralized audio context manager - just mark interaction
+  import('./audioContextManager').then(({ markUserInteraction }) => {
+    markUserInteraction();
+  }).catch(() => {
+    console.warn('Failed to import audioContextManager');
+  });
 };
 
 /**
@@ -48,7 +50,8 @@ export const configureProductionAudio = (audio: HTMLAudioElement): void => {
  */
 export const playAudioSafely = async (audio: HTMLAudioElement): Promise<void> => {
   try {
-    // Resume audio context if suspended
+    // Resume audio context if suspended - import dynamically to avoid early creation
+    const { resumeAudioContext } = await import('./audioContextManager');
     await resumeAudioContext();
 
     // Attempt to play
