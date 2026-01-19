@@ -13,6 +13,7 @@ const UNUSED_FILES = [
   'src/utils/audioTestUtils.ts',
   'src/utils/audioDebugger.ts', 
   'src/utils/productionAudioTest.ts',
+  'src/utils/audioContextTest.ts',
   
   // Unused components (if any are found)
   // Add more files here as needed

@@ -4,6 +4,8 @@
  * Fixes Chrome's "AudioContext was not allowed to start" error
  */
 
+type WebAudioContextState = 'suspended' | 'running' | 'closed';
+
 let globalAudioContext: AudioContext | null = null;
 let isAudioContextInitialized = false;
 let userHasInteracted = false;
@@ -131,15 +133,15 @@ export const isAudioContextReady = (): boolean => {
 /**
  * Check if AudioContext is actually initialized
  */
-export const isAudioContextInitialized = (): boolean => {
+export const getAudioContextInitializationStatus = (): boolean => {
   return isAudioContextInitialized && globalAudioContext !== null;
 };
 
 /**
  * Get AudioContext state
  */
-export const getAudioContextState = (): AudioContextState | null => {
-  return globalAudioContext?.state || null;
+export const getAudioContextState = (): WebAudioContextState | null => {
+  return (globalAudioContext?.state as WebAudioContextState) || null;
 };
 
 /**
