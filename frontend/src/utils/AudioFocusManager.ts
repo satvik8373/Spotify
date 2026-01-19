@@ -1,4 +1,4 @@
-import { getAudioContext, markUserInteraction, isAudioContextReady } from './audioContextManager';
+import { getAudioContext, isAudioContextReady } from './audioContextManager';
 
 /**
  * AudioFocusManager - Centralized audio focus and interruption handling
@@ -34,28 +34,28 @@ class AudioFocusManager {
     /**
      * Initialize the audio focus manager
      */
+    /**
+     * Initialize the audio focus manager
+     */
     async initialize(callbacks: AudioFocusCallbacks): Promise<void> {
         this.callbacks = callbacks;
 
         // Use centralized AudioContext manager instead of creating directly
         try {
-            // Mark user interaction to enable AudioContext creation
-            markUserInteraction();
-            
-            // Get the shared AudioContext
-            this.audioContext = getAudioContext();
-            
-            if (!this.audioContext) {
-                console.warn('AudioContext not available - user interaction may be required');
-                return;
+            // Attempt to get existing context without forcing creation if not ready
+            if (isAudioContextReady()) {
+                this.audioContext = getAudioContext();
             }
 
-            // Resume if suspended
-            if (this.audioContext.state === 'suspended') {
-                await this.audioContext.resume();
+            if (this.audioContext) {
+                // Resume if suspended
+                if (this.audioContext.state === 'suspended') {
+                    await this.audioContext.resume();
+                }
+                this.setupEventListeners();
+            } else {
+                console.log('AudioContext not yet ready - deferred initialization');
             }
-
-            this.setupEventListeners();
         } catch (error) {
             console.warn('AudioContext initialization failed:', error);
         }
@@ -239,8 +239,13 @@ class AudioFocusManager {
         // Ensure we have an AudioContext
         if (!this.audioContext) {
             this.audioContext = getAudioContext();
+
+            // If we just got the context, set up listeners
+            if (this.audioContext) {
+                this.setupEventListeners();
+            }
         }
-        
+
         if (!this.audioContext) {
             console.warn('AudioContext not available for focus request');
             return false;

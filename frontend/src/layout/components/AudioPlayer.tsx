@@ -157,19 +157,17 @@ const AudioPlayer = () => {
     if (!audioRef.current || isAudioContextInitialized.current) return;
 
     // Import the audio context manager
-    import('@/utils/audioContextManager').then(({ getAudioContext, isAudioContextReady, markUserInteraction }) => {
-      // Ensure user interaction is marked
-      markUserInteraction();
-      
+    import('@/utils/audioContextManager').then(({ getAudioContext, isAudioContextReady }) => {
+      // Don't try to initialize if user hasn't interacted yet
       if (!isAudioContextReady()) {
-        console.warn('AudioContext not ready - user interaction required');
+        console.log('AudioContext not ready - waiting for user interaction');
         return;
       }
 
       try {
         const ctx = getAudioContext();
         if (!ctx) {
-          console.warn('Failed to get AudioContext - will retry on next user interaction');
+          console.log('AudioContext not available yet - will retry after user interaction');
           return;
         }
 
@@ -217,6 +215,11 @@ const AudioPlayer = () => {
 
   // Initialize Web Audio API on first user interaction - more defensive approach
   useEffect(() => {
+    // Don't set up listeners if we're in SSR or if AudioContext isn't supported
+    if (typeof window === 'undefined' || !window.AudioContext && !(window as any).webkitAudioContext) {
+      return;
+    }
+
     let timeoutId: NodeJS.Timeout;
     
     const handleUserInteraction = (event: Event) => {
@@ -227,10 +230,17 @@ const AudioPlayer = () => {
         clearTimeout(timeoutId);
       }
       
-      // Delay initialization slightly to ensure user gesture is properly registered
-      timeoutId = setTimeout(() => {
-        initWebAudioAPI();
-      }, 100);
+      // Mark user interaction in the audio context manager
+      import('@/utils/audioContextManager').then(({ markUserInteraction }) => {
+        markUserInteraction();
+        
+        // Delay initialization slightly to ensure user gesture is properly registered
+        timeoutId = setTimeout(() => {
+          initWebAudioAPI();
+        }, 100);
+      }).catch((error) => {
+        console.warn('Failed to import audioContextManager for user interaction:', error);
+      });
       
       // Remove listeners after first interaction
       document.removeEventListener('touchstart', handleUserInteraction);

@@ -5,6 +5,7 @@
  */
 
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import type { RefObject } from 'react';
 
 export interface BackgroundPlaybackState {
   isActive: boolean;
@@ -23,12 +24,15 @@ class BackgroundPlaybackManager {
     visibilityTimer: null,
   };
 
-  private audioRef: React.RefObject<HTMLAudioElement> | null = null;
+  private audioRef: RefObject<HTMLAudioElement> | null = null;
+  private visibilityChangeHandler: (() => void) | null = null;
+  private blurHandler: (() => void) | null = null;
+  private focusHandler: (() => void) | null = null;
 
   /**
    * Initialize background playback manager
    */
-  initialize(audioRef: React.RefObject<HTMLAudioElement>): void {
+  initialize(audioRef: RefObject<HTMLAudioElement>): void {
     this.audioRef = audioRef;
     this.setupMediaSession();
     this.setupVisibilityHandlers();
@@ -79,7 +83,7 @@ class BackgroundPlaybackManager {
    * Setup visibility change handlers for app backgrounding
    */
   private setupVisibilityHandlers(): void {
-    const handleVisibilityChange = () => {
+    this.visibilityChangeHandler = () => {
       if (document.hidden) {
         this.handleAppBackgrounded();
       } else {
@@ -87,11 +91,12 @@ class BackgroundPlaybackManager {
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    this.blurHandler = () => this.handleAppBackgrounded();
+    this.focusHandler = () => this.handleAppForegrounded();
 
-    // Also handle page focus/blur
-    window.addEventListener('blur', () => this.handleAppBackgrounded());
-    window.addEventListener('focus', () => this.handleAppForegrounded());
+    document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+    window.addEventListener('blur', this.blurHandler);
+    window.addEventListener('focus', this.focusHandler);
   }
 
   /**
@@ -238,7 +243,9 @@ class BackgroundPlaybackManager {
     if (!('wakeLock' in navigator) || this.state.wakeLock) return;
 
     try {
-      this.state.wakeLock = await (navigator as any).wakeLock.request('screen');
+      // Type assertion for wake lock API which may not be in all TypeScript definitions
+      const wakeLock = (navigator as any).wakeLock;
+      this.state.wakeLock = await wakeLock.request('screen');
       console.log('Wake lock acquired');
 
       this.state.wakeLock.addEventListener('release', () => {
@@ -279,14 +286,14 @@ class BackgroundPlaybackManager {
       this.state.mediaSession.metadata = new MediaMetadata({
         title: currentSong.title || 'Unknown Title',
         artist: currentSong.artist || 'Unknown Artist',
-        album: currentSong.album || 'Unknown Album',
-        artwork: currentSong.image ? [
-          { src: currentSong.image, sizes: '96x96', type: 'image/jpeg' },
-          { src: currentSong.image, sizes: '128x128', type: 'image/jpeg' },
-          { src: currentSong.image, sizes: '192x192', type: 'image/jpeg' },
-          { src: currentSong.image, sizes: '256x256', type: 'image/jpeg' },
-          { src: currentSong.image, sizes: '384x384', type: 'image/jpeg' },
-          { src: currentSong.image, sizes: '512x512', type: 'image/jpeg' },
+        album: currentSong.albumId || 'Unknown Album',
+        artwork: currentSong.imageUrl ? [
+          { src: currentSong.imageUrl, sizes: '96x96', type: 'image/jpeg' },
+          { src: currentSong.imageUrl, sizes: '128x128', type: 'image/jpeg' },
+          { src: currentSong.imageUrl, sizes: '192x192', type: 'image/jpeg' },
+          { src: currentSong.imageUrl, sizes: '256x256', type: 'image/jpeg' },
+          { src: currentSong.imageUrl, sizes: '384x384', type: 'image/jpeg' },
+          { src: currentSong.imageUrl, sizes: '512x512', type: 'image/jpeg' },
         ] : undefined,
       });
     } catch (error) {
@@ -390,10 +397,21 @@ class BackgroundPlaybackManager {
   cleanup(): void {
     this.stopPlayback();
     
-    // Remove event listeners
-    document.removeEventListener('visibilitychange', () => {});
-    window.removeEventListener('blur', () => {});
-    window.removeEventListener('focus', () => {});
+    // Remove event listeners properly
+    if (this.visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeHandler = null;
+    }
+    
+    if (this.blurHandler) {
+      window.removeEventListener('blur', this.blurHandler);
+      this.blurHandler = null;
+    }
+    
+    if (this.focusHandler) {
+      window.removeEventListener('focus', this.focusHandler);
+      this.focusHandler = null;
+    }
   }
 }
 

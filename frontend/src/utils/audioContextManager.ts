@@ -16,7 +16,17 @@ let interactionListenersSetup = false;
  * This prevents Chrome's autoplay policy violations
  */
 export const initAudioContextOnUserGesture = (): void => {
-  if (isAudioContextInitialized || typeof window === 'undefined' || !userHasInteracted) {
+  if (isAudioContextInitialized || typeof window === 'undefined') {
+    console.log('AudioContext initialization skipped:', {
+      isInitialized: isAudioContextInitialized,
+      hasWindow: typeof window !== 'undefined'
+    });
+    return;
+  }
+
+  // Don't create AudioContext if user hasn't interacted yet
+  if (!userHasInteracted) {
+    console.warn('Cannot initialize AudioContext - user interaction required first');
     return;
   }
 
@@ -27,6 +37,7 @@ export const initAudioContextOnUserGesture = (): void => {
       return;
     }
 
+    console.log('Creating AudioContext - user interaction confirmed');
     globalAudioContext = new AudioContextClass();
     isAudioContextInitialized = true;
 
@@ -52,7 +63,14 @@ export const getAudioContext = (): AudioContext | null => {
     return null;
   }
 
+  // Additional safety check - don't create AudioContext during initial page load
+  if (document.readyState === 'loading') {
+    console.warn('AudioContext not available during page load - wait for user interaction');
+    return null;
+  }
+
   if (!isAudioContextInitialized) {
+    console.log('AudioContext not initialized yet, attempting to initialize...');
     initAudioContextOnUserGesture();
   }
 
@@ -63,10 +81,13 @@ export const getAudioContext = (): AudioContext | null => {
  * Mark that user has interacted - DO NOT create AudioContext immediately
  */
 export const markUserInteraction = (): void => {
-  if (userHasInteracted) return;
+  if (userHasInteracted) {
+    console.log('User interaction already marked');
+    return;
+  }
 
   userHasInteracted = true;
-  console.log('User interaction detected - AudioContext creation enabled');
+  console.log('User interaction marked - AudioContext creation enabled');
   // Don't create AudioContext here - wait for explicit request
 };
 
@@ -157,10 +178,5 @@ export const cleanupAudioContext = (): void => {
   interactionListenersSetup = false;
 };
 
-// Only setup listeners when module loads - don't create AudioContext
-if (typeof window !== 'undefined') {
-  // Setup listeners on next tick to avoid blocking initial render
-  setTimeout(() => {
-    setupUserInteractionListeners();
-  }, 0);
-}
+// Export functions only - don't auto-setup listeners
+// Listeners will be setup by App.tsx after component mount
