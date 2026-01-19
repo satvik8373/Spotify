@@ -1,0 +1,199 @@
+/* SongDetailsView - Mobile-optimized styles */
+
+/* Safe area support for iOS devices */
+.pt-safe-top {
+  padding-top: env(safe-area-inset-top, 1rem);
+}
+
+.pb-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+
+/* Ensure no scrolling on any mobile device */
+.song-details-view {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for better mobile support */
+  overflow: hidden;
+}
+
+/* Responsive album art sizing - Professional Spotify-like scaling */
+.album-art-responsive {
+  display: block;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
+  will-change: transform, width, height;
+  position: relative;
+}
+
+/* Enhanced control buttons - solid colors */
+.control-button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+}
+
+.control-button:hover {
+  transform: scale(1.05);
+}
+
+.control-button:active {
+  transform: scale(0.95);
+}
+
+/* Ensure play button has higher z-index and proper interaction */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Prevent any interference with button interactions */
+.touch-target:active {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth transitions for responsive changes */
+.responsive-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: font-size, line-height, margin;
+}
+
+/* Professional scaling animations */
+@media (prefers-reduced-motion: no-preference) {
+  .album-art-responsive {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  .responsive-transition {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  .control-button {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .album-art-responsive,
+  .responsive-transition,
+  .control-button {
+    transition: none;
+  }
+}
+
+/* Legacy responsive classes for fallback */
+@media (max-height: 600px) {
+  .album-art-small {
+    max-width: min(55vw, 55vh, 220px) !important;
+    max-height: min(55vw, 55vh, 220px) !important;
+  }
+  
+  .song-title-small {
+    font-size: 1rem !important;
+    line-height: 1.25 !important;
+  }
+  
+  .controls-small .control-button {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+  }
+  
+  .play-button-small {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+  }
+}
+
+@media (max-height: 700px) {
+  .album-art-medium {
+    max-width: min(65vw, 65vh, 260px) !important;
+    max-height: min(65vw, 65vh, 260px) !important;
+  }
+}
+
+/* Extra small screens (iPhone SE, etc.) */
+@media (max-height: 568px) {
+  .album-art-xs {
+    max-width: min(45vw, 45vh, 180px) !important;
+    max-height: min(45vw, 45vh, 180px) !important;
+  }
+  
+  .song-title-xs {
+    font-size: 0.875rem !important;
+    line-height: 1.125 !important;
+  }
+  
+  .artist-text-xs {
+    font-size: 0.75rem !important;
+  }
+  
+  .controls-xs .control-button {
+    width: 2rem !important;
+    height: 2rem !important;
+  }
+  
+  .play-button-xs {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+  }
+  
+  .spacing-xs {
+    margin-bottom: 0.75rem !important;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (orientation: landscape) and (max-height: 500px) {
+  .landscape-compact .album-art-landscape {
+    max-width: min(35vh, 35vw, 160px) !important;
+    max-height: min(35vh, 35vw, 160px) !important;
+  }
+  
+  .landscape-compact .spacing-landscape {
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .landscape-compact .header-landscape {
+    height: 3rem !important;
+  }
+  
+  .landscape-compact .bottom-landscape {
+    height: 3rem !important;
+  }
+}
+
+/* Prevent text selection and improve touch interactions */
+.song-details-view * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Direct album art image styling */
+.album-art-direct {
+  display: block;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Ensure images maintain aspect ratio */
+.album-art-direct img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Fix for iOS viewport height issues */
+@supports (-webkit-touch-callout: none) {
+  .ios-height-fix {
+    height: -webkit-fill-available;
+  }
+}

@@ -24,6 +24,7 @@ export interface PlayerState {
   audioOutputDevice: string | null;
   lastPlayNextTime: number;
   skipRestoreUntilTs?: number;
+  lastStateChangeTime: number; // Track last state change to prevent rapid updates
 
   // Actions
   setCurrentSong: (song: Song) => void;
@@ -77,6 +78,7 @@ export const usePlayerStore = create<PlayerState>()(
       audioOutputDevice: null,
       lastPlayNextTime: 0,
       skipRestoreUntilTs: 0,
+      lastStateChangeTime: 0,
 
       setCurrentSong: (song) => {
         // Only skip songs with invalid blob URLs, not all blob URLs
@@ -113,15 +115,30 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       setIsPlaying: (isPlaying) => {
+        const currentState = get();
+        const now = Date.now();
+        
+        // Prevent rapid state changes that could cause flickering
+        if (now - currentState.lastStateChangeTime < 50 && currentState.isPlaying === isPlaying) {
+          return; // Skip if same state and too recent
+        }
+        
         // If trying to play but user hasn't interacted, don't allow
-        if (isPlaying && !get().hasUserInteracted) {
-          set({ isPlaying, hasUserInteracted: true });
+        if (isPlaying && !currentState.hasUserInteracted) {
+          set({ 
+            isPlaying, 
+            hasUserInteracted: true,
+            lastStateChangeTime: now
+          });
         } else {
-          set({ isPlaying });
+          set({ 
+            isPlaying,
+            lastStateChangeTime: now
+          });
         }
         
         // Dispatch a global event to notify all components about play state change
-        dispatchPlayerStateChange(isPlaying, get().currentSong);
+        dispatchPlayerStateChange(isPlaying, currentState.currentSong);
       },
 
       setCurrentTime: (time) => {
@@ -147,15 +164,18 @@ export const usePlayerStore = create<PlayerState>()(
       setDuration: (duration) => set({ duration }),
 
       togglePlay: () => {
-        const { isPlaying } = get();
-        const newIsPlaying = !isPlaying;
+        const currentState = get();
+        const now = Date.now();
+        const newIsPlaying = !currentState.isPlaying;
+        
         set({
           isPlaying: newIsPlaying,
-          hasUserInteracted: true // User must have interacted to toggle play
+          hasUserInteracted: true, // User must have interacted to toggle play
+          lastStateChangeTime: now
         });
         
         // Dispatch a global event to notify all components about play state change
-        dispatchPlayerStateChange(newIsPlaying, get().currentSong);
+        dispatchPlayerStateChange(newIsPlaying, currentState.currentSong);
       },
 
       playAlbum: (songs, initialIndex) => {
