@@ -1156,3 +1156,33 @@ html {
   -ms-user-select: none;
   user-select: none;
 }
+/* Marquee animation for long text */
+@keyframes marqueeScroll {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(0);
+  }
+  80% {
+    transform: translateX(calc(-100% + 200px));
+  }
+  100% {
+    transform: translateX(calc(-100% + 200px));
+  }
+}
+
+/* Audio title high contrast styles */
+.audio-title-high-contrast {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.audio-title-light {
+  color: rgba(0, 0, 0, 0.9);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.audio-title-dark {
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}

@@ -71,7 +71,7 @@ class MusicRequestManager {
 
   private async processRequest<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
     this.activeRequests.add(key);
-    
+
     try {
       const result = await requestFn();
       return result;
@@ -83,15 +83,15 @@ class MusicRequestManager {
 
   private async processQueue() {
     if (this.isProcessing || this.activeRequests.size >= this.maxConcurrent) return;
-    
+
     const nextRequest = this.requestQueue.shift();
     if (!nextRequest) return;
 
     this.isProcessing = true;
-    
+
     // Add delay between requests
     await new Promise(resolve => setTimeout(resolve, this.requestDelay));
-    
+
     try {
       const result = await this.processRequest(nextRequest.key, nextRequest.fn);
       nextRequest.resolve(result);
@@ -139,23 +139,23 @@ function convertSaavnTrack(item: any): IndianSong {
   if (item.downloadUrl && Array.isArray(item.downloadUrl)) {
     // Try to get the highest quality available
     const downloadUrl = item.downloadUrl.find((d: any) => d.quality === '320kbps') ||
-                       item.downloadUrl.find((d: any) => d.quality === '160kbps') ||
-                       item.downloadUrl.find((d: any) => d.quality === '96kbps') ||
-                       item.downloadUrl[item.downloadUrl.length - 1];
+      item.downloadUrl.find((d: any) => d.quality === '160kbps') ||
+      item.downloadUrl.find((d: any) => d.quality === '96kbps') ||
+      item.downloadUrl[item.downloadUrl.length - 1];
     audioUrl = downloadUrl?.link || '';
   }
-  
+
   // Get the best quality image
   let imageUrl = '';
   if (item.image && Array.isArray(item.image)) {
     const image = item.image.find((i: any) => i.quality === '500x500') ||
-                 item.image.find((i: any) => i.quality === '150x150') ||
-                 item.image[item.image.length - 1];
+      item.image.find((i: any) => i.quality === '150x150') ||
+      item.image[item.image.length - 1];
     imageUrl = image?.link || '';
   } else if (typeof item.image === 'string') {
     imageUrl = item.image;
   }
-  
+
   return {
     id: item.id,
     title: item.name || item.title,
@@ -392,10 +392,10 @@ export const useMusicStore = create<MusicStore>((set) => ({
 
   convertIndianSongToAppSong: (song) => {
     const now = new Date().toISOString();
-    const likedAtDate = song.likedAt ? 
-      (song.likedAt instanceof Date ? song.likedAt.toISOString() : song.likedAt) : 
+    const likedAtDate = song.likedAt ?
+      (song.likedAt instanceof Date ? song.likedAt.toISOString() : song.likedAt) :
       now;
-    
+
     return {
       _id: song.id || `indian-song-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       title: song.title || 'Unknown Title',
