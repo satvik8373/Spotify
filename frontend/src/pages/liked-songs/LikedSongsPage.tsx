@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { loadLikedSongs, removeLikedSong } from '@/services/likedSongsService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { usePlayerSync } from '@/hooks/usePlayerSync';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { Song } from '@/types';
@@ -284,7 +285,8 @@ const LikedSongsPage = () => {
 
   const navigate = useNavigate();
 
-  const { currentSong, isPlaying, togglePlay, playAlbum, setIsPlaying, setUserInteracted } = usePlayerStore();
+  const { togglePlay, playAlbum, setIsPlaying, setUserInteracted } = usePlayerStore();
+  const { currentSong, isPlaying } = usePlayerSync();
   const { isAuthenticated } = useAuthStore();
   const { isAuthenticated: isSpotifyConnected, fetchSavedTracks } = useSpotify();
 
@@ -444,6 +446,43 @@ const LikedSongsPage = () => {
     }
   }, [likedSongs, playAlbum, setIsPlaying, setUserInteracted]);
 
+  // Check if the current liked songs playlist is playing
+  const isCurrentPlaylistPlaying = useMemo(() => {
+    if (!isPlaying || !currentSong || likedSongs.length === 0) return false;
+    
+    // Check if the current song is in the liked songs list
+    return likedSongs.some(song => {
+      const currentSongId = currentSong._id || (currentSong as any).id;
+      const songId = song._id || (song as any).id;
+      
+      if (currentSongId && songId) {
+        return currentSongId === songId;
+      }
+      
+      // Fallback to title and artist match
+      return (
+        currentSong.title?.trim().toLowerCase() === song.title?.trim().toLowerCase() &&
+        currentSong.artist?.trim().toLowerCase() === song.artist?.trim().toLowerCase()
+      );
+    });
+  }, [isPlaying, currentSong, likedSongs]);
+
+  // Handle pause playlist functionality
+  const handlePausePlaylist = useCallback(() => {
+    if (isPlaying) {
+      setIsPlaying(false);
+    }
+  }, [isPlaying, setIsPlaying]);
+
+  // Handle main play/pause button
+  const handleMainPlayPause = useCallback(() => {
+    if (isCurrentPlaylistPlaying) {
+      handlePausePlaylist();
+    } else {
+      playAllSongs();
+    }
+  }, [isCurrentPlaylistPlaying, handlePausePlaylist, playAllSongs]);
+
   // Smart shuffle function
   const smartShuffle = useCallback(() => {
     if (likedSongs.length > 0) {
@@ -511,7 +550,7 @@ const LikedSongsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground liked-songs-page">
       {/* Mobile Header */}
       {isMobile ? (
         <div className="relative">
@@ -543,10 +582,14 @@ const LikedSongsPage = () => {
               <Button
                 size="icon"
                 className="h-14 w-14 rounded-full bg-green-500 hover:bg-green-400 shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-105"
-                onClick={playAllSongs}
+                onClick={handleMainPlayPause}
                 disabled={likedSongs.length === 0}
               >
-                <Play className="h-6 w-6 fill-current ml-0.5 text-black" />
+                {isCurrentPlaylistPlaying ? (
+                  <Pause className="h-6 w-6 fill-current text-black" />
+                ) : (
+                  <Play className="h-6 w-6 fill-current ml-0.5 text-black" />
+                )}
               </Button>
 
               <Button
@@ -635,10 +678,14 @@ const LikedSongsPage = () => {
               <Button
                 size="icon"
                 className="h-16 w-16 rounded-full bg-green-500 hover:bg-green-400 shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-105"
-                onClick={playAllSongs}
+                onClick={handleMainPlayPause}
                 disabled={likedSongs.length === 0}
               >
-                <Play className="h-7 w-7 fill-current ml-1 text-black" />
+                {isCurrentPlaylistPlaying ? (
+                  <Pause className="h-7 w-7 fill-current text-black" />
+                ) : (
+                  <Play className="h-7 w-7 fill-current ml-1 text-black" />
+                )}
               </Button>
 
               <Button

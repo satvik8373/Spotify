@@ -10,7 +10,10 @@ import {
   audioInterruptionManager,
   InterruptionReason
 } from '@/utils/audioManager';
+import { syncAudioElementWithStore } from '@/utils/playerStateSync';
 import { resolveArtist } from '@/lib/resolveArtist';
+import { backgroundAudioService } from '@/services/backgroundAudioService';
+import { useIOSAudio } from '@/hooks/useIOSAudio';
 
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -30,19 +33,72 @@ const AudioPlayer = () => {
 
   const { streamingQuality } = useSettingsStore();
 
-  // Audio interruption handling
+  // iOS audio handling
+  const { isIOSDevice } = useIOSAudio(audioRef.current);
+
+  // Initialize background audio service
   useEffect(() => {
-    const handleInterruption = (_reason: InterruptionReason) => {
-      if (isPlaying && audioRef.current && !audioRef.current.paused) {
-        audioRef.current.pause();
-        setIsPlaying(false);
+    backgroundAudioService.initialize();
+    backgroundAudioService.enableBackgroundAudio();
+    backgroundAudioService.preventAudioInterruption();
+  }, []);
+
+  // Notify background service of audio state changes
+  useEffect(() => {
+    backgroundAudioService.onAudioStateChange(isPlaying, currentSong);
+  }, [isPlaying, currentSong]);
+
+  // Background playback support - prevent pausing when page is hidden
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Page is hidden (minimized, locked, or tab switched)
+        // Keep audio playing for background playback
+        console.log('Page hidden - maintaining background playback');
+        
+        // Ensure audio context stays active
+        if (audioRef.current && !audioRef.current.paused && isPlaying) {
+          // Keep the audio playing in background
+          audioRef.current.play().catch(() => {
+            console.warn('Background playback interrupted');
+          });
+        }
+      } else {
+        // Page is visible again
+        console.log('Page visible - resuming foreground playback');
+        
+        // Ensure playback state is correct when returning to foreground
+        if (isPlaying && audioRef.current && audioRef.current.paused) {
+          setUserInteracted();
+          playAudioSafely(audioRef.current).catch(() => {});
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isPlaying, setUserInteracted]);
+
+  // Audio interruption handling - only for real interruptions
+  useEffect(() => {
+    const handleInterruption = (reason: InterruptionReason) => {
+      // Only pause for actual interruptions (calls, notifications)
+      // Don't pause for page visibility changes or minimizing
+      if (reason === 'call' || reason === 'notification') {
+        if (isPlaying && audioRef.current && !audioRef.current.paused) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+        }
       }
     };
 
     const handleResume = () => {
-      // Resume playback after interruption if we were playing
+      // Resume playback after real interruption if we were playing
       setTimeout(() => {
-        if (audioRef.current && audioRef.current.paused) {
+        if (audioRef.current && audioRef.current.paused && isPlaying) {
           setUserInteracted();
           playAudioSafely(audioRef.current).catch(() => {});
           setIsPlaying(true);
@@ -153,6 +209,18 @@ const AudioPlayer = () => {
     } else if (!isPlaying && !audio.paused) {
       audio.pause();
     }
+    
+    // Sync the actual audio state with the store state
+    const syncAudioState = () => {
+      syncAudioElementWithStore(audio, isPlaying, setIsPlaying);
+    };
+    
+    // Check sync periodically
+    const syncInterval = setInterval(syncAudioState, 1000);
+    
+    return () => {
+      clearInterval(syncInterval);
+    };
   }, [isPlaying, setIsPlaying]);
 
   // Update MediaSession for lock screen controls
@@ -294,7 +362,21 @@ const AudioPlayer = () => {
         setTimeout(restoreSavedPosition, 100);
       }}
       onWaiting={() => setIsLoading(true)}
-      onPlaying={() => setIsLoading(false)}
+      onPlaying={() => {
+        setIsLoading(false);
+        // Ensure store state matches actual playing state
+        if (!isPlaying) {
+          setIsPlaying(true);
+        }
+      }}
+      onPause={() => {
+        // Only update store if this wasn't triggered by the store
+        const audio = audioRef.current;
+        if (audio && !audio.ended && isPlaying) {
+          // This pause wasn't initiated by our store, so update the store
+          setIsPlaying(false);
+        }
+      }}
       onError={() => {
         console.error('Audio error, skipping to next song');
         setTimeout(() => playNext(), 1000);

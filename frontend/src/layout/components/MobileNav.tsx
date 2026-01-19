@@ -5,6 +5,7 @@ import { Home, Search, Library, Heart, LogIn, User, Play, Pause, ListMusic, Bell
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlayerSync } from '@/hooks/usePlayerSync';
 
 import SongDetailsView from '@/components/SongDetailsView';
 import QueueDrawer from '@/components/QueueDrawer';
@@ -33,7 +34,8 @@ import { PingPongScroll } from '@/components/PingPongScroll';
 const MobileNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentSong, isPlaying, currentTime, duration } = usePlayerStore();
+  const { currentTime, duration } = usePlayerStore();
+  const { isPlaying, currentSong } = usePlayerSync();
   const { isAuthenticated, user } = useAuth();
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -42,42 +44,8 @@ const MobileNav = () => {
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
 
-
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
-
-
-
-  // Stable gradient background with isolation and theme-aware fallbacks
-  const gradientStyle = React.useMemo(() => ({
-    background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.9) 10%, rgba(0, 0, 0, 0.8) 25%, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.1) 85%, transparent 95%, transparent 100%)',
-    backgroundColor: 'transparent',
-    border: 'none',
-    boxShadow: 'none',
-    zIndex: 30,
-  }), []);
-
-  // Force gradient override on theme changes and re-renders
-  useEffect(() => {
-    const styleId = 'mobile-nav-gradient-override';
-    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
-
-    if (!styleElement) {
-      styleElement = document.createElement('style');
-      styleElement.id = styleId;
-      document.head.appendChild(styleElement);
-    }
-
-    // Ultra-specific CSS to prevent any overrides + iOS fixes
-
-
-    return () => {
-      const element = document.getElementById(styleId);
-      if (element) {
-        element.remove();
-      }
-    };
-  }, [location.pathname]); // Re-run on route changes
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -241,10 +209,8 @@ const MobileNav = () => {
 
       <style>{`
         .mobile-nav-gradient-container {
-          background: linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%) !important;
-        }
-        .mobile-nav-gradient-container {
-          background: linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%) !important;
+          background: transparent !important;
+          background-color: transparent !important;
         }
       `}</style>
 
@@ -402,11 +368,13 @@ const MobileNav = () => {
       <div
         className="mobile-nav-gradient-container fixed bottom-0 left-0 right-0 md:hidden"
         style={{
-          ...gradientStyle,
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
           paddingTop: hasActiveSong ? '44px' : '32px',
           '--album-primary': albumColors.primary || '#1db954',
           '--album-secondary': albumColors.secondary || '#191414',
+          background: 'transparent',
+          backgroundColor: 'transparent',
+          zIndex: 30,
         } as React.CSSProperties}
       >
         {/* Spotify Mobile Player - Floating Design */}
@@ -472,7 +440,7 @@ const MobileNav = () => {
                       }}
                       className="p-2 transition-transform duration-200 active:scale-90"
                     >
-                      {isPlaying ? (
+                    {isPlaying ? (
                         <Pause
                           className="h-5 w-5"
                           fill="currentColor"
@@ -517,7 +485,6 @@ const MobileNav = () => {
         <div
           className="relative grid grid-cols-4 h-14 px-2 pt-0 pb-2"
           style={{
-            backgroundColor: '#121212',
             background: 'linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%)',
             border: 'none',
             boxShadow: 'none',

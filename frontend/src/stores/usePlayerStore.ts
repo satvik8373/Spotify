@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Song } from '@/types';
+import { dispatchPlayerStateChange } from '@/utils/playerStateSync';
 
 export type Queue = Song[];
 
@@ -103,8 +104,12 @@ export const usePlayerStore = create<PlayerState>()(
         // Only reset currentTime if it's a different song
         set({
           currentSong: song,
-          currentTime: isSameSong ? currentState.currentTime : 0 // Preserve time for same song
+          currentTime: isSameSong ? currentState.currentTime : 0, // Preserve time for same song
+          isPlaying: true // Auto-play when setting a new song
         });
+        
+        // Dispatch a global event to notify all components about song change
+        dispatchPlayerStateChange(true, song);
       },
 
       setIsPlaying: (isPlaying) => {
@@ -114,6 +119,9 @@ export const usePlayerStore = create<PlayerState>()(
         } else {
           set({ isPlaying });
         }
+        
+        // Dispatch a global event to notify all components about play state change
+        dispatchPlayerStateChange(isPlaying, get().currentSong);
       },
 
       setCurrentTime: (time) => {
@@ -140,10 +148,14 @@ export const usePlayerStore = create<PlayerState>()(
 
       togglePlay: () => {
         const { isPlaying } = get();
+        const newIsPlaying = !isPlaying;
         set({
-          isPlaying: !isPlaying,
+          isPlaying: newIsPlaying,
           hasUserInteracted: true // User must have interacted to toggle play
         });
+        
+        // Dispatch a global event to notify all components about play state change
+        dispatchPlayerStateChange(newIsPlaying, get().currentSong);
       },
 
       playAlbum: (songs, initialIndex) => {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { usePlayerSync } from '@/hooks/usePlayerSync';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { ShareSong } from './ShareSong';
 import {
@@ -34,8 +35,6 @@ const formatTime = (seconds: number) => {
 const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
   const {
-    currentSong,
-    isPlaying,
     togglePlay,
     playNext,
     playPrevious,
@@ -45,6 +44,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     duration: storeDuration,
     setCurrentTime: setStoreCurrentTime
   } = usePlayerStore();
+
+  const { currentSong, isPlaying } = usePlayerSync();
 
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const [currentTime, setCurrentTime] = useState(0);

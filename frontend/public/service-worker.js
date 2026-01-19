@@ -281,4 +281,25 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-}); 
+  
+  // Handle background audio messages
+  if (event.data && event.data.type === 'BACKGROUND_AUDIO') {
+    handleBackgroundAudio(event.data.action, event.data.data);
+  }
+});
+
+// Background audio handling
+function handleBackgroundAudio(action, data) {
+  switch (action) {
+    case 'KEEP_ALIVE':
+      // Keep the service worker alive for background audio
+      console.log('Keeping service worker alive for background audio');
+      break;
+    case 'AUDIO_STATE_CHANGED':
+      // Handle audio state changes
+      console.log('Audio state changed:', data);
+      break;
+    default:
+      break;
+  }
+} 

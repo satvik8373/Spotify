@@ -65,19 +65,19 @@ const MainLayout = () => {
     };
   }, []);
 
-  // Route-aware measurements for mobile header/nav/mini-player spacing
+  // Route-aware measurements for mobile header/nav spacing
   const MOBILE_HEADER_PX = 40;
-  const MOBILE_NAV_PX = 14;
-  const MINI_PLAYER_PX = 47;
+  const MOBILE_NAV_BASE_PX = 56; // h-14 = 56px
+  const MOBILE_PLAYER_PADDING_PX = 44; // paddingTop when song is active
   const isMobileHeaderRoute = isMobile && (
     location.pathname === '/home' ||
     location.pathname.startsWith('/search')
   );
 
   const isSyncPage = location.pathname === '/liked-songs/sync';
-  const showMiniPlayer = hasActiveSong && !isSyncPage;
+  const showMobilePlayer = hasActiveSong && !isSyncPage;
 
-  const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + MOBILE_NAV_PX + (showMiniPlayer ? MINI_PLAYER_PX : 0);
+  const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + MOBILE_NAV_BASE_PX + (showMobilePlayer ? MOBILE_PLAYER_PADDING_PX : 0);
 
   // Handle resize functionality
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

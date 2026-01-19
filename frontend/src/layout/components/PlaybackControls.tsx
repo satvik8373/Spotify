@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useLikedSongsStore } from "@/stores/useLikedSongsStore";
 import QueueDrawer from "@/components/QueueDrawer";
 import ElasticSlider from "@/components/ui/ElasticSlider";
+import { usePlayerSync } from "@/hooks/usePlayerSync";
 
 const formatTime = (seconds: number) => {
 	if (isNaN(seconds)) return "0:00";
@@ -18,7 +19,8 @@ const formatTime = (seconds: number) => {
 };
 
 export const PlaybackControls = () => {
-	const { currentSong, isPlaying, togglePlay, playNext, playPrevious, toggleShuffle, isShuffled } = usePlayerStore();
+	const { togglePlay, playNext, playPrevious, toggleShuffle, isShuffled } = usePlayerStore();
+	const { isPlaying, currentSong } = usePlayerSync();
 	const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
 
 	const [volume, setVolume] = useState(75);
@@ -379,102 +381,6 @@ export const PlaybackControls = () => {
 					</div>
 				</div>
 			</footer>
-
-			{/* Mobile Player */}
-			<div
-				className="fixed bottom-14 left-0 right-0 bg-background border-t border-border h-16 z-40 sm:hidden transition-all duration-300"
-				style={{ opacity: isTransitioning ? 0.95 : 1 }}
-				onClick={() => setShowSongDetails(true)}
-			>
-				<div className="relative h-full flex items-center justify-between px-3">
-					{/* Song info / left side */}
-					<div className="flex items-center gap-2 flex-1 min-w-0">
-						{currentSong && (
-							<>
-								<div className="h-10 w-10 flex-shrink-0 rounded overflow-hidden cursor-pointer">
-									<img
-										src={currentSong.imageUrl}
-										alt={currentSong.title}
-										className="w-full h-full object-cover bg-muted"
-										onError={(e) => {
-											(e.target as HTMLImageElement).src = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
-										}}
-									/>
-								</div>
-
-								{/* Song info */}
-								<div className="truncate min-w-0 flex-1">
-									<h4 className="text-xs font-medium truncate">{currentSong.title || "Unknown Title"}</h4>
-									<p className="text-[10px] text-muted-foreground truncate">{currentSong.artist}</p>
-								</div>
-							</>
-						)}
-					</div>
-
-					{/* Playback controls / right side */}
-					<div className="flex items-center gap-1">
-						<Button
-							size="icon"
-							variant="ghost"
-							className="h-9 w-9 text-foreground p-0"
-							onClick={(e) => {
-								e.stopPropagation();
-								playPrevious();
-							}}
-						>
-							<SkipBack className="h-4 w-4" />
-						</Button>
-
-						<Button
-							size="icon"
-							className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center p-0"
-							onClick={(e) => {
-								e.stopPropagation();
-								togglePlay();
-							}}
-						>
-							{isPlaying ? (
-								<Pause className="h-4 w-4" />
-							) : (
-								<Play className="h-4 w-4 ml-[1px]" />
-							)}
-						</Button>
-
-						<Button
-							size="icon"
-							variant="ghost"
-							className="h-9 w-9 text-foreground p-0"
-							onClick={(e) => {
-								e.stopPropagation();
-								playNext();
-							}}
-						>
-							<SkipForward className="h-4 w-4" />
-						</Button>
-
-						<Button
-							size="icon"
-							variant="ghost"
-							className="h-9 w-9 text-muted-foreground hover:text-foreground p-0"
-							onClick={(e) => {
-								e.stopPropagation();
-								setShowQueue(true);
-							}}
-							title="Open queue"
-						>
-							<ListMusic className="h-4 w-4" />
-						</Button>
-					</div>
-				</div>
-
-				{/* Progress bar for mobile */}
-				<div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/20">
-					<div
-						className="h-full bg-primary"
-						style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
-					/>
-				</div>
-			</div>
 		</>
 	);
 };

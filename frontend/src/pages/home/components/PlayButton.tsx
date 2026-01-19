@@ -2,14 +2,19 @@ import { Button } from '@/components/ui/button';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { Song } from '@/types';
 import { Pause, Play } from 'lucide-react';
+import { usePlayerSync } from '@/hooks/usePlayerSync';
 
 const PlayButton = ({ song }: { song: Song }) => {
-  const { currentSong, isPlaying, setCurrentSong, togglePlay } = usePlayerStore();
+  const { setCurrentSong, togglePlay } = usePlayerStore();
+  const { isPlaying, currentSong } = usePlayerSync();
   const isCurrentSong = currentSong?._id === song._id;
 
   const handlePlay = () => {
-    if (isCurrentSong) togglePlay();
-    else setCurrentSong(song);
+    if (isCurrentSong) {
+      togglePlay();
+    } else {
+      setCurrentSong(song);
+    }
   };
 
   return (

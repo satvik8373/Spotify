@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Player Test</title>
+</head>
+<body>
+    <h1>Audio Player Duplication Test</h1>
+    <p>Open the browser console and navigate to your app. Then run this in the console:</p>
+    <pre>
+// Check how many audio elements exist
+console.log('Number of audio elements:', document.querySelectorAll('audio').length);
+
+// Check how many player controls exist
+console.log('Desktop players:', document.querySelectorAll('[class*="fixed bottom-0"]').length);
+console.log('Mobile players:', document.querySelectorAll('[class*="fixed bottom-14"]').length);
+    </pre>
+    
+    <p>Expected results:</p>
+    <ul>
+        <li>Number of audio elements: 1</li>
+        <li>Desktop players: 1 (only PlaybackControls)</li>
+        <li>Mobile players: 1 (only PlaybackControls)</li>
+    </ul>
+</body>
+</html>

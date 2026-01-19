@@ -57,6 +57,25 @@
     @apply bg-background text-foreground;
     overflow-x: hidden;
     touch-action: manipulation; /* Prevents double-tap zoom */
+    transform: translateX(0); /* Prevent any horizontal movement */
+  }
+
+  /* Prevent any horizontal scrolling or movement */
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Ensure smooth page transitions */
+  .main-content {
+    transform: translateX(0);
+    transition: none;
+  }
+
+  /* Prevent any page-level horizontal animations */
+  html, body, #root {
+    transform: translateX(0) !important;
+    transition: none !important;
   }
 
   /* Spotify-like main content area padding for mobile */
@@ -478,6 +497,7 @@ img.object-cover.bg-zinc-800 {
 .mobile-scroll-fix {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
+  transform: translateX(0); /* Prevent any horizontal movement */
 }
 
 /* Fix for aspect ratio on smaller screens */

@@ -5,6 +5,7 @@ import { usePlayerStore } from '../../stores/usePlayerStore';
 import { useMusicStore } from '../../stores/useMusicStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useAlbumColors } from '../../hooks/useAlbumColors';
+import { usePlayerSync } from '../../hooks/usePlayerSync';
 import { Button } from '../../components/ui/button';
 import '../../styles/playlist-page.css';
 import { ContentLoading, InlineLoading, PageLoading } from '../../components/ui/loading';
@@ -264,7 +265,8 @@ export function PlaylistPage() {
   const { userId, isAuthenticated } = useAuthStore();
   const { currentPlaylist, fetchPlaylistById, forceRefreshPlaylistById, deletePlaylist, isLoading, removeSongFromPlaylist } =
     usePlaylistStore();
-  const { playAlbum, isPlaying: playerIsPlaying, currentSong } = usePlayerStore();
+  const { playAlbum } = usePlayerStore();
+  const { isPlaying: playerIsPlaying, currentSong } = usePlayerSync();
   // Removed unused addSongToPlaylist from store
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showAddSongsDialog, setShowAddSongsDialog] = useState(false);

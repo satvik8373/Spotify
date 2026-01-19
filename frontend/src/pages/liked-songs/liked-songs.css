@@ -5,6 +5,8 @@
   background: #121212;
   position: relative;
   overflow-x: hidden;
+  transform: translateX(0); /* Prevent any horizontal movement */
+  transition: none; /* Disable any transitions that might cause sliding */
 }
 
 .liked-songs-header {
@@ -70,6 +72,8 @@
 .liked-songs-content {
   padding: 0 2rem 2rem;
   position: relative;
+  transform: translateX(0); /* Lock horizontal position */
+  transition: none; /* Disable transitions */
 }
 
 .liked-songs-grid-desktop {
@@ -103,6 +107,7 @@
   align-items: center;
   grid-template-columns: inherit;
   padding: 0.5rem;
+  transform: translateX(0); /* Prevent horizontal movement */
 }
 
 .liked-songs-row:hover {
@@ -414,11 +419,11 @@
 
 @keyframes slideIn {
   from {
-    transform: translateX(100%) translateY(-50%);
+    transform: translateY(-10px);
     opacity: 0;
   }
   to {
-    transform: translateX(0) translateY(0);
+    transform: translateY(0);
     opacity: 1;
   }
 }

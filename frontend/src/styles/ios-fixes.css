@@ -9,29 +9,21 @@
     -webkit-backdrop-filter: none !important;
 }
 
-/* Prevent any background overrides on mobile nav */
+/* Prevent any background overrides on mobile nav container */
 .mobile-nav-gradient-container,
 .mobile-nav-gradient-container * {
     --tw-bg-opacity: 0 !important;
 }
 
-.mobile-nav-gradient-container .bg-background,
-.mobile-nav-gradient-container .bg-black,
-.mobile-nav-gradient-container .dark\:bg-\[\#191414\] {
-    background-color: transparent !important;
-    background: transparent !important;
+/* Ensure the player container can still have its dynamic background */
+.mobile-nav-gradient-container .mobile-player-container {
+    background: initial !important;
+    background-color: initial !important;
 }
 
-/* Navigation items container - keep transparent */
+/* Navigation items container should have the gradient */
 .mobile-nav-gradient-container .grid {
-    background-color: transparent !important;
-    background: transparent !important;
-}
-
-/* Force transparency in all scenarios - Critical for iOS PWA */
-.mobile-nav-gradient-container {
-    background: transparent !important;
-    background-color: transparent !important;
+    background: linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%) !important;
 }
 
 /* Ensure hover states work but don't add backgrounds */
@@ -41,14 +33,12 @@
 
 /* Additional iOS PWA transparency fixes */
 @media (display-mode: standalone) {
-
-    .mobile-nav-gradient-container,
-    .mobile-nav-gradient-container * {
+    .mobile-nav-gradient-container {
         background: transparent !important;
         background-color: transparent !important;
     }
 
-    /* Except the mobile player container */
+    /* Except the mobile player container and navigation grid */
     .mobile-nav-gradient-container .mobile-player-container {
         background: initial !important;
         background-color: initial !important;
@@ -62,11 +52,11 @@
         background-color: transparent !important;
     }
 
-    /* Force transparency on all child elements except player */
-    .mobile-nav-gradient-container>*:not(.mobile-player-container) {
-        background: transparent !important;
-        background-color: transparent !important;
+    /* Navigation grid should still have gradient */
+    .mobile-nav-gradient-container .grid {
+        background: linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%) !important;
     }
+}
 
     /* Navigation grid transparency */
     .mobile-nav-gradient-container .grid {

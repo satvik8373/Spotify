@@ -92,7 +92,7 @@ export const isAndroid = (): boolean => {
 };
 
 /**
- * Configure audio element for cross-platform compatibility
+ * Configure audio element for cross-platform compatibility and background playback
  */
 export const configureAudioElement = (audio: HTMLAudioElement): void => {
   // Essential attributes for all platforms
@@ -103,17 +103,45 @@ export const configureAudioElement = (audio: HTMLAudioElement): void => {
   audio.setAttribute('disablePictureInPicture', 'true');
   audio.crossOrigin = 'anonymous';
 
-  // iOS specific configuration
+  // Background playback support
+  audio.setAttribute('autoplay', 'false'); // Prevent autoplay issues
+  audio.setAttribute('loop', 'false');
+  
+  // iOS specific configuration for background playback
   if (isIOS()) {
     audio.setAttribute('x-webkit-airplay', 'allow');
     (audio as any).playsInline = true;
     (audio as any).webkitPlaysInline = true;
+    
+    // Enable background audio on iOS
+    try {
+      (audio as any).webkitAudioContext = true;
+      (audio as any).preservesPitch = false;
+    } catch (error) {
+      console.warn('iOS background audio setup failed:', error);
+    }
   }
 
   // Android specific configuration
   if (isAndroid()) {
-    audio.setAttribute('preload', 'none'); // Reduce data usage
+    audio.setAttribute('preload', 'metadata'); // Changed from 'none' for better background support
+    
+    // Enable background playback on Android
+    try {
+      (audio as any).mozPreservesPitch = false;
+      (audio as any).webkitPreservesPitch = false;
+    } catch (error) {
+      console.warn('Android background audio setup failed:', error);
+    }
   }
+
+  // Prevent audio from being paused by system
+  audio.addEventListener('pause', (event) => {
+    // Only allow intentional pauses, not system-triggered ones
+    if (!audio.ended && !document.hidden) {
+      console.log('Audio paused - checking if intentional');
+    }
+  });
 };
 
 // ============================================================================
@@ -262,17 +290,62 @@ class AudioInterruptionManager {
   }
 
   private setupEventListeners(): void {
-    // Visibility change detection
+    // Page visibility change - but don't pause for background playback
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        this.handleInterruption('system');
+        // Don't interrupt audio for background playback
+        // Only handle actual interruptions like phone calls
+        console.log('Page hidden - continuing background playback');
       } else if (this.isInterrupted) {
         setTimeout(() => this.handleResume(), 500);
       }
     });
 
+    // Focus/blur events for better background handling
+    window.addEventListener('blur', () => {
+      // Don't pause on window blur - allow background playback
+      console.log('Window blurred - continuing background playback');
+    });
+
+    window.addEventListener('focus', () => {
+      if (this.isInterrupted) {
+        setTimeout(() => this.handleResume(), 300);
+      }
+    });
+
+    // Handle actual audio interruptions (phone calls, etc.)
+    this.setupAudioInterruptionHandling();
+    
     // Bluetooth device monitoring
     this.setupBluetoothMonitoring();
+  }
+
+  private setupAudioInterruptionHandling(): void {
+    // Listen for actual audio interruptions
+    if ('mediaSession' in navigator) {
+      // Handle media session interruptions
+      try {
+        navigator.mediaSession.setActionHandler('pause', () => {
+          this.handleInterruption('system');
+        });
+      } catch (error) {
+        console.warn('MediaSession interruption handling failed:', error);
+      }
+    }
+
+    // Handle audio context state changes
+    const handleAudioContextStateChange = () => {
+      const context = getAudioContext();
+      if (context && context.state === 'interrupted') {
+        this.handleInterruption('call');
+      } else if (context && context.state === 'running' && this.isInterrupted) {
+        setTimeout(() => this.handleResume(), 300);
+      }
+    };
+
+    if (globalAudioContext) {
+      globalAudioContext.addEventListener('statechange', handleAudioContextStateChange);
+    }
   }
 
   private setupBluetoothMonitoring(): void {

@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { JioSaavnPlaylist, JioSaavnSong, jioSaavnService } from '@/services/jioSaavnService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { usePlayerSync } from '@/hooks/usePlayerSync';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { cn } from '@/lib/utils';
 import { formatTime } from '@/utils/formatTime';
@@ -43,7 +44,8 @@ const JioSaavnPlaylistPage: React.FC = () => {
   const [hasPlayed, setHasPlayed] = useState(false);
   const [isShuffleOn, setIsShuffleOn] = useState(false);
 
-  const { currentSong, isPlaying: playerIsPlaying, playAlbum, setIsPlaying: setPlayerIsPlaying, setUserInteracted } = usePlayerStore();
+  const { playAlbum, setIsPlaying: setPlayerIsPlaying, setUserInteracted } = usePlayerStore();
+  const { currentSong, isPlaying: playerIsPlaying } = usePlayerSync();
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Get colors from album cover
