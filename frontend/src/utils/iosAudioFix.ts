@@ -45,50 +45,7 @@ export const configureAudioForIOS = (audio: HTMLAudioElement): void => {
   (audio as any).disablePictureInPicture = true;
 };
 
-// Handle audio loading with iOS-specific fixes
-export const loadAudioForIOS = async (
-  audio: HTMLAudioElement, 
-  url: string
-): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if (!url) {
-      reject(new Error('No audio URL provided'));
-      return;
-    }
-    
-    // Configure audio element
-    configureAudioForIOS(audio);
-    
-    // Set up event listeners
-    const handleCanPlay = () => {
-      cleanup();
-      resolve();
-    };
-    
-    const handleError = (e: Event) => {
-      cleanup();
-      reject(new Error('Failed to load audio'));
-    };
-    
-    const cleanup = () => {
-      audio.removeEventListener('canplay', handleCanPlay);
-      audio.removeEventListener('error', handleError);
-    };
-    
-    audio.addEventListener('canplay', handleCanPlay, { once: true });
-    audio.addEventListener('error', handleError, { once: true });
-    
-    // Set source and load
-    audio.src = url;
-    audio.load();
-    
-    // Timeout after 10 seconds
-    setTimeout(() => {
-      cleanup();
-      reject(new Error('Audio load timeout'));
-    }, 10000);
-  });
-};
+// Removed unused loadAudioForIOS function
 
 // Play audio with iOS-specific handling
 export const playAudioForIOS = async (audio: HTMLAudioElement): Promise<void> => {
@@ -139,14 +96,7 @@ export const unlockAudioOnIOS = (): void => {
     });
 };
 
-// Fix for service worker interfering with audio
-export const bypassServiceWorkerForAudio = (url: string): string => {
-  if (!isIOS() || !isPWA()) return url;
-  
-  // Add cache-busting parameter to bypass service worker
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}_t=${Date.now()}`;
-};
+// Removed unused bypassServiceWorkerForAudio function
 
 // Initialize on module load - but don't create AudioContext immediately
 if (typeof window !== 'undefined') {

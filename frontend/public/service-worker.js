@@ -1,7 +1,7 @@
-// Service Worker for Mavrixfy
-const CACHE_NAME = 'mavrixfy-v2.0.3';
-const STATIC_CACHE = 'mavrixfy-static-v1.0.3';
-const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.3';
+// Service Worker for Mavrixfy - Enhanced Audio Streaming Support
+const CACHE_NAME = 'mavrixfy-v2.1.0';
+const STATIC_CACHE = 'mavrixfy-static-v1.1.0';
+const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.1.0';
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -12,6 +12,15 @@ const STATIC_FILES = [
   '/mavrixfy_loading.mp4',
   '/browserconfig.xml',
   '/pwa-icon-fix.css'
+];
+
+// Audio streaming domains that should bypass cache
+const AUDIO_STREAMING_DOMAINS = [
+  'saavncdn.com',
+  'jiosaavn.com',
+  'googleusercontent.com',
+  'spotify.com',
+  'scdn.co'
 ];
 
 // Install event - cache static files
@@ -49,13 +58,37 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - handle requests
+// Fetch event - handle requests with enhanced audio streaming support
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   // Skip non-GET requests
   if (request.method !== 'GET') {
+    return;
+  }
+
+  // Check if this is an audio streaming request
+  const isAudioStream = AUDIO_STREAMING_DOMAINS.some(domain => url.hostname.includes(domain)) ||
+                       request.headers.get('accept')?.includes('audio/') ||
+                       /\.(mp3|m4a|aac|ogg|wav|flac)(\?.*)?$/i.test(url.pathname);
+
+  // Handle audio streaming requests with network-only strategy
+  if (isAudioStream) {
+    event.respondWith(
+      fetch(request, {
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-store' // Don't cache audio for better streaming
+      }).catch((error) => {
+        console.warn('Audio streaming failed:', error);
+        // Return a proper error response for audio failures
+        return new Response('Audio stream unavailable', {
+          status: 503,
+          statusText: 'Service Unavailable'
+        });
+      })
+    );
     return;
   }
 

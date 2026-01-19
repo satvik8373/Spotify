@@ -15,20 +15,6 @@ export const initProductionAudio = (): void => {
   // Use the centralized audio context manager
   markUserInteraction();
 };
-    
-    // Remove listeners after first interaction
-    document.removeEventListener('touchstart', handleUserInteraction);
-    document.removeEventListener('touchend', handleUserInteraction);
-    document.removeEventListener('click', handleUserInteraction);
-    document.removeEventListener('keydown', handleUserInteraction);
-  };
-
-  // Add listeners for user interaction (required for autoplay policy)
-  document.addEventListener('touchstart', handleUserInteraction, { once: true, passive: true });
-  document.addEventListener('touchend', handleUserInteraction, { once: true, passive: true });
-  document.addEventListener('click', handleUserInteraction, { once: true, passive: true });
-  document.addEventListener('keydown', handleUserInteraction, { once: true, passive: true });
-};
 
 /**
  * Configure audio element for production compatibility
@@ -55,67 +41,7 @@ export const configureProductionAudio = (audio: HTMLAudioElement): void => {
   }
 };
 
-/**
- * Handle audio loading with production-specific error recovery
- */
-export const loadAudioWithFallback = async (
-  audio: HTMLAudioElement,
-  url: string,
-  fallbackUrls: string[] = []
-): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    let currentUrlIndex = 0;
-    const urls = [url, ...fallbackUrls].filter(Boolean);
-
-    const tryNextUrl = () => {
-      if (currentUrlIndex >= urls.length) {
-        reject(new Error('All audio URLs failed to load'));
-        return;
-      }
-
-      const currentUrl = urls[currentUrlIndex];
-      currentUrlIndex++;
-
-      const handleCanPlay = () => {
-        cleanup();
-        resolve();
-      };
-
-      const handleError = () => {
-        cleanup();
-        // Try next URL or reject if no more URLs
-        if (currentUrlIndex < urls.length) {
-          setTimeout(tryNextUrl, 500); // Small delay before trying next URL
-        } else {
-          reject(new Error(`Failed to load audio from all sources`));
-        }
-      };
-
-      const cleanup = () => {
-        audio.removeEventListener('canplay', handleCanPlay);
-        audio.removeEventListener('error', handleError);
-      };
-
-      // Configure audio for production
-      configureProductionAudio(audio);
-
-      // Set up event listeners
-      audio.addEventListener('canplay', handleCanPlay, { once: true });
-      audio.addEventListener('error', handleError, { once: true });
-
-      // Set source and load
-      audio.src = currentUrl;
-      audio.load();
-    };
-
-    tryNextUrl();
-
-    // Timeout after 15 seconds
-    setTimeout(() => {
-      reject(new Error('Audio load timeout'));
-    }, 15000);
-  });
-};
+// Removed unused loadAudioWithFallback function
 
 /**
  * Play audio with production-specific error handling

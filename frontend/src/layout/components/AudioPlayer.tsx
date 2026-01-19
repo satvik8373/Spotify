@@ -14,6 +14,8 @@ import OptimizedImage from '@/components/OptimizedImage';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { usePhoneInterruption } from '@/hooks/usePhoneInterruption';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { playAudioSafely, configureProductionAudio, fixAudioCORS } from '@/utils/productionAudioFix';
+import { backgroundPlaybackManager } from '@/utils/backgroundPlaybackManager';
 
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
@@ -171,7 +173,7 @@ const AudioPlayer = () => {
         audioContextRef.current = ctx;
 
         // 2. Create Source Node
-        const source = ctx.createMediaElementSource(audioRef.current);
+        const source = ctx.createMediaElementSource(audioRef.current!);
         sourceNodeRef.current = source;
 
         // 3. Create Filters
@@ -482,7 +484,8 @@ const AudioPlayer = () => {
       if (nextSong && nextSong.audioUrl && isValidUrl(nextSong.audioUrl)) {
         // Create a temporary audio element to preload the next song
         const preloadAudio = new Audio();
-        preloadAudio.src = nextSong.audioUrl;
+        const preloadUrl = fixAudioCORS(nextSong.audioUrl);
+        preloadAudio.src = preloadUrl;
         preloadAudio.load();
 
         // Set up metadata for lock screen to show next track info
@@ -584,39 +587,26 @@ const AudioPlayer = () => {
   // Enhanced phone call and audio focus handling - NOW HANDLED BY usePhoneInterruption hook
   // The old code (lines 496-612) has been replaced by the usePhoneInterruption hook
 
-  // Optimized background playback monitor - reduced frequency and skip during interruptions
+  // Initialize background playback manager
   useEffect(() => {
-    if (!currentSong || !audioRef.current) return;
+    backgroundPlaybackManager.initialize(audioRef);
+    
+    return () => {
+      backgroundPlaybackManager.cleanup();
+    };
+  }, []);
 
-    const backgroundPlaybackMonitor = setInterval(() => {
-      const state = usePlayerStore.getState();
-      const audio = audioRef.current;
-      if (!audio) return;
-
-      // Skip monitoring if we're interrupted (phone call, etc.)
-      if (audioFocusState.isInterrupted) {
-        return;
-      }
-
-      // Simple checks with reduced frequency
-      if (audio.paused && state.isPlaying && !audio.ended && !state.wasPlayingBeforeInterruption) {
-        audio.play().catch(() => { });
-      }
-
-      // Check for song end in background
-      if (!isNaN(audio.duration) && audio.duration > 0) {
-        if (audio.ended || (audio.currentTime >= audio.duration - 0.5 && audio.currentTime > 0)) {
-          state.playNext();
-          state.setIsPlaying(true);
-          setTimeout(() => audioRef.current?.play().catch(() => { }), 100);
-        }
-      }
-    }, 2000); // Increased from 1000ms to 2000ms for better battery life
-
-    return () => clearInterval(backgroundPlaybackMonitor);
-  }, [currentSong, isPlaying, audioFocusState.isInterrupted]);
+  // Handle playback state changes with background manager
+  useEffect(() => {
+    if (isPlaying && currentSong) {
+      backgroundPlaybackManager.startPlayback();
+    } else {
+      backgroundPlaybackManager.stopPlayback();
+    }
+  }, [isPlaying, currentSong]);
 
   // Enhanced Wake Lock API - release during interruptions, request when playing
+  // NOTE: This functionality is now handled by backgroundPlaybackManager
   useEffect(() => {
     let wakeLock: any = null;
 
@@ -667,6 +657,7 @@ const AudioPlayer = () => {
   }, [isPlaying, currentSong, audioFocusState.isInterrupted]);
 
   // Handle iOS-specific background playback issues 
+  // NOTE: This functionality is now handled by backgroundPlaybackManager
   useEffect(() => {
     // Only run on iOS devices
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -715,22 +706,15 @@ const AudioPlayer = () => {
   // Update audio element configuration for better mobile support
   useEffect(() => {
     if (audioRef.current) {
-      // Configure audio element for better mobile background playback
-      audioRef.current.setAttribute('playsinline', '');
-      audioRef.current.setAttribute('webkit-playsinline', '');
-      audioRef.current.setAttribute('preload', 'auto');
-      audioRef.current.crossOrigin = 'anonymous'; // Required for Web Audio API
-
-
-      // Critical for audio focus handling in iOS Safari
-      audioRef.current.setAttribute('x-webkit-airplay', 'allow');
+      // Use production audio configuration for better compatibility
+      configureProductionAudio(audioRef.current);
 
       // Set up remote commands early
       if (isMediaSessionSupported()) {
         navigator.mediaSession.setActionHandler('play', () => {
           setIsPlaying(true);
           if (audioRef.current && audioRef.current.paused) {
-            audioRef.current.play().catch(() => { });
+            playAudioSafely(audioRef.current).catch(() => { });
           }
         });
 
@@ -982,27 +966,19 @@ const AudioPlayer = () => {
       }
 
       // Small delay to ensure any previous pause operation is complete
-      playTimeoutRef.current = setTimeout(() => {
-        const playPromise = audioRef.current?.play();
-        if (playPromise) {
-          playPromise
-            .then(() => {
-              isHandlingPlayback.current = false;
-            })
-            .catch((err) => {
-              if (err && typeof err.message === 'string' && err.message.includes('interrupted')) {
-                // If the error was due to interruption, try again after a short delay
-                setTimeout(() => {
-                  audioRef.current?.play().catch(() => {
-                    setIsPlaying(false);
-                  });
-                }, 300);
-              } else {
-                setIsPlaying(false);
-              }
-              isHandlingPlayback.current = false;
-            });
-        } else {
+      playTimeoutRef.current = setTimeout(async () => {
+        try {
+          if (audioRef.current) {
+            await playAudioSafely(audioRef.current);
+            isHandlingPlayback.current = false;
+          }
+        } catch (err: any) {
+          if (err.message === 'USER_INTERACTION_REQUIRED') {
+            console.warn('User interaction required for audio playback');
+          } else if (err.message === 'FORMAT_NOT_SUPPORTED') {
+            console.warn('Audio format not supported');
+          }
+          setIsPlaying(false);
           isHandlingPlayback.current = false;
         }
       }, 250);
@@ -1030,6 +1006,11 @@ const AudioPlayer = () => {
 
     const audio = audioRef.current;
     let songUrl = currentSong.audioUrl;
+
+    // Fix CORS issues and convert to HTTPS for production
+    if (songUrl) {
+      songUrl = fixAudioCORS(songUrl);
+    }
 
     // Append quality parameter if valid HTTP/HTTPS URL
     if (songUrl && !songUrl.startsWith('blob:') && isValidUrl(songUrl)) {
@@ -1235,7 +1216,8 @@ const AudioPlayer = () => {
         const nextSong = usePlayerStore.getState().queue[nextIndex];
         if (nextSong && nextSong.audioUrl) {
           const preloadAudio = new Audio();
-          preloadAudio.src = nextSong.audioUrl;
+          const preloadUrl = fixAudioCORS(nextSong.audioUrl);
+          preloadAudio.src = preloadUrl;
           preloadAudio.load();
           // Discard after preloading starts
           setTimeout(() => {
@@ -2162,7 +2144,11 @@ const AudioPlayer = () => {
       <audio
         ref={audioRef}
         src={currentSong?.audioUrl && !currentSong.audioUrl.startsWith('blob:') ?
-          `${currentSong.audioUrl.replace(/^http:\/\//, 'https://')}${currentSong.audioUrl.includes('?') ? '&' : '?'}quality=${streamingQuality.toLowerCase().replace(/\s+/g, '_')}`
+          (() => {
+            let url = fixAudioCORS(currentSong.audioUrl);
+            const separator = url.includes('?') ? '&' : '?';
+            return `${url}${separator}quality=${streamingQuality.toLowerCase().replace(/\s+/g, '_')}`;
+          })()
           : undefined}
         autoPlay={isPlaying}
         onLoadStart={() => {
