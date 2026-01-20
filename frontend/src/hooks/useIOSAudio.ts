@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { 
   isIOS, 
   initAudioContext, 
@@ -13,8 +13,26 @@ import {
  */
 export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
   const isUnlocked = useRef(false);
-  const isIOSDevice = isIOS();
-  const isPWAMode = window.matchMedia('(display-mode: standalone)').matches;
+  // Avoid any runtime crashes during render (e.g. missing window/matchMedia)
+  const isIOSDevice = useMemo(() => {
+    try {
+      return typeof window !== 'undefined' && typeof document !== 'undefined' ? isIOS() : false;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const [isPWAMode, setIsPWAMode] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const mql = window.matchMedia?.('(display-mode: standalone)');
+      setIsPWAMode(!!mql?.matches);
+    } catch {
+      setIsPWAMode(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isIOSDevice) return;
