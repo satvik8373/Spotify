@@ -56,6 +56,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const [showQueue, setShowQueue] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragProgress, setDragProgress] = useState(0);
   const [screenSize, setScreenSize] = useState({
     height: window.innerHeight,
     width: window.innerWidth,
@@ -64,6 +65,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSeekTimeRef = useRef<number>(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
 
   // Handle screen size changes for responsive design
@@ -302,58 +305,122 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     };
   }, [currentSong, storeCurrentTime, storeDuration, setStoreCurrentTime]);
 
-  const handleSeek = (clientX: number, rect: DOMRect) => {
+  // Optimized seek function with throttling
+  const handleSeek = (clientX: number, rect: DOMRect, immediate = false) => {
     const offsetX = clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
     const newTime = percentage * duration;
 
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
-      if (setStoreCurrentTime) setStoreCurrentTime(newTime);
+    // Update visual progress immediately for smooth dragging
+    setDragProgress(percentage * 100);
+
+    // Throttle actual audio seeking to prevent lag
+    const now = Date.now();
+    if (immediate || now - lastSeekTimeRef.current > 100) { // Throttle to 10fps for audio seeking
+      lastSeekTimeRef.current = now;
+      
+      if (audioRef.current && !isNaN(newTime)) {
+        audioRef.current.currentTime = newTime;
+        setCurrentTime(newTime);
+        if (setStoreCurrentTime) setStoreCurrentTime(newTime);
+      }
+    } else {
+      // Clear previous timeout and set new one for delayed seek
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current);
+      }
+      
+      dragTimeoutRef.current = setTimeout(() => {
+        if (audioRef.current && !isNaN(newTime)) {
+          audioRef.current.currentTime = newTime;
+          setCurrentTime(newTime);
+          if (setStoreCurrentTime) setStoreCurrentTime(newTime);
+        }
+      }, 50);
     }
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDragging) return; // Prevent click during drag
     const rect = e.currentTarget.getBoundingClientRect();
-    handleSeek(e.clientX, rect);
+    handleSeek(e.clientX, rect, true);
   };
 
   const handleProgressMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
     const rect = e.currentTarget.getBoundingClientRect();
-    handleSeek(e.clientX, rect);
+    handleSeek(e.clientX, rect, true);
   };
 
   const handleProgressTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
     setIsDragging(true);
     const touch = e.touches[0];
     const rect = e.currentTarget.getBoundingClientRect();
-    handleSeek(touch.clientX, rect);
+    handleSeek(touch.clientX, rect, true);
   };
 
-  // Handle dragging
+  // Optimized drag handling with RAF for smooth performance
   useEffect(() => {
+    let animationFrameId: number | null = null;
+    
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging || !progressRef.current) return;
-      const rect = progressRef.current.getBoundingClientRect();
-      handleSeek(e.clientX, rect);
+      
+      // Use requestAnimationFrame for smooth visual updates
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      
+      animationFrameId = requestAnimationFrame(() => {
+        if (progressRef.current) {
+          const rect = progressRef.current.getBoundingClientRect();
+          handleSeek(e.clientX, rect);
+        }
+      });
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!isDragging || !progressRef.current) return;
+      e.preventDefault(); // Prevent scrolling during drag
+      
       const touch = e.touches[0];
-      const rect = progressRef.current.getBoundingClientRect();
-      handleSeek(touch.clientX, rect);
+      
+      // Use requestAnimationFrame for smooth visual updates
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      
+      animationFrameId = requestAnimationFrame(() => {
+        if (progressRef.current) {
+          const rect = progressRef.current.getBoundingClientRect();
+          handleSeek(touch.clientX, rect);
+        }
+      });
     };
 
-    const handleEnd = () => setIsDragging(false);
+    const handleEnd = () => {
+      setIsDragging(false);
+      setDragProgress(0);
+      
+      // Clear any pending animation frames
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      
+      // Clear any pending seek timeouts
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current);
+        dragTimeoutRef.current = null;
+      }
+    };
 
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mousemove', handleMouseMove, { passive: false });
       document.addEventListener('mouseup', handleEnd);
-      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
       document.addEventListener('touchend', handleEnd);
       document.addEventListener('touchcancel', handleEnd);
     }
@@ -364,8 +431,21 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleEnd);
       document.removeEventListener('touchcancel', handleEnd);
+      
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
-  }, [isDragging]);
+  }, [isDragging, duration]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleLikeToggle = () => {
     if (!currentSong) return;
@@ -390,7 +470,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
   if (!currentSong) return null;
 
-  const progress = (currentTime / duration) * 100 || 0;
+  // Use drag progress for smooth visual feedback, fallback to actual progress
+  const displayProgress = isDragging ? dragProgress : (currentTime / duration) * 100 || 0;
 
   return (
     <div
@@ -498,7 +579,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                     "font-black text-white mb-0.5 leading-tight tracking-tight py-1 responsive-transition",
                     responsiveClasses.title
                   )}
-                  style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
                   velocity={10}
                 />
               </div>
@@ -511,7 +591,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                     "text-white font-medium responsive-transition",
                     responsiveClasses.artist
                   )}
-                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
                   velocity={8}
                 />
               </div>
@@ -530,13 +609,14 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           <div className="max-w-sm mx-auto">
             <div
               ref={progressRef}
-              className="relative w-full py-2 cursor-pointer group touch-target"
+              className="relative w-full py-3 cursor-pointer group touch-target"
               onClick={handleProgressClick}
               onMouseDown={handleProgressMouseDown}
               onTouchStart={handleProgressTouchStart}
+              style={{ touchAction: 'none' }} // Prevent default touch behaviors
             >
               <div className={cn(
-                "relative w-full rounded-full transition-all",
+                "relative w-full rounded-full transition-all duration-150",
                 isDragging ? "h-1.5" : "h-1 group-hover:h-1.5"
               )}
               style={{
@@ -544,9 +624,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               }}
               >
                 <div
-                  className="absolute h-full rounded-full transition-all"
+                  className="absolute h-full rounded-full transition-all duration-75"
                   style={{ 
-                    width: `${progress}%`,
+                    width: `${displayProgress}%`,
                     background: `linear-gradient(90deg, ${albumColors.lightVibrant} 0%, ${albumColors.accent} 100%)`,
                     boxShadow: `0 0 12px ${albumColors.accent}`,
                   }}
@@ -554,14 +634,15 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 {/* Enhanced solid draggable thumb */}
                 <div
                   className={cn(
-                    "absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full shadow-lg transition-all",
-                    isDragging ? "opacity-100 scale-110" : "opacity-0 group-hover:opacity-100"
+                    "absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full shadow-lg transition-all duration-150",
+                    isDragging ? "opacity-100 scale-125" : "opacity-0 group-hover:opacity-100 group-hover:scale-110"
                   )}
                   style={{ 
-                    left: `${progress}%`, 
+                    left: `${displayProgress}%`, 
                     marginLeft: '-6px',
                     background: albumColors.lightVibrant,
                     boxShadow: `0 2px 8px rgba(0,0,0,0.4), 0 0 0 2px ${albumColors.accent}`,
+                    transform: isDragging ? 'translateY(-50%) scale(1.25)' : undefined,
                   }}
                 />
               </div>
@@ -601,10 +682,14 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('Play button clicked!', { isPlaying });
+                
                 // Ensure user interaction is registered
                 const store = usePlayerStore.getState();
                 store.setUserInteracted();
+                console.log('About to call togglePlay...');
                 togglePlay();
+                console.log('togglePlay called');
               }}
               onTouchStart={(e) => {
                 e.preventDefault();

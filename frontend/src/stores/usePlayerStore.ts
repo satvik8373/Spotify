@@ -126,6 +126,12 @@ export const usePlayerStore = create<PlayerState>()(
         const currentState = get();
         const newIsPlaying = !currentState.isPlaying;
         
+        console.log('togglePlay called:', { 
+          currentIsPlaying: currentState.isPlaying, 
+          newIsPlaying,
+          currentSong: currentState.currentSong?.title 
+        });
+        
         set({
           isPlaying: newIsPlaying,
           hasUserInteracted: true

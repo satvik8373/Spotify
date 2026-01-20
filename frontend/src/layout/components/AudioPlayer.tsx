@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { resolveArtist } from '@/lib/resolveArtist';
+import { backgroundAudioManager } from '@/utils/backgroundAudioManager';
 
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -9,6 +10,7 @@ const AudioPlayer = () => {
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const filtersRef = useRef<BiquadFilterNode[]>([]);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Store hooks
@@ -23,6 +25,99 @@ const AudioPlayer = () => {
   } = usePlayerStore();
 
   const { streamingQuality, equalizer } = useSettingsStore();
+
+  // Wake Lock management for background audio
+  const requestWakeLock = useCallback(async () => {
+    if (!('wakeLock' in navigator) || !isPlaying) return;
+
+    try {
+      // Release existing wake lock first
+      if (wakeLockRef.current) {
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+      }
+
+      // Request new wake lock for screen
+      wakeLockRef.current = await navigator.wakeLock.request('screen');
+      console.log('Wake lock acquired for background audio');
+
+      // Handle wake lock release
+      wakeLockRef.current.addEventListener('release', () => {
+        console.log('Wake lock released');
+        wakeLockRef.current = null;
+      });
+
+    } catch (error) {
+      console.warn('Wake lock request failed:', error);
+    }
+  }, [isPlaying]);
+
+  const releaseWakeLock = useCallback(async () => {
+    if (wakeLockRef.current) {
+      try {
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+        console.log('Wake lock released manually');
+      } catch (error) {
+        console.warn('Wake lock release failed:', error);
+      }
+    }
+  }, []);
+
+  // Handle visibility change and page lifecycle for background audio - TEMPORARILY DISABLED
+  // useEffect(() => {
+  //   const handleVisibilityChange = () => {
+  //     if (!audioRef.current) return;
+
+  //     const audio = audioRef.current;
+      
+  //     if (document.hidden) {
+  //       // Page is hidden (screen off, tab switched, etc.)
+  //       console.log('Page hidden - ensuring audio continues');
+        
+  //       // Ensure audio context is running
+  //       if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+  //         audioContextRef.current.resume().catch(console.warn);
+  //       }
+
+  //       // Keep audio playing if it should be playing
+  //       if (isPlaying && audio.paused) {
+  //         audio.play().catch(console.warn);
+  //       }
+  //     } else {
+  //       // Page is visible again
+  //       console.log('Page visible - syncing audio state');
+        
+  //       // Re-request wake lock if playing
+  //       if (isPlaying) {
+  //         requestWakeLock();
+  //       }
+  //     }
+  //   };
+
+  //   const handlePageShow = () => {
+  //     console.log('Page show event - resuming audio context');
+  //     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+  //       audioContextRef.current.resume().catch(console.warn);
+  //     }
+  //   };
+
+  //   const handlePageHide = () => {
+  //     console.log('Page hide event - maintaining audio state');
+  //     // Don't pause audio on page hide - let it continue in background
+  //   };
+
+  //   // Add event listeners
+  //   document.addEventListener('visibilitychange', handleVisibilityChange);
+  //   window.addEventListener('pageshow', handlePageShow);
+  //   window.addEventListener('pagehide', handlePageHide);
+
+  //   return () => {
+  //     document.removeEventListener('visibilitychange', handleVisibilityChange);
+  //     window.removeEventListener('pageshow', handlePageShow);
+  //     window.removeEventListener('pagehide', handlePageHide);
+  //   };
+  // }, [isPlaying, requestWakeLock]);
 
   // Initialize audio context and equalizer
   const initializeAudioContext = useCallback(() => {
@@ -117,13 +212,29 @@ const AudioPlayer = () => {
     }
   }, [streamingQuality]);
 
-  // Simple audio configuration
+  // Simple audio configuration with background playback support
   useEffect(() => {
     if (audioRef.current) {
       const audio = audioRef.current;
+      
+      // Essential attributes for background audio
       audio.setAttribute('playsinline', 'true');
       audio.setAttribute('preload', 'metadata');
+      audio.setAttribute('webkit-playsinline', 'true');
       audio.crossOrigin = 'anonymous';
+      
+      // Remove the automatic pause prevention for now to debug
+      // audio.addEventListener('pause', (e) => {
+      //   // If we should be playing but audio was paused (possibly by system)
+      //   if (isPlaying && !document.hidden) {
+      //     console.log('Audio paused unexpectedly, attempting to resume');
+      //     setTimeout(() => {
+      //       if (isPlaying && audio.paused) {
+      //         audio.play().catch(console.warn);
+      //       }
+      //     }, 100);
+      //   }
+      // });
       
       // Initialize audio context on first user interaction
       const handleFirstPlay = () => {
@@ -135,7 +246,7 @@ const AudioPlayer = () => {
       // Apply initial settings
       applyStreamingQuality();
     }
-  }, [initializeAudioContext, applyStreamingQuality]);
+  }, [initializeAudioContext, applyStreamingQuality, isPlaying]);
 
   // Apply equalizer settings when they change
   useEffect(() => {
@@ -176,31 +287,61 @@ const AudioPlayer = () => {
     }
   }, [currentSong]);
 
-  // Handle play/pause state changes - simplified
+  // Handle play/pause state changes - with detailed logging
   useEffect(() => {
-    if (!audioRef.current) return;
+    console.log('Play/pause effect triggered:', { isPlaying, hasAudio: !!audioRef.current });
+    
+    if (!audioRef.current) {
+      console.log('No audio element found');
+      return;
+    }
 
     const audio = audioRef.current;
+    console.log('Audio state:', { 
+      paused: audio.paused, 
+      src: !!audio.src, 
+      readyState: audio.readyState,
+      currentTime: audio.currentTime 
+    });
 
     if (isPlaying && audio.paused && audio.src) {
+      console.log('Attempting to start playback...');
       setUserInteracted();
-      audio.play().catch((error) => {
+      
+      // Resume audio context if suspended
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        console.log('Resuming suspended audio context');
+        audioContextRef.current.resume().catch(console.warn);
+      }
+
+      audio.play().then(() => {
+        console.log('Audio play() succeeded');
+      }).catch((error) => {
         console.error('Playback failed:', error);
         setIsPlaying(false);
       });
     } else if (!isPlaying && !audio.paused) {
+      console.log('Pausing playback...');
       audio.pause();
+    } else {
+      console.log('No action needed:', { 
+        shouldPlay: isPlaying, 
+        isPaused: audio.paused, 
+        hasSrc: !!audio.src 
+      });
     }
   }, [isPlaying, setIsPlaying, setUserInteracted]);
 
-  // Simple MediaSession setup
+  // Enhanced MediaSession setup for background audio
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentSong) return;
 
     try {
+      // Set metadata
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentSong.title || 'Unknown Title',
         artist: resolveArtist(currentSong),
+        album: currentSong.albumId || 'Unknown Album',
         artwork: [{
           src: currentSong.imageUrl || '',
           sizes: '512x512',
@@ -208,27 +349,45 @@ const AudioPlayer = () => {
         }]
       });
 
+      // Set playback state
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
 
-      // Simple action handlers
+      // Enhanced action handlers for background control
       navigator.mediaSession.setActionHandler('play', () => {
+        console.log('MediaSession play action');
         setUserInteracted();
         setIsPlaying(true);
       });
 
       navigator.mediaSession.setActionHandler('pause', () => {
+        console.log('MediaSession pause action');
         setIsPlaying(false);
       });
 
       navigator.mediaSession.setActionHandler('nexttrack', () => {
+        console.log('MediaSession next track action');
         setUserInteracted();
         playNext();
+      });
+
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        console.log('MediaSession previous track action');
+        setUserInteracted();
+        // Add previous track functionality if available
+      });
+
+      // Seek handlers for better control
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (audioRef.current && details.seekTime !== undefined) {
+          audioRef.current.currentTime = details.seekTime;
+          setStoreCurrentTime(details.seekTime);
+        }
       });
 
     } catch (error) {
       console.warn('MediaSession setup failed:', error);
     }
-  }, [currentSong, isPlaying, setIsPlaying, playNext, setUserInteracted]);
+  }, [currentSong, isPlaying, setIsPlaying, playNext, setUserInteracted, setStoreCurrentTime]);
 
   // Simple event handlers
   const handleTimeUpdate = useCallback(() => {
@@ -263,14 +422,15 @@ const AudioPlayer = () => {
     setTimeout(() => playNext(), 1000);
   }, [playNext]);
 
-  // Cleanup audio context on unmount
+  // Cleanup audio context and wake lock on unmount
   useEffect(() => {
     return () => {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close().catch(console.warn);
       }
+      releaseWakeLock();
     };
-  }, []);
+  }, [releaseWakeLock]);
 
   return (
     <audio
@@ -281,7 +441,16 @@ const AudioPlayer = () => {
       onError={handleError}
       onLoadStart={() => setIsLoading(true)}
       onWaiting={() => setIsLoading(true)}
-      onPlaying={() => setIsLoading(false)}
+      onPlaying={() => {
+        console.log('Audio playing event');
+        setIsLoading(false);
+      }}
+      onPause={() => {
+        console.log('Audio pause event');
+      }}
+      onPlay={() => {
+        console.log('Audio play event');
+      }}
       preload="metadata"
       playsInline
       controls={false}
