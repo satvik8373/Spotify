@@ -92,7 +92,7 @@ export const isAndroid = (): boolean => {
 };
 
 /**
- * Configure audio element for cross-platform compatibility and background playback
+ * Configure audio element for cross-platform compatibility and reliable background playback
  */
 export const configureAudioElement = (audio: HTMLAudioElement): void => {
   // Essential attributes for all platforms
@@ -103,43 +103,76 @@ export const configureAudioElement = (audio: HTMLAudioElement): void => {
   audio.setAttribute('disablePictureInPicture', 'true');
   audio.crossOrigin = 'anonymous';
 
-  // Background playback support
-  audio.setAttribute('autoplay', 'false'); // Prevent autoplay issues
+  // Critical for background playback - prevent system from pausing
+  audio.setAttribute('autoplay', 'false');
   audio.setAttribute('loop', 'false');
   
-  // iOS specific configuration for background playback
+  // iOS specific configuration for reliable background playback
   if (isIOS()) {
     audio.setAttribute('x-webkit-airplay', 'allow');
     (audio as any).playsInline = true;
     (audio as any).webkitPlaysInline = true;
     
-    // Enable AirPlay on iOS
+    // Essential iOS background audio setup
     try {
       (audio as any).webkitAudioContext = true;
       (audio as any).preservesPitch = false;
+      // Set audio session category for background playback
+      (audio as any).webkitAudioSession = 'playback';
     } catch (error) {
-      console.warn('iOS audio setup failed:', error);
+      console.warn('iOS background audio setup failed:', error);
     }
   }
 
-  // Android specific configuration
+  // Android specific configuration for background playback
   if (isAndroid()) {
-    audio.setAttribute('preload', 'metadata'); // Changed from 'none' for better background support
+    audio.setAttribute('preload', 'metadata');
     
     // Enable background playback on Android
     try {
       (audio as any).mozPreservesPitch = false;
       (audio as any).webkitPreservesPitch = false;
+      // Android background audio session
+      (audio as any).audioSession = 'media';
     } catch (error) {
-      console.warn('Android audio setup failed:', error);
+      console.warn('Android background audio setup failed:', error);
     }
   }
 
-  // Prevent audio from being paused by system
+  // Critical: Prevent system from pausing audio during background
   audio.addEventListener('pause', (event) => {
-    // Only allow intentional pauses, not system-triggered ones
-    if (!audio.ended && !document.hidden) {
-      console.log('Audio paused - checking if intentional');
+    // Check if this is a system-triggered pause (not user-triggered)
+    if (!audio.ended && audio.src && !audio.seeking) {
+      const wasUserTriggered = event.isTrusted && !document.hidden;
+      
+      if (!wasUserTriggered) {
+        // This is likely a system pause - attempt to resume
+        console.log('System pause detected - attempting resume');
+        setTimeout(() => {
+          if (!audio.ended && audio.src && audio.paused) {
+            audio.play().catch(() => {
+              console.warn('Failed to resume after system pause');
+            });
+          }
+        }, 100);
+      }
+    }
+  });
+
+  // Handle audio context suspension (critical for background playback)
+  const handleAudioContextSuspension = () => {
+    const context = getAudioContext();
+    if (context && context.state === 'suspended') {
+      context.resume().catch(() => {
+        console.warn('Failed to resume audio context');
+      });
+    }
+  };
+
+  // Resume audio context when page becomes visible
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      setTimeout(handleAudioContextSuspension, 100);
     }
   });
 };
@@ -267,6 +300,232 @@ export const loadAudioWithFallback = async (
     }, 15000);
   });
 };
+
+// ============================================================================
+// BACKGROUND AUDIO MANAGEMENT
+// ============================================================================
+
+/**
+ * Simple, reliable background audio manager
+ * Focuses on keeping audio playing when screen is off/locked
+ */
+class SimpleBackgroundAudioManager {
+  private audio: HTMLAudioElement | null = null;
+  private isPlaying = false;
+  private wakeLock: any = null;
+  private keepAliveInterval: NodeJS.Timeout | null = null;
+
+  /**
+   * Initialize with audio element
+   */
+  initialize(audioElement: HTMLAudioElement): void {
+    this.audio = audioElement;
+    this.setupBackgroundPlayback();
+  }
+
+  /**
+   * Set playing state
+   */
+  setPlaying(playing: boolean): void {
+    this.isPlaying = playing;
+    
+    if (playing) {
+      this.enableBackgroundPlayback();
+    } else {
+      this.disableBackgroundPlayback();
+    }
+  }
+
+  /**
+   * Setup background playback capabilities
+   */
+  private setupBackgroundPlayback(): void {
+    if (!this.audio) return;
+
+    // Handle visibility changes - keep audio playing
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.isPlaying && this.audio) {
+        // Page hidden - ensure audio continues
+        this.maintainBackgroundPlayback();
+      }
+    });
+
+    // Handle page lifecycle events
+    window.addEventListener('pagehide', () => {
+      if (this.isPlaying) {
+        this.maintainBackgroundPlayback();
+      }
+    });
+
+    window.addEventListener('pageshow', () => {
+      if (this.isPlaying) {
+        this.resumeBackgroundPlayback();
+      }
+    });
+
+    // Handle focus/blur
+    window.addEventListener('blur', () => {
+      if (this.isPlaying) {
+        this.maintainBackgroundPlayback();
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      if (this.isPlaying) {
+        this.resumeBackgroundPlayback();
+      }
+    });
+  }
+
+  /**
+   * Enable background playback when audio starts
+   */
+  private enableBackgroundPlayback(): void {
+    this.requestWakeLock();
+    this.startKeepAlive();
+  }
+
+  /**
+   * Disable background playback when audio stops
+   */
+  private disableBackgroundPlayback(): void {
+    this.releaseWakeLock();
+    this.stopKeepAlive();
+  }
+
+  /**
+   * Maintain audio playback in background
+   */
+  private maintainBackgroundPlayback(): void {
+    if (!this.audio || !this.isPlaying) return;
+
+    // Ensure audio context is running
+    const context = getAudioContext();
+    if (context && context.state === 'suspended') {
+      context.resume().catch(() => {});
+    }
+
+    // Ensure audio is playing
+    if (this.audio.paused && !this.audio.ended && this.audio.src) {
+      this.audio.play().catch(() => {
+        console.warn('Failed to maintain background playback');
+      });
+    }
+
+    // Request wake lock to prevent system interference
+    this.requestWakeLock();
+  }
+
+  /**
+   * Resume background playback when page becomes visible
+   */
+  private resumeBackgroundPlayback(): void {
+    if (!this.audio || !this.isPlaying) return;
+
+    // Resume audio context
+    const context = getAudioContext();
+    if (context && context.state === 'suspended') {
+      context.resume().catch(() => {});
+    }
+
+    // Ensure audio is still playing
+    if (this.audio.paused && !this.audio.ended && this.audio.src) {
+      setTimeout(() => {
+        if (this.audio && this.audio.paused && !this.audio.ended) {
+          this.audio.play().catch(() => {});
+        }
+      }, 100);
+    }
+  }
+
+  /**
+   * Request wake lock to prevent system sleep
+   */
+  private async requestWakeLock(): Promise<void> {
+    if (!('wakeLock' in navigator) || this.wakeLock) return;
+
+    try {
+      this.wakeLock = await (navigator as any).wakeLock.request('screen');
+      console.log('Wake lock acquired for background audio');
+
+      this.wakeLock.addEventListener('release', () => {
+        console.log('Wake lock released');
+        this.wakeLock = null;
+        
+        // Re-request if still playing
+        if (this.isPlaying) {
+          setTimeout(() => this.requestWakeLock(), 1000);
+        }
+      });
+    } catch (error) {
+      console.warn('Wake lock failed:', error);
+    }
+  }
+
+  /**
+   * Release wake lock
+   */
+  private async releaseWakeLock(): Promise<void> {
+    if (this.wakeLock) {
+      try {
+        await this.wakeLock.release();
+        this.wakeLock = null;
+      } catch (error) {
+        console.warn('Wake lock release failed:', error);
+      }
+    }
+  }
+
+  /**
+   * Start keep-alive mechanism
+   */
+  private startKeepAlive(): void {
+    if (this.keepAliveInterval) return;
+
+    this.keepAliveInterval = setInterval(() => {
+      if (this.isPlaying && this.audio) {
+        // Check if audio is unexpectedly paused
+        if (this.audio.paused && !this.audio.ended && this.audio.src) {
+          console.log('Audio unexpectedly paused - resuming');
+          this.audio.play().catch(() => {});
+        }
+
+        // Ensure audio context is running
+        const context = getAudioContext();
+        if (context && context.state === 'suspended') {
+          context.resume().catch(() => {});
+        }
+
+        // Maintain wake lock
+        if (!this.wakeLock) {
+          this.requestWakeLock();
+        }
+      }
+    }, 5000); // Check every 5 seconds
+  }
+
+  /**
+   * Stop keep-alive mechanism
+   */
+  private stopKeepAlive(): void {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+    }
+  }
+
+  /**
+   * Cleanup
+   */
+  cleanup(): void {
+    this.disableBackgroundPlayback();
+    this.audio = null;
+    this.isPlaying = false;
+  }
+}
+
+// Export singleton instance
+export const backgroundAudioManager = new SimpleBackgroundAudioManager();
 
 // ============================================================================
 // INTERRUPTION HANDLING

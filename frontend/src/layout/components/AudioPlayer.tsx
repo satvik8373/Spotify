@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { resolveArtist } from '@/lib/resolveArtist';
+import { backgroundAudioManager, configureAudioElement } from '@/utils/audioManager';
 
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -119,32 +120,16 @@ const AudioPlayer = () => {
     }
   }, [streamingQuality]);
 
-  // Simple audio configuration
+  // Simple audio configuration with reliable background playback
   useEffect(() => {
     if (audioRef.current) {
       const audio = audioRef.current;
       
-      // Essential attributes for audio playback
-      audio.setAttribute('playsinline', 'true');
-      audio.setAttribute('preload', 'metadata');
-      audio.setAttribute('webkit-playsinline', 'true');
-      audio.crossOrigin = 'anonymous';
+      // Configure audio element for background playback
+      configureAudioElement(audio);
       
-      // Prevent unexpected pauses (system interruptions)
-      const handleUnexpectedPause = (e: Event) => {
-        // Only intervene if we should be playing and page is visible
-        if (isPlaying && !document.hidden && audio.src) {
-          console.log('Audio paused unexpectedly, attempting to resume');
-          setTimeout(() => {
-            if (isPlaying && audio.paused && audio.src) {
-              console.log('Resuming audio after unexpected pause');
-              audio.play().catch(console.warn);
-            }
-          }, 100);
-        }
-      };
-      
-      audio.addEventListener('pause', handleUnexpectedPause);
+      // Initialize background audio manager
+      backgroundAudioManager.initialize(audio);
       
       // Initialize audio context on first user interaction
       const handleFirstPlay = () => {
@@ -157,11 +142,10 @@ const AudioPlayer = () => {
       applyStreamingQuality();
 
       return () => {
-        audio.removeEventListener('pause', handleUnexpectedPause);
         audio.removeEventListener('play', handleFirstPlay);
       };
     }
-  }, [initializeAudioContext, applyStreamingQuality, isPlaying]);
+  }, [initializeAudioContext, applyStreamingQuality]);
 
   // Apply equalizer settings when they change
   useEffect(() => {
@@ -202,7 +186,7 @@ const AudioPlayer = () => {
     }
   }, [currentSong]);
 
-  // Handle play/pause state changes - with detailed logging
+  // Handle play/pause state changes and sync with background audio manager
   useEffect(() => {
     console.log('Play/pause effect triggered:', { isPlaying, hasAudio: !!audioRef.current });
     
@@ -212,6 +196,10 @@ const AudioPlayer = () => {
     }
 
     const audio = audioRef.current;
+    
+    // Update background audio manager
+    backgroundAudioManager.setPlaying(isPlaying);
+    
     console.log('Audio state:', { 
       paused: audio.paused, 
       src: !!audio.src, 
@@ -337,12 +325,13 @@ const AudioPlayer = () => {
     setTimeout(() => playNext(), 1000);
   }, [playNext]);
 
-  // Cleanup audio context on unmount
+  // Cleanup audio context and background audio manager on unmount
   useEffect(() => {
     return () => {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close().catch(console.warn);
       }
+      backgroundAudioManager.cleanup();
     };
   }, []);
 
