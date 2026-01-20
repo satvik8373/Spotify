@@ -60,11 +60,21 @@
         <h3>Test Instructions:</h3>
         <ol>
             <li>Click "Start Audio" to begin playback</li>
+            <li><strong>iOS Users:</strong> Ensure you're not in Low Power Mode</li>
             <li>Turn off your screen or lock your device</li>
             <li>Audio should continue playing in background</li>
+            <li><strong>iOS:</strong> Use Control Center or Lock Screen controls</li>
             <li>Turn screen back on - audio should still be playing</li>
-            <li>Use lock screen controls to pause/play</li>
         </ol>
+        <div style="background: #2a2a2a; padding: 10px; border-radius: 6px; margin-top: 10px;">
+            <strong>iOS Specific Notes:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+                <li>Background audio works best when app is added to Home Screen (PWA)</li>
+                <li>Disable Low Power Mode for best results</li>
+                <li>Use Control Center or Lock Screen controls to test</li>
+                <li>May require keeping app in foreground initially</li>
+            </ul>
+        </div>
     </div>
 
     <div class="controls">
@@ -74,6 +84,7 @@
     </div>
 
     <div class="status">
+        <div><strong>Platform:</strong> <span id="platformStatus">Detecting...</span></div>
         <div><strong>Status:</strong> <span id="status">Ready</span></div>
         <div><strong>Wake Lock:</strong> <span id="wakeLockStatus">Not Active</span></div>
         <div><strong>Background Manager:</strong> <span id="backgroundStatus">Not Active</span></div>
@@ -107,15 +118,24 @@
                 this.audio.setAttribute('preload', 'metadata');
                 this.audio.crossOrigin = 'anonymous';
 
-                // iOS specific setup
+                // iOS specific setup - CRITICAL for background audio
                 if (this.isIOS()) {
+                    console.log('📱 Configuring iOS-specific background audio');
                     this.audio.setAttribute('x-webkit-airplay', 'allow');
+                    this.audio.setAttribute('webkit-playsinline', 'true');
                     this.audio.playsInline = true;
                     this.audio.webkitPlaysInline = true;
                     
                     try {
                         this.audio.preservesPitch = false;
                         this.audio.webkitPreservesPitch = false;
+                        this.audio.webkitAudioContext = true;
+                        this.audio.webkitAllowsAirPlay = true;
+                        
+                        // Critical for iOS background audio
+                        if ('webkitAudioSession' in this.audio) {
+                            this.audio.webkitAudioSession = 'playback';
+                        }
                     } catch (error) {
                         console.warn('iOS setup failed:', error);
                     }
@@ -131,17 +151,36 @@
                     }
                 }
 
-                // Simple pause prevention - only for system pauses
+                // iOS-specific pause prevention (more aggressive)
                 this.audio.addEventListener('pause', (event) => {
                     if (!this.audio.ended && this.audio.src && !this.audio.seeking) {
-                        // Only prevent pause if page is hidden (system pause)
-                        if (document.hidden && this.isPlaying) {
-                            console.log('System pause detected - resuming');
-                            setTimeout(() => {
-                                if (this.audio && this.audio.paused && !this.audio.ended) {
-                                    this.audio.play().catch(() => {});
-                                }
-                            }, 100);
+                        if (this.isIOS()) {
+                            // iOS needs aggressive pause prevention
+                            if (this.isPlaying && !this.audio.seeking) {
+                                console.log('📱 iOS pause detected - aggressive resume');
+                                setTimeout(() => {
+                                    if (this.audio && this.audio.paused && !this.audio.ended) {
+                                        this.audio.play().catch(() => {});
+                                    }
+                                }, 50);
+                                
+                                // Backup resume for iOS
+                                setTimeout(() => {
+                                    if (this.audio && this.audio.paused && !this.audio.ended) {
+                                        this.audio.play().catch(() => {});
+                                    }
+                                }, 200);
+                            }
+                        } else {
+                            // Standard handling for other platforms
+                            if (document.hidden && this.isPlaying) {
+                                console.log('System pause detected - resuming');
+                                setTimeout(() => {
+                                    if (this.audio && this.audio.paused && !this.audio.ended) {
+                                        this.audio.play().catch(() => {});
+                                    }
+                                }, 100);
+                            }
                         }
                     }
                 });
@@ -260,20 +299,40 @@
             startKeepAlive() {
                 if (this.keepAliveInterval) return;
 
+                // iOS needs more frequent monitoring
+                const interval = this.isIOS() ? 3000 : 5000;
+                console.log(`⏰ Starting keep-alive monitoring (${interval}ms interval for ${this.isIOS() ? 'iOS' : 'other platforms'})`);
+
                 this.keepAliveInterval = setInterval(() => {
                     if (this.isPlaying && this.audio) {
                         // Check if audio is unexpectedly paused
                         if (this.audio.paused && !this.audio.ended && this.audio.src) {
-                            console.log('Keep-alive: Audio paused - resuming');
-                            this.audio.play().catch(() => {});
+                            if (this.isIOS()) {
+                                console.log('📱 iOS keep-alive: Audio paused - aggressive resume');
+                                this.audio.play().catch(() => {
+                                    // Try alternative approach for iOS
+                                    setTimeout(() => {
+                                        if (this.audio && this.audio.paused && !this.audio.ended) {
+                                            const currentTime = this.audio.currentTime;
+                                            const src = this.audio.src;
+                                            this.audio.load();
+                                            this.audio.currentTime = currentTime;
+                                            this.audio.play().catch(() => {});
+                                        }
+                                    }, 200);
+                                });
+                            } else {
+                                console.log('Keep-alive: Audio paused - resuming');
+                                this.audio.play().catch(() => {});
+                            }
                         }
 
-                        // Maintain wake lock
-                        if (!this.wakeLock) {
+                        // Maintain wake lock (not supported on iOS)
+                        if (!this.wakeLock && !this.isIOS()) {
                             this.requestWakeLock();
                         }
                     }
-                }, 5000);
+                }, interval);
             }
 
             stopKeepAlive() {
@@ -309,12 +368,25 @@
             }
         }
 
-        // Initialize test
+        // Initialize test with platform detection
         const backgroundManager = new TestBackgroundAudioManager();
         const audio = document.getElementById('testAudio');
         const startBtn = document.getElementById('startBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const stopBtn = document.getElementById('stopBtn');
+
+        // Detect and display platform
+        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isAndroidDevice = /Android/.test(navigator.userAgent);
+        
+        let platformText = 'Unknown';
+        if (isIOSDevice) platformText = 'iOS';
+        else if (isAndroidDevice) platformText = 'Android';
+        else platformText = 'Desktop/Other';
+        
+        document.getElementById('platformStatus').textContent = platformText;
+        document.getElementById('platformStatus').className = isIOSDevice ? 'error' : 'success';
 
         // Test audio URLs - using more reliable sources
         const testAudioUrls = [

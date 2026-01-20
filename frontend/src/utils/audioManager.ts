@@ -93,6 +93,7 @@ export const isAndroid = (): boolean => {
 
 /**
  * Configure audio element for reliable cross-platform background playback
+ * Special focus on iOS background audio requirements
  */
 export const configureAudioElement = (audio: HTMLAudioElement): void => {
   console.log('🔧 Configuring audio element for reliable background playback');
@@ -105,19 +106,53 @@ export const configureAudioElement = (audio: HTMLAudioElement): void => {
   audio.setAttribute('disablePictureInPicture', 'true');
   audio.crossOrigin = 'anonymous';
 
-  // iOS specific configuration
+  // iOS specific configuration - CRITICAL for background audio
   if (isIOS()) {
-    console.log('📱 Applying iOS-specific configuration');
-    audio.setAttribute('x-webkit-airplay', 'allow');
-    (audio as any).playsInline = true;
-    (audio as any).webkitPlaysInline = true;
+    console.log('📱 Applying iOS-specific background audio configuration');
     
+    // Essential iOS attributes
+    audio.setAttribute('x-webkit-airplay', 'allow');
+    audio.setAttribute('webkit-playsinline', 'true');
+    audio.setAttribute('playsinline', 'true');
+    
+    // iOS background audio properties
     try {
+      (audio as any).playsInline = true;
+      (audio as any).webkitPlaysInline = true;
       (audio as any).preservesPitch = false;
       (audio as any).webkitPreservesPitch = false;
+      
+      // Critical iOS background audio session properties
+      (audio as any).webkitAudioContext = true;
+      (audio as any).webkitAllowsAirPlay = true;
+      
+      // Set audio session category for background playback (iOS specific)
+      if ('webkitAudioSession' in audio) {
+        (audio as any).webkitAudioSession = 'playback';
+      }
+      
+      console.log('✅ iOS background audio properties configured');
     } catch (error) {
       console.warn('iOS configuration failed:', error);
     }
+    
+    // iOS-specific event handling for background audio
+    audio.addEventListener('webkitbeginfullscreen', () => {
+      console.log('📱 iOS fullscreen begin - maintaining audio');
+    });
+    
+    audio.addEventListener('webkitendfullscreen', () => {
+      console.log('📱 iOS fullscreen end - ensuring audio continues');
+    });
+    
+    // Handle iOS audio session interruptions
+    audio.addEventListener('webkitaudiointerrupted', () => {
+      console.log('📱 iOS audio interrupted');
+    });
+    
+    audio.addEventListener('webkitaudioresumed', () => {
+      console.log('📱 iOS audio resumed');
+    });
   }
 
   // Android specific configuration
@@ -321,33 +356,58 @@ class SimpleBackgroundAudioManager {
   }
 
   /**
-   * Setup background playback event listeners
+   * Setup background playback event listeners with iOS-specific handling
    */
   private setupBackgroundPlayback(): void {
     if (!this.audio) return;
 
     console.log('🔧 Setting up background playback listeners');
 
-    // Simple pause prevention - only prevent system pauses
+    // iOS-specific pause prevention (more aggressive for iOS)
     this.audio.addEventListener('pause', () => {
       if (!this.audio || this.audio.ended || !this.audio.src || !this.isPlaying) return;
       
-      // Only prevent pause if page is hidden (system pause) and we should be playing
-      if (document.hidden || document.visibilityState === 'hidden') {
-        console.log('🚨 System pause detected while page hidden - resuming');
-        
-        // Simple resume after short delay
-        setTimeout(() => {
-          if (this.audio && this.audio.paused && !this.audio.ended && this.isPlaying) {
-            this.audio.play().catch((error) => {
-              console.warn('Failed to resume after system pause:', error);
-            });
-          }
-        }, 100);
+      // iOS requires more aggressive handling
+      if (isIOS()) {
+        // On iOS, prevent ALL system pauses when we should be playing
+        if (this.isPlaying && !this.audio.seeking) {
+          console.log('📱 iOS pause detected - aggressive resume');
+          
+          // Immediate resume for iOS
+          setTimeout(() => {
+            if (this.audio && this.audio.paused && !this.audio.ended && this.isPlaying) {
+              this.audio.play().catch((error) => {
+                console.warn('iOS resume failed:', error);
+              });
+            }
+          }, 50); // Faster response for iOS
+          
+          // Backup resume for iOS
+          setTimeout(() => {
+            if (this.audio && this.audio.paused && !this.audio.ended && this.isPlaying) {
+              this.audio.play().catch((error) => {
+                console.warn('iOS backup resume failed:', error);
+              });
+            }
+          }, 200);
+        }
+      } else {
+        // Standard handling for other platforms
+        if (document.hidden || document.visibilityState === 'hidden') {
+          console.log('🚨 System pause detected while page hidden - resuming');
+          
+          setTimeout(() => {
+            if (this.audio && this.audio.paused && !this.audio.ended && this.isPlaying) {
+              this.audio.play().catch((error) => {
+                console.warn('Failed to resume after system pause:', error);
+              });
+            }
+          }, 100);
+        }
       }
     });
 
-    // Handle visibility changes
+    // Handle visibility changes with iOS-specific logic
     this.visibilityChangeHandler = () => {
       if (document.hidden && this.isPlaying) {
         console.log('📱 Page hidden - maintaining background playback');
@@ -359,11 +419,22 @@ class SimpleBackgroundAudioManager {
     };
     document.addEventListener('visibilitychange', this.visibilityChangeHandler);
 
-    // Handle page lifecycle for better mobile support
+    // iOS-specific page lifecycle handling
     this.pageHideHandler = () => {
       if (this.isPlaying) {
         console.log('🔄 Page hiding - maintaining playback');
-        this.maintainBackgroundPlayback();
+        if (isIOS()) {
+          // iOS needs immediate action on page hide
+          this.maintainBackgroundPlayback();
+          // Additional iOS-specific handling
+          setTimeout(() => {
+            if (this.audio && this.audio.paused && this.isPlaying) {
+              this.audio.play().catch(() => {});
+            }
+          }, 100);
+        } else {
+          this.maintainBackgroundPlayback();
+        }
       }
     };
     window.addEventListener('pagehide', this.pageHideHandler);
@@ -375,6 +446,32 @@ class SimpleBackgroundAudioManager {
       }
     };
     window.addEventListener('pageshow', this.pageShowHandler);
+
+    // iOS-specific event listeners
+    if (isIOS()) {
+      // Handle iOS app state changes
+      window.addEventListener('focus', () => {
+        if (this.isPlaying) {
+          console.log('📱 iOS app focused - checking audio');
+          setTimeout(() => this.ensurePlaybackContinues(), 100);
+        }
+      });
+
+      window.addEventListener('blur', () => {
+        if (this.isPlaying) {
+          console.log('📱 iOS app blurred - maintaining audio');
+          this.maintainBackgroundPlayback();
+        }
+      });
+
+      // Handle iOS-specific audio interruptions
+      document.addEventListener('webkitvisibilitychange', () => {
+        if (document.webkitHidden && this.isPlaying) {
+          console.log('📱 iOS webkit visibility change - maintaining audio');
+          this.maintainBackgroundPlayback();
+        }
+      });
+    }
   }
 
   /**
@@ -481,38 +578,69 @@ class SimpleBackgroundAudioManager {
   }
 
   /**
-   * Start keep-alive mechanism to monitor playback
+   * Start keep-alive mechanism to monitor playback with iOS-specific handling
    */
   private startKeepAlive(): void {
     if (this.keepAliveInterval) return;
 
     console.log('⏰ Starting keep-alive monitoring');
 
+    // iOS needs more frequent monitoring
+    const interval = isIOS() ? 3000 : 5000; // 3 seconds for iOS, 5 for others
+
     this.keepAliveInterval = setInterval(() => {
       if (this.isPlaying && this.audio) {
         // Check if audio is unexpectedly paused
         if (this.audio.paused && !this.audio.ended && this.audio.src) {
           console.log('🚨 Audio unexpectedly paused - attempting resume');
-          this.audio.play().catch((error) => {
-            console.warn('Keep-alive resume failed:', error);
-          });
+          
+          if (isIOS()) {
+            // iOS-specific aggressive resume
+            console.log('📱 iOS aggressive resume attempt');
+            this.audio.play().catch((error) => {
+              console.warn('iOS keep-alive resume failed:', error);
+              
+              // Try again with a different approach for iOS
+              setTimeout(() => {
+                if (this.audio && this.audio.paused && !this.audio.ended && this.isPlaying) {
+                  // Force reload and play for iOS if needed
+                  const currentTime = this.audio.currentTime;
+                  const src = this.audio.src;
+                  this.audio.load();
+                  this.audio.currentTime = currentTime;
+                  this.audio.play().catch(() => {
+                    console.warn('iOS force reload resume also failed');
+                  });
+                }
+              }, 500);
+            });
+          } else {
+            // Standard resume for other platforms
+            this.audio.play().catch((error) => {
+              console.warn('Keep-alive resume failed:', error);
+            });
+          }
         }
 
-        // Maintain wake lock
-        if (!this.wakeLock) {
+        // Maintain wake lock (iOS doesn't support wake lock, but keep for other platforms)
+        if (!this.wakeLock && !isIOS()) {
           this.requestWakeLock();
         }
 
-        // Simple status log
-        if (Math.random() < 0.1) { // Log occasionally to avoid spam
+        // iOS-specific status logging (more frequent for debugging)
+        const shouldLog = isIOS() ? Math.random() < 0.2 : Math.random() < 0.1;
+        if (shouldLog) {
           console.log('💓 Keep-alive check:', {
+            platform: isIOS() ? 'iOS' : 'Other',
             playing: !this.audio.paused,
             currentTime: this.audio.currentTime.toFixed(1),
-            wakeLock: !!this.wakeLock
+            wakeLock: !!this.wakeLock,
+            readyState: this.audio.readyState,
+            networkState: this.audio.networkState
           });
         }
       }
-    }, 5000); // Check every 5 seconds
+    }, interval);
   }
 
   /**
@@ -527,7 +655,7 @@ class SimpleBackgroundAudioManager {
   }
 
   /**
-   * Setup MediaSession for lock screen controls
+   * Setup MediaSession for lock screen controls with iOS-specific enhancements
    */
   setupMediaSession(metadata: {
     title: string;
@@ -556,22 +684,67 @@ class SimpleBackgroundAudioManager {
       // Set playback state
       navigator.mediaSession.playbackState = this.isPlaying ? 'playing' : 'paused';
 
-      // Simple action handlers
+      // iOS-enhanced action handlers
       navigator.mediaSession.setActionHandler('play', () => {
         console.log('🎵 MediaSession play action');
         if (this.audio && this.audio.paused) {
-          this.audio.play().catch(() => {});
+          if (isIOS()) {
+            // iOS-specific play handling
+            console.log('📱 iOS MediaSession play');
+            this.audio.play().then(() => {
+              console.log('📱 iOS MediaSession play succeeded');
+            }).catch((error) => {
+              console.warn('📱 iOS MediaSession play failed:', error);
+              // Try alternative approach for iOS
+              setTimeout(() => {
+                if (this.audio && this.audio.paused) {
+                  this.audio.play().catch(() => {});
+                }
+              }, 100);
+            });
+          } else {
+            this.audio.play().catch(() => {});
+          }
         }
       });
 
       navigator.mediaSession.setActionHandler('pause', () => {
         console.log('⏸️ MediaSession pause action');
         if (this.audio && !this.audio.paused) {
+          if (isIOS()) {
+            console.log('📱 iOS MediaSession pause');
+          }
           this.audio.pause();
         }
       });
 
-      console.log('🎛️ MediaSession configured');
+      // iOS-specific additional handlers
+      if (isIOS()) {
+        try {
+          // Handle seek actions for iOS
+          navigator.mediaSession.setActionHandler('seekto', (details) => {
+            if (this.audio && details.seekTime !== undefined) {
+              console.log('📱 iOS MediaSession seek to:', details.seekTime);
+              this.audio.currentTime = details.seekTime;
+            }
+          });
+
+          // Handle skip actions for iOS
+          navigator.mediaSession.setActionHandler('nexttrack', () => {
+            console.log('📱 iOS MediaSession next track');
+            // This will be handled by the main app
+          });
+
+          navigator.mediaSession.setActionHandler('previoustrack', () => {
+            console.log('📱 iOS MediaSession previous track');
+            // This will be handled by the main app
+          });
+        } catch (error) {
+          console.warn('iOS MediaSession additional handlers failed:', error);
+        }
+      }
+
+      console.log('🎛️ MediaSession configured' + (isIOS() ? ' with iOS enhancements' : ''));
     } catch (error) {
       console.warn('MediaSession setup failed:', error);
     }
