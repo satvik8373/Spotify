@@ -329,7 +329,7 @@ class SimpleBackgroundAudioManager {
     console.log('🔧 Setting up background playback listeners');
 
     // Simple pause prevention - only prevent system pauses
-    this.audio.addEventListener('pause', (event) => {
+    this.audio.addEventListener('pause', () => {
       if (!this.audio || this.audio.ended || !this.audio.src || !this.isPlaying) return;
       
       // Only prevent pause if page is hidden (system pause) and we should be playing
@@ -390,7 +390,7 @@ class SimpleBackgroundAudioManager {
    * Disable background playback features
    */
   private disableBackgroundPlayback(): void {
-    console.log('� Disabling background playback');
+    console.log('🛑 Disabling background playback');
     this.releaseWakeLock();
     this.stopKeepAlive();
   }
@@ -401,7 +401,7 @@ class SimpleBackgroundAudioManager {
   private maintainBackgroundPlayback(): void {
     if (!this.audio || !this.isPlaying) return;
 
-    console.log('� Maintaining background playback');
+    console.log('🔥 Maintaining background playback');
 
     // Ensure audio is playing
     if (this.audio.paused && !this.audio.ended && this.audio.src) {
@@ -443,7 +443,7 @@ class SimpleBackgroundAudioManager {
     }
 
     if (this.wakeLock) {
-      console.log('� Wake lock already active');
+      console.log('🔒 Wake lock already active');
       return;
     }
 
@@ -492,7 +492,7 @@ class SimpleBackgroundAudioManager {
       if (this.isPlaying && this.audio) {
         // Check if audio is unexpectedly paused
         if (this.audio.paused && !this.audio.ended && this.audio.src) {
-          console.log('� Audio unexpectedly paused - attempting resume');
+          console.log('🚨 Audio unexpectedly paused - attempting resume');
           this.audio.play().catch((error) => {
             console.warn('Keep-alive resume failed:', error);
           });

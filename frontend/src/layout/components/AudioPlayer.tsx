@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { resolveArtist } from '@/lib/resolveArtist';
@@ -23,8 +23,6 @@ const AudioPlayer = () => {
   } = usePlayerStore();
 
   const { streamingQuality, equalizer } = useSettingsStore();
-
-
 
   // Initialize audio context and equalizer
   const initializeAudioContext = useCallback(() => {
@@ -119,17 +117,17 @@ const AudioPlayer = () => {
     }
   }, [streamingQuality]);
 
-  // Simple audio configuration with ultra-reliable background playback
+  // Initialize audio element with background audio support
   useEffect(() => {
     if (audioRef.current) {
       const audio = audioRef.current;
       
-      console.log('🎵 Initializing ultra-reliable background audio system');
+      console.log('🎵 Initializing reliable background audio system');
       
       // Configure audio element for background playback
       configureAudioElement(audio);
       
-      // Initialize ultra-reliable background audio manager
+      // Initialize background audio manager
       backgroundAudioManager.initialize(audio);
       
       // Initialize audio context on first user interaction
@@ -143,7 +141,7 @@ const AudioPlayer = () => {
       // Apply initial settings
       applyStreamingQuality();
 
-      // Add additional debugging listeners
+      // Add debugging listeners
       audio.addEventListener('loadstart', () => {
         console.log('📥 Audio load start');
       });
@@ -172,7 +170,7 @@ const AudioPlayer = () => {
     applyStreamingQuality();
   }, [streamingQuality, applyStreamingQuality]);
 
-  // Handle song changes - simplified
+  // Handle song changes
   useEffect(() => {
     if (!audioRef.current || !currentSong) return;
 
@@ -193,6 +191,7 @@ const AudioPlayer = () => {
     const isSameSong = audio.src === songUrl;
 
     if (!isSameSong) {
+      console.log('🎵 Loading new song:', currentSong.title);
       audio.pause();
       audio.currentTime = 0;
       audio.src = songUrl;
@@ -200,7 +199,7 @@ const AudioPlayer = () => {
     }
   }, [currentSong]);
 
-  // Handle play/pause state changes and sync with ultra-reliable background audio manager
+  // Handle play/pause state changes and sync with background audio manager
   useEffect(() => {
     console.log('🎛️ Play/pause effect triggered:', { isPlaying, hasAudio: !!audioRef.current });
     
@@ -211,7 +210,7 @@ const AudioPlayer = () => {
 
     const audio = audioRef.current;
     
-    // Update ultra-reliable background audio manager
+    // Update background audio manager
     backgroundAudioManager.setPlaying(isPlaying);
     
     console.log('📊 Audio state:', { 

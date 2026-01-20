@@ -316,11 +316,17 @@
         const pauseBtn = document.getElementById('pauseBtn');
         const stopBtn = document.getElementById('stopBtn');
 
-        // Test audio URL (royalty-free sample)
-        const testAudioUrl = 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav';
-        
-        // Fallback to a longer test audio if the above doesn't work
-        const fallbackUrl = 'https://file-examples.com/storage/fe68c1b7c1a9fd42b4b1f2c/2017/11/file_example_MP3_700KB.mp3';
+        // Test audio URLs - using more reliable sources
+        const testAudioUrls = [
+            // Short test audio (5 seconds)
+            'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav',
+            // Longer test audio for background testing
+            'https://file-examples.com/storage/fe68c1b7c1a9fd42b4b1f2c/2017/11/file_example_MP3_700KB.mp3',
+            // Alternative reliable test audio
+            'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3',
+            // Another fallback
+            'https://sample-videos.com/zip/10/mp3/mp3-15s/SampleAudio_0.4mb_mp3.mp3'
+        ];
 
         // Initialize
         backgroundManager.initialize(audio);
@@ -352,36 +358,38 @@
             });
         }
 
-        // Button handlers
+        // Button handlers with better error handling
         startBtn.addEventListener('click', async () => {
-            try {
-                audio.src = testAudioUrl;
-                audio.loop = true; // Loop for continuous testing
-                
-                await audio.play();
-                await backgroundManager.setPlaying(true);
-                
-                startBtn.disabled = true;
-                pauseBtn.disabled = false;
-                stopBtn.disabled = false;
-
-                // Set MediaSession state
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.playbackState = 'playing';
-                }
-            } catch (error) {
-                console.error('Failed to start audio:', error);
-                // Try fallback URL
+            let audioStarted = false;
+            
+            // Try each audio URL until one works
+            for (let i = 0; i < testAudioUrls.length && !audioStarted; i++) {
                 try {
-                    audio.src = fallbackUrl;
+                    console.log(`Trying audio URL ${i + 1}:`, testAudioUrls[i]);
+                    audio.src = testAudioUrls[i];
+                    audio.loop = true; // Loop for continuous testing
+                    
                     await audio.play();
                     await backgroundManager.setPlaying(true);
                     
                     startBtn.disabled = true;
                     pauseBtn.disabled = false;
                     stopBtn.disabled = false;
-                } catch (fallbackError) {
-                    alert('Failed to load test audio. Please check your internet connection.');
+                    audioStarted = true;
+
+                    // Set MediaSession state
+                    if ('mediaSession' in navigator) {
+                        navigator.mediaSession.playbackState = 'playing';
+                    }
+                    
+                    console.log('✅ Audio started successfully with URL:', testAudioUrls[i]);
+                    
+                } catch (error) {
+                    console.warn(`❌ Failed to start audio with URL ${i + 1}:`, error);
+                    if (i === testAudioUrls.length - 1) {
+                        // Last URL failed
+                        alert('Failed to load any test audio. Please check your internet connection and try again.');
+                    }
                 }
             }
         });
