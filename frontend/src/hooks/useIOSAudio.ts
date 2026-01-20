@@ -75,23 +75,11 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
 
     // Configure audio element for iOS
     configureAudioElement(audioElement);
-
-    // Handle audio interruptions (phone calls, etc.)
-    const handleInterruption = () => {
-      if (audioElement && !audioElement.paused) {
-        audioElement.pause();
-      }
-    };
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        handleInterruption();
-      }
-    });
-
-    return () => {
-      // Cleanup
-    };
+    // Do NOT pause audio automatically when the document becomes hidden.
+    // Background playback (lock screen / PWA) relies on the audio continuing
+    // while the page is in the background, so we avoid any visibility-based
+    // interruption logic here. Actual interruptions (calls, system audio)
+    // are handled by the background audio manager and MediaSession.
   }, [audioElement, isIOSDevice]);
 
   // Return helper function to play audio with iOS handling
