@@ -60,6 +60,31 @@
     transform: translateX(0); /* Prevent any horizontal movement */
   }
 
+/* PWA Safe Area Support */
+.pwa-safe-area {
+  background-color: #121212 !important;
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  .pwa-safe-area {
+    padding-top: env(safe-area-inset-top);
+    background-color: #121212 !important;
+  }
+  
+  /* Ensure status bar area matches app background */
+  .pwa-safe-area::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top);
+    background-color: #121212;
+    z-index: 9999;
+    pointer-events: none;
+  }
+}
+
   /* Prevent any horizontal scrolling or movement */
   * {
     max-width: 100%;

@@ -41,14 +41,28 @@ const AudioPlayer = () => {
       wakeLockRef.current = await navigator.wakeLock.request('screen');
       console.log('Wake lock acquired for background audio');
 
-      // Handle wake lock release
+      // Handle wake lock release and re-request if needed
       wakeLockRef.current.addEventListener('release', () => {
         console.log('Wake lock released');
         wakeLockRef.current = null;
+        
+        // Re-request wake lock if still playing
+        if (isPlaying) {
+          setTimeout(() => {
+            requestWakeLock();
+          }, 1000);
+        }
       });
 
     } catch (error) {
       console.warn('Wake lock request failed:', error);
+      
+      // Retry wake lock request after a delay
+      if (isPlaying) {
+        setTimeout(() => {
+          requestWakeLock();
+        }, 2000);
+      }
     }
   }, [isPlaying]);
 
@@ -64,60 +78,106 @@ const AudioPlayer = () => {
     }
   }, []);
 
-  // Handle visibility change and page lifecycle for background audio - TEMPORARILY DISABLED
-  // useEffect(() => {
-  //   const handleVisibilityChange = () => {
-  //     if (!audioRef.current) return;
+  // Manage wake lock based on playing state
+  useEffect(() => {
+    if (isPlaying) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+  }, [isPlaying, requestWakeLock, releaseWakeLock]);
 
-  //     const audio = audioRef.current;
+  // Handle visibility change and page lifecycle for background audio
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!audioRef.current) return;
+
+      const audio = audioRef.current;
       
-  //     if (document.hidden) {
-  //       // Page is hidden (screen off, tab switched, etc.)
-  //       console.log('Page hidden - ensuring audio continues');
+      if (document.hidden) {
+        // Page is hidden (screen off, tab switched, etc.)
+        console.log('Page hidden - ensuring audio continues');
         
-  //       // Ensure audio context is running
-  //       if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-  //         audioContextRef.current.resume().catch(console.warn);
-  //       }
+        // Ensure audio context is running
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume().catch(console.warn);
+        }
 
-  //       // Keep audio playing if it should be playing
-  //       if (isPlaying && audio.paused) {
-  //         audio.play().catch(console.warn);
-  //       }
-  //     } else {
-  //       // Page is visible again
-  //       console.log('Page visible - syncing audio state');
+        // Keep audio playing if it should be playing
+        if (isPlaying && audio.paused && audio.src) {
+          console.log('Resuming audio playback after screen off');
+          audio.play().catch(console.warn);
+        }
+
+        // Request wake lock to prevent system interference
+        requestWakeLock();
+      } else {
+        // Page is visible again
+        console.log('Page visible - syncing audio state');
         
-  //       // Re-request wake lock if playing
-  //       if (isPlaying) {
-  //         requestWakeLock();
-  //       }
-  //     }
-  //   };
+        // Ensure audio context is running
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume().catch(console.warn);
+        }
+        
+        // Re-request wake lock if playing
+        if (isPlaying && !audio.paused) {
+          requestWakeLock();
+        }
+      }
+    };
 
-  //   const handlePageShow = () => {
-  //     console.log('Page show event - resuming audio context');
-  //     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-  //       audioContextRef.current.resume().catch(console.warn);
-  //     }
-  //   };
+    const handlePageShow = () => {
+      console.log('Page show event - resuming audio context');
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().catch(console.warn);
+      }
+      
+      // Ensure audio continues if it should be playing
+      if (isPlaying && audioRef.current && audioRef.current.paused && audioRef.current.src) {
+        console.log('Resuming audio on page show');
+        audioRef.current.play().catch(console.warn);
+      }
+    };
 
-  //   const handlePageHide = () => {
-  //     console.log('Page hide event - maintaining audio state');
-  //     // Don't pause audio on page hide - let it continue in background
-  //   };
+    const handlePageHide = () => {
+      console.log('Page hide event - maintaining audio state');
+      // Don't pause audio on page hide - let it continue in background
+      // But ensure wake lock is active
+      if (isPlaying) {
+        requestWakeLock();
+      }
+    };
 
-  //   // Add event listeners
-  //   document.addEventListener('visibilitychange', handleVisibilityChange);
-  //   window.addEventListener('pageshow', handlePageShow);
-  //   window.addEventListener('pagehide', handlePageHide);
+    const handleFocus = () => {
+      console.log('Window focused - ensuring audio continues');
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().catch(console.warn);
+      }
+    };
 
-  //   return () => {
-  //     document.removeEventListener('visibilitychange', handleVisibilityChange);
-  //     window.removeEventListener('pageshow', handlePageShow);
-  //     window.removeEventListener('pagehide', handlePageHide);
-  //   };
-  // }, [isPlaying, requestWakeLock]);
+    const handleBlur = () => {
+      console.log('Window blurred - maintaining background audio');
+      if (isPlaying) {
+        requestWakeLock();
+      }
+    };
+
+    // Add event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [isPlaying, requestWakeLock]);
 
   // Initialize audio context and equalizer
   const initializeAudioContext = useCallback(() => {
@@ -223,18 +283,21 @@ const AudioPlayer = () => {
       audio.setAttribute('webkit-playsinline', 'true');
       audio.crossOrigin = 'anonymous';
       
-      // Remove the automatic pause prevention for now to debug
-      // audio.addEventListener('pause', (e) => {
-      //   // If we should be playing but audio was paused (possibly by system)
-      //   if (isPlaying && !document.hidden) {
-      //     console.log('Audio paused unexpectedly, attempting to resume');
-      //     setTimeout(() => {
-      //       if (isPlaying && audio.paused) {
-      //         audio.play().catch(console.warn);
-      //       }
-      //     }, 100);
-      //   }
-      // });
+      // Prevent unexpected pauses (system interruptions)
+      const handleUnexpectedPause = (e: Event) => {
+        // Only intervene if we should be playing and page is visible
+        if (isPlaying && !document.hidden && audio.src) {
+          console.log('Audio paused unexpectedly, attempting to resume');
+          setTimeout(() => {
+            if (isPlaying && audio.paused && audio.src) {
+              console.log('Resuming audio after unexpected pause');
+              audio.play().catch(console.warn);
+            }
+          }, 100);
+        }
+      };
+      
+      audio.addEventListener('pause', handleUnexpectedPause);
       
       // Initialize audio context on first user interaction
       const handleFirstPlay = () => {
@@ -245,6 +308,11 @@ const AudioPlayer = () => {
 
       // Apply initial settings
       applyStreamingQuality();
+
+      return () => {
+        audio.removeEventListener('pause', handleUnexpectedPause);
+        audio.removeEventListener('play', handleFirstPlay);
+      };
     }
   }, [initializeAudioContext, applyStreamingQuality, isPlaying]);
 
@@ -388,6 +456,39 @@ const AudioPlayer = () => {
       console.warn('MediaSession setup failed:', error);
     }
   }, [currentSong, isPlaying, setIsPlaying, playNext, setUserInteracted, setStoreCurrentTime]);
+
+  // Background audio keep-alive mechanism
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const keepAliveInterval = setInterval(() => {
+      if (audioRef.current && isPlaying) {
+        const audio = audioRef.current;
+        
+        // Check if audio is unexpectedly paused
+        if (audio.paused && audio.src) {
+          console.log('Audio paused unexpectedly, attempting to resume');
+          audio.play().catch(console.warn);
+        }
+        
+        // Ensure audio context is running
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume().catch(console.warn);
+        }
+        
+        // Send keep-alive to service worker
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'BACKGROUND_AUDIO',
+            action: 'KEEP_ALIVE',
+            data: { timestamp: Date.now() }
+          });
+        }
+      }
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(keepAliveInterval);
+  }, [isPlaying]);
 
   // Simple event handlers
   const handleTimeUpdate = useCallback(() => {

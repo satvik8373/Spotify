@@ -128,7 +128,7 @@ const MainLayout = () => {
   const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : width;
 
   return (
-    <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative">
+    <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative pwa-safe-area">
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block flex-shrink-0 relative z-[100]">
         <Header />
@@ -139,7 +139,7 @@ const MainLayout = () => {
         className="flex-1 flex overflow-hidden md:px-2 md:pb-2 md:gap-2 relative z-0"
         style={{
           height: isMobile
-            ? `calc(100vh - ${mobileSubtractPx}px)`
+            ? `calc(100vh - ${mobileSubtractPx}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))`
             : 'auto',
           marginTop: isMobileHeaderRoute ? `${MOBILE_HEADER_PX}px` : '0',
         }}

@@ -46,15 +46,14 @@
 		<meta http-equiv="Pragma" content="no-cache" />
 		<meta http-equiv="Expires" content="0" />
 		
-		<meta name="theme-color" content="#1DB954" media="(prefers-color-scheme: light)" />
-		<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+		<meta name="theme-color" content="#121212" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="Mavrixfy" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="format-detection" content="telephone=no" />
 		<meta name="msapplication-tap-highlight" content="no" />
-		<meta name="msapplication-TileColor" content="#1DB954" />
+		<meta name="msapplication-TileColor" content="#121212" />
 		<meta name="msapplication-config" content="/browserconfig.xml" />
 		
 		<title>Mavrixfy</title>
@@ -114,7 +113,25 @@
 			.mobile-device input, .mobile-device textarea { -webkit-user-select: text; user-select: text; }
 			
 			/* Mobile-safe-area support */
-			.mobile-device { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+			.mobile-device { 
+				padding-top: env(safe-area-inset-top); 
+				padding-bottom: env(safe-area-inset-bottom); 
+			}
+			
+			/* PWA Status bar styling */
+			@supports (padding-top: env(safe-area-inset-top)) {
+				body {
+					padding-top: env(safe-area-inset-top);
+					background-color: #121212 !important;
+				}
+				
+				/* Ensure the root element extends to full height */
+				#root {
+					min-height: 100vh;
+					min-height: 100dvh;
+					background-color: #121212;
+				}
+			}
 			
 			/* Mobile touch targets */
 			@media (max-width: 768px) {
@@ -170,14 +187,18 @@
 			
 			// Dynamic PWA theme color matching with homepage
 			function updatePWAThemeColors() {
-				const isDark = document.documentElement.classList.contains('dark');
-				const themeColor = '#121212'; // Always use dark theme color
-				const statusBarStyle = 'black-translucent'; // Always use dark status bar
+				const themeColor = '#121212'; // Always use dark theme color for consistency
+				const statusBarStyle = 'black-translucent'; // Translucent status bar for full immersion
 				
 				// Update theme-color meta tag
-				const themeMeta = document.querySelector('meta[name="theme-color"]');
+				let themeMeta = document.querySelector('meta[name="theme-color"]');
 				if (themeMeta) {
 					themeMeta.setAttribute('content', themeColor);
+				} else {
+					themeMeta = document.createElement('meta');
+					themeMeta.setAttribute('name', 'theme-color');
+					themeMeta.setAttribute('content', themeColor);
+					document.head.appendChild(themeMeta);
 				}
 				
 				// Update Apple status bar style
@@ -186,9 +207,18 @@
 					appleMeta.setAttribute('content', statusBarStyle);
 				}
 				
-				// Update body background to match homepage - always dark
+				// Update body and html background to match
+				document.documentElement.style.backgroundColor = themeColor;
 				document.body.style.backgroundColor = themeColor;
 				document.body.style.transition = 'background-color 0.3s ease';
+				
+				// Ensure root element matches
+				const root = document.getElementById('root');
+				if (root) {
+					root.style.backgroundColor = themeColor;
+					root.style.minHeight = '100vh';
+					root.style.minHeight = '100dvh';
+				}
 			}
 			
 			// Initial theme color update

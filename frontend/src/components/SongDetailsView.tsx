@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
@@ -43,7 +43,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     isShuffled,
     currentTime: storeCurrentTime,
     duration: storeDuration,
-    setCurrentTime: setStoreCurrentTime
+    setCurrentTime: setStoreCurrentTime,
+    queue,
+    currentIndex
   } = usePlayerStore();
 
   const { currentSong, isPlaying } = usePlayerSync();
@@ -62,12 +64,29 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     width: window.innerWidth,
     isLandscape: window.innerWidth > window.innerHeight
   });
+
+  // Swipe state
+  const [swipeState, setSwipeState] = useState({
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+    deltaX: 0,
+    deltaY: 0,
+    velocity: 0,
+    lastMoveTime: 0,
+    direction: null as 'left' | 'right' | null,
+    isVerticalScroll: false
+  });
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSeekTimeRef = useRef<number>(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
+  const swipeContainerRef = useRef<HTMLDivElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   // Handle screen size changes for responsive design
   useEffect(() => {
@@ -444,8 +463,209 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       if (dragTimeoutRef.current) {
         clearTimeout(dragTimeoutRef.current);
       }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, []);
+
+  // Swipe gesture handlers
+  const handleSwipeStart = useCallback((clientX: number, clientY: number) => {
+    if (isDragging) return; // Don't interfere with progress bar dragging
+    
+    setSwipeState({
+      isDragging: true,
+      startX: clientX,
+      startY: clientY,
+      currentX: clientX,
+      currentY: clientY,
+      deltaX: 0,
+      deltaY: 0,
+      velocity: 0,
+      lastMoveTime: Date.now(),
+      direction: null,
+      isVerticalScroll: false
+    });
+  }, [isDragging]);
+
+  const handleSwipeMove = useCallback((clientX: number, clientY: number) => {
+    if (!swipeState.isDragging) return;
+
+    const now = Date.now();
+    const deltaX = clientX - swipeState.startX;
+    const deltaY = clientY - swipeState.startY;
+    const timeDelta = now - swipeState.lastMoveTime;
+    
+    // Calculate velocity for momentum
+    const velocity = timeDelta > 0 ? Math.abs(deltaX) / timeDelta : 0;
+    
+    // Determine if this is a vertical scroll gesture
+    const isVerticalScroll = Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 20;
+    
+    // Only process horizontal swipes
+    if (!isVerticalScroll && Math.abs(deltaX) > 10) {
+      const direction = deltaX > 0 ? 'right' : 'left';
+      
+      // Check if we can actually swipe in this direction
+      const canSwipeLeft = currentIndex < queue.length - 1;
+      const canSwipeRight = currentIndex > 0;
+      
+      if ((direction === 'left' && !canSwipeLeft) || (direction === 'right' && !canSwipeRight)) {
+        // Limit movement if we can't swipe in this direction
+        const limitedDeltaX = Math.sign(deltaX) * Math.min(Math.abs(deltaX), 30);
+        
+        if (swipeContainerRef.current) {
+          const progress = Math.min(Math.abs(limitedDeltaX) / 30, 1);
+          const scale = 1 - (progress * 0.02);
+          const opacity = 1 - (progress * 0.1);
+          
+          swipeContainerRef.current.style.transform = `translateX(${limitedDeltaX * 0.3}px) scale(${scale})`;
+          swipeContainerRef.current.style.opacity = opacity.toString();
+        }
+        return;
+      }
+      
+      setSwipeState(prev => ({
+        ...prev,
+        currentX: clientX,
+        currentY: clientY,
+        deltaX,
+        deltaY,
+        velocity,
+        lastMoveTime: now,
+        direction,
+        isVerticalScroll
+      }));
+
+      // Apply transform to album art for smooth visual feedback
+      if (swipeContainerRef.current && Math.abs(deltaX) > 20) {
+        const progress = Math.min(Math.abs(deltaX) / 150, 1);
+        const scale = 1 - (progress * 0.1);
+        const opacity = 1 - (progress * 0.3);
+        
+        // Use requestAnimationFrame for smooth performance
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+        
+        animationFrameRef.current = requestAnimationFrame(() => {
+          if (swipeContainerRef.current) {
+            swipeContainerRef.current.style.transform = `translateX(${deltaX * 0.8}px) scale(${scale})`;
+            swipeContainerRef.current.style.opacity = opacity.toString();
+          }
+        });
+      }
+    } else if (isVerticalScroll) {
+      setSwipeState(prev => ({ ...prev, isVerticalScroll: true }));
+    }
+  }, [swipeState, currentIndex, queue.length]);
+
+  const handleSwipeEnd = useCallback(() => {
+    if (!swipeState.isDragging) return;
+
+    const { deltaX, velocity, direction, isVerticalScroll } = swipeState;
+    
+    // Reset swipe state
+    setSwipeState({
+      isDragging: false,
+      startX: 0,
+      startY: 0,
+      currentX: 0,
+      currentY: 0,
+      deltaX: 0,
+      deltaY: 0,
+      velocity: 0,
+      lastMoveTime: 0,
+      direction: null,
+      isVerticalScroll: false
+    });
+
+    // Reset album art transform with smooth spring animation
+    if (swipeContainerRef.current) {
+      swipeContainerRef.current.style.transform = '';
+      swipeContainerRef.current.style.opacity = '';
+      swipeContainerRef.current.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      
+      // Remove transition after animation
+      setTimeout(() => {
+        if (swipeContainerRef.current) {
+          swipeContainerRef.current.style.transition = '';
+        }
+      }, 300);
+    }
+
+    // Don't trigger song change for vertical scrolls
+    if (isVerticalScroll) return;
+
+    // Determine if swipe should trigger song change
+    const threshold = 80;
+    const velocityThreshold = 0.3;
+    const shouldTrigger = Math.abs(deltaX) > threshold || velocity > velocityThreshold;
+
+    if (shouldTrigger && direction && queue.length > 1) {
+      // Add haptic feedback on mobile devices
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50); // Light haptic feedback
+      }
+
+      if (direction === 'left') {
+        // Swipe left = next song
+        if (currentIndex < queue.length - 1) {
+          playNext();
+        }
+      } else if (direction === 'right') {
+        // Swipe right = previous song
+        if (currentIndex > 0) {
+          playPrevious();
+        }
+      }
+    }
+  }, [swipeState, playNext, playPrevious, queue.length, currentIndex]);
+
+  // Touch event handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    handleSwipeStart(touch.clientX, touch.clientY);
+  }, [handleSwipeStart]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    handleSwipeMove(touch.clientX, touch.clientY);
+  }, [handleSwipeMove]);
+
+  const handleTouchEnd = useCallback((_e: React.TouchEvent) => {
+    handleSwipeEnd();
+  }, [handleSwipeEnd]);
+
+  // Mouse event handlers for desktop testing
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    handleSwipeStart(e.clientX, e.clientY);
+  }, [handleSwipeStart]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    handleSwipeMove(e.clientX, e.clientY);
+  }, [handleSwipeMove]);
+
+  const handleMouseUp = useCallback(() => {
+    handleSwipeEnd();
+  }, [handleSwipeEnd]);
+
+  // Global mouse event listeners for desktop
+  useEffect(() => {
+    if (swipeState.isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mouseleave', handleMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('mouseleave', handleMouseUp);
+      };
+    }
+  }, [swipeState.isDragging, handleMouseMove, handleMouseUp]);
 
   const handleLikeToggle = () => {
     if (!currentSong) return;
@@ -538,13 +758,19 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
       {/* Main Content - Flexible layout that adapts to screen size */}
       <div className="flex-1 flex flex-col justify-center px-4 min-h-0">
-        {/* Album Art - Professional responsive sizing like Spotify */}
+        {/* Album Art - Professional responsive sizing like Spotify with Swipe Support */}
         <div className={cn("flex-shrink-0 flex justify-center", getDynamicSpacing())}>
           <div 
-            className="relative"
+            ref={swipeContainerRef}
+            className="relative swipe-container"
             style={{
               filter: `drop-shadow(0 25px 50px rgba(0,0,0,0.6))`,
+              touchAction: 'pan-y', // Allow vertical scrolling but handle horizontal ourselves
             }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleMouseDown}
           >
             <img
               src={currentSong.imageUrl}
@@ -562,8 +788,13 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                   0 8px 32px rgba(0,0,0,0.4),
                   0 0 80px ${albumColors.primary}
                 `,
+                userSelect: 'none',
+                pointerEvents: 'none', // Prevent image drag
               }}
+              draggable={false}
             />
+            
+
           </div>
         </div>
 

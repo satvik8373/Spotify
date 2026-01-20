@@ -25,6 +25,32 @@
   text-shadow: 0 1px 2px rgba(0,0,0,0.4);
 }
 
+/* Swipe container for album art */
+.swipe-container {
+  cursor: grab;
+  will-change: transform, opacity;
+  transition: none; /* Disable default transitions during swipe */
+  position: relative;
+  overflow: visible; /* Allow indicators to show outside bounds */
+}
+
+.swipe-container:active {
+  cursor: grabbing;
+}
+
+/* Smooth spring animation for swipe reset */
+.swipe-container.swipe-reset {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Prevent image dragging and selection */
+.swipe-container img {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
 /* Responsive album art sizing - Professional Spotify-like scaling */
 .album-art-responsive {
   display: block;
@@ -84,13 +110,23 @@
   .control-button {
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
+
+  /* Swipe animations */
+  .swipe-container {
+    transition: none;
+  }
+  
+  .swipe-container.swipe-reset {
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
 }
 
 /* Reduce motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
   .album-art-responsive,
   .responsive-transition,
-  .control-button {
+  .control-button,
+  .swipe-container {
     transition: none;
   }
 }
@@ -205,4 +241,48 @@
   .ios-height-fix {
     height: -webkit-fill-available;
   }
+}
+
+/* Swipe feedback animations */
+@keyframes swipe-left-hint {
+  0% { transform: translateX(0) scale(1); opacity: 1; }
+  50% { transform: translateX(-20px) scale(0.95); opacity: 0.8; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+@keyframes swipe-right-hint {
+  0% { transform: translateX(0) scale(1); opacity: 1; }
+  50% { transform: translateX(20px) scale(0.95); opacity: 0.8; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+/* Swipe indicator styling */
+.swipe-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  padding: 12px;
+  transition: opacity 0.2s ease-out;
+  pointer-events: none;
+}
+
+.swipe-indicator-left {
+  right: 16px;
+}
+
+.swipe-indicator-right {
+  left: 16px;
+}
+
+/* Smooth momentum scrolling for iOS */
+.song-details-view {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent bounce scrolling on iOS */
+.song-details-view {
+  overscroll-behavior: none;
 }

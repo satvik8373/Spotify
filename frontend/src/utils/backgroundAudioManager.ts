@@ -42,6 +42,21 @@ class BackgroundAudioManager {
     if (document.hidden) {
       console.log('Page hidden - maintaining audio playback');
       this.maintainAudioPlayback(audio);
+      
+      // Set a periodic check to ensure audio keeps playing
+      const checkInterval = setInterval(() => {
+        if (!document.hidden) {
+          clearInterval(checkInterval);
+          return;
+        }
+        
+        const currentAudio = document.querySelector('audio') as HTMLAudioElement;
+        if (currentAudio && currentAudio.paused && currentAudio.src) {
+          console.log('Audio stopped during background, attempting restart');
+          currentAudio.play().catch(console.warn);
+        }
+      }, 5000); // Check every 5 seconds
+      
     } else {
       console.log('Page visible - syncing audio state');
       this.syncAudioState(audio);
@@ -85,13 +100,29 @@ class BackgroundAudioManager {
 
     // Ensure audio continues playing
     if (audioElement.paused && audioElement.src) {
+      console.log('Resuming paused audio for background playback');
       audioElement.play().catch((error) => {
         console.warn('Failed to maintain audio playback:', error);
+        
+        // Retry after a short delay
+        setTimeout(() => {
+          if (audioElement.paused && audioElement.src) {
+            audioElement.play().catch(console.warn);
+          }
+        }, 1000);
       });
     }
 
     // Request wake lock to prevent system from stopping audio
     this.requestWakeLock();
+
+    // Ensure audio context is running (important for iOS)
+    if ('webkitAudioContext' in window || 'AudioContext' in window) {
+      const audioContext = (window as any).audioContext;
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume().catch(console.warn);
+      }
+    }
 
     // Notify service worker about audio state
     this.notifyServiceWorker('AUDIO_STATE_CHANGED', {
