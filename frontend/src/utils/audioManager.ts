@@ -113,12 +113,12 @@ export const configureAudioElement = (audio: HTMLAudioElement): void => {
     (audio as any).playsInline = true;
     (audio as any).webkitPlaysInline = true;
     
-    // Enable background audio on iOS
+    // Enable AirPlay on iOS
     try {
       (audio as any).webkitAudioContext = true;
       (audio as any).preservesPitch = false;
     } catch (error) {
-      console.warn('iOS background audio setup failed:', error);
+      console.warn('iOS audio setup failed:', error);
     }
   }
 
@@ -131,7 +131,7 @@ export const configureAudioElement = (audio: HTMLAudioElement): void => {
       (audio as any).mozPreservesPitch = false;
       (audio as any).webkitPreservesPitch = false;
     } catch (error) {
-      console.warn('Android background audio setup failed:', error);
+      console.warn('Android audio setup failed:', error);
     }
   }
 

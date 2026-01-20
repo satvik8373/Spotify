@@ -15,32 +15,12 @@ if (import.meta.env.DEV) {
   console.log('🌍 Environment Info:', getEnvironmentInfo());
 }
 
-// Register service worker for background audio support
+// Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js')
       .then((registration) => {
         console.log('SW registered: ', registration);
-        
-        // Send keep-alive messages for background audio
-        const sendKeepAlive = () => {
-          if (registration.active) {
-            registration.active.postMessage({
-              type: 'BACKGROUND_AUDIO',
-              action: 'KEEP_ALIVE'
-            });
-          }
-        };
-
-        // Send keep-alive every 30 seconds when audio is playing
-        setInterval(() => {
-          // Check if audio is playing
-          const audio = document.querySelector('audio');
-          if (audio && !audio.paused) {
-            sendKeepAlive();
-          }
-        }, 30000);
-
       })
       .catch((registrationError) => {
         console.log('SW registration failed: ', registrationError);

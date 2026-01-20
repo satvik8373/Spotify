@@ -22,7 +22,6 @@ import { PingPongScroll } from '@/components/PingPongScroll';
  * Features:
  * - Profile dropdown with logout functionality
  * - Integration with Media Session API in AudioPlayer.tsx for lockscreen controls
- * - Background audio playback support (iOS/Android)
  * 
  * Note: For full lockscreen controls to work properly on mobile devices:
  * - iOS: Activate video to fullscreen mode, then swipe up to home screen

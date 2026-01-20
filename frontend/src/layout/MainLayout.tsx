@@ -5,7 +5,6 @@ import AudioPlayer from './components/AudioPlayer';
 import { PlaybackControls } from './components/PlaybackControls';
 import MobileNav from './components/MobileNav';
 import Header from '@/components/Header';
-import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import QueuePanel from '@/components/QueuePanel';
 import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
@@ -191,9 +190,6 @@ const MainLayout = () => {
 
       {/* Mobile Navigation */}
       <MobileNav />
-
-      {/* PWA Install Prompt */}
-      <PWAInstallPrompt />
     </div>
   );
 };

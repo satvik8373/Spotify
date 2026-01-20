@@ -8,7 +8,7 @@ import {
 } from '@/utils/audioManager';
 
 /**
- * Hook to handle iOS audio playback issues and background audio
+ * Hook to handle iOS audio playback issues
  * Automatically initializes audio context and handles user interaction requirements
  */
 export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
@@ -28,28 +28,12 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
         markUserInteraction();
         isUnlocked.current = true;
         
-        // Enable background audio on iOS
+        // Basic iOS audio setup
         if (audioElement) {
           try {
-            // Set audio session category for background playback
-            (audioElement as any).webkitAudioContext = true;
             audioElement.setAttribute('x-webkit-airplay', 'allow');
-            
-            // Prevent iOS from pausing audio when screen locks
-            audioElement.addEventListener('pause', () => {
-              if (document.hidden && !audioElement.ended) {
-                // Try to resume if paused due to screen lock
-                setTimeout(() => {
-                  if (audioElement.paused && !audioElement.ended) {
-                    audioElement.play().catch(() => {
-                      console.warn('Failed to resume background audio on iOS');
-                    });
-                  }
-                }, 100);
-              }
-            });
           } catch (error) {
-            console.warn('iOS background audio setup failed:', error);
+            console.warn('iOS audio setup failed:', error);
           }
         }
       }
@@ -68,14 +52,14 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
     };
   }, [isIOSDevice, audioElement]);
 
-  // Handle iOS PWA background audio
+  // Handle iOS PWA state changes
   useEffect(() => {
     if (!isIOSDevice || !isPWAMode || !audioElement) return;
 
     const handleAppStateChange = () => {
-      // Keep audio playing when PWA goes to background
-      if (document.hidden && !audioElement.paused) {
-        console.log('iOS PWA backgrounded - maintaining audio playback');
+      // Basic state change handling
+      if (document.hidden) {
+        console.log('iOS PWA backgrounded');
       }
     };
 

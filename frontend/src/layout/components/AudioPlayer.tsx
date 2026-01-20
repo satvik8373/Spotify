@@ -2,7 +2,6 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { resolveArtist } from '@/lib/resolveArtist';
-import { enhancedBackgroundAudioManager } from '@/utils/enhancedBackgroundAudioManager';
 
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -11,14 +10,12 @@ const AudioPlayer = () => {
   const gainNodeRef = useRef<GainNode | null>(null);
   const filtersRef = useRef<BiquadFilterNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   // Store hooks
   const {
     currentSong,
     isPlaying,
     playNext,
-    playPrevious,
     setIsPlaying,
     setUserInteracted,
     setCurrentTime: setStoreCurrentTime,
@@ -27,65 +24,7 @@ const AudioPlayer = () => {
 
   const { streamingQuality, equalizer } = useSettingsStore();
 
-  // Initialize enhanced background audio manager
-  useEffect(() => {
-    if (audioRef.current && !isInitialized) {
-      enhancedBackgroundAudioManager.initialize(audioRef.current);
-      setIsInitialized(true);
-      
-      // Listen for background audio actions
-      const handleBackgroundAction = (event: CustomEvent) => {
-        const { action, data } = event.detail;
-        
-        switch (action) {
-          case 'play':
-            setUserInteracted();
-            setIsPlaying(true);
-            break;
-          case 'pause':
-            setIsPlaying(false);
-            break;
-          case 'nexttrack':
-            setUserInteracted();
-            playNext();
-            break;
-          case 'previoustrack':
-            setUserInteracted();
-            playPrevious();
-            break;
-          case 'seekto':
-            if (audioRef.current && data?.seekTime !== undefined) {
-              audioRef.current.currentTime = data.seekTime;
-              setStoreCurrentTime(data.seekTime);
-            }
-            break;
-        }
-      };
 
-      window.addEventListener('backgroundAudioAction', handleBackgroundAction as EventListener);
-      
-      return () => {
-        window.removeEventListener('backgroundAudioAction', handleBackgroundAction as EventListener);
-      };
-    }
-  }, [isInitialized, setIsPlaying, setUserInteracted, playNext, playPrevious, setStoreCurrentTime]);
-
-  // Notify enhanced background audio manager of playback state changes
-  useEffect(() => {
-    enhancedBackgroundAudioManager.onPlaybackStateChange(isPlaying);
-  }, [isPlaying]);
-
-  // Update MediaSession metadata when song changes
-  useEffect(() => {
-    if (currentSong) {
-      enhancedBackgroundAudioManager.updateMediaSessionMetadata({
-        title: currentSong.title || 'Unknown Title',
-        artist: resolveArtist(currentSong),
-        album: currentSong.albumId || 'Unknown Album',
-        artwork: currentSong.imageUrl || ''
-      });
-    }
-  }, [currentSong]);
 
   // Initialize audio context and equalizer
   const initializeAudioContext = useCallback(() => {
@@ -180,21 +119,36 @@ const AudioPlayer = () => {
     }
   }, [streamingQuality]);
 
-  // Simple audio configuration with enhanced background playback support
+  // Simple audio configuration
   useEffect(() => {
     if (audioRef.current) {
       const audio = audioRef.current;
       
-      // Essential attributes for background audio
+      // Essential attributes for audio playback
       audio.setAttribute('playsinline', 'true');
       audio.setAttribute('preload', 'metadata');
       audio.setAttribute('webkit-playsinline', 'true');
       audio.crossOrigin = 'anonymous';
       
+      // Prevent unexpected pauses (system interruptions)
+      const handleUnexpectedPause = (e: Event) => {
+        // Only intervene if we should be playing and page is visible
+        if (isPlaying && !document.hidden && audio.src) {
+          console.log('Audio paused unexpectedly, attempting to resume');
+          setTimeout(() => {
+            if (isPlaying && audio.paused && audio.src) {
+              console.log('Resuming audio after unexpected pause');
+              audio.play().catch(console.warn);
+            }
+          }, 100);
+        }
+      };
+      
+      audio.addEventListener('pause', handleUnexpectedPause);
+      
       // Initialize audio context on first user interaction
       const handleFirstPlay = () => {
         initializeAudioContext();
-        enhancedBackgroundAudioManager.setUserInteracted();
         audio.removeEventListener('play', handleFirstPlay);
       };
       audio.addEventListener('play', handleFirstPlay);
@@ -203,10 +157,11 @@ const AudioPlayer = () => {
       applyStreamingQuality();
 
       return () => {
+        audio.removeEventListener('pause', handleUnexpectedPause);
         audio.removeEventListener('play', handleFirstPlay);
       };
     }
-  }, [initializeAudioContext, applyStreamingQuality]);
+  }, [initializeAudioContext, applyStreamingQuality, isPlaying]);
 
   // Apply equalizer settings when they change
   useEffect(() => {
@@ -247,7 +202,7 @@ const AudioPlayer = () => {
     }
   }, [currentSong]);
 
-  // Handle play/pause state changes with enhanced background support
+  // Handle play/pause state changes - with detailed logging
   useEffect(() => {
     console.log('Play/pause effect triggered:', { isPlaying, hasAudio: !!audioRef.current });
     
@@ -267,7 +222,6 @@ const AudioPlayer = () => {
     if (isPlaying && audio.paused && audio.src) {
       console.log('Attempting to start playback...');
       setUserInteracted();
-      enhancedBackgroundAudioManager.setUserInteracted();
       
       // Resume audio context if suspended
       if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
@@ -292,6 +246,63 @@ const AudioPlayer = () => {
       });
     }
   }, [isPlaying, setIsPlaying, setUserInteracted]);
+
+  // MediaSession setup for lock screen controls
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentSong) return;
+
+    try {
+      // Set metadata
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentSong.title || 'Unknown Title',
+        artist: resolveArtist(currentSong),
+        album: currentSong.albumId || 'Unknown Album',
+        artwork: [{
+          src: currentSong.imageUrl || '',
+          sizes: '512x512',
+          type: 'image/jpeg'
+        }]
+      });
+
+      // Set playback state
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+      // Enhanced action handlers for background control
+      navigator.mediaSession.setActionHandler('play', () => {
+        console.log('MediaSession play action');
+        setUserInteracted();
+        setIsPlaying(true);
+      });
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        console.log('MediaSession pause action');
+        setIsPlaying(false);
+      });
+
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        console.log('MediaSession next track action');
+        setUserInteracted();
+        playNext();
+      });
+
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        console.log('MediaSession previous track action');
+        setUserInteracted();
+        // Add previous track functionality if available
+      });
+
+      // Seek handlers for better control
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (audioRef.current && details.seekTime !== undefined) {
+          audioRef.current.currentTime = details.seekTime;
+          setStoreCurrentTime(details.seekTime);
+        }
+      });
+
+    } catch (error) {
+      console.warn('MediaSession setup failed:', error);
+    }
+  }, [currentSong, isPlaying, setIsPlaying, playNext, setUserInteracted, setStoreCurrentTime]);
 
   // Simple event handlers
   const handleTimeUpdate = useCallback(() => {
@@ -332,7 +343,6 @@ const AudioPlayer = () => {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close().catch(console.warn);
       }
-      enhancedBackgroundAudioManager.cleanup();
     };
   }, []);
 
