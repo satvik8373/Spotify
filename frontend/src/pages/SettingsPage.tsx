@@ -221,7 +221,14 @@ const SettingsPage = () => {
 
                 {/* Audio Quality */}
                 <div className="space-y-6 mb-8">
-                    <h2 className="text-white font-bold text-base">Audio quality</h2>
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-white font-bold text-base">Audio quality</h2>
+                        {settings.streamingQuality !== 'Automatic' && (
+                            <div className="px-2 py-0.5 bg-[#1ed760]/20 text-[#1ed760] text-xs rounded-full font-medium">
+                                {settings.streamingQuality}
+                            </div>
+                        )}
+                    </div>
 
                     <div className="flex items-center justify-between">
                         <p className="text-sm text-[#b3b3b3]">Streaming quality</p>
@@ -238,7 +245,6 @@ const SettingsPage = () => {
                             </SelectContent>
                         </Select>
                     </div>
-
 
                 </div>
 
@@ -262,7 +268,12 @@ const SettingsPage = () => {
 
                 <div className="space-y-6 sm:space-y-8 mb-8">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <h2 className="text-white font-bold text-base">Playback</h2>
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-white font-bold text-base">Playback</h2>
+                            {Object.values(settings.equalizer).some(val => val !== 0) && (
+                                <div className="w-2 h-2 bg-[#1ed760] rounded-full animate-pulse" title="Equalizer active" />
+                            )}
+                        </div>
 
                         <div className="flex items-center justify-between w-full sm:w-auto gap-4">
                             <button

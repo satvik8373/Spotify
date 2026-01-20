@@ -80,9 +80,10 @@ const SearchPage = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(false);
 
   // Enhanced search states
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasRealTimeResults, setHasRealTimeResults] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Recent searches state
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -318,7 +319,10 @@ const SearchPage = () => {
   // Compute sorted results with improved fuzzy matching and spelling suggestions
   const sortedIndianResults = useMemo(() => {
     if (!indianSearchResults || indianSearchResults.length === 0) return [] as any[];
-    const qRaw = (query || '').trim();
+    
+    // Use either URL query or current search input
+    const currentQuery = query || searchQuery;
+    const qRaw = currentQuery.trim();
     const q = qRaw.toLowerCase();
     const qTokens = q.split(/\s+/).filter(Boolean);
 
@@ -505,7 +509,7 @@ const SearchPage = () => {
       .map(song => ({ ...song, relevanceScore: score(song) }))
       .filter(song => song.relevanceScore > 0)
       .sort((a, b) => b.relevanceScore - a.relevanceScore);
-  }, [indianSearchResults, query]);
+  }, [indianSearchResults, query, searchQuery]);
 
   // Update auth store with current user info
   useEffect(() => {
@@ -514,10 +518,18 @@ const SearchPage = () => {
       .setAuthStatus(isAuthenticated, isAuthenticated ? user?.id || null : null);
   }, [isAuthenticated, user]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      setShowSuggestions(false);
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
@@ -525,27 +537,46 @@ const SearchPage = () => {
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
-    setShowSuggestions(value.length > 0);
+    
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Real-time search as user types (for mobile and desktop)
+    if (value.trim().length >= 2) {
+      setIsSearching(true);
+      
+      // Debounce the search to avoid too many API calls
+      searchTimeoutRef.current = setTimeout(async () => {
+        try {
+          await searchIndianSongs(value.trim());
+          await searchPlaylists(value.trim());
+          setHasRealTimeResults(true);
+        } catch (error) {
+          console.error('Real-time search failed:', error);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 300); // 300ms debounce
+    } else if (value.trim().length === 0) {
+      // Clear results when search is empty
+      useMusicStore.setState({ indianSearchResults: [] });
+      usePlaylistStore.setState({ searchResults: [] });
+      setHasRealTimeResults(false);
+      setIsSearching(false);
+    }
   };
 
-  // Mobile-specific state
-  const [isTouchingSuggestions, setIsTouchingSuggestions] = useState(false);
+  // Mobile-specific state - removed since we're not using popup
+  // const [isTouchingSuggestions, setIsTouchingSuggestions] = useState(false);
 
   const handleInputFocus = () => {
-    setShowSuggestions(searchQuery.length > 0 || recentSearches.length > 0);
+    // No longer needed for popup, but keep for potential future use
   };
 
   const handleInputBlur = () => {
-    // Don't hide suggestions if user is touching them
-    if (isTouchingSuggestions) {
-      return;
-    }
-    // Standard delay for both desktop and mobile
-    setTimeout(() => {
-      if (!isTouchingSuggestions) {
-        setShowSuggestions(false);
-      }
-    }, 200);
+    // No longer needed for popup, but keep for potential future use
   };
 
   const handleSuggestionSelect = (songOrQuery: any) => {
@@ -569,27 +600,21 @@ const SearchPage = () => {
         playerStore.setUserInteracted();
       }
       
-      setShowSuggestions(false);
-      setIsTouchingSuggestions(false);
       toast.success(`Now playing: ${songOrQuery.title || songOrQuery.name}`);
     } else {
       // If it's a string, treat it as a search query
       const query = typeof songOrQuery === 'string' ? songOrQuery : songOrQuery.toString();
       setSearchQuery(query);
-      setShowSuggestions(false);
-      setIsTouchingSuggestions(false);
       navigate(`/search?q=${encodeURIComponent(query)}`);
     }
   };
 
   const handlePlaylistSelect = (playlistId: string) => {
-    setShowSuggestions(false);
     navigate(`/playlist/${playlistId}`);
   };
 
   const clearSearch = () => {
     setSearchQuery('');
-    setShowSuggestions(false);
     navigate('/search');
     searchInputRef.current?.focus();
   };
@@ -802,8 +827,8 @@ const SearchPage = () => {
                   </button>
                 )}
 
-                {/* Enhanced Search Suggestions */}
-                <EnhancedSearchSuggestions
+                {/* Enhanced Search Suggestions - Disabled popup */}
+                {/* <EnhancedSearchSuggestions
                   isVisible={showSuggestions}
                   query={searchQuery}
                   onSelectSong={handleSuggestionSelect}
@@ -811,7 +836,7 @@ const SearchPage = () => {
                   onClose={() => setShowSuggestions(false)}
                   onTouchStart={() => setIsTouchingSuggestions(true)}
                   onTouchEnd={() => setIsTouchingSuggestions(false)}
-                />
+                /> */}
               </div>
 
               {/* Voice Search Button */}
@@ -837,7 +862,93 @@ const SearchPage = () => {
             </form>
           </div>
 
-          {/* Loading State */}
+          {/* Inline Search Suggestions - Show when typing */}
+          {searchQuery.length > 0 && !query && (
+            <div className="mb-6">
+              <div className="bg-[#181818] rounded-lg p-4 border border-[#282828] w-full">
+                <h3 className="text-lg font-bold text-white mb-3">Search suggestions</h3>
+                
+                {/* Recent searches */}
+                {recentSearches.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold text-[#b3b3b3] mb-2">Recent searches</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {recentSearches.slice(0, 6).map((search, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleSuggestionSelect(search)}
+                          className="bg-[#242424] hover:bg-[#2a2a2a] text-white px-3 py-2 rounded-full text-sm transition-colors"
+                        >
+                          {search}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Trending searches */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-semibold text-[#b3b3b3] mb-2">Trending searches</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      'saiyaara', 'tum hi ho', 'kesariya', 'raataan lambiyan', 
+                      'mann meri jaan', 'apna bana le', 'perfect', 'shape of you'
+                    ].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => handleSuggestionSelect(suggestion)}
+                        className="bg-[#242424] hover:bg-[#2a2a2a] text-white px-3 py-2 rounded-full text-sm transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Live search results preview */}
+                {indianSearchResults.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-[#b3b3b3] mb-2">Quick results</h4>
+                    <div className="space-y-2">
+                      {indianSearchResults.slice(0, 3).map((song: any, index: number) => (
+                        <div
+                          key={song.id || song._id || index}
+                          onClick={() => handleSuggestionSelect(song)}
+                          className="flex items-center gap-3 p-2 rounded-md hover:bg-[#242424] transition-colors cursor-pointer"
+                        >
+                          <img
+                            src={song.image || '/images/default-album.png'}
+                            alt={song.title}
+                            className="w-10 h-10 rounded-md object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/images/default-album.png';
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-medium truncate text-sm">{song.title}</p>
+                            <p className="text-[#b3b3b3] truncate text-xs">{resolveArtist(song)}</p>
+                          </div>
+                          <div className="w-8 h-8 bg-[#1db954] hover:bg-[#1ed760] rounded-full flex items-center justify-center">
+                            <Play className="h-4 w-4 text-black ml-0.5" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Show "Press Enter to search for more" */}
+                <div className="mt-4 pt-3 border-t border-[#282828]">
+                  <button
+                    onClick={() => handleSearch({ preventDefault: () => {} } as React.FormEvent)}
+                    className="text-[#1db954] hover:text-[#1ed760] text-sm font-medium transition-colors"
+                  >
+                    Press Enter or click here to see all results for "{searchQuery}"
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {isInitialLoad || isSearching ? (
             <div className="py-16 flex flex-col items-center justify-center">
               <div className="bg-[#181818] rounded-lg p-8 border border-[#282828]">
@@ -850,7 +961,7 @@ const SearchPage = () => {
                 </div>
               </div>
             </div>
-          ) : query ? (
+          ) : (query || hasRealTimeResults) ? (
             <div className="space-y-6 w-full overflow-x-hidden">
               {/* Top Results Section */}
               {(sortedIndianResults.length > 0 || playlistResults.length > 0) && (
@@ -926,12 +1037,12 @@ const SearchPage = () => {
               {/* Playlist Results Section */}
               {renderPlaylistResults()}
 
-              {/* All Songs Section */}
+              {/* All Songs Section - Mobile Optimized */}
               {sortedIndianResults.length > 0 && (
-                <div className="bg-[#181818] rounded-lg p-4 md:p-6 border border-[#282828] w-full overflow-hidden">
-                  <div className="flex items-center justify-between mb-4 gap-2">
-                    <h2 className="text-xl font-bold text-white flex-shrink-0">
-                      Songs
+                <div className="bg-[#181818] rounded-lg p-3 md:p-6 border border-[#282828] w-full overflow-hidden">
+                  <div className="flex items-center justify-between mb-3 md:mb-4 gap-2">
+                    <h2 className="text-lg md:text-xl font-bold text-white flex-shrink-0">
+                      Songs {searchQuery && !query && <span className="text-sm font-normal text-[#b3b3b3]">(as you type)</span>}
                     </h2>
                     {sortedIndianResults.length > 1 && (
                       <Button
@@ -951,7 +1062,7 @@ const SearchPage = () => {
                             toast.error('No playable songs found');
                           }
                         }}
-                        className="bg-[#1db954] hover:bg-[#1ed760] text-black border-0 rounded-full px-3 md:px-4 py-2 font-semibold text-xs md:text-sm transition-colors flex-shrink-0"
+                        className="bg-[#1db954] hover:bg-[#1ed760] text-black border-0 rounded-full px-2 md:px-4 py-1.5 md:py-2 font-semibold text-xs md:text-sm transition-colors flex-shrink-0"
                       >
                         <Play className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                         Play all
@@ -959,11 +1070,11 @@ const SearchPage = () => {
                     )}
                   </div>
                   
-                  <div className="space-y-1 max-h-[500px] overflow-y-auto w-full">
+                  <div className="space-y-1 max-h-[400px] md:max-h-[500px] overflow-y-auto w-full">
                     {sortedIndianResults.slice(0, 50).map((song: any, index: number) => (
                       <div
                         key={song.id || song._id || index}
-                        className="flex items-center gap-2 md:gap-4 p-2 rounded-md hover:bg-[#242424] transition-colors group cursor-pointer w-full min-w-0"
+                        className="flex items-center gap-2 md:gap-4 p-2 md:p-2 rounded-md hover:bg-[#242424] transition-colors group cursor-pointer w-full min-w-0"
                         onClick={() => {
                           if (!song.url) {
                             toast.error('This song is not available for playback');
@@ -979,18 +1090,18 @@ const SearchPage = () => {
                           toast.success(`Now playing: ${song.title}`);
                         }}
                       >
-                        {/* Song Number/Play Button */}
-                        <div className="w-6 md:w-8 h-6 md:h-8 flex items-center justify-center flex-shrink-0">
-                          <span className="text-[#b3b3b3] group-hover:hidden font-medium text-xs md:text-sm">
+                        {/* Song Number/Play Button - More visible on mobile */}
+                        <div className="w-8 md:w-8 h-8 md:h-8 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[#b3b3b3] group-hover:hidden font-medium text-sm md:text-sm">
                             {index + 1}
                           </span>
-                          <div className="hidden group-hover:flex w-4 md:w-6 h-4 md:h-6 bg-transparent hover:bg-white/10 rounded-full items-center justify-center transition-all">
-                            <Play className="h-2 md:h-3 w-2 md:w-3 text-white ml-0.5" />
+                          <div className="hidden group-hover:flex w-6 md:w-6 h-6 md:h-6 bg-[#1db954] hover:bg-[#1ed760] rounded-full items-center justify-center transition-all">
+                            <Play className="h-3 md:h-3 w-3 md:w-3 text-black ml-0.5" />
                           </div>
                         </div>
 
-                        {/* Song Image */}
-                        <div className="w-8 md:w-10 h-8 md:h-10 rounded-md overflow-hidden bg-[#282828] flex-shrink-0">
+                        {/* Song Image - Larger on mobile for better visibility */}
+                        <div className="w-10 md:w-10 h-10 md:h-10 rounded-md overflow-hidden bg-[#282828] flex-shrink-0">
                           <img
                             src={song.image || '/images/default-album.png'}
                             alt={song.title}
@@ -1001,17 +1112,17 @@ const SearchPage = () => {
                           />
                         </div>
 
-                        {/* Song Info */}
+                        {/* Song Info - Better mobile layout */}
                         <div className="flex-1 min-w-0 pr-2">
-                          <h4 className="font-medium text-white truncate text-xs md:text-sm">
+                          <h4 className="font-medium text-white truncate text-sm md:text-sm">
                             {song.title}
                           </h4>
-                          <p className="text-[#b3b3b3] truncate text-xs">
+                          <p className="text-[#b3b3b3] truncate text-xs md:text-xs">
                             {resolveArtist(song)}
                           </p>
                         </div>
 
-                        {/* Album Info - Hidden on mobile */}
+                        {/* Album Info - Hidden on mobile for space */}
                         {song.album && (
                           <div className="hidden lg:block text-xs md:text-sm text-[#b3b3b3] truncate max-w-24 xl:max-w-32 flex-shrink-0">
                             {song.album}
@@ -1020,7 +1131,7 @@ const SearchPage = () => {
 
                         {/* Song Duration */}
                         {song.duration && (
-                          <div className="text-xs md:text-sm text-[#b3b3b3] w-8 md:w-12 text-right font-medium flex-shrink-0">
+                          <div className="text-xs md:text-sm text-[#b3b3b3] w-10 md:w-12 text-right font-medium flex-shrink-0">
                             {song.duration}
                           </div>
                         )}
@@ -1039,7 +1150,7 @@ const SearchPage = () => {
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">No results found</h3>
                     <p className="text-[#b3b3b3] mb-6">
-                      We couldn't find anything for "<span className="text-white font-medium">{query}</span>"
+                      We couldn't find anything for "<span className="text-white font-medium">{query || searchQuery}</span>"
                     </p>
                     
                     {/* Spelling Suggestions */}
@@ -1133,7 +1244,7 @@ const SearchPage = () => {
                         'waves': ['heat waves', 'waves']
                       };
                       
-                      const queryLower = query.toLowerCase().trim();
+                      const queryLower = (query || searchQuery).toLowerCase().trim();
                       const queryWords = queryLower.split(/\s+/).filter(Boolean);
                       
                       // Direct match suggestions

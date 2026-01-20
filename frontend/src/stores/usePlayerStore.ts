@@ -23,8 +23,6 @@ export interface PlayerState {
   interruptionReason: InterruptionReason;
   audioOutputDevice: string | null;
   lastPlayNextTime: number;
-  skipRestoreUntilTs?: number;
-  lastStateChangeTime: number; // Track last state change to prevent rapid updates
 
   // Actions
   setCurrentSong: (song: Song) => void;
@@ -77,155 +75,88 @@ export const usePlayerStore = create<PlayerState>()(
       interruptionReason: null,
       audioOutputDevice: null,
       lastPlayNextTime: 0,
-      skipRestoreUntilTs: 0,
-      lastStateChangeTime: 0,
 
       setCurrentSong: (song) => {
-        // Only skip songs with invalid blob URLs, not all blob URLs
-        if (song.audioUrl && song.audioUrl.startsWith('blob:') && !song.audioUrl.includes('blob:http')) {
-          console.warn('Skipping song with invalid blob URL:', song.title);
-          return;
-        }
-
         const currentState = get();
         const isSameSong = currentState.currentSong && 
           (currentState.currentSong._id === song._id || 
-           (currentState.currentSong as any).id === (song as any).id ||
-           currentState.currentSong.title === song.title);
+           (currentState.currentSong as any).id === (song as any).id);
 
-        // Get the current audio element and stop it immediately if it's a different song
+        // Get the current audio element
         const audio = document.querySelector('audio');
+        
+        // If it's a different song, stop current playback immediately
         if (audio && !isSameSong) {
           audio.pause();
           audio.currentTime = 0;
-          // Clear the src to stop any ongoing loading/playback
-          audio.src = '';
-          audio.load();
         }
 
-        // Only reset currentTime if it's a different song
+        // Simple state update without complex logic
         set({
           currentSong: song,
-          currentTime: isSameSong ? currentState.currentTime : 0, // Preserve time for same song
-          isPlaying: true // Auto-play when setting a new song
+          currentTime: isSameSong ? currentState.currentTime : 0,
+          isPlaying: true,
+          hasUserInteracted: true // Ensure user interaction is set
         });
         
-        // Dispatch a global event to notify all components about song change
+        // Dispatch state change
         dispatchPlayerStateChange(true, song);
       },
 
       setIsPlaying: (isPlaying) => {
         const currentState = get();
-        const now = Date.now();
         
-        // Prevent rapid state changes that could cause flickering
-        if (now - currentState.lastStateChangeTime < 50 && currentState.isPlaying === isPlaying) {
-          return; // Skip if same state and too recent
-        }
+        // Simple state update without complex timing logic
+        set({ 
+          isPlaying,
+          hasUserInteracted: true
+        });
         
-        // If trying to play but user hasn't interacted, don't allow
-        if (isPlaying && !currentState.hasUserInteracted) {
-          set({ 
-            isPlaying, 
-            hasUserInteracted: true,
-            lastStateChangeTime: now
-          });
-        } else {
-          set({ 
-            isPlaying,
-            lastStateChangeTime: now
-          });
-        }
-        
-        // Dispatch a global event to notify all components about play state change
+        // Dispatch state change
         dispatchPlayerStateChange(isPlaying, currentState.currentSong);
       },
 
       setCurrentTime: (time) => {
         set({ currentTime: time });
-        
-        // Persist currentTime to localStorage for restoration
-        const state = get();
-        if (state.currentSong) {
-          try {
-            const playerState = {
-              currentSong: state.currentSong,
-              currentTime: time,
-              timestamp: new Date().toISOString(),
-              isPlaying: state.isPlaying
-            };
-            localStorage.setItem('player_state', JSON.stringify(playerState));
-          } catch (error) {
-            // Silent error handling
-          }
-        }
       },
 
       setDuration: (duration) => set({ duration }),
 
       togglePlay: () => {
         const currentState = get();
-        const now = Date.now();
         const newIsPlaying = !currentState.isPlaying;
         
         set({
           isPlaying: newIsPlaying,
-          hasUserInteracted: true, // User must have interacted to toggle play
-          lastStateChangeTime: now
+          hasUserInteracted: true
         });
         
-        // Dispatch a global event to notify all components about play state change
+        // Dispatch state change
         dispatchPlayerStateChange(newIsPlaying, currentState.currentSong);
       },
 
       playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
 
-        // Filter out songs with invalid blob URLs, not all blob URLs
-        const validSongs = songs.filter(song => 
-          !song.audioUrl || 
-          !song.audioUrl.startsWith('blob:') || 
-          song.audioUrl.includes('blob:http')
-        );
-
-        if (validSongs.length === 0) {
-          console.warn('No valid songs to play (all had blob URLs)');
-          return;
-        }
-
-        // Adjust initial index if songs were filtered out
-        const validIndex = Math.max(0, Math.min(initialIndex, validSongs.length - 1));
-
-        // Immediately stop current audio and reset time
+        // Stop current audio
         const audio = document.querySelector('audio');
         if (audio) {
           audio.pause();
           audio.currentTime = 0;
-          // Clear the src to completely stop the previous song
-          audio.src = '';
-          audio.load();
         }
+
+        // Validate index
+        const validIndex = Math.max(0, Math.min(initialIndex, songs.length - 1));
 
         // Set player state
         set({
-          queue: validSongs,
+          queue: songs,
           currentIndex: validIndex,
-          currentSong: validSongs[validIndex],
-          currentTime: 0, // Reset time for new album
-          hasUserInteracted: true // Assume user interaction when explicitly playing
+          currentSong: songs[validIndex],
+          currentTime: 0,
+          hasUserInteracted: true,
+          isPlaying: true
         });
-
-        // Save to localStorage as a backup for components that need it directly
-        try {
-          const playerState = {
-            currentSong: validSongs[validIndex],
-            currentTime: 0, // Reset time for new album
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
-          // Error handling without logging
-        }
       },
 
       playNext: () => {
@@ -233,254 +164,96 @@ export const usePlayerStore = create<PlayerState>()(
 
         if (queue.length === 0) return;
 
-        // Prevent rapid successive calls
+        // Prevent rapid calls
         const now = Date.now();
         const lastPlayNext = get().lastPlayNextTime || 0;
-        if (now - lastPlayNext < 500) { // 500ms cooldown
+        if (now - lastPlayNext < 500) {
           return;
         }
 
-        // Immediately stop current audio and reset time
+        // Stop current audio
         const audio = document.querySelector('audio');
         if (audio) {
           audio.pause();
           audio.currentTime = 0;
-          // Clear the src to completely stop the previous song
-          audio.src = '';
-          audio.load();
         }
 
-        // First check if we should repeat the current song
+        // Handle repeat mode
         if (isRepeating) {
-          // Just restart the current song
           if (audio) {
             audio.currentTime = 0;
-            audio.dataset.ending = 'false'; // Reset ending flag
-            audio.play().catch(() => { });
+            audio.play().catch(() => {});
           }
           return;
         }
 
+        // Calculate next index
         const newIndex = isShuffled
           ? getRandomIndex(currentIndex, queue.length)
           : currentIndex >= queue.length - 1 ? 0 : currentIndex + 1;
 
-        // Don't play the same song if it's the only one in queue
-        if (newIndex === currentIndex && queue.length > 1) {
-          return;
-        }
-
-        // Save current state before changing
-        const currentState = {
-          currentSong: queue[currentIndex],
-          currentIndex,
-          currentTime: 0, // Reset time for new song
-          timestamp: new Date().toISOString()
-        };
-
-        // Update state with new song
+        // Update state
         set({
           currentIndex: newIndex,
           currentSong: queue[newIndex],
-          currentTime: 0, // Reset time for new song
+          currentTime: 0,
           hasUserInteracted: true,
-          isPlaying: true, // Always ensure playback continues
-          lastPlayNextTime: now, // Track when we last called playNext
-          skipRestoreUntilTs: now + 5000 // prevent time restore for 5s on track change
+          isPlaying: true,
+          lastPlayNextTime: now
         });
 
-        // More reliable method to ensure the audio element updates
-        // especially important for background/lock screen playback
-        const playNextAudio = () => {
-          const audio = document.querySelector('audio');
-          if (audio) {
-            // Reset ending flag to prevent conflicts
-            audio.dataset.ending = 'false';
-
-            // CRITICAL: Reset currentTime to 0 immediately
+        // Play new song
+        if (audio) {
+          const newAudioUrl = queue[newIndex].audioUrl || (queue[newIndex] as any).url;
+          if (newAudioUrl) {
+            audio.src = newAudioUrl;
             audio.currentTime = 0;
-
-            // Ensure the audio element has the latest src and is playing
-            const newAudioUrl = queue[newIndex].audioUrl || (queue[newIndex] as any).url;
-            if (audio.src !== newAudioUrl && newAudioUrl) {
-              audio.src = newAudioUrl;
-              audio.load(); // Important for mobile browsers
-              // Reset currentTime again after load
-              audio.currentTime = 0;
-            }
-
-            // Use a more forceful approach to ensure playback
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-              playPromise.catch(() => {
-                // Retry playing after a short delay
-                setTimeout(() => {
-                  audio.play().catch(() => {
-                    // If it still fails, try with user activation flag
-                    set({ hasUserInteracted: true });
-                    setTimeout(() => audio.play().catch(() => { }), 100);
-                  });
-                }, 200);
-              });
-            }
-
-            // Update MediaSession for lock screen controls if available
-            if ('mediaSession' in navigator) {
-              navigator.mediaSession.metadata = new MediaMetadata({
-                title: queue[newIndex].title || 'Unknown Title',
-                artist: queue[newIndex].artist || 'Unknown Artist',
-                album: queue[newIndex].albumId ? String(queue[newIndex].albumId) : 'Unknown Album',
-                artwork: [
-                  {
-                    src: queue[newIndex].imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-                    sizes: '512x512',
-                    type: 'image/jpeg'
-                  }
-                ]
-              });
-
-              // Update playback state
-              navigator.mediaSession.playbackState = 'playing';
-
-              // Update position state if supported
-              if ('setPositionState' in navigator.mediaSession) {
-                try {
-                  // Initially set to 0 position for the new track
-                  navigator.mediaSession.setPositionState({
-                    duration: audio.duration || 0,
-                    playbackRate: audio.playbackRate || 1,
-                    position: 0
-                  });
-                } catch (e) {
-                  // Ignore position state errors
-                }
-              }
-
-              // Re-register media session handlers for better reliability in background
-              navigator.mediaSession.setActionHandler('nexttrack', () => {
-                // Directly access the store to avoid closure issues
-                const store = get();
-                store.setUserInteracted();
-                store.playNext();
-              });
-
-              navigator.mediaSession.setActionHandler('previoustrack', () => {
-                // Directly access the store to avoid closure issues
-                const store = get();
-                store.setUserInteracted();
-                store.playPrevious();
-              });
-
-              navigator.mediaSession.setActionHandler('play', () => {
-                set({ isPlaying: true });
-                if (audio.paused) {
-                  audio.play().catch(() => { });
-                }
-              });
-
-              navigator.mediaSession.setActionHandler('pause', () => {
-                set({ isPlaying: false });
-                if (!audio.paused) {
-                  audio.pause();
-                }
-              });
-            }
+            audio.play().catch(() => {});
           }
-        };
-
-        // Try playing immediately
-        playNextAudio();
-
-        // And also after a small delay to ensure it works in lock screen
-        setTimeout(playNextAudio, 50);
-
-        // Additional attempts with increasing delays for better reliability
-        [200, 500, 1000].forEach(delay => {
-          setTimeout(() => {
-            const audio = document.querySelector('audio');
-            if (audio && audio.paused && !audio.ended) {
-              audio.play().catch(() => { });
-            }
-          }, delay);
-        });
-
-        // Save to localStorage as a backup
-        try {
-          const playerState = {
-            currentSong: queue[newIndex],
-            currentIndex: newIndex,
-            timestamp: new Date().toISOString(),
-            previousState: currentState, // Store previous state for recovery
-            isPlaying: true // Include playback state explicitly
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
-          // Error handling without logging
         }
       },
 
       playPrevious: () => {
-        const { queue, currentIndex, isRepeating } = get();
+        const { queue, currentIndex } = get();
 
         if (queue.length === 0) return;
 
-        // Immediately stop current audio and reset time
+        // Stop current audio
         const audio = document.querySelector('audio');
         if (audio) {
           audio.pause();
           audio.currentTime = 0;
-          // Clear the src to completely stop the previous song
-          audio.src = '';
-          audio.load();
         }
 
-        // Check if current song has played less than 3 seconds
-        // If so, go to previous song, otherwise restart current song
+        // Check if we should restart current song (if played > 3 seconds)
         const currentTime = audio?.currentTime || 0;
-
-        if (currentTime > 3 && !isRepeating) {
-          // If we're more than 3 seconds in, just restart the current song
+        if (currentTime > 3) {
           if (audio) {
             audio.currentTime = 0;
-            audio.play().catch(() => { });
+            audio.play().catch(() => {});
           }
           return;
         }
 
+        // Go to previous song
         const newIndex = (currentIndex - 1 + queue.length) % queue.length;
 
         set({
           currentIndex: newIndex,
           currentSong: queue[newIndex],
-          currentTime: 0, // Reset time for new song
+          currentTime: 0,
           hasUserInteracted: true,
-          isPlaying: true, // Always ensure playback continues
-          skipRestoreUntilTs: Date.now() + 5000
+          isPlaying: true
         });
 
-        // CRITICAL: Reset audio currentTime immediately
+        // Play new song
         if (audio) {
-          audio.currentTime = 0;
           const newAudioUrl = queue[newIndex].audioUrl || (queue[newIndex] as any).url;
-          if (audio.src !== newAudioUrl && newAudioUrl) {
+          if (newAudioUrl) {
             audio.src = newAudioUrl;
-            audio.load();
             audio.currentTime = 0;
+            audio.play().catch(() => {});
           }
-          audio.play().catch(() => { });
-        }
-
-        // Save to localStorage as a backup
-        try {
-          const playerState = {
-            currentSong: queue[newIndex],
-            currentIndex: newIndex,
-            currentTime: 0, // Reset time for new song
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
-          // Error handling without logging
         }
       },
 
@@ -535,58 +308,8 @@ export const usePlayerStore = create<PlayerState>()(
   )
 );
 
-// Initialize the store by loading persisted data
+// Simplified initialization
 setTimeout(() => {
-  // Auto-restore interrupted playback state from before refresh
   const store = usePlayerStore.getState();
-
-  // Clean up any invalid blob URLs from the current song and queue
-  if (store.currentSong && store.currentSong.audioUrl && 
-      store.currentSong.audioUrl.startsWith('blob:') && 
-      !store.currentSong.audioUrl.includes('blob:http')) {
-    console.log('Cleaning up invalid blob URL from current song');
-    store.setCurrentSong({ ...store.currentSong, audioUrl: '' });
-  }
-
-  if (store.queue.length > 0) {
-    const cleanQueue = store.queue.filter(song => 
-      !song.audioUrl || 
-      !song.audioUrl.startsWith('blob:') || 
-      song.audioUrl.includes('blob:http')
-    );
-    if (cleanQueue.length !== store.queue.length) {
-      console.log('Cleaned up blob URLs from queue');
-      usePlayerStore.setState({ queue: cleanQueue });
-    }
-  }
-
-  // console.log('Player store initialized with:', store.currentSong?.title || 'no song');
-
-  // If we have a song but no queue, try to reconstruct minimum queue
-  if (store.currentSong && store.queue.length === 0) {
-    // console.log('Detected song but no queue, reconstructing minimal queue');
-    store.playAlbum([store.currentSong], 0);
-  }
-
-  // Check if we should resume playback and restore currentTime
-  try {
-    const savedState = localStorage.getItem('player_state');
-    if (savedState) {
-      const { timestamp, isPlaying, currentTime: savedTime } = JSON.parse(savedState);
-      const timeSinceLastUpdate = Date.now() - new Date(timestamp).getTime();
-
-      // Restore currentTime if it exists and is valid
-      if (savedTime && savedTime > 0) {
-        store.setCurrentTime(savedTime);
-      }
-
-      // If the last update was recent (within 5 minutes) and playback was active
-      if (timeSinceLastUpdate < 5 * 60 * 1000 && isPlaying) {
-        // console.log('Resuming playback from saved state');
-        store.setIsPlaying(true);
-      }
-    }
-  } catch (_error) {
-    // Error handling without logging
-  }
+  console.log('Player store initialized with:', store.currentSong?.title || 'no song');
 }, 0);
