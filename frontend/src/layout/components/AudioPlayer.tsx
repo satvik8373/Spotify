@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { resolveArtist } from '@/lib/resolveArtist';
-import { backgroundAudioManager, configureAudioElement } from '@/utils/audioManager';
+
 
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -61,7 +61,7 @@ const AudioPlayer = () => {
       filtersRef.current = filters;
 
       console.log('Audio context initialized successfully');
-      
+
       // Apply current equalizer settings
       const frequencies_hz = ['60Hz', '150Hz', '400Hz', '1KHz', '2.4KHz', '15KHz'] as const;
       frequencies_hz.forEach((freq, index) => {
@@ -98,7 +98,7 @@ const AudioPlayer = () => {
 
     console.log('Applying streaming quality:', streamingQuality);
     const audio = audioRef.current;
-    
+
     // Set audio quality preferences based on streaming quality setting
     switch (streamingQuality) {
       case 'Low':
@@ -117,19 +117,13 @@ const AudioPlayer = () => {
     }
   }, [streamingQuality]);
 
-  // Initialize audio element with background audio support
+  // Initialize audio element
   useEffect(() => {
     if (audioRef.current) {
       const audio = audioRef.current;
-      
-      console.log('🎵 Initializing reliable background audio system');
-      
-      // Configure audio element for background playback
-      configureAudioElement(audio);
-      
-      // Initialize background audio manager
-      backgroundAudioManager.initialize(audio);
-      
+
+      console.log('🎵 Initializing audio system');
+
       // Initialize audio context on first user interaction
       const handleFirstPlay = () => {
         console.log('🎯 First play detected - initializing audio context');
@@ -137,6 +131,7 @@ const AudioPlayer = () => {
         audio.removeEventListener('play', handleFirstPlay);
       };
       audio.addEventListener('play', handleFirstPlay);
+
 
       // Apply initial settings
       applyStreamingQuality();
@@ -199,23 +194,20 @@ const AudioPlayer = () => {
     }
   }, [currentSong]);
 
-  // Handle play/pause state changes and sync with background audio manager
+  // Handle play/pause state changes
   useEffect(() => {
     console.log('🎛️ Play/pause effect triggered:', { isPlaying, hasAudio: !!audioRef.current });
-    
+
     if (!audioRef.current) {
       console.log('❌ No audio element found');
       return;
     }
 
     const audio = audioRef.current;
-    
-    // Update background audio manager
-    backgroundAudioManager.setPlaying(isPlaying);
-    
-    console.log('📊 Audio state:', { 
-      paused: audio.paused, 
-      src: !!audio.src, 
+
+    console.log('📊 Audio state:', {
+      paused: audio.paused,
+      src: !!audio.src,
       readyState: audio.readyState,
       currentTime: audio.currentTime,
       duration: audio.duration,
@@ -225,7 +217,7 @@ const AudioPlayer = () => {
     if (isPlaying && audio.paused && audio.src) {
       console.log('▶️ Attempting to start playback...');
       setUserInteracted();
-      
+
       // Resume audio context if suspended
       if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
         console.log('🎛️ Resuming suspended audio context');
@@ -236,7 +228,7 @@ const AudioPlayer = () => {
         console.log('✅ Audio play() succeeded');
       }).catch((error) => {
         console.error('❌ Playback failed:', error);
-        
+
         // Try again after a short delay
         setTimeout(() => {
           if (audio.paused && audio.src && isPlaying) {
@@ -252,10 +244,10 @@ const AudioPlayer = () => {
       console.log('⏸️ Pausing playback...');
       audio.pause();
     } else {
-      console.log('ℹ️ No action needed:', { 
-        shouldPlay: isPlaying, 
-        isPaused: audio.paused, 
-        hasSrc: !!audio.src 
+      console.log('ℹ️ No action needed:', {
+        shouldPlay: isPlaying,
+        isPaused: audio.paused,
+        hasSrc: !!audio.src
       });
     }
   }, [isPlaying, setIsPlaying, setUserInteracted]);
@@ -264,12 +256,18 @@ const AudioPlayer = () => {
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentSong) return;
 
-    // Use the background audio manager's MediaSession setup
-    backgroundAudioManager.setupMediaSession({
+    // Setup MediaSession metadata
+    navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title || 'Unknown Title',
       artist: resolveArtist(currentSong),
       album: currentSong.albumId || 'Unknown Album',
-      artwork: currentSong.imageUrl || ''
+      artwork: [
+        {
+          src: currentSong.imageUrl || '',
+          sizes: '512x512',
+          type: 'image/jpeg'
+        }
+      ]
     });
 
     // Set additional action handlers that need store access
@@ -319,9 +317,9 @@ const AudioPlayer = () => {
     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
       audioContextRef.current.resume().catch(console.warn);
     }
-    
+
     if (isPlaying && audioRef.current) {
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch(() => { });
     }
   }, [isPlaying]);
 
@@ -330,13 +328,12 @@ const AudioPlayer = () => {
     setTimeout(() => playNext(), 1000);
   }, [playNext]);
 
-  // Cleanup audio context and background audio manager on unmount
+  // Cleanup audio context on unmount
   useEffect(() => {
     return () => {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close().catch(console.warn);
       }
-      backgroundAudioManager.cleanup();
     };
   }, []);
 
@@ -364,6 +361,7 @@ const AudioPlayer = () => {
       }}
       preload="metadata"
       playsInline
+      crossOrigin="anonymous"
       controls={false}
     />
   );
