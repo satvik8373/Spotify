@@ -4,7 +4,7 @@
   "description": "A premium music experience with real-time features and enhanced music discovery",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#121212",
+  "background_color": "#ffffff",
   "theme_color": "#1DB954",
   "orientation": "portrait-primary",
   "categories": ["music", "entertainment", "lifestyle"],
