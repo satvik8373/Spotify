@@ -1,13 +1,11 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { backgroundAudioManager, configureAudioElement } from '@/utils/audioManager';
-import { useIOSAudio } from '@/hooks/useIOSAudio';
 
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
@@ -25,16 +23,6 @@ const AudioPlayer = () => {
   } = usePlayerStore();
 
   const { streamingQuality, equalizer } = useSettingsStore();
-
-  // iOS-specific audio handling (PWA / lockscreen quirks)
-  const { isIOSDevice, playWithIOSFix } = useIOSAudio(audioElement);
-
-  // Capture audio element once it exists (refs don't trigger re-render)
-  useEffect(() => {
-    if (audioRef.current && !audioElement) {
-      setAudioElement(audioRef.current);
-    }
-  }, [audioElement]);
 
   // Initialize audio context and equalizer
   const initializeAudioContext = useCallback(() => {
@@ -244,23 +232,16 @@ const AudioPlayer = () => {
         audioContextRef.current.resume().catch(console.warn);
       }
 
-      const startPlayback = () => {
-        if (isIOSDevice) {
-          return playWithIOSFix();
-        }
-        return audio.play();
-      };
-
-      startPlayback().then(() => {
+      audio.play().then(() => {
         console.log('✅ Audio play() succeeded');
       }).catch((error) => {
         console.error('❌ Playback failed:', error);
-
+        
         // Try again after a short delay
         setTimeout(() => {
           if (audio.paused && audio.src && isPlaying) {
             console.log('🔄 Retrying playback after error');
-            startPlayback().catch(() => {
+            audio.play().catch(() => {
               console.error('❌ Retry also failed');
               setIsPlaying(false);
             });
@@ -277,7 +258,7 @@ const AudioPlayer = () => {
         hasSrc: !!audio.src 
       });
     }
-  }, [isPlaying, setIsPlaying, setUserInteracted, isIOSDevice, playWithIOSFix]);
+  }, [isPlaying, setIsPlaying, setUserInteracted]);
 
   // MediaSession setup for lock screen controls
   useEffect(() => {

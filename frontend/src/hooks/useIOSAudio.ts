@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { 
   isIOS, 
   initAudioContext, 
@@ -13,26 +13,8 @@ import {
  */
 export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
   const isUnlocked = useRef(false);
-  // Avoid any runtime crashes during render (e.g. missing window/matchMedia)
-  const isIOSDevice = useMemo(() => {
-    try {
-      return typeof window !== 'undefined' && typeof document !== 'undefined' ? isIOS() : false;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  const [isPWAMode, setIsPWAMode] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const mql = window.matchMedia?.('(display-mode: standalone)');
-      setIsPWAMode(!!mql?.matches);
-    } catch {
-      setIsPWAMode(false);
-    }
-  }, []);
+  const isIOSDevice = isIOS();
+  const isPWAMode = window.matchMedia('(display-mode: standalone)').matches;
 
   useEffect(() => {
     if (!isIOSDevice) return;
@@ -93,11 +75,23 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
 
     // Configure audio element for iOS
     configureAudioElement(audioElement);
-    // Do NOT pause audio automatically when the document becomes hidden.
-    // Background playback (lock screen / PWA) relies on the audio continuing
-    // while the page is in the background, so we avoid any visibility-based
-    // interruption logic here. Actual interruptions (calls, system audio)
-    // are handled by the background audio manager and MediaSession.
+
+    // Handle audio interruptions (phone calls, etc.)
+    const handleInterruption = () => {
+      if (audioElement && !audioElement.paused) {
+        audioElement.pause();
+      }
+    };
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        handleInterruption();
+      }
+    });
+
+    return () => {
+      // Cleanup
+    };
   }, [audioElement, isIOSDevice]);
 
   // Return helper function to play audio with iOS handling
