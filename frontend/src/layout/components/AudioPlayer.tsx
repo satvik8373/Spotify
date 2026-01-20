@@ -10,7 +10,6 @@ const AudioPlayer = () => {
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const filtersRef = useRef<BiquadFilterNode[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
   // Store hooks
   const {
@@ -66,7 +65,7 @@ const AudioPlayer = () => {
       console.log('Audio context initialized successfully');
       
       // Apply current equalizer settings
-      const frequencies_hz = ['60Hz', '150Hz', '400Hz', '1KHz', '2.4KHz', '15KHz'];
+      const frequencies_hz = ['60Hz', '150Hz', '400Hz', '1KHz', '2.4KHz', '15KHz'] as const;
       frequencies_hz.forEach((freq, index) => {
         if (filters[index]) {
           const gainValue = equalizer[freq] || 0;
@@ -85,7 +84,7 @@ const AudioPlayer = () => {
     if (!filtersRef.current.length) return;
 
     console.log('Applying equalizer settings:', equalizer);
-    const frequencies = ['60Hz', '150Hz', '400Hz', '1KHz', '2.4KHz', '15KHz'];
+    const frequencies = ['60Hz', '150Hz', '400Hz', '1KHz', '2.4KHz', '15KHz'] as const;
     frequencies.forEach((freq, index) => {
       if (filtersRef.current[index]) {
         const gainValue = equalizer[freq] || 0;
@@ -120,19 +119,22 @@ const AudioPlayer = () => {
     }
   }, [streamingQuality]);
 
-  // Simple audio configuration with reliable background playback
+  // Simple audio configuration with ultra-reliable background playback
   useEffect(() => {
     if (audioRef.current) {
       const audio = audioRef.current;
       
+      console.log('🎵 Initializing ultra-reliable background audio system');
+      
       // Configure audio element for background playback
       configureAudioElement(audio);
       
-      // Initialize background audio manager
+      // Initialize ultra-reliable background audio manager
       backgroundAudioManager.initialize(audio);
       
       // Initialize audio context on first user interaction
       const handleFirstPlay = () => {
+        console.log('🎯 First play detected - initializing audio context');
         initializeAudioContext();
         audio.removeEventListener('play', handleFirstPlay);
       };
@@ -140,6 +142,19 @@ const AudioPlayer = () => {
 
       // Apply initial settings
       applyStreamingQuality();
+
+      // Add additional debugging listeners
+      audio.addEventListener('loadstart', () => {
+        console.log('📥 Audio load start');
+      });
+
+      audio.addEventListener('loadeddata', () => {
+        console.log('📊 Audio data loaded');
+      });
+
+      audio.addEventListener('canplaythrough', () => {
+        console.log('🚀 Audio can play through');
+      });
 
       return () => {
         audio.removeEventListener('play', handleFirstPlay);
@@ -178,7 +193,6 @@ const AudioPlayer = () => {
     const isSameSong = audio.src === songUrl;
 
     if (!isSameSong) {
-      setIsLoading(true);
       audio.pause();
       audio.currentTime = 0;
       audio.src = songUrl;
@@ -186,48 +200,60 @@ const AudioPlayer = () => {
     }
   }, [currentSong]);
 
-  // Handle play/pause state changes and sync with background audio manager
+  // Handle play/pause state changes and sync with ultra-reliable background audio manager
   useEffect(() => {
-    console.log('Play/pause effect triggered:', { isPlaying, hasAudio: !!audioRef.current });
+    console.log('🎛️ Play/pause effect triggered:', { isPlaying, hasAudio: !!audioRef.current });
     
     if (!audioRef.current) {
-      console.log('No audio element found');
+      console.log('❌ No audio element found');
       return;
     }
 
     const audio = audioRef.current;
     
-    // Update background audio manager
+    // Update ultra-reliable background audio manager
     backgroundAudioManager.setPlaying(isPlaying);
     
-    console.log('Audio state:', { 
+    console.log('📊 Audio state:', { 
       paused: audio.paused, 
       src: !!audio.src, 
       readyState: audio.readyState,
-      currentTime: audio.currentTime 
+      currentTime: audio.currentTime,
+      duration: audio.duration,
+      networkState: audio.networkState
     });
 
     if (isPlaying && audio.paused && audio.src) {
-      console.log('Attempting to start playback...');
+      console.log('▶️ Attempting to start playback...');
       setUserInteracted();
       
       // Resume audio context if suspended
       if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-        console.log('Resuming suspended audio context');
+        console.log('🎛️ Resuming suspended audio context');
         audioContextRef.current.resume().catch(console.warn);
       }
 
       audio.play().then(() => {
-        console.log('Audio play() succeeded');
+        console.log('✅ Audio play() succeeded');
       }).catch((error) => {
-        console.error('Playback failed:', error);
-        setIsPlaying(false);
+        console.error('❌ Playback failed:', error);
+        
+        // Try again after a short delay
+        setTimeout(() => {
+          if (audio.paused && audio.src && isPlaying) {
+            console.log('🔄 Retrying playback after error');
+            audio.play().catch(() => {
+              console.error('❌ Retry also failed');
+              setIsPlaying(false);
+            });
+          }
+        }, 500);
       });
     } else if (!isPlaying && !audio.paused) {
-      console.log('Pausing playback...');
+      console.log('⏸️ Pausing playback...');
       audio.pause();
     } else {
-      console.log('No action needed:', { 
+      console.log('ℹ️ No action needed:', { 
         shouldPlay: isPlaying, 
         isPaused: audio.paused, 
         hasSrc: !!audio.src 
@@ -239,34 +265,16 @@ const AudioPlayer = () => {
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentSong) return;
 
+    // Use the background audio manager's MediaSession setup
+    backgroundAudioManager.setupMediaSession({
+      title: currentSong.title || 'Unknown Title',
+      artist: resolveArtist(currentSong),
+      album: currentSong.albumId || 'Unknown Album',
+      artwork: currentSong.imageUrl || ''
+    });
+
+    // Set additional action handlers that need store access
     try {
-      // Set metadata
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentSong.title || 'Unknown Title',
-        artist: resolveArtist(currentSong),
-        album: currentSong.albumId || 'Unknown Album',
-        artwork: [{
-          src: currentSong.imageUrl || '',
-          sizes: '512x512',
-          type: 'image/jpeg'
-        }]
-      });
-
-      // Set playback state
-      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-
-      // Enhanced action handlers for background control
-      navigator.mediaSession.setActionHandler('play', () => {
-        console.log('MediaSession play action');
-        setUserInteracted();
-        setIsPlaying(true);
-      });
-
-      navigator.mediaSession.setActionHandler('pause', () => {
-        console.log('MediaSession pause action');
-        setIsPlaying(false);
-      });
-
       navigator.mediaSession.setActionHandler('nexttrack', () => {
         console.log('MediaSession next track action');
         setUserInteracted();
@@ -288,7 +296,7 @@ const AudioPlayer = () => {
       });
 
     } catch (error) {
-      console.warn('MediaSession setup failed:', error);
+      console.warn('MediaSession action handlers setup failed:', error);
     }
   }, [currentSong, isPlaying, setIsPlaying, playNext, setUserInteracted, setStoreCurrentTime]);
 
@@ -308,8 +316,6 @@ const AudioPlayer = () => {
   }, [playNext, setUserInteracted]);
 
   const handleCanPlay = useCallback(() => {
-    setIsLoading(false);
-    
     // Resume audio context if suspended (required for some browsers)
     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
       audioContextRef.current.resume().catch(console.warn);
@@ -342,11 +348,14 @@ const AudioPlayer = () => {
       onEnded={handleSongEnd}
       onCanPlay={handleCanPlay}
       onError={handleError}
-      onLoadStart={() => setIsLoading(true)}
-      onWaiting={() => setIsLoading(true)}
+      onLoadStart={() => {
+        console.log('📥 Audio load start');
+      }}
+      onWaiting={() => {
+        console.log('⏳ Audio waiting');
+      }}
       onPlaying={() => {
         console.log('Audio playing event');
-        setIsLoading(false);
       }}
       onPause={() => {
         console.log('Audio pause event');

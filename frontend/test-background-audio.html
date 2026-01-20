@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Audio Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #121212;
+            color: white;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            background: #1DB954;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #1ed760;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .status {
+            background: #333;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .test-instructions {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .success {
+            color: #1DB954;
+        }
+        .error {
+            color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎵 Background Audio Test</h1>
+    
+    <div class="test-instructions">
+        <h3>Test Instructions:</h3>
+        <ol>
+            <li>Click "Start Audio" to begin playback</li>
+            <li>Turn off your screen or lock your device</li>
+            <li>Audio should continue playing in background</li>
+            <li>Turn screen back on - audio should still be playing</li>
+            <li>Use lock screen controls to pause/play</li>
+        </ol>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn">Start Audio</button>
+        <button id="pauseBtn" disabled>Pause Audio</button>
+        <button id="stopBtn" disabled>Stop Audio</button>
+    </div>
+
+    <div class="status">
+        <div><strong>Status:</strong> <span id="status">Ready</span></div>
+        <div><strong>Wake Lock:</strong> <span id="wakeLockStatus">Not Active</span></div>
+        <div><strong>Background Manager:</strong> <span id="backgroundStatus">Not Active</span></div>
+    </div>
+
+    <audio id="testAudio" preload="metadata"></audio>
+
+    <script>
+        // Simple Background Audio Manager (simplified version)
+        class TestBackgroundAudioManager {
+            constructor() {
+                this.audio = null;
+                this.isPlaying = false;
+                this.wakeLock = null;
+                this.keepAliveInterval = null;
+            }
+
+            async initialize(audioElement) {
+                this.audio = audioElement;
+                this.setupAudioElement();
+                this.setupBackgroundPlayback();
+                this.updateStatus('backgroundStatus', 'Initialized', 'success');
+            }
+
+            setupAudioElement() {
+                if (!this.audio) return;
+
+                // Essential attributes for background playback
+                this.audio.setAttribute('playsinline', 'true');
+                this.audio.setAttribute('webkit-playsinline', 'true');
+                this.audio.setAttribute('preload', 'metadata');
+                this.audio.crossOrigin = 'anonymous';
+
+                // iOS specific setup
+                if (this.isIOS()) {
+                    this.audio.setAttribute('x-webkit-airplay', 'allow');
+                    this.audio.playsInline = true;
+                    this.audio.webkitPlaysInline = true;
+                    
+                    try {
+                        this.audio.preservesPitch = false;
+                        this.audio.webkitPreservesPitch = false;
+                    } catch (error) {
+                        console.warn('iOS setup failed:', error);
+                    }
+                }
+
+                // Android specific setup
+                if (this.isAndroid()) {
+                    try {
+                        this.audio.mozPreservesPitch = false;
+                        this.audio.webkitPreservesPitch = false;
+                    } catch (error) {
+                        console.warn('Android setup failed:', error);
+                    }
+                }
+
+                // Simple pause prevention - only for system pauses
+                this.audio.addEventListener('pause', (event) => {
+                    if (!this.audio.ended && this.audio.src && !this.audio.seeking) {
+                        // Only prevent pause if page is hidden (system pause)
+                        if (document.hidden && this.isPlaying) {
+                            console.log('System pause detected - resuming');
+                            setTimeout(() => {
+                                if (this.audio && this.audio.paused && !this.audio.ended) {
+                                    this.audio.play().catch(() => {});
+                                }
+                            }, 100);
+                        }
+                    }
+                });
+            }
+
+            setupBackgroundPlayback() {
+                // Handle visibility changes
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden && this.isPlaying) {
+                        this.maintainBackgroundPlayback();
+                    } else if (!document.hidden && this.isPlaying) {
+                        this.resumeBackgroundPlayback();
+                    }
+                });
+
+                // Handle page lifecycle
+                window.addEventListener('pagehide', () => {
+                    if (this.isPlaying) {
+                        this.maintainBackgroundPlayback();
+                    }
+                });
+
+                window.addEventListener('pageshow', () => {
+                    if (this.isPlaying) {
+                        this.resumeBackgroundPlayback();
+                    }
+                });
+            }
+
+            async setPlaying(playing) {
+                this.isPlaying = playing;
+                
+                if (playing) {
+                    await this.enableBackgroundPlayback();
+                    this.updateStatus('status', 'Playing', 'success');
+                } else {
+                    this.disableBackgroundPlayback();
+                    this.updateStatus('status', 'Paused', '');
+                }
+            }
+
+            async enableBackgroundPlayback() {
+                await this.requestWakeLock();
+                this.startKeepAlive();
+            }
+
+            disableBackgroundPlayback() {
+                this.releaseWakeLock();
+                this.stopKeepAlive();
+            }
+
+            maintainBackgroundPlayback() {
+                if (!this.audio || !this.isPlaying) return;
+
+                // Ensure audio is playing
+                if (this.audio.paused && !this.audio.ended && this.audio.src) {
+                    this.audio.play().catch(() => {
+                        console.warn('Failed to maintain background playback');
+                    });
+                }
+
+                // Request wake lock if not active
+                if (!this.wakeLock) {
+                    this.requestWakeLock();
+                }
+            }
+
+            resumeBackgroundPlayback() {
+                if (!this.audio || !this.isPlaying) return;
+
+                // Ensure audio is playing
+                if (this.audio.paused && !this.audio.ended && this.audio.src) {
+                    setTimeout(() => {
+                        if (this.audio && this.audio.paused && !this.audio.ended) {
+                            this.audio.play().catch(() => {});
+                        }
+                    }, 100);
+                }
+            }
+
+            async requestWakeLock() {
+                if (!('wakeLock' in navigator) || this.wakeLock) return;
+
+                try {
+                    this.wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake lock acquired');
+                    this.updateStatus('wakeLockStatus', 'Active', 'success');
+
+                    this.wakeLock.addEventListener('release', () => {
+                        console.log('Wake lock released');
+                        this.wakeLock = null;
+                        this.updateStatus('wakeLockStatus', 'Released', 'error');
+                        
+                        if (this.isPlaying) {
+                            setTimeout(() => this.requestWakeLock(), 1000);
+                        }
+                    });
+                } catch (error) {
+                    console.warn('Wake lock failed:', error);
+                    this.updateStatus('wakeLockStatus', 'Failed', 'error');
+                }
+            }
+
+            async releaseWakeLock() {
+                if (this.wakeLock) {
+                    try {
+                        await this.wakeLock.release();
+                        this.wakeLock = null;
+                        this.updateStatus('wakeLockStatus', 'Not Active', '');
+                    } catch (error) {
+                        console.warn('Wake lock release failed:', error);
+                    }
+                }
+            }
+
+            startKeepAlive() {
+                if (this.keepAliveInterval) return;
+
+                this.keepAliveInterval = setInterval(() => {
+                    if (this.isPlaying && this.audio) {
+                        // Check if audio is unexpectedly paused
+                        if (this.audio.paused && !this.audio.ended && this.audio.src) {
+                            console.log('Keep-alive: Audio paused - resuming');
+                            this.audio.play().catch(() => {});
+                        }
+
+                        // Maintain wake lock
+                        if (!this.wakeLock) {
+                            this.requestWakeLock();
+                        }
+                    }
+                }, 5000);
+            }
+
+            stopKeepAlive() {
+                if (this.keepAliveInterval) {
+                    clearInterval(this.keepAliveInterval);
+                    this.keepAliveInterval = null;
+                }
+            }
+
+            isIOS() {
+                return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            }
+
+            isAndroid() {
+                return /Android/.test(navigator.userAgent);
+            }
+
+            updateStatus(elementId, text, className = '') {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.textContent = text;
+                    element.className = className;
+                }
+            }
+
+            cleanup() {
+                this.disableBackgroundPlayback();
+                this.audio = null;
+                this.isPlaying = false;
+                this.updateStatus('status', 'Stopped', '');
+                this.updateStatus('backgroundStatus', 'Not Active', '');
+            }
+        }
+
+        // Initialize test
+        const backgroundManager = new TestBackgroundAudioManager();
+        const audio = document.getElementById('testAudio');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+
+        // Test audio URL (royalty-free sample)
+        const testAudioUrl = 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav';
+        
+        // Fallback to a longer test audio if the above doesn't work
+        const fallbackUrl = 'https://file-examples.com/storage/fe68c1b7c1a9fd42b4b1f2c/2017/11/file_example_MP3_700KB.mp3';
+
+        // Initialize
+        backgroundManager.initialize(audio);
+
+        // Set up MediaSession for lock screen controls
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: 'Background Audio Test',
+                artist: 'Test App',
+                album: 'Test Album',
+                artwork: [
+                    { src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSIjMURCOTU0Ii8+Cjx0ZXh0IHg9IjI1NiIgeT0iMjU2IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+VEVTVDwvdGV4dD4KPC9zdmc+', sizes: '512x512', type: 'image/svg+xml' }
+                ]
+            });
+
+            navigator.mediaSession.setActionHandler('play', () => {
+                audio.play();
+                backgroundManager.setPlaying(true);
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                stopBtn.disabled = false;
+            });
+
+            navigator.mediaSession.setActionHandler('pause', () => {
+                audio.pause();
+                backgroundManager.setPlaying(false);
+                startBtn.disabled = false;
+                pauseBtn.disabled = true;
+            });
+        }
+
+        // Button handlers
+        startBtn.addEventListener('click', async () => {
+            try {
+                audio.src = testAudioUrl;
+                audio.loop = true; // Loop for continuous testing
+                
+                await audio.play();
+                await backgroundManager.setPlaying(true);
+                
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                stopBtn.disabled = false;
+
+                // Set MediaSession state
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'playing';
+                }
+            } catch (error) {
+                console.error('Failed to start audio:', error);
+                // Try fallback URL
+                try {
+                    audio.src = fallbackUrl;
+                    await audio.play();
+                    await backgroundManager.setPlaying(true);
+                    
+                    startBtn.disabled = true;
+                    pauseBtn.disabled = false;
+                    stopBtn.disabled = false;
+                } catch (fallbackError) {
+                    alert('Failed to load test audio. Please check your internet connection.');
+                }
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            audio.pause();
+            backgroundManager.setPlaying(false);
+            
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'paused';
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            audio.pause();
+            audio.currentTime = 0;
+            backgroundManager.cleanup();
+            
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            stopBtn.disabled = true;
+
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'none';
+            }
+        });
+
+        // Handle user interaction requirement
+        document.addEventListener('click', () => {
+            // Simple user interaction handler - no complex audio context management
+            console.log('User interaction detected');
+        }, { once: true });
+
+        console.log('Background Audio Test initialized');
+        console.log('Platform:', navigator.userAgent);
+        console.log('Wake Lock supported:', 'wakeLock' in navigator);
+        console.log('MediaSession supported:', 'mediaSession' in navigator);
+    </script>
+</body>
+</html>

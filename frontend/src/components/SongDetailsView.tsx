@@ -375,7 +375,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   };
 
   const handleProgressTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
+    // Don't preventDefault here - handle it in the native event listener
     setIsDragging(true);
     const touch = e.touches[0];
     const rect = e.currentTarget.getBoundingClientRect();
@@ -764,14 +764,12 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1 || !swipeState.isDragging) return;
     
-    // Only prevent default if we're in a horizontal swipe
-    if (swipeState.hasMovedHorizontally && !swipeState.isVerticalScroll) {
-      e.preventDefault();
-    }
+    // Only prevent default if we're in a horizontal swipe - but don't use preventDefault in React events
+    // The browser will handle this automatically based on our touch-action CSS
     
     const touch = e.touches[0];
     handleSwipeMove(touch.clientX, touch.clientY);
-  }, [handleSwipeMove, swipeState.isDragging, swipeState.hasMovedHorizontally, swipeState.isVerticalScroll]);
+  }, [handleSwipeMove, swipeState.isDragging]);
 
   const handleTouchEnd = useCallback((_e: React.TouchEvent) => {
     handleSwipeEnd();
@@ -984,7 +982,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           <div className="max-w-sm mx-auto">
             <div
               ref={progressRef}
-              className="relative w-full py-3 cursor-pointer group touch-target"
+              className="relative w-full py-3 cursor-pointer group touch-target progress-bar-container"
               onClick={handleProgressClick}
               onMouseDown={handleProgressMouseDown}
               onTouchStart={handleProgressTouchStart}
@@ -1066,8 +1064,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 togglePlay();
                 console.log('togglePlay called');
               }}
-              onTouchStart={(e) => {
-                e.preventDefault();
+              onTouchStart={() => {
+                // Don't preventDefault here to avoid passive event listener warnings
               }}
               className={cn(
                 "rounded-full flex items-center justify-center active:scale-95 transition-all shadow-xl flex-shrink-0 touch-target",

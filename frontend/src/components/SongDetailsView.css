@@ -37,6 +37,16 @@
   opacity: 1; /* Ensure initial opacity */
 }
 
+/* Progress bar specific touch handling */
+.progress-bar-container {
+  touch-action: none; /* Disable all default touch behaviors for progress bar */
+}
+
+/* Main container touch handling */
+.song-details-view {
+  touch-action: pan-y; /* Allow vertical scrolling by default */
+}
+
 .swipe-container:active {
   cursor: grabbing;
 }
