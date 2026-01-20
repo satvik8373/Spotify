@@ -1,5 +1,3 @@
-import { iosBackgroundAudioManager } from './iosBackgroundAudio';
-
 /**
  * Audio Manager - Unified audio system for production
  * Consolidates all audio-related functionality into a single, professional module
@@ -803,65 +801,8 @@ class SimpleBackgroundAudioManager {
   }
 }
 
-/**
- * Universal Background Audio Manager
- * Automatically uses iOS-specific manager on iOS devices, standard manager on others
- */
-class UniversalBackgroundAudioManager {
-  private iosManager = iosBackgroundAudioManager;
-  private standardManager = new SimpleBackgroundAudioManager();
-  private currentManager: any = null;
-
-  /**
-   * Initialize with automatic iOS detection
-   */
-  async initialize(audioElement: HTMLAudioElement): Promise<void> {
-    if (isIOS()) {
-      console.log('🍎 Detected iOS - using iOS-specific background audio manager');
-      this.currentManager = this.iosManager;
-      await this.iosManager.initialize(audioElement);
-    } else {
-      console.log('🌐 Using standard background audio manager');
-      this.currentManager = this.standardManager;
-      this.standardManager.initialize(audioElement);
-    }
-  }
-
-  /**
-   * Set playing state
-   */
-  setPlaying(playing: boolean): void {
-    if (this.currentManager) {
-      this.currentManager.setPlaying(playing);
-    }
-  }
-
-  /**
-   * Setup MediaSession
-   */
-  setupMediaSession(metadata: {
-    title: string;
-    artist: string;
-    album?: string;
-    artwork?: string;
-  }): void {
-    if (this.currentManager) {
-      this.currentManager.setupMediaSession(metadata);
-    }
-  }
-
-  /**
-   * Cleanup
-   */
-  cleanup(): void {
-    if (this.currentManager) {
-      this.currentManager.cleanup();
-    }
-  }
-}
-
-// Export singleton instance that automatically detects iOS
-export const backgroundAudioManager = new UniversalBackgroundAudioManager();
+// Export singleton instance
+export const backgroundAudioManager = new SimpleBackgroundAudioManager();
 
 // ============================================================================
 // INTERRUPTION HANDLING

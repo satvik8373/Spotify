@@ -122,17 +122,13 @@ const AudioPlayer = () => {
     if (audioRef.current) {
       const audio = audioRef.current;
       
-      console.log('🎵 Initializing universal background audio system');
+      console.log('🎵 Initializing reliable background audio system');
       
       // Configure audio element for background playback
       configureAudioElement(audio);
       
-      // Initialize background audio manager (async for iOS)
-      backgroundAudioManager.initialize(audio).then(() => {
-        console.log('✅ Background audio manager initialized');
-      }).catch((error) => {
-        console.warn('Background audio manager initialization failed:', error);
-      });
+      // Initialize background audio manager
+      backgroundAudioManager.initialize(audio);
       
       // Initialize audio context on first user interaction
       const handleFirstPlay = () => {
