@@ -77,7 +77,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     velocity: 0,
     lastMoveTime: 0,
     direction: null as 'left' | 'right' | null,
-    isVerticalScroll: false
+    isVerticalScroll: false,
+    hasMovedHorizontally: false,
+    initialDirection: null as 'horizontal' | 'vertical' | null
   });
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -457,7 +459,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     };
   }, [isDragging, duration]);
 
-  // Cleanup timeouts on unmount
+  // Cleanup timeouts on unmount and reset image on song change
   useEffect(() => {
     return () => {
       if (dragTimeoutRef.current) {
@@ -469,7 +471,34 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     };
   }, []);
 
-  // Swipe gesture handlers
+  // Reset swipe container when song changes to prevent glitches
+  useEffect(() => {
+    if (swipeContainerRef.current) {
+      // Force reset all transform properties when song changes
+      swipeContainerRef.current.style.transform = '';
+      swipeContainerRef.current.style.opacity = '';
+      swipeContainerRef.current.style.transition = '';
+      swipeContainerRef.current.style.willChange = 'auto';
+      
+      // Cancel any ongoing animations
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      
+      // Reset swipe state if song changes during swipe
+      setSwipeState(prev => ({
+        ...prev,
+        isDragging: false,
+        hasMovedHorizontally: false,
+        isVerticalScroll: false,
+        direction: null,
+        initialDirection: null
+      }));
+    }
+  }, [currentSong?._id, currentSong?.title]); // Reset when song actually changes
+
+  // Swipe gesture handlers with Spotify-like logic
   const handleSwipeStart = useCallback((clientX: number, clientY: number) => {
     if (isDragging) return; // Don't interfere with progress bar dragging
     
@@ -484,7 +513,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       velocity: 0,
       lastMoveTime: Date.now(),
       direction: null,
-      isVerticalScroll: false
+      isVerticalScroll: false,
+      hasMovedHorizontally: false,
+      initialDirection: null
     });
   }, [isDragging]);
 
@@ -496,32 +527,67 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const deltaY = clientY - swipeState.startY;
     const timeDelta = now - swipeState.lastMoveTime;
     
-    // Calculate velocity for momentum
+    // Calculate velocity for momentum (pixels per millisecond)
     const velocity = timeDelta > 0 ? Math.abs(deltaX) / timeDelta : 0;
     
-    // Determine if this is a vertical scroll gesture
-    const isVerticalScroll = Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 20;
+    // Determine initial direction if not set (Spotify-like logic)
+    let initialDirection = swipeState.initialDirection;
+    if (!initialDirection && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
+      initialDirection = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
+    }
     
-    // Only process horizontal swipes
-    if (!isVerticalScroll && Math.abs(deltaX) > 10) {
+    // Once direction is determined, stick to it (prevents accidental swipes)
+    const isVerticalScroll = initialDirection === 'vertical';
+    
+    // Only process horizontal swipes with higher threshold
+    if (!isVerticalScroll && Math.abs(deltaX) > 15) { // Increased from 10 to 15
       const direction = deltaX > 0 ? 'right' : 'left';
       
       // Check if we can actually swipe in this direction
       const canSwipeLeft = currentIndex < queue.length - 1;
       const canSwipeRight = currentIndex > 0;
       
+      // Spotify-like resistance when reaching boundaries
       if ((direction === 'left' && !canSwipeLeft) || (direction === 'right' && !canSwipeRight)) {
-        // Limit movement if we can't swipe in this direction
-        const limitedDeltaX = Math.sign(deltaX) * Math.min(Math.abs(deltaX), 30);
+        // Apply strong resistance at boundaries (like Spotify)
+        const resistanceFactor = 0.2; // Much stronger resistance
+        const limitedDeltaX = Math.sign(deltaX) * Math.min(Math.abs(deltaX) * resistanceFactor, 40);
         
         if (swipeContainerRef.current) {
-          const progress = Math.min(Math.abs(limitedDeltaX) / 30, 1);
-          const scale = 1 - (progress * 0.02);
+          const progress = Math.min(Math.abs(limitedDeltaX) / 40, 1);
+          const scale = 1 - (progress * 0.02); // Minimal scaling at boundaries
           const opacity = 1 - (progress * 0.1);
           
-          swipeContainerRef.current.style.transform = `translateX(${limitedDeltaX * 0.3}px) scale(${scale})`;
-          swipeContainerRef.current.style.opacity = opacity.toString();
+          if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+          }
+          
+          animationFrameRef.current = requestAnimationFrame(() => {
+            if (swipeContainerRef.current) {
+              // Ensure explicit values to prevent accumulation
+              const transformValue = `translateX(${limitedDeltaX}px) scale(${scale})`;
+              const opacityValue = opacity.toString();
+              
+              swipeContainerRef.current.style.transform = transformValue;
+              swipeContainerRef.current.style.opacity = opacityValue;
+              swipeContainerRef.current.style.willChange = 'transform, opacity';
+            }
+          });
         }
+        
+        setSwipeState(prev => ({
+          ...prev,
+          currentX: clientX,
+          currentY: clientY,
+          deltaX: limitedDeltaX,
+          deltaY,
+          velocity,
+          lastMoveTime: now,
+          direction,
+          isVerticalScroll,
+          hasMovedHorizontally: true,
+          initialDirection
+        }));
         return;
       }
       
@@ -534,14 +600,21 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         velocity,
         lastMoveTime: now,
         direction,
-        isVerticalScroll
+        isVerticalScroll,
+        hasMovedHorizontally: true,
+        initialDirection
       }));
 
-      // Apply transform to album art for smooth visual feedback
-      if (swipeContainerRef.current && Math.abs(deltaX) > 20) {
-        const progress = Math.min(Math.abs(deltaX) / 150, 1);
-        const scale = 1 - (progress * 0.1);
-        const opacity = 1 - (progress * 0.3);
+      // Apply transform to album art for smooth visual feedback (Spotify-like)
+      if (swipeContainerRef.current && Math.abs(deltaX) > 25) { // Increased threshold from 20 to 25
+        // Spotify-like scaling and movement with resistance
+        const maxMovement = 120; // Maximum movement distance
+        const resistance = Math.abs(deltaX) / maxMovement;
+        const clampedResistance = Math.min(resistance, 1);
+        
+        const movement = deltaX * (1 - clampedResistance * 0.3); // Apply resistance
+        const scale = 1 - (clampedResistance * 0.08); // Subtle scaling like Spotify
+        const opacity = 1 - (clampedResistance * 0.25); // Gentle opacity change
         
         // Use requestAnimationFrame for smooth performance
         if (animationFrameRef.current) {
@@ -550,20 +623,47 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         
         animationFrameRef.current = requestAnimationFrame(() => {
           if (swipeContainerRef.current) {
-            swipeContainerRef.current.style.transform = `translateX(${deltaX * 0.8}px) scale(${scale})`;
-            swipeContainerRef.current.style.opacity = opacity.toString();
+            // Ensure we're setting explicit values to prevent accumulation
+            const transformValue = `translateX(${movement}px) scale(${scale})`;
+            const opacityValue = opacity.toString();
+            
+            swipeContainerRef.current.style.transform = transformValue;
+            swipeContainerRef.current.style.opacity = opacityValue;
+            swipeContainerRef.current.style.willChange = 'transform, opacity';
           }
         });
       }
     } else if (isVerticalScroll) {
-      setSwipeState(prev => ({ ...prev, isVerticalScroll: true }));
+      setSwipeState(prev => ({ 
+        ...prev, 
+        isVerticalScroll: true,
+        initialDirection
+      }));
+    } else {
+      // Update state even for small movements to track direction
+      setSwipeState(prev => ({
+        ...prev,
+        currentX: clientX,
+        currentY: clientY,
+        deltaX,
+        deltaY,
+        velocity,
+        lastMoveTime: now,
+        initialDirection
+      }));
     }
   }, [swipeState, currentIndex, queue.length]);
 
   const handleSwipeEnd = useCallback(() => {
     if (!swipeState.isDragging) return;
 
-    const { deltaX, velocity, direction, isVerticalScroll } = swipeState;
+    const { deltaX, velocity, direction, isVerticalScroll, hasMovedHorizontally } = swipeState;
+    
+    // Cancel any pending animation frames to prevent glitches
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
     
     // Reset swipe state
     setSwipeState({
@@ -577,70 +677,114 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       velocity: 0,
       lastMoveTime: 0,
       direction: null,
-      isVerticalScroll: false
+      isVerticalScroll: false,
+      hasMovedHorizontally: false,
+      initialDirection: null
     });
 
-    // Reset album art transform with smooth spring animation
+    // Force reset album art transform to prevent glitches
     if (swipeContainerRef.current) {
-      swipeContainerRef.current.style.transform = '';
-      swipeContainerRef.current.style.opacity = '';
-      swipeContainerRef.current.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      // Immediately reset to prevent accumulation
+      swipeContainerRef.current.style.transform = 'translateX(0px) scale(1)';
+      swipeContainerRef.current.style.opacity = '1';
+      swipeContainerRef.current.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
       
-      // Remove transition after animation
+      // Force a reflow to ensure the reset is applied
+      swipeContainerRef.current.offsetHeight;
+      
+      // Then animate to final state
+      requestAnimationFrame(() => {
+        if (swipeContainerRef.current) {
+          swipeContainerRef.current.style.transform = '';
+          swipeContainerRef.current.style.opacity = '';
+        }
+      });
+      
+      // Remove transition after animation and ensure clean state
       setTimeout(() => {
         if (swipeContainerRef.current) {
           swipeContainerRef.current.style.transition = '';
+          swipeContainerRef.current.style.transform = '';
+          swipeContainerRef.current.style.opacity = '';
+          // Force clean state
+          swipeContainerRef.current.style.willChange = 'auto';
         }
-      }, 300);
+      }, 400);
     }
 
-    // Don't trigger song change for vertical scrolls
-    if (isVerticalScroll) return;
+    // Don't trigger song change for vertical scrolls or if no horizontal movement
+    if (isVerticalScroll || !hasMovedHorizontally) return;
 
-    // Determine if swipe should trigger song change
-    const threshold = 80;
-    const velocityThreshold = 0.3;
-    const shouldTrigger = Math.abs(deltaX) > threshold || velocity > velocityThreshold;
+    // Spotify-like thresholds - much higher and more restrictive
+    const distanceThreshold = 100; // Increased from 80 to 100
+    const velocityThreshold = 0.8; // Increased from 0.3 to 0.8
+    const minimumDistance = 60; // Must move at least this much regardless of velocity
+    
+    // Must meet BOTH distance AND velocity requirements, OR exceed high distance threshold
+    const meetsDistanceRequirement = Math.abs(deltaX) >= distanceThreshold;
+    const meetsVelocityRequirement = velocity >= velocityThreshold && Math.abs(deltaX) >= minimumDistance;
+    const shouldTrigger = meetsDistanceRequirement || meetsVelocityRequirement;
 
     if (shouldTrigger && direction && queue.length > 1) {
-      // Add haptic feedback on mobile devices
-      if ('vibrate' in navigator) {
-        navigator.vibrate(50); // Light haptic feedback
-      }
-
-      if (direction === 'left') {
-        // Swipe left = next song
-        if (currentIndex < queue.length - 1) {
-          playNext();
+      // Check boundaries again before triggering
+      const canSwipeLeft = currentIndex < queue.length - 1;
+      const canSwipeRight = currentIndex > 0;
+      
+      if ((direction === 'left' && canSwipeLeft) || (direction === 'right' && canSwipeRight)) {
+        // Add haptic feedback on mobile devices
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50); // Light haptic feedback
         }
-      } else if (direction === 'right') {
-        // Swipe right = previous song
-        if (currentIndex > 0) {
+
+        if (direction === 'left') {
+          // Swipe left = next song
+          playNext();
+        } else if (direction === 'right') {
+          // Swipe right = previous song
           playPrevious();
         }
       }
     }
   }, [swipeState, playNext, playPrevious, queue.length, currentIndex]);
 
-  // Touch event handlers
+  // Touch event handlers with improved gesture recognition
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
+    if (e.touches.length !== 1) return; // Only handle single touch
+    
+    // Prevent if touch starts on interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]') || target.closest('input')) {
+      return;
+    }
+    
     const touch = e.touches[0];
     handleSwipeStart(touch.clientX, touch.clientY);
   }, [handleSwipeStart]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
+    if (e.touches.length !== 1 || !swipeState.isDragging) return;
+    
+    // Only prevent default if we're in a horizontal swipe
+    if (swipeState.hasMovedHorizontally && !swipeState.isVerticalScroll) {
+      e.preventDefault();
+    }
+    
     const touch = e.touches[0];
     handleSwipeMove(touch.clientX, touch.clientY);
-  }, [handleSwipeMove]);
+  }, [handleSwipeMove, swipeState.isDragging, swipeState.hasMovedHorizontally, swipeState.isVerticalScroll]);
 
   const handleTouchEnd = useCallback((_e: React.TouchEvent) => {
     handleSwipeEnd();
   }, [handleSwipeEnd]);
 
-  // Mouse event handlers for desktop testing
+  // Mouse event handlers for desktop testing (with similar restrictions)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Prevent if mouse down on interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]') || target.closest('input')) {
+      return;
+    }
+    
     handleSwipeStart(e.clientX, e.clientY);
   }, [handleSwipeStart]);
 
@@ -758,7 +902,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
       {/* Main Content - Flexible layout that adapts to screen size */}
       <div className="flex-1 flex flex-col justify-center px-4 min-h-0">
-        {/* Album Art - Professional responsive sizing like Spotify with Swipe Support */}
+        {/* Album Art - Professional responsive sizing like Spotify with Enhanced Swipe Support */}
         <div className={cn("flex-shrink-0 flex justify-center", getDynamicSpacing())}>
           <div 
             ref={swipeContainerRef}

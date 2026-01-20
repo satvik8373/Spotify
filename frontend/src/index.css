@@ -178,6 +178,10 @@
   }
 }
 
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards;
+}
+
 /* Enhanced styles for Liked Songs page */
 @keyframes pull-indicator {
   0% {
