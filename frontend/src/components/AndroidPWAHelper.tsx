@@ -157,8 +157,21 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
     const isAndroid = /android/i.test(navigator.userAgent);
     if (!isAndroid) return;
 
-    // Fix for maskable icons - ensure we have proper metadata
-    const ensureMaskableIcons = () => {
+    // Fix for Android PWA splash screen and icons
+    const fixAndroidPWA = () => {
+      // Ensure proper theme colors for splash screen
+      const updateThemeColor = () => {
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeColorMeta) {
+          themeColorMeta.setAttribute('content', '#121212');
+        }
+        
+        const bgColorMeta = document.querySelector('meta[name="background-color"]');
+        if (bgColorMeta) {
+          bgColorMeta.setAttribute('content', '#121212');
+        }
+      };
+
       // Check if we already have a manifest link
       const manifestLink = document.querySelector('link[rel="manifest"]');
       if (!manifestLink) {
@@ -169,58 +182,79 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
         document.head.appendChild(link);
       }
 
-      // Check for theme-color meta tag
-      const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-      if (!themeColorMeta) {
-        const meta = document.createElement('meta');
-        meta.name = 'theme-color';
-        meta.content = '#1DB954'; // Spotify green
-        document.head.appendChild(meta);
-      }
+      // Update theme colors
+      updateThemeColor();
 
-      // Add additional styling for better icon appearance
+      // Add Android-specific splash screen styling
       const style = document.createElement('style');
+      style.id = 'android-pwa-fixes';
       style.textContent = `
-        /* Fixes for Android icon appearance */
+        /* Android PWA Splash Screen Fixes */
         @media (display-mode: standalone) {
-          /* Ensure proper icon styling with small padding */
-          .app-icon {
-            -webkit-mask-image: none !important;
-            mask-image: none !important;
-            background-size: 85% !important; /* Add small padding */
-            background-position: center !important;
-            border-radius: 17% !important; /* Exact match to modern app icons */
-            overflow: hidden !important;
-            background-color: #191414 !important;
+          html, body {
+            background-color: #121212 !important;
+            color-scheme: dark !important;
           }
           
-          /* Force icon corners to match with small padding */
-          [class*="launcher-icon"] {
-            border-radius: 17% !important;
-            overflow: hidden !important;
-            background-size: 85% !important; /* Add small padding */
+          /* Prevent white flash during app launch */
+          body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            z-index: -1;
           }
           
-          /* Additional styling for any adaptive icons */
-          [class*="adaptive-icon"] {
-            border-radius: 17% !important;
-            background-color: #191414 !important;
-            background-size: 85% !important; /* Add small padding */
+          /* Splash screen icon improvements */
+          .splash-icon {
+            filter: drop-shadow(0 0 20px rgba(29, 185, 84, 0.3)) !important;
+            max-width: 120px !important;
+            max-height: 120px !important;
           }
           
-          /* Force home screen icon to show with small padding */
-          [class*="home-screen"] [class*="icon"],
-          [class*="homescreen"] [class*="icon"] {
-            background-size: 85% !important; /* Add small padding */
-            border-radius: 17% !important;
-            background-color: #191414 !important;
+          /* Icon appearance fixes for home screen */
+          .pwa-icon {
+            border-radius: 18% !important;
+            background-color: #121212 !important;
+            padding: 8% !important;
+            box-sizing: border-box !important;
+          }
+        }
+        
+        /* Android Chrome specific fixes */
+        @media screen and (display-mode: standalone) and (orientation: portrait) {
+          /* Ensure consistent background during transitions */
+          * {
+            background-color: inherit !important;
+          }
+          
+          /* Fix for status bar area */
+          body {
+            padding-top: env(safe-area-inset-top, 0px) !important;
           }
         }
       `;
+      
+      // Remove existing style if present
+      const existingStyle = document.getElementById('android-pwa-fixes');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+      
       document.head.appendChild(style);
     };
 
-    ensureMaskableIcons();
+    fixAndroidPWA();
+    
+    // Re-apply fixes when the page becomes visible (handles app switching)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        setTimeout(fixAndroidPWA, 100);
+      }
+    });
   }, []);
   
   if (isInstalledPWA || !showHelper) return null;

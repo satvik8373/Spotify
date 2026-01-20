@@ -46,21 +46,36 @@
 		<meta http-equiv="Pragma" content="no-cache" />
 		<meta http-equiv="Expires" content="0" />
 		
-		<meta name="theme-color" content="#1DB954" media="(prefers-color-scheme: light)" />
-		<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+		<meta name="theme-color" content="#121212" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="Mavrixfy" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="format-detection" content="telephone=no" />
 		<meta name="msapplication-tap-highlight" content="no" />
-		<meta name="msapplication-TileColor" content="#1DB954" />
+		<meta name="msapplication-TileColor" content="#121212" />
 		<meta name="msapplication-config" content="/browserconfig.xml" />
+		
+		<!-- Android Chrome PWA Splash Screen -->
+		<meta name="theme-color" content="#121212" />
+		<meta name="background-color" content="#121212" />
+		
+		<!-- Android specific splash screen meta tags -->
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="mobile-web-app-title" content="Mavrixfy" />
+		
+		<!-- Prevent Android WebView white flash -->
+		<meta name="color-scheme" content="dark" />
+		<meta name="supported-color-schemes" content="dark" />
 		
 		<title>Mavrixfy</title>
 		
 		<!-- PWA Manifest -->
 		<link rel="manifest" href="/manifest.json" />
+		
+		<!-- Android PWA Fixes -->
+		<link rel="stylesheet" href="/android-pwa-fixes.css" />
 		
 		<!-- Preconnect to external domains for faster loading -->
 		<link rel="preconnect" href="https://firebase.googleapis.com" crossorigin>
@@ -99,26 +114,78 @@
 		
 		<!-- Critical CSS inline for mobile -->
 		<style>
+			/* Prevent white flash on Android PWA */
+			:root {
+				color-scheme: dark;
+				background-color: #121212 !important;
+			}
+			
 			/* Mobile-first critical CSS */
-			* { box-sizing: border-box; }
+			* { 
+				box-sizing: border-box; 
+			}
+			
+			html { 
+				background-color: #121212 !important; 
+				color-scheme: dark;
+			}
+			
 			body { 
 				margin: 0; 
 				padding: 0; 
 				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 				background-color: #121212 !important; /* Prevent white flicker */
 				color: white;
+				overflow-x: hidden;
 			}
-			html { background-color: #121212 !important; } /* Prevent white flicker */
-			.mobile-device { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
-			.mobile-device * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-			.mobile-device input, .mobile-device textarea { -webkit-user-select: text; user-select: text; }
+			
+			/* Android PWA splash screen styling */
+			@media (display-mode: standalone) {
+				body {
+					background-color: #121212 !important;
+				}
+				
+				/* Hide splash screen elements that might cause white flash */
+				body::before {
+					content: '';
+					position: fixed;
+					top: 0;
+					left: 0;
+					width: 100%;
+					height: 100%;
+					background-color: #121212;
+					z-index: -1;
+				}
+			}
+			
+			.mobile-device { 
+				-webkit-text-size-adjust: 100%; 
+				-webkit-tap-highlight-color: transparent; 
+			}
+			
+			.mobile-device * { 
+				-webkit-touch-callout: none; 
+				-webkit-user-select: none; 
+				user-select: none; 
+			}
+			
+			.mobile-device input, .mobile-device textarea { 
+				-webkit-user-select: text; 
+				user-select: text; 
+			}
 			
 			/* Mobile-safe-area support */
-			.mobile-device { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+			.mobile-device { 
+				padding-top: env(safe-area-inset-top); 
+				padding-bottom: env(safe-area-inset-bottom); 
+			}
 			
 			/* Mobile touch targets */
 			@media (max-width: 768px) {
-				button, a, input, select, textarea { min-width: 44px; min-height: 44px; }
+				button, a, input, select, textarea { 
+					min-width: 44px; 
+					min-height: 44px; 
+				}
 			}
 			
 			/* Smooth fade animation */
@@ -170,14 +237,19 @@
 			
 			// Dynamic PWA theme color matching with homepage
 			function updatePWAThemeColors() {
-				const isDark = document.documentElement.classList.contains('dark');
-				const themeColor = '#121212'; // Always use dark theme color
+				const themeColor = '#121212'; // Always use dark theme color for Android
 				const statusBarStyle = 'black-translucent'; // Always use dark status bar
 				
 				// Update theme-color meta tag
-				const themeMeta = document.querySelector('meta[name="theme-color"]');
-				if (themeMeta) {
-					themeMeta.setAttribute('content', themeColor);
+				const themeMetas = document.querySelectorAll('meta[name="theme-color"]');
+				themeMetas.forEach(meta => {
+					meta.setAttribute('content', themeColor);
+				});
+				
+				// Update background-color meta tag for Android splash
+				const bgMeta = document.querySelector('meta[name="background-color"]');
+				if (bgMeta) {
+					bgMeta.setAttribute('content', themeColor);
 				}
 				
 				// Update Apple status bar style
@@ -189,6 +261,9 @@
 				// Update body background to match homepage - always dark
 				document.body.style.backgroundColor = themeColor;
 				document.body.style.transition = 'background-color 0.3s ease';
+				
+				// Ensure HTML background is also dark
+				document.documentElement.style.backgroundColor = themeColor;
 			}
 			
 			// Initial theme color update

@@ -7,7 +7,11 @@ interface SplashScreenProps {
 const SplashScreen = ({}: SplashScreenProps) => {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black"
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ 
+        backgroundColor: '#121212',
+        willChange: 'transform, opacity'
+      }}
       aria-label="Mavrixfy splash screen"
     >
       {/* Container for perfect centering with GPU acceleration */}
@@ -19,11 +23,14 @@ const SplashScreen = ({}: SplashScreenProps) => {
         <img
           src="/mavrixfy.png"
           alt="Mavrixfy"
-          className="absolute inset-0 w-full h-full object-contain animate-fade-in"
+          className="absolute inset-0 w-full h-full object-contain animate-fade-in splash-icon"
           role="img"
           aria-label="Mavrixfy logo"
           loading="eager"
           decoding="async"
+          style={{
+            filter: 'drop-shadow(0 0 20px rgba(29, 185, 84, 0.3))'
+          }}
         />
       </div>
     </div>
