@@ -85,6 +85,29 @@ export const isIOS = (): boolean => {
 };
 
 /**
+ * Check if iOS device is in Low Power Mode (affects background audio)
+ */
+export const isIOSLowPowerMode = (): boolean => {
+  if (!isIOS()) return false;
+  
+  try {
+    // iOS Low Power Mode can be detected by checking if requestAnimationFrame is throttled
+    const start = performance.now();
+    let rafCalled = false;
+    
+    requestAnimationFrame(() => {
+      rafCalled = true;
+    });
+    
+    // In Low Power Mode, RAF is heavily throttled
+    // This is a heuristic and may not be 100% accurate
+    return !rafCalled && (performance.now() - start) > 100;
+  } catch (error) {
+    return false;
+  }
+};
+
+/**
  * Check if running on Android
  */
 export const isAndroid = (): boolean => {
@@ -466,7 +489,7 @@ class SimpleBackgroundAudioManager {
 
       // Handle iOS-specific audio interruptions
       document.addEventListener('webkitvisibilitychange', () => {
-        if (document.webkitHidden && this.isPlaying) {
+        if ((document as any).webkitHidden && this.isPlaying) {
           console.log('📱 iOS webkit visibility change - maintaining audio');
           this.maintainBackgroundPlayback();
         }
@@ -605,7 +628,6 @@ class SimpleBackgroundAudioManager {
                 if (this.audio && this.audio.paused && !this.audio.ended && this.isPlaying) {
                   // Force reload and play for iOS if needed
                   const currentTime = this.audio.currentTime;
-                  const src = this.audio.src;
                   this.audio.load();
                   this.audio.currentTime = currentTime;
                   this.audio.play().catch(() => {
