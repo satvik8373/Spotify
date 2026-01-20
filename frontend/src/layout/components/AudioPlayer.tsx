@@ -274,30 +274,114 @@ const AudioPlayer = () => {
 
     // Set additional action handlers that need store access
     try {
+      // Play/Pause handlers (already set in backgroundAudioManager, but ensure they work with store)
+      navigator.mediaSession.setActionHandler('play', () => {
+        console.log('🎵 Lock screen play action');
+        setUserInteracted();
+        setIsPlaying(true);
+      });
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        console.log('⏸️ Lock screen pause action');
+        setUserInteracted();
+        setIsPlaying(false);
+      });
+
+      // Next track
       navigator.mediaSession.setActionHandler('nexttrack', () => {
-        console.log('MediaSession next track action');
+        console.log('⏭️ Lock screen next track action');
         setUserInteracted();
         playNext();
       });
 
+      // Previous track
       navigator.mediaSession.setActionHandler('previoustrack', () => {
-        console.log('MediaSession previous track action');
+        console.log('⏮️ Lock screen previous track action');
         setUserInteracted();
-        // Add previous track functionality if available
+        const { playPrevious } = usePlayerStore.getState();
+        playPrevious();
       });
 
-      // Seek handlers for better control
+      // Seek to specific position
       navigator.mediaSession.setActionHandler('seekto', (details) => {
         if (audioRef.current && details.seekTime !== undefined) {
+          console.log('🔍 Lock screen seek to:', details.seekTime);
           audioRef.current.currentTime = details.seekTime;
           setStoreCurrentTime(details.seekTime);
+          setUserInteracted();
         }
       });
+
+      // Seek forward (10 seconds)
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        if (audioRef.current) {
+          const seekOffset = details.seekOffset || 10;
+          console.log('⏩ Lock screen seek forward:', seekOffset);
+          audioRef.current.currentTime = Math.min(
+            audioRef.current.currentTime + seekOffset,
+            audioRef.current.duration
+          );
+          setStoreCurrentTime(audioRef.current.currentTime);
+          setUserInteracted();
+        }
+      });
+
+      // Seek backward (10 seconds)
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        if (audioRef.current) {
+          const seekOffset = details.seekOffset || 10;
+          console.log('⏪ Lock screen seek backward:', seekOffset);
+          audioRef.current.currentTime = Math.max(
+            audioRef.current.currentTime - seekOffset,
+            0
+          );
+          setStoreCurrentTime(audioRef.current.currentTime);
+          setUserInteracted();
+        }
+      });
+
+      console.log('✅ Lock screen controls configured successfully');
 
     } catch (error) {
       console.warn('MediaSession action handlers setup failed:', error);
     }
   }, [currentSong, isPlaying, setIsPlaying, playNext, setUserInteracted, setStoreCurrentTime]);
+
+  // Update MediaSession position state for lock screen progress bar
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !audioRef.current) return;
+
+    const audio = audioRef.current;
+
+    const updatePositionState = () => {
+      if ('setPositionState' in navigator.mediaSession) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: audio.duration || 0,
+            playbackRate: audio.playbackRate || 1.0,
+            position: audio.currentTime || 0
+          });
+        } catch (error) {
+          // Ignore errors when duration is not available yet
+        }
+      }
+    };
+
+    // Update position state when metadata loads
+    audio.addEventListener('loadedmetadata', updatePositionState);
+
+    // Update position state periodically during playback
+    const positionInterval = setInterval(() => {
+      if (isPlaying && !audio.paused) {
+        updatePositionState();
+      }
+    }, 1000);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', updatePositionState);
+      clearInterval(positionInterval);
+    };
+  }, [currentSong, isPlaying]);
 
   // Simple event handlers
   const handleTimeUpdate = useCallback(() => {

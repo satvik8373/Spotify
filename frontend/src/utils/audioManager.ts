@@ -567,6 +567,38 @@ class SimpleBackgroundAudioManager {
         }
       });
 
+      // Seek forward handler (10 seconds default)
+      try {
+        navigator.mediaSession.setActionHandler('seekforward', (details) => {
+          if (this.audio) {
+            const seekOffset = details.seekOffset || 10;
+            console.log('⏩ MediaSession seek forward:', seekOffset);
+            this.audio.currentTime = Math.min(
+              this.audio.currentTime + seekOffset,
+              this.audio.duration
+            );
+          }
+        });
+      } catch (error) {
+        console.log('Seek forward not supported');
+      }
+
+      // Seek backward handler (10 seconds default)
+      try {
+        navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+          if (this.audio) {
+            const seekOffset = details.seekOffset || 10;
+            console.log('⏪ MediaSession seek backward:', seekOffset);
+            this.audio.currentTime = Math.max(
+              this.audio.currentTime - seekOffset,
+              0
+            );
+          }
+        });
+      } catch (error) {
+        console.log('Seek backward not supported');
+      }
+
       console.log('🎛️ MediaSession configured' + (isIOS() ? ' with iOS enhancements' : ''));
     } catch (error) {
       console.warn('MediaSession setup failed:', error);
