@@ -1,3 +1,5 @@
+// React import kept for JSX runtime compatibility in some tooling
+import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -12,7 +14,6 @@ configureWebViewAuth();
 if (import.meta.env.DEV) {
   console.log('🌍 Environment Info:', getEnvironmentInfo());
 }
-
 
 // Register service worker
 if ('serviceWorker' in navigator) {

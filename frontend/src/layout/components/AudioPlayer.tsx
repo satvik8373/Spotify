@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { resolveArtist } from '@/lib/resolveArtist';
-
+import { backgroundAudioManager, configureAudioElement } from '@/utils/audioManager';
 
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -117,12 +117,18 @@ const AudioPlayer = () => {
     }
   }, [streamingQuality]);
 
-  // Initialize audio element
+  // Initialize audio element with background audio support
   useEffect(() => {
     if (audioRef.current) {
       const audio = audioRef.current;
 
-      console.log('🎵 Initializing audio system');
+      console.log('🎵 Initializing reliable background audio system');
+
+      // Configure audio element for background playback
+      configureAudioElement(audio);
+
+      // Initialize background audio manager
+      backgroundAudioManager.initialize(audio);
 
       // Initialize audio context on first user interaction
       const handleFirstPlay = () => {
@@ -131,7 +137,6 @@ const AudioPlayer = () => {
         audio.removeEventListener('play', handleFirstPlay);
       };
       audio.addEventListener('play', handleFirstPlay);
-
 
       // Apply initial settings
       applyStreamingQuality();
@@ -194,7 +199,7 @@ const AudioPlayer = () => {
     }
   }, [currentSong]);
 
-  // Handle play/pause state changes
+  // Handle play/pause state changes and sync with background audio manager
   useEffect(() => {
     console.log('🎛️ Play/pause effect triggered:', { isPlaying, hasAudio: !!audioRef.current });
 
@@ -204,6 +209,9 @@ const AudioPlayer = () => {
     }
 
     const audio = audioRef.current;
+
+    // Update background audio manager
+    backgroundAudioManager.setPlaying(isPlaying);
 
     console.log('📊 Audio state:', {
       paused: audio.paused,
@@ -256,18 +264,12 @@ const AudioPlayer = () => {
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentSong) return;
 
-    // Setup MediaSession metadata
-    navigator.mediaSession.metadata = new MediaMetadata({
+    // Use the background audio manager's MediaSession setup
+    backgroundAudioManager.setupMediaSession({
       title: currentSong.title || 'Unknown Title',
       artist: resolveArtist(currentSong),
       album: currentSong.albumId || 'Unknown Album',
-      artwork: [
-        {
-          src: currentSong.imageUrl || '',
-          sizes: '512x512',
-          type: 'image/jpeg'
-        }
-      ]
+      artwork: currentSong.imageUrl || ''
     });
 
     // Set additional action handlers that need store access
@@ -328,12 +330,13 @@ const AudioPlayer = () => {
     setTimeout(() => playNext(), 1000);
   }, [playNext]);
 
-  // Cleanup audio context on unmount
+  // Cleanup audio context and background audio manager on unmount
   useEffect(() => {
     return () => {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close().catch(console.warn);
       }
+      backgroundAudioManager.cleanup();
     };
   }, []);
 
@@ -361,7 +364,6 @@ const AudioPlayer = () => {
       }}
       preload="metadata"
       playsInline
-      crossOrigin="anonymous"
       controls={false}
     />
   );

@@ -1,12 +1,11 @@
 import { useEffect, useRef } from 'react';
 import {
   isIOS,
-  isPWA,
   initAudioContext,
-  unlockAudioOnIOS,
-  configureAudioForIOS,
-  playAudioForIOS
-} from '@/utils/iosAudioFix';
+  markUserInteraction,
+  configureAudioElement,
+  playAudioSafely
+} from '@/utils/audioManager';
 
 /**
  * Hook to handle iOS audio playback issues
@@ -15,7 +14,7 @@ import {
 export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
   const isUnlocked = useRef(false);
   const isIOSDevice = isIOS();
-  const isPWAMode = isPWA();
+  const isPWAMode = window.matchMedia('(display-mode: standalone)').matches;
 
   useEffect(() => {
     if (!isIOSDevice) return;
@@ -26,8 +25,17 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
     // Unlock audio on first user interaction
     const unlockAudio = () => {
       if (!isUnlocked.current) {
-        unlockAudioOnIOS();
+        markUserInteraction();
         isUnlocked.current = true;
+
+        // Basic iOS audio setup
+        if (audioElement) {
+          try {
+            audioElement.setAttribute('x-webkit-airplay', 'allow');
+          } catch (error) {
+            console.warn('iOS audio setup failed:', error);
+          }
+        }
       }
     };
 
@@ -42,16 +50,44 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
         document.removeEventListener(event, unlockAudio);
       });
     };
-  }, [isIOSDevice]);
+  }, [isIOSDevice, audioElement]);
+
+  // Handle iOS PWA state changes
+  useEffect(() => {
+    if (!isIOSDevice || !isPWAMode || !audioElement) return;
+
+    const handleAppStateChange = () => {
+      // Basic state change handling
+      if (document.hidden) {
+        console.log('iOS PWA backgrounded');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleAppStateChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleAppStateChange);
+    };
+  }, [isIOSDevice, isPWAMode, audioElement]);
 
   useEffect(() => {
     if (!audioElement || !isIOSDevice) return;
 
-    // Configure audio element for iOS background playback
-    configureAudioForIOS(audioElement);
+    // Configure audio element for iOS
+    configureAudioElement(audioElement);
 
-    // Note: We do NOT pause audio on visibility change
-    // The configureAudioForIOS function handles background playback
+    // Handle audio interruptions (phone calls, etc.)
+    const handleInterruption = () => {
+      if (audioElement && !audioElement.paused) {
+        audioElement.pause();
+      }
+    };
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        handleInterruption();
+      }
+    });
 
     return () => {
       // Cleanup
@@ -63,11 +99,7 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
     if (!audioElement) return;
 
     try {
-      if (isIOSDevice) {
-        await playAudioForIOS(audioElement);
-      } else {
-        await audioElement.play();
-      }
+      await playAudioSafely(audioElement);
     } catch (error: any) {
       if (error.message === 'USER_INTERACTION_REQUIRED') {
         console.warn('User interaction required to play audio');
