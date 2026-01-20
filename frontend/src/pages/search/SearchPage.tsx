@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { usePlayerStore } from '@/stores/usePlayerStore';
@@ -7,23 +7,23 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Play,
-  Loader,
   Search,
   XCircle,
   Instagram,
   Mic,
-  ExternalLink
+  ExternalLink,
+  Music
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '../../contexts/AuthContext';
-import { ContentLoading } from '@/components/ui/loading';
 import { PlaylistCard } from '@/components/playlist/PlaylistCard';
 import type { Playlist } from '@/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useMemo } from 'react';
 import { resolveArtist } from '@/lib/resolveArtist';
+import EnhancedSearchSuggestions from '@/components/EnhancedSearchSuggestions';
 
 // Maximum number of recent searches to store
 const MAX_RECENT_SEARCHES = 8;
@@ -78,6 +78,11 @@ const SearchPage = () => {
   const { searchPlaylists, searchResults: playlistResults } = usePlaylistStore();
   const { isAuthenticated, user } = useAuth();
   const [isInitialLoad, setIsInitialLoad] = useState(false);
+
+  // Enhanced search states
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Recent searches state
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -197,7 +202,7 @@ const SearchPage = () => {
   };
 
   // Remove a specific recent search
-  const removeRecentSearch = (searchToRemove: string, e: React.MouseEvent) => {
+  const handleRemoveRecentSearch = (searchToRemove: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click event
 
     const updatedSearches = recentSearches.filter(
@@ -214,11 +219,12 @@ const SearchPage = () => {
     localStorage.removeItem('recentSearches');
   };
 
-  // Update the search when the URL changes
+  // Enhanced search with better performance and more aggressive matching
   useEffect(() => {
     if (query) {
       setSearchQuery(query);
       saveRecentSearch(query);
+      setIsSearching(true);
 
       // Create an array of promises for all search operations
       const searchPromises = [
@@ -226,20 +232,63 @@ const SearchPage = () => {
         searchPlaylists(query)
       ];
 
-      // Wait for all searches to complete
-      Promise.all(searchPromises)
-        .then(() => {
-          setIsInitialLoad(false);
-        })
-        .catch(error => {
+      // Enhanced query variations for better results
+      const queryVariations = [
+        query,
+        // Basic spelling variations
+        query.replace(/aa/g, 'a'), // saiyaara -> saiyara
+        query.replace(/a/g, 'aa'),  // saiyara -> saiyaara
+        query.replace(/y/g, 'i'),   // saiyara -> saiara
+        query.replace(/i/g, 'y'),   // saiara -> saiyara
+        // Common Hindi/Urdu variations
+        query.replace(/hoto/g, 'hi ho'), // tum hoto -> tum hi ho
+        query.replace(/ho to/g, 'hi ho'), // tum ho to -> tum hi ho
+        query.replace(/ho toh/g, 'hi ho'), // tum ho toh -> tum hi ho
+        query.replace(/tum hoto/g, 'tum hi ho'), // direct replacement
+        query.replace(/tum ho to/g, 'tum hi ho'), // direct replacement
+        query.replace(/tum ho toh/g, 'tum hi ho'), // direct replacement
+        // Remove extra spaces and normalize
+        query.replace(/\s+/g, ' ').trim(),
+        // Try without common words
+        query.replace(/\b(hai|he|hain|ka|ki|ke|ko|se|mein|main)\b/g, '').replace(/\s+/g, ' ').trim(),
+        // Try individual words if multi-word query
+        ...(query.includes(' ') ? query.split(' ').filter(word => word.length > 2) : [])
+      ].filter((v, i, arr) => arr.indexOf(v) === i && v.length > 0); // Remove duplicates and empty strings
+
+      // Search with variations if original query doesn't yield good results
+      const searchWithVariations = async () => {
+        try {
+          await Promise.all(searchPromises);
+          
+          // If we have very few results, try variations
+          const currentResults = useMusicStore.getState().indianSearchResults;
+          if (currentResults.length < 5 && queryVariations.length > 1) {
+            for (const variation of queryVariations.slice(1)) {
+              if (variation !== query && variation.length > 1) {
+                await searchIndianSongs(variation);
+                const newResults = useMusicStore.getState().indianSearchResults;
+                if (newResults.length > currentResults.length) {
+                  console.log(`Found better results with variation: "${variation}"`);
+                  break; // Found better results with variation
+                }
+              }
+            }
+          }
+        } catch (error) {
           console.error('Search failed:', error);
+        } finally {
           setIsInitialLoad(false);
-        });
+          setIsSearching(false);
+        }
+      };
+
+      searchWithVariations();
     } else {
       // Clear search results if no query
       useMusicStore.setState({ indianSearchResults: [] });
       usePlaylistStore.setState({ searchResults: [] });
       setIsInitialLoad(false);
+      setIsSearching(false);
     }
   }, [query, searchIndianSongs, searchPlaylists]);
 
@@ -266,7 +315,7 @@ const SearchPage = () => {
     }
   }, [songId, indianSearchResults]);
 
-  // Compute sorted results prioritizing official/real artist matches
+  // Compute sorted results with improved fuzzy matching and spelling suggestions
   const sortedIndianResults = useMemo(() => {
     if (!indianSearchResults || indianSearchResults.length === 0) return [] as any[];
     const qRaw = (query || '').trim();
@@ -276,6 +325,102 @@ const SearchPage = () => {
     const penaltyWords = ['unknown', 'various', 'tribute', 'cover', 'karaoke', 'hits', 'best of', 'playlist', 'compilation'];
     const remixWords = ['remix', 'sped up', 'slowed', 'reverb', 'mashup'];
 
+    // Enhanced spelling variations and phonetic matches
+    const spellingSuggestions: { [key: string]: string[] } = {
+      'saiyaara': ['saiyara', 'saiyaara', 'saiyara', 'sayara', 'sayaara', 'saiara', 'saiyara'],
+      'saiyara': ['saiyaara', 'saiyara', 'sayara', 'sayaara'],
+      'tum': ['tum', 'toom', 'toom', 'tum hi ho', 'tum hoto', 'tum ho to'],
+      'hoto': ['ho to', 'hoto', 'ho toh', 'hi ho'],
+      'ho': ['ho', 'hoo', 'hu'],
+      'to': ['to', 'toh', 'too'],
+      'toh': ['toh', 'to', 'too'],
+      'mere': ['mere', 'meri', 'mera'],
+      'dil': ['dil', 'dill', 'dill'],
+      'hai': ['hai', 'he', 'hain'],
+      'he': ['hai', 'he', 'hain'],
+      'hain': ['hai', 'he', 'hain'],
+      'ishq': ['ishq', 'ishque', 'ishk'],
+      'pyaar': ['pyaar', 'pyar', 'piyar', 'piyaar'],
+      'mohabbat': ['mohabbat', 'muhabbat', 'mohabat', 'muhabat'],
+      'judaai': ['judaai', 'judai', 'juda', 'judaayi'],
+      'judai': ['judaai', 'judai', 'juda', 'judaayi'],
+      'bewafa': ['bewafa', 'bewafaa', 'bewfaa', 'bewfa'],
+      'intezaar': ['intezaar', 'intezar', 'intizar', 'intizaar'],
+      'intezar': ['intezaar', 'intezar', 'intizar', 'intizaar'],
+      'khushi': ['khushi', 'khusi', 'kushi', 'kushy'],
+      'gham': ['gham', 'gam', 'ghum', 'gum'],
+      'gam': ['gham', 'gam', 'ghum', 'gum'],
+      'zindagi': ['zindagi', 'jindagi', 'zindgi', 'jindgi'],
+      'jindagi': ['zindagi', 'jindagi', 'zindgi', 'jindgi'],
+      'duniya': ['duniya', 'dunya', 'dunia', 'duniyaa'],
+      'dunya': ['duniya', 'dunya', 'dunia', 'duniyaa']
+    };
+
+    // Function to get all possible spellings for a word
+    const getAllSpellings = (word: string): string[] => {
+      const wordLower = word.toLowerCase();
+      const variations = spellingSuggestions[wordLower] || [];
+      return [word, ...variations];
+    };
+
+    // Enhanced fuzzy match function
+    const fuzzyMatch = (str1: string, str2: string): number => {
+      const s1 = str1.toLowerCase();
+      const s2 = str2.toLowerCase();
+      
+      // Exact match
+      if (s1 === s2) return 100;
+      
+      // Contains match
+      if (s1.includes(s2) || s2.includes(s1)) return 80;
+      
+      // Word boundary matches (important for multi-word queries)
+      const s1Words = s1.split(/\s+/);
+      const s2Words = s2.split(/\s+/);
+      
+      let wordMatches = 0;
+      for (const word1 of s1Words) {
+        for (const word2 of s2Words) {
+          if (word1 === word2) wordMatches += 20;
+          else if (word1.includes(word2) || word2.includes(word1)) wordMatches += 15;
+        }
+      }
+      
+      if (wordMatches > 0) return Math.min(wordMatches, 75);
+      
+      // Levenshtein distance based scoring
+      const maxLen = Math.max(s1.length, s2.length);
+      const distance = levenshteinDistance(s1, s2);
+      const similarity = ((maxLen - distance) / maxLen) * 100;
+      
+      return similarity > 50 ? similarity : 0;
+    };
+
+    // Simple Levenshtein distance implementation
+    const levenshteinDistance = (str1: string, str2: string): number => {
+      const matrix = [];
+      for (let i = 0; i <= str2.length; i++) {
+        matrix[i] = [i];
+      }
+      for (let j = 0; j <= str1.length; j++) {
+        matrix[0][j] = j;
+      }
+      for (let i = 1; i <= str2.length; i++) {
+        for (let j = 1; j <= str1.length; j++) {
+          if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+            matrix[i][j] = matrix[i - 1][j - 1];
+          } else {
+            matrix[i][j] = Math.min(
+              matrix[i - 1][j - 1] + 1,
+              matrix[i][j - 1] + 1,
+              matrix[i - 1][j] + 1
+            );
+          }
+        }
+      }
+      return matrix[str2.length][str1.length];
+    };
+
     const score = (song: any): number => {
       const title = (song?.title || song?.name || '').toLowerCase();
       const artist = resolveArtist(song).toLowerCase();
@@ -283,36 +428,83 @@ const SearchPage = () => {
 
       if (!q) return s;
 
-      // Strong artist matches first
-      if (artist === q) s += 120;
-      if (artist.includes(q)) s += 80;
+      // Get all possible spellings for query tokens
+      const expandedTokens = qTokens.flatMap(token => getAllSpellings(token));
 
-      // Title matches
-      if (title === q) s += 60;
-      if (title.includes(q)) s += 30;
+      // Exact matches get highest priority
+      if (title === q) s += 200;
+      if (artist === q) s += 190;
 
-      // Token coverage: bonus for covering most tokens in title
-      const covered = qTokens.filter(t => title.includes(t)).length;
-      s += covered * 15;
-      if (covered >= Math.max(1, Math.ceil(qTokens.length * 0.7))) s += 25;
+      // Multi-word query handling
+      if (qTokens.length > 1) {
+        const titleWords = title.split(/\s+/);
+        const artistWords = artist.split(/\s+/);
+        
+        // Check if all query words appear in title or artist
+        const titleWordMatches = qTokens.filter((token: string) => 
+          titleWords.some((word: string) => word.includes(token) || token.includes(word))
+        ).length;
+        
+        const artistWordMatches = qTokens.filter((token: string) => 
+          artistWords.some((word: string) => word.includes(token) || token.includes(word))
+        ).length;
+        
+        // Boost songs where multiple query words match
+        s += (titleWordMatches / qTokens.length) * 100;
+        s += (artistWordMatches / qTokens.length) * 80;
+      }
 
-      // Penalize generic or unofficial indicators
+      // Check for spelling variations with enhanced scoring
+      for (const token of expandedTokens) {
+        const tokenLower = token.toLowerCase();
+        
+        // Title fuzzy matching
+        const titleFuzzy = fuzzyMatch(title, tokenLower);
+        if (titleFuzzy > 0) s += titleFuzzy * 0.9;
+        
+        // Artist fuzzy matching
+        const artistFuzzy = fuzzyMatch(artist, tokenLower);
+        if (artistFuzzy > 0) s += artistFuzzy * 0.8;
+        
+        // Word boundary matches (more precise)
+        const titleRegex = new RegExp(`\\b${tokenLower}\\b`, 'i');
+        const artistRegex = new RegExp(`\\b${tokenLower}\\b`, 'i');
+        
+        if (titleRegex.test(title)) s += 60;
+        if (artistRegex.test(artist)) s += 55;
+        
+        // Partial word matches
+        if (title.includes(tokenLower)) s += 40;
+        if (artist.includes(tokenLower)) s += 35;
+        if (title.startsWith(tokenLower)) s += 25;
+        if (artist.startsWith(tokenLower)) s += 20;
+      }
+
+      // Original token matching (for exact spellings)
+      for (const token of qTokens) {
+        if (title.includes(token)) s += 45;
+        if (artist.includes(token)) s += 40;
+        if (title.startsWith(token)) s += 25;
+        if (artist.startsWith(token)) s += 20;
+      }
+
+      // Penalize low-quality results
       if (penaltyWords.some(w => artist.includes(w))) s -= 60;
       if (penaltyWords.some(w => title.includes(w))) s -= 30;
-      if (remixWords.some(w => title.includes(w))) s -= 25;
+      if (remixWords.some(w => title.includes(w))) s -= 15;
 
-      // Slight boost if title starts with the query
-      if (title.startsWith(q)) s += 10;
+      // Boost for popular songs
+      if (song.playCount && song.playCount > 1000000) s += 15;
+      if (song.playCount && song.playCount > 10000000) s += 25;
+      if (song.year && parseInt(song.year) >= new Date().getFullYear() - 2) s += 10;
 
-      // If neither title nor artist contains query tokens, penalize heavily
-      const artistCovered = qTokens.filter(t => artist.includes(t)).length;
-      if (covered === 0 && artistCovered === 0) s -= 100;
-
-      return s;
+      return Math.max(0, s);
     };
 
     return [...indianSearchResults]
-      .sort((a, b) => score(b) - score(a));
+      .map(song => ({ ...song, relevanceScore: score(song) }))
+      .filter(song => song.relevanceScore > 0)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore);
   }, [indianSearchResults, query]);
 
   // Update auth store with current user info
@@ -325,6 +517,7 @@ const SearchPage = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      setShowSuggestions(false);
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
@@ -332,11 +525,73 @@ const SearchPage = () => {
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
+    setShowSuggestions(value.length > 0);
+  };
+
+  // Mobile-specific state
+  const [isTouchingSuggestions, setIsTouchingSuggestions] = useState(false);
+
+  const handleInputFocus = () => {
+    setShowSuggestions(searchQuery.length > 0 || recentSearches.length > 0);
+  };
+
+  const handleInputBlur = () => {
+    // Don't hide suggestions if user is touching them
+    if (isTouchingSuggestions) {
+      return;
+    }
+    // Standard delay for both desktop and mobile
+    setTimeout(() => {
+      if (!isTouchingSuggestions) {
+        setShowSuggestions(false);
+      }
+    }, 200);
+  };
+
+  const handleSuggestionSelect = (songOrQuery: any) => {
+    // If it's a song object with the necessary properties, play it directly
+    if (songOrQuery && typeof songOrQuery === 'object' && (songOrQuery.title || songOrQuery.name)) {
+      // Check if the song has a valid audio URL
+      if (!songOrQuery.url) {
+        toast.error('This song is not available for playback');
+        return;
+      }
+      
+      // Convert IndianSong to App Song format
+      const convertedSong = useMusicStore.getState().convertIndianSongToAppSong(songOrQuery);
+      
+      // Play the song directly
+      const playerStore = usePlayerStore.getState();
+      playerStore.setCurrentSong(convertedSong);
+      
+      // Ensure the player is ready to play
+      if (!playerStore.hasUserInteracted) {
+        playerStore.setUserInteracted();
+      }
+      
+      setShowSuggestions(false);
+      setIsTouchingSuggestions(false);
+      toast.success(`Now playing: ${songOrQuery.title || songOrQuery.name}`);
+    } else {
+      // If it's a string, treat it as a search query
+      const query = typeof songOrQuery === 'string' ? songOrQuery : songOrQuery.toString();
+      setSearchQuery(query);
+      setShowSuggestions(false);
+      setIsTouchingSuggestions(false);
+      navigate(`/search?q=${encodeURIComponent(query)}`);
+    }
+  };
+
+  const handlePlaylistSelect = (playlistId: string) => {
+    setShowSuggestions(false);
+    navigate(`/playlist/${playlistId}`);
   };
 
   const clearSearch = () => {
     setSearchQuery('');
+    setShowSuggestions(false);
     navigate('/search');
+    searchInputRef.current?.focus();
   };
 
   const clickRecentSearch = (searchTerm: string) => {
@@ -348,45 +603,43 @@ const SearchPage = () => {
   };
 
   const renderEmptyState = () => (
-    <div className="space-y-8">
+    <div className="space-y-6 w-full overflow-x-hidden">
       {/* Recent Searches Section */}
       {recentSearches.length > 0 && (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">Recent searches</h2>
+        <div className="bg-[#181818] rounded-lg p-4 md:p-6 border border-[#282828] w-full overflow-hidden">
+          <div className="flex justify-between items-center mb-4 gap-2">
+            <h2 className="text-xl font-bold text-white flex-shrink-0">Recent searches</h2>
             <Button
-              variant="ghost"
-              size="sm"
               onClick={clearAllRecentSearches}
-              className="text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
+              className="bg-transparent hover:bg-[#242424] text-[#b3b3b3] hover:text-white border-0 rounded-full px-2 md:px-3 py-1 text-xs md:text-sm font-medium transition-colors flex-shrink-0"
             >
               Clear all
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3 w-full">
             {recentSearches.map((search, index) => (
               <div
                 key={index}
                 onClick={() => clickRecentSearch(search)}
-                className="bg-card hover:bg-accent rounded-md p-4 cursor-pointer transition-colors group relative border border-border"
+                className="bg-[#242424] hover:bg-[#2a2a2a] rounded-lg p-2 md:p-3 cursor-pointer transition-colors group relative border border-[#282828] min-w-0"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-                    <Search className="h-6 w-6 text-foreground" />
+                <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                  <div className="w-8 md:w-10 h-8 md:h-10 rounded-lg bg-[#535353] flex items-center justify-center flex-shrink-0">
+                    <Search className="h-4 md:h-5 w-4 md:w-5 text-[#b3b3b3]" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-foreground truncate">{search}</h3>
-                    <p className="text-xs text-muted-foreground">Recent search</p>
+                    <h3 className="text-xs md:text-sm font-medium text-white truncate">{search}</h3>
+                    <p className="text-xs text-[#b3b3b3]">Recent search</p>
                   </div>
                 </div>
 
-                {/* Delete button that appears on hover */}
+                {/* Delete button */}
                 <button
-                  onClick={(e) => removeRecentSearch(search, e)}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-muted text-muted-foreground hover:text-foreground hover:bg-accent transition-opacity"
+                  onClick={(e) => handleRemoveRecentSearch(search, e)}
+                  className="absolute top-1 md:top-2 right-1 md:right-2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-[#535353] text-[#b3b3b3] hover:text-white hover:bg-[#727272] transition-all duration-200"
                 >
-                  <XCircle className="h-4 w-4" />
+                  <XCircle className="h-2 md:h-3 w-2 md:w-3" />
                 </button>
               </div>
             ))}
@@ -394,23 +647,47 @@ const SearchPage = () => {
         </div>
       )}
 
+      {/* Browse Categories */}
+      <div className="bg-[#181818] rounded-lg p-4 md:p-6 border border-[#282828] w-full overflow-hidden">
+        <h2 className="text-xl font-bold text-white mb-4">Browse all</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 w-full">
+          {[
+            { name: 'Made For You', color: 'from-blue-800 to-blue-600' },
+            { name: 'Recently Played', color: 'from-green-800 to-green-600' },
+            { name: 'Liked Songs', color: 'from-purple-800 to-purple-600' },
+            { name: 'Albums', color: 'from-orange-800 to-orange-600' },
+            { name: 'Artists', color: 'from-red-800 to-red-600' },
+            { name: 'Podcasts', color: 'from-indigo-800 to-indigo-600' }
+          ].map((category, index) => (
+            <div
+              key={index}
+              className={`bg-gradient-to-br ${category.color} rounded-lg p-3 md:p-4 cursor-pointer transition-transform hover:scale-105 relative overflow-hidden h-20 md:h-24 min-w-0`}
+              onClick={() => handleSuggestionSelect(category.name)}
+            >
+              <h3 className="text-white font-bold text-xs md:text-sm truncate">{category.name}</h3>
+              <div className="absolute -bottom-2 -right-2 w-12 md:w-16 h-12 md:h-16 bg-black/20 rounded-lg transform rotate-12"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Follow on Instagram Section */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-foreground mb-4">Follow Us</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-[#181818] rounded-lg p-4 md:p-6 border border-[#282828] w-full overflow-hidden">
+        <h2 className="text-xl font-bold text-white mb-4">Follow Us</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 w-full">
           {/* First Instagram Account */}
           <div
             onClick={() => openInstagram(INSTAGRAM_URL)}
-            className="bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-lg overflow-hidden p-6 relative cursor-pointer transition-transform hover:scale-[1.02] flex items-center"
+            className="bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-lg overflow-hidden p-3 md:p-4 relative cursor-pointer transition-transform hover:scale-[1.02] flex items-center min-w-0"
           >
-            <div className="flex-1">
-              <div className="flex items-center mb-3">
-                <Instagram className="h-6 w-6 text-white mr-2" />
-                <h3 className="text-xl font-bold text-white">{INSTAGRAM_HANDLE}</h3>
+            <div className="flex-1 min-w-0 pr-2">
+              <div className="flex items-center mb-2">
+                <Instagram className="h-4 md:h-5 w-4 md:w-5 text-white mr-2 flex-shrink-0" />
+                <h3 className="text-sm md:text-lg font-bold text-white truncate">{INSTAGRAM_HANDLE}</h3>
               </div>
-              <p className="text-white/80 mb-4 text-sm">Music updates and news</p>
+              <p className="text-white/80 mb-2 md:mb-3 text-xs md:text-sm">Music updates and news</p>
               <Button
-                className="bg-white hover:bg-white/90 text-black font-medium rounded-full px-6 flex items-center"
+                className="bg-white hover:bg-white/90 text-black font-medium rounded-full px-3 md:px-4 py-1 text-xs md:text-sm flex items-center"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -418,12 +695,12 @@ const SearchPage = () => {
                 }}
               >
                 Follow
-                <ExternalLink className="ml-2 h-4 w-4" />
+                <ExternalLink className="ml-1 h-2 md:h-3 w-2 md:w-3" />
               </Button>
             </div>
-            <div className="hidden md:block">
-              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                <Instagram className="h-8 w-8 text-white" />
+            <div className="hidden md:block flex-shrink-0">
+              <div className="w-10 md:w-12 h-10 md:h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <Instagram className="h-5 md:h-6 w-5 md:w-6 text-white" />
               </div>
             </div>
           </div>
@@ -431,16 +708,16 @@ const SearchPage = () => {
           {/* Second Instagram Account */}
           <div
             onClick={() => openInstagram(INSTAGRAM_URL_TRADING)}
-            className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-400 rounded-lg overflow-hidden p-6 relative cursor-pointer transition-transform hover:scale-[1.02] flex items-center"
+            className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-500 rounded-lg overflow-hidden p-3 md:p-4 relative cursor-pointer transition-transform hover:scale-[1.02] flex items-center min-w-0"
           >
-            <div className="flex-1">
-              <div className="flex items-center mb-3">
-                <Instagram className="h-6 w-6 text-white mr-2" />
-                <h3 className="text-xl font-bold text-white">{INSTAGRAM_HANDLE_TRADING}</h3>
+            <div className="flex-1 min-w-0 pr-2">
+              <div className="flex items-center mb-2">
+                <Instagram className="h-4 md:h-5 w-4 md:w-5 text-white mr-2 flex-shrink-0" />
+                <h3 className="text-sm md:text-lg font-bold text-white truncate">{INSTAGRAM_HANDLE_TRADING}</h3>
               </div>
-              <p className="text-white/80 mb-4 text-sm">Trading insights and analytics</p>
+              <p className="text-white/80 mb-2 md:mb-3 text-xs md:text-sm">Trading insights and analytics</p>
               <Button
-                className="bg-white hover:bg-white/90 text-black font-medium rounded-full px-6 flex items-center"
+                className="bg-white hover:bg-white/90 text-black font-medium rounded-full px-3 md:px-4 py-1 text-xs md:text-sm flex items-center"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -448,12 +725,12 @@ const SearchPage = () => {
                 }}
               >
                 Follow
-                <ExternalLink className="ml-2 h-4 w-4" />
+                <ExternalLink className="ml-1 h-2 md:h-3 w-2 md:w-3" />
               </Button>
             </div>
-            <div className="hidden md:block">
-              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                <Instagram className="h-8 w-8 text-white" />
+            <div className="hidden md:block flex-shrink-0">
+              <div className="w-10 md:w-12 h-10 md:h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <Instagram className="h-5 md:h-6 w-5 md:w-6 text-white" />
               </div>
             </div>
           </div>
@@ -466,17 +743,19 @@ const SearchPage = () => {
     if (playlistResults.length === 0) return null;
 
     return (
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Playlists</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
+      <div className="bg-[#181818] rounded-lg p-4 md:p-6 border border-[#282828] mb-6 w-full overflow-hidden">
+        <h2 className="text-xl font-bold text-white mb-4">
+          Playlists
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 w-full">
           {playlistResults.map((playlist: Playlist) => (
-            <PlaylistCard
-              key={playlist._id}
-              playlist={playlist}
-              size="small"
-              showDescription={false}
-              className="w-full max-w-full h-full"
-            />
+            <div key={playlist._id} className="bg-[#242424] hover:bg-[#2a2a2a] rounded-lg p-2 md:p-3 transition-colors min-w-0">
+              <PlaylistCard
+                playlist={playlist}
+                showDescription={false}
+                className="bg-transparent hover:bg-transparent border-0 text-white"
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -484,46 +763,67 @@ const SearchPage = () => {
   };
 
   return (
-    <div className="h-full overflow-hidden bg-[#121212]">
-      <ScrollArea className="h-full smooth-scroll">
-        <div className="pt-6 pb-32 md:pb-24 w-full max-w-[1950px] mx-auto px-3 md:px-8 box-border">
-          {/* Search Box - Spotify-style white design with speech recognition */}
-          <div className="mb-6">
-            <form onSubmit={handleSearch} className="flex-1 max-w-xl flex items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <div className="min-h-screen bg-[#121212] overflow-x-hidden w-full">
+      <ScrollArea className="h-screen w-full">
+        <div className="pt-6 pb-32 md:pb-24 w-full px-3 md:px-4 box-border">
+          {/* Search Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              Search
+            </h1>
+            <p className="text-[#b3b3b3] text-base">
+              Find your favorite songs, artists, and playlists
+            </p>
+          </div>
+
+          {/* Search Box */}
+          <div className="mb-8 relative w-full max-w-2xl">
+            <form onSubmit={handleSearch} className="flex items-center gap-2 w-full">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#b3b3b3] z-10" />
                 <Input
+                  ref={searchInputRef}
                   type="search"
                   placeholder="What do you want to listen to?"
                   value={searchQuery}
                   onChange={handleQueryChange}
-                  className="w-full rounded-l-full bg-card text-foreground pl-10 pr-10 h-12 border border-border focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                  className="w-full h-12 pl-12 pr-4 bg-[#242424] border-0 text-white placeholder:text-[#b3b3b3] text-sm font-medium focus:outline-none focus:ring-0 focus:bg-[#2a2a2a] rounded-full transition-colors [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+                  autoComplete="off"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={clearSearch}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#b3b3b3] hover:text-white transition-colors z-10"
                   >
                     <XCircle size={18} />
                   </button>
                 )}
-              </div>
-              <Button
-                type="submit"
-                className="h-12 rounded-none bg-card hover:bg-accent text-foreground font-medium px-5 border border-border"
-              >
-                Search
-              </Button>
 
-              {/* Speech recognition button */}
+                {/* Enhanced Search Suggestions */}
+                <EnhancedSearchSuggestions
+                  isVisible={showSuggestions}
+                  query={searchQuery}
+                  onSelectSong={handleSuggestionSelect}
+                  onSelectPlaylist={handlePlaylistSelect}
+                  onClose={() => setShowSuggestions(false)}
+                  onTouchStart={() => setIsTouchingSuggestions(true)}
+                  onTouchEnd={() => setIsTouchingSuggestions(false)}
+                />
+              </div>
+
+              {/* Voice Search Button */}
               {speechSupported && (
                 <Button
                   type="button"
                   onClick={toggleListening}
                   className={cn(
-                    "h-12 rounded-r-full bg-card hover:bg-accent text-foreground font-medium px-3 border border-border transition-all",
-                    isListening && "text-primary"
+                    "h-12 w-12 rounded-full border-0 transition-all duration-200",
+                    isListening 
+                      ? "bg-[#1db954] hover:bg-[#1ed760] text-black" 
+                      : "bg-[#242424] hover:bg-[#2a2a2a] text-[#b3b3b3] hover:text-white"
                   )}
                   title={isListening ? "Stop listening" : "Search with voice"}
                 >
@@ -537,50 +837,85 @@ const SearchPage = () => {
             </form>
           </div>
 
-          {isInitialLoad ? (
-            <div className="py-12"></div>
+          {/* Loading State */}
+          {isInitialLoad || isSearching ? (
+            <div className="py-16 flex flex-col items-center justify-center">
+              <div className="bg-[#181818] rounded-lg p-8 border border-[#282828]">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <div className="w-8 h-8 border-2 border-[#535353] rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 w-8 h-8 border-2 border-transparent border-t-[#1db954] rounded-full animate-spin"></div>
+                  </div>
+                  <span className="text-white font-medium">Searching...</span>
+                </div>
+              </div>
+            </div>
           ) : query ? (
-            <div className="space-y-6">
-              {/* Top Results - Featured Section */}
+            <div className="space-y-6 w-full overflow-x-hidden">
+              {/* Top Results Section */}
               {(sortedIndianResults.length > 0 || playlistResults.length > 0) && (
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold tracking-tight mb-4">Top Result</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Top Result Card */}
+                <div className="bg-[#181818] rounded-lg p-4 md:p-6 border border-[#282828] w-full">
+                  <h2 className="text-xl font-bold text-white mb-4">Top result</h2>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
+                    {/* Top Song Result */}
                     {sortedIndianResults.length > 0 && (
-                      <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
-                        <div className="flex flex-col h-full">
-                          <div className="mb-4">
+                      <div className="bg-[#242424] hover:bg-[#2a2a2a] p-4 rounded-lg transition-colors group cursor-pointer">
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
                             <img
                               src={sortedIndianResults[0].image}
                               alt={sortedIndianResults[0].title}
-                              className="w-24 h-24 shadow-md rounded-md"
+                              className="w-16 h-16 rounded-lg object-cover"
                             />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                              <Button
+                                size="icon"
+                                className="w-10 h-10 bg-[#1db954] hover:bg-[#1ed760] text-black rounded-full border-0"
+                                onClick={() => {
+                                  const song = sortedIndianResults[0];
+                                  if (!song.url) {
+                                    toast.error('This song is not available for playback');
+                                    return;
+                                  }
+                                  
+                                  const convertedSong = useMusicStore.getState().convertIndianSongToAppSong(song);
+                                  const playerStore = usePlayerStore.getState();
+                                  playerStore.setCurrentSong(convertedSong);
+                                  if (!playerStore.hasUserInteracted) {
+                                    playerStore.setUserInteracted();
+                                  }
+                                  toast.success(`Now playing: ${song.title}`);
+                                }}
+                              >
+                                <Play className="h-5 w-5 ml-0.5" />
+                              </Button>
+                            </div>
                           </div>
-                          <h3 className="text-xl font-bold text-foreground truncate">{sortedIndianResults[0].title}</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            {resolveArtist(sortedIndianResults[0])}
-                          </p>
-                          <div className="mt-auto">
-                            <Button
-                              className="rounded-full h-12 w-12 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-                              size="icon"
-                              onClick={() => usePlayerStore.getState().setCurrentSong(sortedIndianResults[0] as any)}
-                            >
-                              <Play className="h-6 w-6 ml-0.5" />
-                            </Button>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-bold text-white truncate mb-1">
+                              {sortedIndianResults[0].title}
+                            </h3>
+                            <p className="text-[#b3b3b3] truncate text-sm">
+                              {resolveArtist(sortedIndianResults[0])}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <div className="w-4 h-4 bg-[#1db954] rounded-sm flex items-center justify-center">
+                                <Music className="h-2.5 w-2.5 text-black" />
+                              </div>
+                              <span className="text-xs text-[#b3b3b3] uppercase font-medium">Song</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {/* Alternative Top Result - Playlist */}
-                    {indianSearchResults.length === 0 && playlistResults.length > 0 && (
-                      <div className="bg-card hover:bg-accent p-5 rounded-lg transition-colors shadow-lg border border-border">
+                    {/* Top Playlist Result */}
+                    {playlistResults.length > 0 && (
+                      <div className="bg-[#242424] hover:bg-[#2a2a2a] p-4 rounded-lg transition-colors">
                         <PlaylistCard
                           playlist={playlistResults[0]}
                           showDescription={true}
-                          className="bg-transparent hover:bg-transparent"
+                          className="bg-transparent hover:bg-transparent border-0 text-white"
                         />
                       </div>
                     )}
@@ -588,26 +923,329 @@ const SearchPage = () => {
                 </div>
               )}
 
-              {/* Playlist Results */}
+              {/* Playlist Results Section */}
               {renderPlaylistResults()}
 
-              {/* Song Results */}
-              {/* Songs section removed - IndianMusicPlayer no longer needed */}
-
-              {/* Show message if no results */}
-              {sortedIndianResults.length === 0 && playlistResults.length === 0 && (
-                <div className="py-16 text-center bg-card rounded-lg border border-border">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Search className="h-8 w-8 text-muted-foreground" />
+              {/* All Songs Section */}
+              {sortedIndianResults.length > 0 && (
+                <div className="bg-[#181818] rounded-lg p-4 md:p-6 border border-[#282828] w-full overflow-hidden">
+                  <div className="flex items-center justify-between mb-4 gap-2">
+                    <h2 className="text-xl font-bold text-white flex-shrink-0">
+                      Songs
+                    </h2>
+                    {sortedIndianResults.length > 1 && (
+                      <Button
+                        onClick={() => {
+                          const convertedSongs = sortedIndianResults
+                            .filter((song: any) => song.url)
+                            .map((song: any) => useMusicStore.getState().convertIndianSongToAppSong(song));
+                          
+                          if (convertedSongs.length > 0) {
+                            const playerStore = usePlayerStore.getState();
+                            playerStore.playAlbum(convertedSongs, 0);
+                            if (!playerStore.hasUserInteracted) {
+                              playerStore.setUserInteracted();
+                            }
+                            toast.success(`Playing ${convertedSongs.length} songs`);
+                          } else {
+                            toast.error('No playable songs found');
+                          }
+                        }}
+                        className="bg-[#1db954] hover:bg-[#1ed760] text-black border-0 rounded-full px-3 md:px-4 py-2 font-semibold text-xs md:text-sm transition-colors flex-shrink-0"
+                      >
+                        <Play className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                        Play all
+                      </Button>
+                    )}
                   </div>
-                  <p className="text-foreground font-semibold text-lg">No results found for "{query}"</p>
-                  <p className="text-muted-foreground text-sm mt-2">Try different keywords or check the spelling</p>
-                  {/* Voice search button removed */}
+                  
+                  <div className="space-y-1 max-h-[500px] overflow-y-auto w-full">
+                    {sortedIndianResults.slice(0, 50).map((song: any, index: number) => (
+                      <div
+                        key={song.id || song._id || index}
+                        className="flex items-center gap-2 md:gap-4 p-2 rounded-md hover:bg-[#242424] transition-colors group cursor-pointer w-full min-w-0"
+                        onClick={() => {
+                          if (!song.url) {
+                            toast.error('This song is not available for playback');
+                            return;
+                          }
+                          
+                          const convertedSong = useMusicStore.getState().convertIndianSongToAppSong(song);
+                          const playerStore = usePlayerStore.getState();
+                          playerStore.setCurrentSong(convertedSong);
+                          if (!playerStore.hasUserInteracted) {
+                            playerStore.setUserInteracted();
+                          }
+                          toast.success(`Now playing: ${song.title}`);
+                        }}
+                      >
+                        {/* Song Number/Play Button */}
+                        <div className="w-6 md:w-8 h-6 md:h-8 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[#b3b3b3] group-hover:hidden font-medium text-xs md:text-sm">
+                            {index + 1}
+                          </span>
+                          <div className="hidden group-hover:flex w-4 md:w-6 h-4 md:h-6 bg-transparent hover:bg-white/10 rounded-full items-center justify-center transition-all">
+                            <Play className="h-2 md:h-3 w-2 md:w-3 text-white ml-0.5" />
+                          </div>
+                        </div>
+
+                        {/* Song Image */}
+                        <div className="w-8 md:w-10 h-8 md:h-10 rounded-md overflow-hidden bg-[#282828] flex-shrink-0">
+                          <img
+                            src={song.image || '/images/default-album.png'}
+                            alt={song.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/images/default-album.png';
+                            }}
+                          />
+                        </div>
+
+                        {/* Song Info */}
+                        <div className="flex-1 min-w-0 pr-2">
+                          <h4 className="font-medium text-white truncate text-xs md:text-sm">
+                            {song.title}
+                          </h4>
+                          <p className="text-[#b3b3b3] truncate text-xs">
+                            {resolveArtist(song)}
+                          </p>
+                        </div>
+
+                        {/* Album Info - Hidden on mobile */}
+                        {song.album && (
+                          <div className="hidden lg:block text-xs md:text-sm text-[#b3b3b3] truncate max-w-24 xl:max-w-32 flex-shrink-0">
+                            {song.album}
+                          </div>
+                        )}
+
+                        {/* Song Duration */}
+                        {song.duration && (
+                          <div className="text-xs md:text-sm text-[#b3b3b3] w-8 md:w-12 text-right font-medium flex-shrink-0">
+                            {song.duration}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No Results State */}
+              {!isSearching && sortedIndianResults.length === 0 && playlistResults.length === 0 && (
+                <div className="py-16 text-center">
+                  <div className="bg-[#181818] rounded-lg p-12 border border-[#282828] max-w-2xl mx-auto">
+                    <div className="w-16 h-16 bg-[#282828] rounded-full flex items-center justify-center mx-auto mb-6">
+                      <Search className="h-8 w-8 text-[#b3b3b3]" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">No results found</h3>
+                    <p className="text-[#b3b3b3] mb-6">
+                      We couldn't find anything for "<span className="text-white font-medium">{query}</span>"
+                    </p>
+                    
+                    {/* Spelling Suggestions */}
+                    {(() => {
+                      const spellingSuggestions: { [key: string]: string[] } = {
+                        // Saiyaara variations
+                        'saiyaara': ['saiyara', 'sayara', 'saiara', 'saiyaara'],
+                        'saiyara': ['saiyaara', 'sayara', 'sayaara'],
+                        'sayara': ['saiyaara', 'saiyara', 'sayaara'],
+                        
+                        // Tum variations
+                        'tum': ['tum hi ho', 'tum se hi', 'tum jo aaye', 'tum mile'],
+                        'tum hoto': ['tum hi ho', 'tum ho to', 'tum ho toh'],
+                        'tum ho to': ['tum hi ho', 'tum hoto', 'tum ho toh'],
+                        'tum ho toh': ['tum hi ho', 'tum hoto', 'tum ho to'],
+                        'tum hi ho': ['tum hoto', 'tum ho to', 'tum ho toh'],
+                        
+                        // Mere variations
+                        'mere': ['mere rashke qamar', 'mere dil mein', 'mere sapno ki rani'],
+                        'meri': ['meri zindagi', 'meri jaan', 'meri duniya'],
+                        'mera': ['mera dil', 'mera ishq', 'mera pyaar'],
+                        
+                        // Dil variations
+                        'dil': ['dil diyan gallan', 'dil se', 'dil mein ho tum'],
+                        'dill': ['dil diyan gallan', 'dil se', 'dil mein ho tum'],
+                        
+                        // Common Hindi words
+                        'hai': ['hai', 'he', 'hain'],
+                        'he': ['hai', 'he', 'hain'],
+                        'hain': ['hai', 'he', 'hain'],
+                        
+                        // Love/Romance related
+                        'ishq': ['ishq wala love', 'ishq sufiyana', 'ishq mubarak'],
+                        'pyaar': ['pyaar kiya to darna kya', 'pyaar deewana hota hai', 'pyaar tune kya kiya'],
+                        'mohabbat': ['mohabbatein', 'mohabbat barsa dena', 'mohabbat hai'],
+                        'love': ['love aaj kal', 'love story', 'ishq wala love'],
+                        
+                        // Sad/Separation songs
+                        'judaai': ['judaai judaai', 'juda hoke bhi', 'judai'],
+                        'judai': ['judaai judaai', 'juda hoke bhi', 'judaai'],
+                        'bewafa': ['bewafa sanam', 'bewafa tera masoom chehra', 'bewafai'],
+                        'gham': ['gham ke sahare', 'gam', 'gham-e-ishq'],
+                        'gam': ['gham ke sahare', 'gham', 'gam-e-ishq'],
+                        
+                        // Waiting/Longing
+                        'intezaar': ['intezaar karna pada', 'intezar', 'intizar'],
+                        'intezar': ['intezaar karna pada', 'intezaar', 'intizar'],
+                        'intizar': ['intezaar karna pada', 'intezar', 'intezaar'],
+                        
+                        // Happiness
+                        'khushi': ['khushi ke pal', 'khushi jahan', 'khushi ki baat'],
+                        'khusi': ['khushi ke pal', 'khushi jahan', 'khushi ki baat'],
+                        'kushi': ['khushi ke pal', 'khushi jahan', 'khushi ki baat'],
+                        
+                        // Life/World
+                        'zindagi': ['zindagi na milegi dobara', 'zindagi do pal ki', 'zindagi ek safar'],
+                        'jindagi': ['zindagi na milegi dobara', 'zindagi do pal ki', 'zindagi ek safar'],
+                        'duniya': ['duniya mein logon ko', 'dunya', 'duniya kya kehti hai'],
+                        'dunya': ['duniya mein logon ko', 'duniya', 'dunya kya kehti hai'],
+                        
+                        // Popular song titles
+                        'kesariya': ['kesariya tera ishq hai piya', 'kesariya'],
+                        'raataan': ['raataan lambiyan', 'ratan lambiyan'],
+                        'ratan': ['raataan lambiyan', 'raatan lambiyan'],
+                        'lambiyan': ['raataan lambiyan', 'lambiyan'],
+                        'lambiyaan': ['raataan lambiyan', 'lambiyan'],
+                        
+                        // Arijit Singh popular songs
+                        'tera': ['tera ban jaunga', 'tera fitoor', 'tera yaar hoon main'],
+                        'ban': ['tera ban jaunga', 'apna bana le'],
+                        'jaunga': ['tera ban jaunga', 'main jaunga'],
+                        'apna': ['apna bana le', 'apna time aayega'],
+                        'bana': ['apna bana le', 'bana de'],
+                        
+                        // Atif Aslam songs
+                        've': ['ve maahi', 've kamleya'],
+                        'maahi': ['ve maahi', 'maahi ve'],
+                        'kamleya': ['ve kamleya', 'kamleya'],
+                        
+                        // Common misspellings
+                        'bekhayali': ['bekhayali mein bhi tera', 'bekhayali'],
+                        'bekhayal': ['bekhayali mein bhi tera', 'bekhayali'],
+                        'hawayein': ['hawayein', 'hawaaein'],
+                        'hawaaein': ['hawayein', 'hawaaein'],
+                        'gerua': ['gerua', 'gerua sun raha hai'],
+                        'perfect': ['perfect ed sheeran', 'perfect'],
+                        'shape': ['shape of you', 'shape'],
+                        'blinding': ['blinding lights', 'blinding'],
+                        'stay': ['stay justin bieber', 'stay'],
+                        'heat': ['heat waves', 'heat'],
+                        'waves': ['heat waves', 'waves']
+                      };
+                      
+                      const queryLower = query.toLowerCase().trim();
+                      const queryWords = queryLower.split(/\s+/).filter(Boolean);
+                      
+                      // Direct match suggestions
+                      const directSuggestions = spellingSuggestions[queryLower] || [];
+                      
+                      // Word-based suggestions
+                      const wordSuggestions = queryWords.flatMap((word: string) => 
+                        spellingSuggestions[word] || []
+                      );
+                      
+                      // Partial match suggestions (for multi-word queries)
+                      const partialSuggestions = Object.keys(spellingSuggestions)
+                        .filter(key => {
+                          // Check if any word in the query matches any word in the key
+                          const keyWords = key.split(/\s+/);
+                          return queryWords.some(qWord => 
+                            keyWords.some(kWord => 
+                              kWord.includes(qWord) || qWord.includes(kWord)
+                            )
+                          );
+                        })
+                        .flatMap(key => spellingSuggestions[key])
+                        .slice(0, 4);
+                      
+                      // Fuzzy matching for common misspellings
+                      const fuzzyMatches = Object.keys(spellingSuggestions)
+                        .filter(key => {
+                          // Simple fuzzy matching - check if 70% of characters match
+                          const similarity = calculateSimilarity(queryLower, key);
+                          return similarity > 0.6;
+                        })
+                        .flatMap(key => spellingSuggestions[key])
+                        .slice(0, 3);
+                      
+                      // Combine all suggestions and remove duplicates
+                      const allSuggestions = [...new Set([
+                        ...directSuggestions,
+                        ...wordSuggestions,
+                        ...partialSuggestions,
+                        ...fuzzyMatches
+                      ])].slice(0, 6);
+                      
+                      // Simple similarity calculation
+                      function calculateSimilarity(str1: string, str2: string): number {
+                        const longer = str1.length > str2.length ? str1 : str2;
+                        const shorter = str1.length > str2.length ? str2 : str1;
+                        const editDistance = getEditDistance(longer, shorter);
+                        return (longer.length - editDistance) / longer.length;
+                      }
+                      
+                      function getEditDistance(str1: string, str2: string): number {
+                        const matrix = [];
+                        for (let i = 0; i <= str2.length; i++) {
+                          matrix[i] = [i];
+                        }
+                        for (let j = 0; j <= str1.length; j++) {
+                          matrix[0][j] = j;
+                        }
+                        for (let i = 1; i <= str2.length; i++) {
+                          for (let j = 1; j <= str1.length; j++) {
+                            if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                              matrix[i][j] = matrix[i - 1][j - 1];
+                            } else {
+                              matrix[i][j] = Math.min(
+                                matrix[i - 1][j - 1] + 1,
+                                matrix[i][j - 1] + 1,
+                                matrix[i - 1][j] + 1
+                              );
+                            }
+                          }
+                        }
+                        return matrix[str2.length][str1.length];
+                      }
+                      
+                      return allSuggestions.length > 0 ? (
+                        <div className="mb-6">
+                          <p className="text-[#b3b3b3] text-sm mb-3">Did you mean:</p>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {allSuggestions.map((suggestion) => (
+                              <Button
+                                key={suggestion}
+                                onClick={() => handleSuggestionSelect(suggestion)}
+                                className="bg-[#242424] hover:bg-[#2a2a2a] text-[#b3b3b3] hover:text-white border border-[#535353] rounded-full px-3 py-1 text-xs font-medium transition-colors"
+                              >
+                                {suggestion}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                    
+                    <p className="text-[#b3b3b3] text-sm mb-6">Try different keywords or check the spelling</p>
+                    
+                    {/* Popular Search Suggestions */}
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {['Latest hits', 'Bollywood songs', 'English pop', 'Romantic songs'].map((suggestion) => (
+                        <Button
+                          key={suggestion}
+                          onClick={() => handleSuggestionSelect(suggestion)}
+                          className="bg-[#242424] hover:bg-[#2a2a2a] text-[#b3b3b3] hover:text-white border border-[#535353] rounded-full px-3 py-1 text-xs font-medium transition-colors"
+                        >
+                          {suggestion}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
           ) : (
-            // Empty state with recent searches and Instagram follow
+            // Enhanced Empty State
             renderEmptyState()
           )}
         </div>

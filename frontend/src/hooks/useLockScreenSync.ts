@@ -2,82 +2,76 @@ import { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 
 /**
- * Hook to handle lock screen scenarios and prevent flickering
- * This hook specifically deals with the state synchronization issues
- * that occur when the device is locked/unlocked
+ * Simplified lock screen sync hook that prevents flickering
+ * Focuses on clean state management without background service interference
  */
 export const useLockScreenSync = () => {
   const { isPlaying, setIsPlaying } = usePlayerStore();
-  const lockScreenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isHandlingLockScreenRef = useRef(false);
+  const isLockScreenRef = useRef(false);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      // Clear any existing timeout
-      if (lockScreenTimeoutRef.current) {
-        clearTimeout(lockScreenTimeoutRef.current);
+      // Clear any pending sync
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
       }
 
       if (document.hidden) {
-        // Device is being locked or app is going to background
-        isHandlingLockScreenRef.current = true;
-        console.log('Lock screen detected - preserving audio state');
-      } else {
-        // Device is being unlocked or app is coming to foreground
-        if (isHandlingLockScreenRef.current) {
-          console.log('Unlock screen detected - syncing audio state');
-          
-          // Add a longer delay to prevent flickering after lock screen
-          lockScreenTimeoutRef.current = setTimeout(() => {
-            const audio = document.querySelector('audio');
-            if (audio) {
-              const actuallyPlaying = !audio.paused && !audio.ended;
-              
-              // Only update if there's a real mismatch
-              if (actuallyPlaying !== isPlaying) {
-                console.log('Correcting state after lock screen:', { 
-                  actuallyPlaying, 
-                  storeIsPlaying: isPlaying 
-                });
-                setIsPlaying(actuallyPlaying);
-              }
-            }
-            
-            isHandlingLockScreenRef.current = false;
-          }, 300); // Longer delay for lock screen scenarios
-        }
-      }
-    };
-
-    // Listen for page visibility changes (lock screen events)
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Also listen for focus events as backup
-    const handleFocus = () => {
-      if (isHandlingLockScreenRef.current) {
-        // Add extra delay for focus events after lock screen
-        setTimeout(() => {
+        // Going to background/lock screen - just mark it
+        isLockScreenRef.current = true;
+        console.log('App going to background/lock screen');
+      } else if (isLockScreenRef.current) {
+        // Coming back from lock screen - sync after a delay
+        console.log('App returning from background/lock screen');
+        
+        // Use a single, clean sync after lock screen
+        syncTimeoutRef.current = setTimeout(() => {
           const audio = document.querySelector('audio');
           if (audio) {
-            const actuallyPlaying = !audio.paused && !audio.ended;
+            const actuallyPlaying = !audio.paused && !audio.ended && audio.currentTime > 0;
+            
+            // Only update if there's a clear mismatch
             if (actuallyPlaying !== isPlaying) {
+              console.log('Syncing state after lock screen:', { 
+                actuallyPlaying, 
+                storeIsPlaying: isPlaying 
+              });
               setIsPlaying(actuallyPlaying);
             }
           }
-          isHandlingLockScreenRef.current = false;
-        }, 500);
+          isLockScreenRef.current = false;
+        }, 200); // Shorter, more responsive delay
       }
     };
 
-    window.addEventListener('focus', handleFocus);
+    // Only listen for visibility changes - simpler approach
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-      
-      if (lockScreenTimeoutRef.current) {
-        clearTimeout(lockScreenTimeoutRef.current);
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
       }
     };
   }, [isPlaying, setIsPlaying]);
+
+  // Return a function to manually sync if needed
+  return {
+    forceSyncAfterLockScreen: () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+      
+      const audio = document.querySelector('audio');
+      if (audio) {
+        const actuallyPlaying = !audio.paused && !audio.ended && audio.currentTime > 0;
+        if (actuallyPlaying !== isPlaying) {
+          setIsPlaying(actuallyPlaying);
+        }
+      }
+      isLockScreenRef.current = false;
+    }
+  };
 };

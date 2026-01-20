@@ -491,25 +491,27 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           <div className="flex items-center justify-between gap-3 max-w-sm mx-auto">
             <div className="flex-1 min-w-0 overflow-hidden mr-3">
               {/* Title - PingPong Scroll */}
-              <div style={{ textShadow: `0 2px 8px rgba(0,0,0,0.8), 0 0 16px ${albumColors.primary}` }}>
+              <div>
                 <PingPongScroll
                   text={currentSong.title}
                   className={cn(
                     "font-black text-white mb-0.5 leading-tight tracking-tight py-1 responsive-transition",
                     responsiveClasses.title
                   )}
+                  style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
                   velocity={10}
                 />
               </div>
 
               {/* Artist - PingPong Scroll */}
-              <div style={{ textShadow: `0 1px 4px rgba(0,0,0,0.6), 0 0 8px ${albumColors.primary}` }}>
+              <div>
                 <PingPongScroll
                   text={currentSong.artist}
                   className={cn(
                     "text-white font-medium responsive-transition",
                     responsiveClasses.artist
                   )}
+                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
                   velocity={8}
                 />
               </div>
@@ -591,7 +593,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             <button
               onClick={playPrevious}
               className="p-2 text-white active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full"
-              style={{ backgroundColor: albumColors.muted }}
             >
               <SkipBack className="h-6 w-6" fill="white" />
             </button>
