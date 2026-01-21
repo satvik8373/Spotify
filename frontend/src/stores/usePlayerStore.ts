@@ -41,15 +41,6 @@ export interface PlayerState {
   removeFromQueue: (index: number) => void;
 }
 
-// Helper to ensure HTTPS URLs
-const ensureHttpsUrl = (url: string): string => {
-  if (!url) return url;
-  if (url.startsWith('http://')) {
-    return url.replace('http://', 'https://');
-  }
-  return url;
-};
-
 // Helper to get a random index that's different from the current one
 const getRandomIndex = (currentIndex: number, length: number): number => {
   if (length <= 1) return 0;
@@ -87,9 +78,9 @@ export const usePlayerStore = create<PlayerState>()(
       skipRestoreUntilTs: 0,
 
       setCurrentSong: (song) => {
-        // Only skip songs with invalid blob URLs, not all blob URLs
-        if (song.audioUrl && song.audioUrl.startsWith('blob:') && !song.audioUrl.includes('blob:http')) {
-          console.warn('Skipping song with invalid blob URL:', song.title);
+        // Filter out blob URLs from old download system
+        if (song.audioUrl && song.audioUrl.startsWith('blob:')) {
+          console.warn('Skipping song with blob URL from old download system:', song.title);
           return;
         }
 
@@ -103,16 +94,9 @@ export const usePlayerStore = create<PlayerState>()(
           audio.load();
         }
 
-        // Validate and convert URLs to HTTPS for production
-        const validatedSong = {
-          ...song,
-          audioUrl: song.audioUrl ? ensureHttpsUrl(song.audioUrl) : song.audioUrl,
-          imageUrl: song.imageUrl ? ensureHttpsUrl(song.imageUrl) : song.imageUrl
-        };
-
         // Immediately reset current time when switching songs
         set({
-          currentSong: validatedSong,
+          currentSong: song,
           currentTime: 0 // Reset time immediately for new song
         });
       },
@@ -144,18 +128,8 @@ export const usePlayerStore = create<PlayerState>()(
       playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
 
-        // Filter out songs with invalid blob URLs and convert URLs to HTTPS
-        const validSongs = songs
-          .filter(song => 
-            !song.audioUrl || 
-            !song.audioUrl.startsWith('blob:') || 
-            song.audioUrl.includes('blob:http')
-          )
-          .map(song => ({
-            ...song,
-            audioUrl: song.audioUrl ? ensureHttpsUrl(song.audioUrl) : song.audioUrl,
-            imageUrl: song.imageUrl ? ensureHttpsUrl(song.imageUrl) : song.imageUrl
-          }));
+        // Filter out songs with blob URLs from old download system
+        const validSongs = songs.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
 
         if (validSongs.length === 0) {
           console.warn('No valid songs to play (all had blob URLs)');
@@ -437,38 +411,6 @@ export const usePlayerStore = create<PlayerState>()(
             audio.currentTime = 0;
           }
           audio.play().catch(() => { });
-
-          // Update MediaSession for lock screen controls if available
-          if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-              title: queue[newIndex].title || 'Unknown Title',
-              artist: queue[newIndex].artist || 'Unknown Artist',
-              album: queue[newIndex].albumId ? String(queue[newIndex].albumId) : 'Unknown Album',
-              artwork: [
-                {
-                  src: queue[newIndex].imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-                  sizes: '512x512',
-                  type: 'image/jpeg'
-                }
-              ]
-            });
-
-            // Update playback state
-            navigator.mediaSession.playbackState = 'playing';
-
-            // Update position state if supported
-            if ('setPositionState' in navigator.mediaSession) {
-              try {
-                navigator.mediaSession.setPositionState({
-                  duration: audio.duration || 0,
-                  playbackRate: audio.playbackRate || 1,
-                  position: 0
-                });
-              } catch (e) {
-                // Ignore position state errors
-              }
-            }
-          }
         }
 
         // Save to localStorage as a backup
@@ -541,20 +483,14 @@ setTimeout(() => {
   // Auto-restore interrupted playback state from before refresh
   const store = usePlayerStore.getState();
 
-  // Clean up any invalid blob URLs from the current song and queue
-  if (store.currentSong && store.currentSong.audioUrl && 
-      store.currentSong.audioUrl.startsWith('blob:') && 
-      !store.currentSong.audioUrl.includes('blob:http')) {
-    console.log('Cleaning up invalid blob URL from current song');
+  // Clean up any blob URLs from the current song and queue
+  if (store.currentSong && store.currentSong.audioUrl && store.currentSong.audioUrl.startsWith('blob:')) {
+    console.log('Cleaning up blob URL from current song');
     store.setCurrentSong({ ...store.currentSong, audioUrl: '' });
   }
 
   if (store.queue.length > 0) {
-    const cleanQueue = store.queue.filter(song => 
-      !song.audioUrl || 
-      !song.audioUrl.startsWith('blob:') || 
-      song.audioUrl.includes('blob:http')
-    );
+    const cleanQueue = store.queue.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
     if (cleanQueue.length !== store.queue.length) {
       console.log('Cleaned up blob URLs from queue');
       usePlayerStore.setState({ queue: cleanQueue });
