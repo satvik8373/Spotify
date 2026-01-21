@@ -205,60 +205,69 @@ const Login = () => {
               </div>
             </div>
 
-            <div className="relative z-10 bg-transparent px-6 pt-32 pb-8">
+            <div className="relative z-10 bg-transparent px-6 pt-20 pb-4 h-full flex flex-col justify-center">
               {/* Mavrixfy Logo - Centered in the cloud */}
-              <div className="flex justify-center mb-8">
-                <div className="bg-white rounded-full p-4 shadow-xl">
-                  <img src="/mavrixfy.png" alt="Mavrixfy" className="w-10 h-10 object-contain" />
+              <div className="flex justify-center mb-6">
+                <div className="bg-white rounded-full p-3 shadow-xl">
+                  <img src="/mavrixfy.png" alt="Mavrixfy" className="w-8 h-8 object-contain" />
                 </div>
               </div>
 
               {/* Main Heading - More Compact */}
-              <div className="text-center mb-8">
-                <h1 className="text-white text-[2rem] font-black mb-2 tracking-tight leading-none">
+              <div className="text-center mb-6">
+                <h1 className="text-white text-[1.75rem] font-black mb-1 tracking-tight leading-none">
                   Millions of songs.<br />Free on Mavrixfy.
                 </h1>
               </div>
 
               {/* Continue with Google */}
-              <Button
-                onClick={handleGoogleAuth}
-                disabled={googleLoading}
-                className="w-full bg-white hover:bg-gray-200 text-black font-bold py-2.5 rounded-full mb-2.5 flex items-center justify-center gap-3 text-sm"
-              >
-                <div className="shrink-0"><GoogleLogo /></div>
-                <span>{googleLoading ? (isLogin ? 'Signing in...' : 'Signing up...') : `Continue with Google`}</span>
-              </Button>
+              <div className="relative">
+                <Button
+                  onClick={handleGoogleAuth}
+                  disabled={googleLoading}
+                  className="w-full bg-white hover:bg-gray-200 text-black font-bold py-2.5 rounded-full mb-2 flex items-center justify-center gap-3 text-sm relative z-10"
+                >
+                  <div className="shrink-0"><GoogleLogo /></div>
+                  <span>{googleLoading ? (isLogin ? 'Signing in...' : 'Signing up...') : `Continue with Google`}</span>
+                </Button>
+                {/* Visual cue for recommended/working method */}
+                <div className="absolute -top-2 -right-1 bg-green-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-md">
+                  Working
+                </div>
+              </div>
 
               {/* Continue with Phone */}
               <Button
                 variant="outline"
-                className="w-full border-gray-600/60 bg-transparent text-white hover:bg-gray-800/50 font-medium py-2.5 rounded-full mb-2.5 flex items-center justify-center gap-3 text-sm h-auto"
+                disabled={true}
+                className="w-full border-gray-600/30 bg-transparent text-white/40 font-medium py-2.5 rounded-full mb-2 flex items-center justify-center gap-3 text-sm h-auto opacity-50 cursor-not-allowed"
               >
-                <div className="shrink-0"><PhoneIcon /></div>
-                <span>Continue with phone number</span>
+                <div className="shrink-0 grayscale opacity-50"><PhoneIcon /></div>
+                <span>Phone (Coming Soon)</span>
               </Button>
 
               {/* Continue with Facebook */}
               <Button
                 variant="outline"
-                className="w-full border-gray-600/60 bg-transparent text-white hover:bg-gray-800/50 font-medium py-2.5 rounded-full mb-2.5 flex items-center justify-center gap-3 text-sm h-auto"
+                disabled={true}
+                className="w-full border-gray-600/30 bg-transparent text-white/40 font-medium py-2.5 rounded-full mb-2 flex items-center justify-center gap-3 text-sm h-auto opacity-50 cursor-not-allowed"
               >
-                <div className="shrink-0"><FacebookLogo /></div>
-                <span>Continue with Facebook</span>
+                <div className="shrink-0 grayscale opacity-50"><FacebookLogo /></div>
+                <span>Facebook (Coming Soon)</span>
               </Button>
 
               {/* Continue with Apple - Added */}
               <Button
                 variant="outline"
-                className="w-full border-gray-600/60 bg-transparent text-white hover:bg-gray-800/50 font-medium py-2.5 rounded-full mb-4 flex items-center justify-center gap-3 text-sm h-auto"
+                disabled={true}
+                className="w-full border-gray-600/30 bg-transparent text-white/40 font-medium py-2.5 rounded-full mb-4 flex items-center justify-center gap-3 text-sm h-auto opacity-50 cursor-not-allowed"
               >
-                <div className="shrink-0">
+                <div className="shrink-0 opacity-50">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
                     <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
                   </svg>
                 </div>
-                <span>Continue with Apple</span>
+                <span>Apple (Coming Soon)</span>
               </Button>
 
               {/* Toggle between Login/Register - Removed as requested (redundant) */}
@@ -493,32 +502,39 @@ const Login = () => {
 
                   {/* Social Login Buttons */}
                   <div className="space-y-2">
-                    <Button
-                      onClick={handleGoogleAuth}
-                      disabled={googleLoading}
-                      variant="outline"
-                      className="w-full border-gray-600 text-white hover:bg-gray-800/50 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm"
-                    >
-                      <GoogleLogo />
-                      {googleLoading ? (isLogin ? 'Signing in...' : 'Signing up...') : 'Continue with Google'}
-                    </Button>
+                    <div className="relative group">
+                      <Button
+                        onClick={handleGoogleAuth}
+                        disabled={googleLoading}
+                        variant="outline"
+                        className="w-full border-gray-600 text-white hover:bg-gray-800/50 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm"
+                      >
+                        <GoogleLogo />
+                        {googleLoading ? (isLogin ? 'Signing in...' : 'Signing up...') : 'Continue with Google'}
+                      </Button>
+                      <div className="absolute -top-2 -right-2 bg-green-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md z-10">
+                        Top Choice
+                      </div>
+                    </div>
 
                     <Button
                       variant="outline"
-                      className="w-full border-gray-600 text-white hover:bg-gray-800/50 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm"
+                      disabled={true}
+                      className="w-full border-gray-600 text-white/40 hover:bg-gray-800/20 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm opacity-50 cursor-not-allowed"
                     >
                       <FacebookLogo />
-                      Continue with Facebook
+                      Facebook (Coming Soon)
                     </Button>
 
                     <Button
                       variant="outline"
-                      className="w-full border-gray-600 text-white hover:bg-gray-800/50 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm"
+                      disabled={true}
+                      className="w-full border-gray-600 text-white/40 hover:bg-gray-800/20 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm opacity-50 cursor-not-allowed"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                         <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
                       </svg>
-                      Continue with Apple
+                      Apple (Coming Soon)
                     </Button>
                   </div>
 
