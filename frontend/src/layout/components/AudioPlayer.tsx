@@ -1,8 +1,13 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { backgroundAudioManager, configureAudioElement, unlockAudioOnIOS, isIOS, playAudioForIOS } from '@/utils/audioManager';
+
+// Check if MediaSession API is supported
+const isMediaSessionSupported = () => {
+  return 'mediaSession' in navigator;
+};
 
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -10,6 +15,9 @@ const AudioPlayer = () => {
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const filtersRef = useRef<BiquadFilterNode[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isHandlingPlayback = useRef(false);
 
   // Store hooks
   const {
@@ -117,7 +125,7 @@ const AudioPlayer = () => {
     }
   }, [streamingQuality]);
 
-  // Initialize audio element with background audio support
+  // Initialize audio element with background audio support - OLD WORKING VERSION
   useEffect(() => {
     if (audioRef.current) {
       const audio = audioRef.current;
@@ -200,204 +208,385 @@ const AudioPlayer = () => {
     }
   }, [currentSong]);
 
-  // Handle play/pause state changes - OLD WORKING VERSION
+  // Handle play/pause state changes - OLD WORKING VERSION WITH iOS BACKGROUND HANDLING
   useEffect(() => {
-    console.log('🎛️ Play/pause effect triggered:', { isPlaying, hasAudio: !!audioRef.current });
+    if (!audioRef.current || isLoading || isHandlingPlayback.current) return;
 
-    if (!audioRef.current) {
-      console.log('❌ No audio element found');
+    if (isPlaying) {
+      // Use a flag to prevent concurrent play/pause operations
+      isHandlingPlayback.current = true;
+
+      // Clear any existing timeout
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
+
+      // Small delay to ensure any previous pause operation is complete
+      playTimeoutRef.current = setTimeout(() => {
+        const playPromise = audioRef.current?.play();
+        if (playPromise) {
+          playPromise
+            .then(() => {
+              isHandlingPlayback.current = false;
+            })
+            .catch((err) => {
+              if (err && typeof err.message === 'string' && err.message.includes('interrupted')) {
+                // If the error was due to interruption, try again after a short delay
+                setTimeout(() => {
+                  audioRef.current?.play().catch(() => {
+                    setIsPlaying(false);
+                  });
+                }, 300);
+              } else {
+                setIsPlaying(false);
+              }
+              isHandlingPlayback.current = false;
+            });
+        } else {
+          isHandlingPlayback.current = false;
+        }
+      }, 250);
+    } else {
+      // Also handle pause with a flag to prevent conflicts
+      isHandlingPlayback.current = true;
+
+      // Clear any existing timeout
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
+
+      audioRef.current?.pause();
+
+      // Release the flag after a short delay
+      setTimeout(() => {
+        isHandlingPlayback.current = false;
+      }, 200);
+    }
+  }, [isPlaying, isLoading, setIsPlaying]);
+
+  // Handle iOS-specific background playback issues - OLD WORKING VERSION
+  useEffect(() => {
+    // Only run on iOS devices
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    if (!isIOSDevice) return;
+
+    // Set up a dedicated iOS background continuation timer
+    // This is critical for iOS which has stricter background restrictions
+    const iosBackgroundTimer = setInterval(() => {
+      if (document.hidden && isPlaying && audioRef.current) {
+        const audio = audioRef.current;
+        const audioDuration = audio.duration;
+
+        // Check if audio should be playing but isn't
+        if (audio.paused && !audio.ended) {
+          audio.play().catch(() => { });
+        }
+
+        // Check if we need to advance to the next track
+        if (!isNaN(audioDuration) && audioDuration > 0) {
+          // If we're at or very near the end
+          if (audio.currentTime >= audioDuration - 0.3) {
+            // Get fresh state to ensure latest data
+            const state = usePlayerStore.getState();
+
+            // Move to next track and ensure playback
+            state.playNext();
+            state.setIsPlaying(true);
+
+            // Give time for state to update before attempting playback
+            setTimeout(() => {
+              const freshAudio = audioRef.current;
+              if (freshAudio) {
+                freshAudio.play().catch(() => { });
+              }
+            }, 200);
+          }
+        }
+      }
+    }, 500);
+
+    return () => {
+      clearInterval(iosBackgroundTimer);
+    };
+  }, [isPlaying, currentSong]);
+
+  // Update MediaSession metadata and action handlers - OLD WORKING VERSION
+  useEffect(() => {
+    // Only proceed if MediaSession API is supported and we have a current song
+    if (!isMediaSessionSupported() || !currentSong) {
       return;
     }
 
-    const audio = audioRef.current;
-
-    // Update background audio manager
-    backgroundAudioManager.setPlaying(isPlaying);
-
-    console.log('📊 Audio state:', {
-      paused: audio.paused,
-      src: !!audio.src,
-      readyState: audio.readyState,
-      currentTime: audio.currentTime,
-      duration: audio.duration,
-      networkState: audio.networkState
-    });
-
-    if (isPlaying && audio.paused && audio.src) {
-      console.log('▶️ Attempting to start playback...');
-      setUserInteracted();
-
-      // Resume audio context if suspended
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-        console.log('🎛️ Resuming suspended audio context');
-        audioContextRef.current.resume().catch(console.warn);
-      }
-
-      // Use iOS-specific playback if on iOS
-      if (isIOS()) {
-        console.log('📱 iOS detected - using iOS-specific playback');
-        playAudioForIOS(audio).then(() => {
-          console.log('✅ iOS audio play() succeeded');
-        }).catch((error) => {
-          console.error('❌ iOS playback failed:', error);
-          
-          // Try standard play as fallback
-          audio.play().catch(() => {
-            console.error('❌ Fallback playback also failed');
-            setIsPlaying(false);
-          });
-        });
-      } else {
-        // Standard playback for other platforms
-        audio.play().then(() => {
-          console.log('✅ Audio play() succeeded');
-        }).catch((error) => {
-          console.error('❌ Playback failed:', error);
-
-          // Try again after a short delay
-          setTimeout(() => {
-            if (audio.paused && audio.src && isPlaying) {
-              console.log('🔄 Retrying playback after error');
-              audio.play().catch(() => {
-                console.error('❌ Retry also failed');
-                setIsPlaying(false);
-              });
+    // Function to update metadata that we can reuse
+    const updateMediaSessionMetadata = () => {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentSong.title || 'Unknown Title',
+          artist: resolveArtist(currentSong),
+          album: currentSong.albumId ? String(currentSong.albumId) : 'Unknown Album',
+          artwork: [
+            {
+              src: currentSong.imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
+              sizes: '512x512',
+              type: 'image/jpeg'
             }
-          }, 500);
+          ]
         });
-      }
-    } else if (!isPlaying && !audio.paused) {
-      console.log('⏸️ Pausing playback...');
-      audio.pause();
-    } else {
-      console.log('ℹ️ No action needed:', {
-        shouldPlay: isPlaying,
-        isPaused: audio.paused,
-        hasSrc: !!audio.src
-      });
-    }
-  }, [isPlaying, setIsPlaying, setUserInteracted]);
 
-  // MediaSession setup for lock screen controls - OLD WORKING VERSION
-  useEffect(() => {
-    if (!('mediaSession' in navigator) || !currentSong) return;
-
-    // Use the background audio manager's MediaSession setup
-    backgroundAudioManager.setupMediaSession({
-      title: currentSong.title || 'Unknown Title',
-      artist: resolveArtist(currentSong),
-      album: currentSong.albumId || 'Unknown Album',
-      artwork: currentSong.imageUrl || ''
-    });
-
-    // Set additional action handlers that need store access
-    try {
-      // Play/Pause handlers (already set in backgroundAudioManager, but ensure they work with store)
-      navigator.mediaSession.setActionHandler('play', () => {
-        console.log('🎵 Lock screen play action');
-        setUserInteracted();
-        setIsPlaying(true);
-      });
-
-      navigator.mediaSession.setActionHandler('pause', () => {
-        console.log('⏸️ Lock screen pause action');
-        setUserInteracted();
-        setIsPlaying(false);
-      });
-
-      // Next track
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        console.log('⏭️ Lock screen next track action');
-        setUserInteracted();
-        playNext();
-      });
-
-      // Previous track
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        console.log('⏮️ Lock screen previous track action');
-        setUserInteracted();
-        const { playPrevious } = usePlayerStore.getState();
-        playPrevious();
-      });
-
-      // Seek to specific position
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (audioRef.current && details.seekTime !== undefined) {
-          console.log('🔍 Lock screen seek to:', details.seekTime);
-          audioRef.current.currentTime = details.seekTime;
-          setStoreCurrentTime(details.seekTime);
-          setUserInteracted();
-        }
-      });
-
-      // Seek forward (10 seconds)
-      navigator.mediaSession.setActionHandler('seekforward', (details) => {
-        if (audioRef.current) {
-          const seekOffset = details.seekOffset || 10;
-          console.log('⏩ Lock screen seek forward:', seekOffset);
-          audioRef.current.currentTime = Math.min(
-            audioRef.current.currentTime + seekOffset,
-            audioRef.current.duration
-          );
-          setStoreCurrentTime(audioRef.current.currentTime);
-          setUserInteracted();
-        }
-      });
-
-      // Seek backward (10 seconds)
-      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-        if (audioRef.current) {
-          const seekOffset = details.seekOffset || 10;
-          console.log('⏪ Lock screen seek backward:', seekOffset);
-          audioRef.current.currentTime = Math.max(
-            audioRef.current.currentTime - seekOffset,
-            0
-          );
-          setStoreCurrentTime(audioRef.current.currentTime);
-          setUserInteracted();
-        }
-      });
-
-      console.log('✅ Lock screen controls configured successfully');
-
-    } catch (error) {
-      console.warn('MediaSession action handlers setup failed:', error);
-    }
-  }, [currentSong, isPlaying, setIsPlaying, playNext, setUserInteracted, setStoreCurrentTime]);
-
-  // Update MediaSession position state for lock screen progress bar
-  useEffect(() => {
-    if (!('mediaSession' in navigator) || !audioRef.current) return;
-
-    const audio = audioRef.current;
-
-    const updatePositionState = () => {
-      if ('setPositionState' in navigator.mediaSession) {
-        try {
+        // Also update position state if possible
+        if ('setPositionState' in navigator.mediaSession && audioRef.current) {
           navigator.mediaSession.setPositionState({
-            duration: audio.duration || 0,
-            playbackRate: audio.playbackRate || 1.0,
-            position: audio.currentTime || 0
+            duration: audioRef.current.duration || 0,
+            playbackRate: audioRef.current.playbackRate || 1.0,
+            position: audioRef.current.currentTime || 0
           });
-        } catch (error) {
-          // Ignore errors when duration is not available yet
         }
+      } catch (error) {
+        // Silent error handling for MediaSession errors
       }
     };
 
-    // Update position state when metadata loads
-    audio.addEventListener('loadedmetadata', updatePositionState);
+    // Initial metadata update
+    updateMediaSessionMetadata();
 
-    // Update position state periodically during playback
-    const positionInterval = setInterval(() => {
-      if (isPlaying && !audio.paused) {
-        updatePositionState();
+    // Update metadata when song changes or playing state changes
+    // This ensures lock screen controls always show the right info
+    const handleAudioChange = () => {
+      updateMediaSessionMetadata();
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    };
+
+    // Listen for events that might indicate song changes
+    audioRef.current?.addEventListener('loadedmetadata', handleAudioChange);
+    audioRef.current?.addEventListener('play', handleAudioChange);
+    audioRef.current?.addEventListener('pause', handleAudioChange);
+
+    // Set up media session action handlers with better responsiveness
+    navigator.mediaSession.setActionHandler('play', () => {
+      setIsPlaying(true);
+      // Explicitly attempt to play for more reliable playback
+      if (audioRef.current && audioRef.current.paused) {
+        audioRef.current.play().catch(() => {
+          // Silent error handling
+        });
+      }
+    });
+
+    navigator.mediaSession.setActionHandler('pause', () => {
+      setIsPlaying(false);
+      // Explicitly pause to ensure state consistency
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+      }
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      // Mark user interaction to allow autoplay
+      usePlayerStore.getState().setUserInteracted();
+      // Call previous from store directly for better state handling
+      const { playPrevious } = usePlayerStore.getState();
+      if (playPrevious) {
+        playPrevious();
+        // Force playing state
+        setTimeout(() => {
+          if (audioRef.current && audioRef.current.paused) {
+            audioRef.current.play().catch(() => { });
+          }
+        }, 100);
+      }
+    });
+
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      // Mark user interaction to allow autoplay
+      usePlayerStore.getState().setUserInteracted();
+      // Call next from store directly
+      playNext();
+      // Force playing state
+      setTimeout(() => {
+        if (audioRef.current && audioRef.current.paused) {
+          audioRef.current.play().catch(() => { });
+        }
+      }, 100);
+    });
+
+    // Seeking handlers with better reliability
+    try {
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (audioRef.current && details.seekTime !== undefined) {
+          audioRef.current.currentTime = details.seekTime;
+          setStoreCurrentTime(details.seekTime);
+          setUserInteracted();
+
+          // Update position state after seeking
+          if ('setPositionState' in navigator.mediaSession) {
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration,
+              playbackRate: audioRef.current.playbackRate,
+              position: details.seekTime
+            });
+          }
+        }
+      });
+    } catch (error) {
+      // Silent error handling
+    }
+
+    return () => {
+      // Clean up event listeners
+      audioRef.current?.removeEventListener('loadedmetadata', handleAudioChange);
+      audioRef.current?.removeEventListener('play', handleAudioChange);
+      audioRef.current?.removeEventListener('pause', handleAudioChange);
+    };
+  }, [currentSong, setIsPlaying, playNext, setUserInteracted, setStoreCurrentTime, isPlaying]);
+
+  // Lock screen specific MediaSession update interval - OLD WORKING VERSION
+  useEffect(() => {
+    // Only run if MediaSession API is supported and we're playing
+    if (!isMediaSessionSupported() || !isPlaying || !currentSong) return;
+
+    // Update MediaSession position state periodically even when app is in background
+    const positionUpdateInterval = setInterval(() => {
+      if (audioRef.current && 'setPositionState' in navigator.mediaSession) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: audioRef.current.duration || 0,
+            playbackRate: audioRef.current.playbackRate || 1,
+            position: audioRef.current.currentTime || 0
+          });
+        } catch (e) {
+          // Ignore position state errors
+        }
       }
     }, 1000);
 
     return () => {
-      audio.removeEventListener('loadedmetadata', updatePositionState);
-      clearInterval(positionInterval);
+      clearInterval(positionUpdateInterval);
+    };
+  }, [isPlaying, currentSong]);
+
+  // Enhanced background playback support - OLD WORKING VERSION
+  useEffect(() => {
+    // Only run when we have a song playing
+    if (!currentSong || !isPlaying) return;
+
+    // Handle visibility change specifically for playback
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Page is now hidden (background)
+        console.log("Page hidden, ensuring background playback");
+
+        // Double check media session availability
+        if (isMediaSessionSupported()) {
+          // Force update position state for lock screen
+          if ('setPositionState' in navigator.mediaSession && audioRef.current) {
+            try {
+              navigator.mediaSession.setPositionState({
+                duration: audioRef.current.duration || 0,
+                playbackRate: audioRef.current.playbackRate || 1,
+                position: audioRef.current.currentTime || 0
+              });
+            } catch (e) { }
+          }
+
+          // Ensure media session handlers are registered
+          navigator.mediaSession.setActionHandler('nexttrack', () => {
+            // Mark user interaction to allow autoplay
+            usePlayerStore.getState().setUserInteracted();
+            // Call next from store directly with enhanced reliability
+            const state = usePlayerStore.getState();
+            state.playNext();
+            state.setIsPlaying(true);
+
+            // Try to force audio to play with multiple attempts
+            const playAttempts = [0, 200, 500, 1000];
+            playAttempts.forEach(delay => {
+              setTimeout(() => {
+                const audio = document.querySelector('audio');
+                if (audio && audio.paused && !audio.ended) {
+                  audio.play().catch(() => { });
+                }
+              }, delay);
+            });
+          });
+
+          // Re-register play/pause handlers for reliability
+          navigator.mediaSession.setActionHandler('play', () => {
+            usePlayerStore.getState().setIsPlaying(true);
+            const audio = document.querySelector('audio');
+            if (audio && audio.paused) {
+              audio.play().catch(() => { });
+            }
+          });
+
+          navigator.mediaSession.setActionHandler('pause', () => {
+            usePlayerStore.getState().setIsPlaying(false);
+            const audio = document.querySelector('audio');
+            if (audio && !audio.paused) {
+              audio.pause();
+            }
+          });
+        }
+
+        // If playing, make sure audio element is actually playing
+        if (isPlaying && audioRef.current && audioRef.current.paused && !audioRef.current.ended) {
+          audioRef.current.play().catch(() => { });
+        }
+      } else {
+        // Page is visible again
+        console.log("Page visible, checking playback state");
+
+        // If we're supposed to be playing but audio is paused, restart it
+        if (isPlaying && audioRef.current?.paused && !audioRef.current?.ended) {
+          console.log("Restarting paused audio after visibility change");
+          audioRef.current.play().catch(() => { });
+        }
+
+        // Check if we need to update the UI state based on actual audio element state
+        if (!isPlaying && audioRef.current && !audioRef.current.paused) {
+          // Audio is playing but our state says it's not - sync them
+          usePlayerStore.getState().setIsPlaying(true);
+        }
+      }
+    };
+
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Setup wake lock for improved background playback (where supported)
+    let wakeLock: any = null;
+
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator) {
+        try {
+          // Request a screen wake lock to improve background playback
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          console.log('Wake lock acquired for improved playback');
+
+          wakeLock.addEventListener('release', () => {
+            console.log('Wake lock released');
+            // Try to reacquire if we're still playing
+            if (isPlaying) {
+              requestWakeLock();
+            }
+          });
+        } catch (err) {
+          // Silent fail for unsupported browsers
+        }
+      }
+    };
+
+    // Request wake lock when playing
+    if (isPlaying) {
+      requestWakeLock();
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+      // Release wake lock if we have one
+      if (wakeLock) {
+        wakeLock.release().catch(() => { });
+      }
     };
   }, [currentSong, isPlaying]);
 
@@ -459,9 +648,11 @@ const AudioPlayer = () => {
       }}
       onWaiting={() => {
         console.log('⏳ Audio waiting');
+        setIsLoading(true);
       }}
       onPlaying={() => {
         console.log('Audio playing event');
+        setIsLoading(false);
       }}
       onPause={() => {
         console.log('Audio pause event');
@@ -469,9 +660,11 @@ const AudioPlayer = () => {
       onPlay={() => {
         console.log('Audio play event');
       }}
-      preload="metadata"
+      preload="auto"
       playsInline
+      webkit-playsinline="true"
       controls={false}
+      x-webkit-airplay="allow"
     />
   );
 };
