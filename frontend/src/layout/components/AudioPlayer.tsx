@@ -232,22 +232,67 @@ const AudioPlayer = () => {
         audioContextRef.current.resume().catch(console.warn);
       }
 
-      audio.play().then(() => {
-        console.log('✅ Audio play() succeeded');
-      }).catch((error) => {
-        console.error('❌ Playback failed:', error);
+      // iOS-specific handling for more reliable background playback
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
 
-        // Try again after a short delay
-        setTimeout(() => {
-          if (audio.paused && audio.src && isPlaying) {
-            console.log('🔄 Retrying playback after error');
-            audio.play().catch(() => {
-              console.error('❌ Retry also failed');
-              setIsPlaying(false);
-            });
+      if (isIOS) {
+        console.log('📱 iOS detected - using enhanced playback strategy');
+        
+        // Multiple attempts with different strategies for iOS
+        const playAttempts = [
+          () => audio.play(),
+          () => {
+            // Force reload and play for iOS
+            const currentTime = audio.currentTime;
+            audio.load();
+            audio.currentTime = currentTime;
+            return audio.play();
+          },
+          () => {
+            // Try with explicit user interaction flag
+            setUserInteracted();
+            return audio.play();
           }
-        }, 500);
-      });
+        ];
+
+        let attemptIndex = 0;
+        const tryPlay = () => {
+          if (attemptIndex >= playAttempts.length) {
+            console.error('❌ All iOS playback attempts failed');
+            setIsPlaying(false);
+            return;
+          }
+
+          playAttempts[attemptIndex]().then(() => {
+            console.log(`✅ iOS audio play() succeeded on attempt ${attemptIndex + 1}`);
+          }).catch((error) => {
+            console.warn(`❌ iOS playback attempt ${attemptIndex + 1} failed:`, error);
+            attemptIndex++;
+            setTimeout(tryPlay, 200 * attemptIndex); // Increasing delay
+          });
+        };
+
+        tryPlay();
+      } else {
+        // Standard handling for other platforms
+        audio.play().then(() => {
+          console.log('✅ Audio play() succeeded');
+        }).catch((error) => {
+          console.error('❌ Playback failed:', error);
+
+          // Try again after a short delay
+          setTimeout(() => {
+            if (audio.paused && audio.src && isPlaying) {
+              console.log('🔄 Retrying playback after error');
+              audio.play().catch(() => {
+                console.error('❌ Retry also failed');
+                setIsPlaying(false);
+              });
+            }
+          }, 500);
+        });
+      }
     } else if (!isPlaying && !audio.paused) {
       console.log('⏸️ Pausing playback...');
       audio.pause();

@@ -231,7 +231,10 @@ class SimpleBackgroundAudioManager {
       if (!this.audio || this.audio.ended || !this.audio.src || !this.isPlaying) return;
 
       // iOS requires more aggressive handling
-      if (isIOS()) {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+
+      if (isIOS) {
         // On iOS, prevent ALL system pauses when we should be playing
         if (this.isPlaying && !this.audio.seeking) {
           console.log('📱 iOS pause detected - aggressive resume');
@@ -286,7 +289,10 @@ class SimpleBackgroundAudioManager {
     this.pageHideHandler = () => {
       if (this.isPlaying) {
         console.log('🔄 Page hiding - maintaining playback');
-        if (isIOS()) {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+        
+        if (isIOS) {
           // iOS needs immediate action on page hide
           this.maintainBackgroundPlayback();
           // Additional iOS-specific handling
@@ -311,7 +317,10 @@ class SimpleBackgroundAudioManager {
     window.addEventListener('pageshow', this.pageShowHandler);
 
     // iOS-specific event listeners
-    if (isIOS()) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+
+    if (isIOS) {
       // Handle iOS app state changes
       window.addEventListener('focus', () => {
         if (this.isPlaying) {
@@ -449,7 +458,9 @@ class SimpleBackgroundAudioManager {
     console.log('⏰ Starting keep-alive monitoring');
 
     // iOS needs more frequent monitoring
-    const interval = isIOS() ? 3000 : 5000; // 3 seconds for iOS, 5 for others
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+    const interval = isIOS ? 3000 : 5000; // 3 seconds for iOS, 5 for others
 
     this.keepAliveInterval = setInterval(() => {
       if (this.isPlaying && this.audio) {
@@ -457,7 +468,7 @@ class SimpleBackgroundAudioManager {
         if (this.audio.paused && !this.audio.ended && this.audio.src) {
           console.log('🚨 Audio unexpectedly paused - attempting resume');
 
-          if (isIOS()) {
+          if (isIOS) {
             // iOS-specific aggressive resume
             console.log('📱 iOS aggressive resume attempt');
             this.audio.play().catch((error) => {
@@ -485,7 +496,7 @@ class SimpleBackgroundAudioManager {
         }
 
         // Maintain wake lock (iOS doesn't support wake lock, but keep for other platforms)
-        if (!this.wakeLock && !isIOS()) {
+        if (!this.wakeLock && !isIOS) {
           this.requestWakeLock();
         }
       }
@@ -534,10 +545,13 @@ class SimpleBackgroundAudioManager {
       navigator.mediaSession.playbackState = this.isPlaying ? 'playing' : 'paused';
 
       // iOS-enhanced action handlers
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+
       navigator.mediaSession.setActionHandler('play', () => {
         console.log('🎵 MediaSession play action');
         if (this.audio && this.audio.paused) {
-          if (isIOS()) {
+          if (isIOS) {
             // iOS-specific play handling
             console.log('📱 iOS MediaSession play');
             this.audio.play().then(() => {
@@ -560,7 +574,7 @@ class SimpleBackgroundAudioManager {
       navigator.mediaSession.setActionHandler('pause', () => {
         console.log('⏸️ MediaSession pause action');
         if (this.audio && !this.audio.paused) {
-          if (isIOS()) {
+          if (isIOS) {
             console.log('📱 iOS MediaSession pause');
           }
           this.audio.pause();
@@ -599,7 +613,7 @@ class SimpleBackgroundAudioManager {
         console.log('Seek backward not supported');
       }
 
-      console.log('🎛️ MediaSession configured' + (isIOS() ? ' with iOS enhancements' : ''));
+      console.log('🎛️ MediaSession configured' + (isIOS ? ' with iOS enhancements' : ''));
     } catch (error) {
       console.warn('MediaSession setup failed:', error);
     }
