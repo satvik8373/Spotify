@@ -3,7 +3,7 @@ import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
 import { spotifyAutoSyncService } from './services/spotifyAutoSyncService';
-import PerformanceMonitor from './components/PerformanceMonitor';
+
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON } from './utils/storageUtils';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
@@ -31,7 +31,7 @@ const JioSaavnCategoriesPage = lazy(() => import('./pages/jiosaavn/JioSaavnCateg
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 //
-const ApiDebugPage = lazy(() => import('./pages/debug/ApiDebugPage.jsx'));
+
 // DON'T lazy load auth pages to prevent flickering
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -183,10 +183,7 @@ const router = createBrowserRouter(
 					path: '/jiosaavn/categories',
 					element: <AuthGate><JioSaavnCategoriesPage /></AuthGate>
 				},
-				{
-					path: '/debug/api',
-					element: <ApiDebugPage />
-				},
+
 				{
 					path: '/privacy',
 					element: <PrivacyPolicy />
@@ -312,7 +309,6 @@ function AppContent() {
 	// Main app content - render only after splash completes
 	return (
 		<div className="min-h-screen bg-[#121212]">
-			<PerformanceMonitor enabled={process.env.NODE_ENV === 'development'} />
 			<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
 				<RouterProvider
 					router={router}

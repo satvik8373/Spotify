@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useMemo } from 'react';
 import { resolveArtist } from '@/lib/resolveArtist';
-import EnhancedSearchSuggestions from '@/components/EnhancedSearchSuggestions';
+
 
 // Maximum number of recent searches to store
 const MAX_RECENT_SEARCHES = 8;

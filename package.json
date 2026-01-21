@@ -7,8 +7,7 @@
   },
   "scripts": {
     "postinstall": "node scripts/install.js",
-    "build": "node scripts/build.js",
-    "prepare": "node vercel-deploy.js"
+    "build": "node scripts/build.js"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
