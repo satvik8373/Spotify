@@ -1,180 +1,179 @@
 /**
- * Audio Manager - Unified audio system with iOS background audio support
- * Consolidates all audio-related functionality into a single, professional module
+ * iOS Audio Playback Fixes
+ * Handles iOS-specific audio restrictions and issues
  */
 
-// ============================================================================
-// AUDIO CONTEXT MANAGEMENT
-// ============================================================================
-
-let globalAudioContext: AudioContext | null = null;
-let isAudioContextInitialized = false;
-let userHasInteracted = false;
-
-/**
- * Initialize AudioContext only after user interaction
- */
-export const initAudioContext = (): void => {
-  if (isAudioContextInitialized || typeof window === 'undefined') return;
-
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    globalAudioContext = new AudioContextClass();
-    isAudioContextInitialized = true;
-
-    if (globalAudioContext.state === 'suspended') {
-      globalAudioContext.resume().catch(() => {
-        console.warn('Failed to resume AudioContext');
-      });
-    }
-  } catch (error) {
-    console.warn('Failed to initialize AudioContext:', error);
-  }
-};
-
-/**
- * Get the global AudioContext
- */
-export const getAudioContext = (): AudioContext | null => {
-  if (!userHasInteracted) {
-    console.warn('AudioContext not available - user interaction required');
-    return null;
-  }
-
-  if (!isAudioContextInitialized) {
-    initAudioContext();
-  }
-
-  return globalAudioContext;
-};
-
-/**
- * Mark user interaction and initialize AudioContext
- */
-export const markUserInteraction = (): void => {
-  if (userHasInteracted) return;
-
-  userHasInteracted = true;
-  initAudioContext();
-};
-
-/**
- * Resume AudioContext if suspended
- */
-export const resumeAudioContext = async (): Promise<void> => {
-  const context = getAudioContext();
-  if (context && context.state === 'suspended') {
-    try {
-      await context.resume();
-    } catch (error) {
-      console.warn('Failed to resume AudioContext:', error);
-    }
-  }
-};
-
-// ============================================================================
-// PLATFORM DETECTION
-// ============================================================================
-
-/**
- * Check if running on iOS
- */
+// Check if running on iOS
 export const isIOS = (): boolean => {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
-/**
- * Check if running on Android
- */
-export const isAndroid = (): boolean => {
-  return /Android/.test(navigator.userAgent);
+// Check if running as PWA
+export const isPWA = (): boolean => {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         (window.navigator as any).standalone === true;
 };
 
-// ============================================================================
-// AUDIO ELEMENT CONFIGURATION
-// ============================================================================
+// Initialize audio context for iOS (required for audio playback)
+let audioContext: AudioContext | null = null;
 
-/**
- * Configure audio element for reliable cross-platform background playback
- * Special focus on iOS background audio requirements
- */
-export const configureAudioElement = (audio: HTMLAudioElement): void => {
-  console.log('🔧 Configuring audio element for reliable background playback');
+export const initAudioContext = (): void => {
+  if (isIOS() && !audioContext) {
+    try {
+      // @ts-ignore - AudioContext might not be in types
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AudioContextClass();
+      
+      // Resume audio context on user interaction
+      const resumeAudio = () => {
+        if (audioContext && audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
+      };
+      
+      // Add listeners for user interaction
+      document.addEventListener('touchstart', resumeAudio, { once: true });
+      document.addEventListener('touchend', resumeAudio, { once: true });
+      document.addEventListener('click', resumeAudio, { once: true });
+    } catch (error) {
+      console.warn('Failed to initialize AudioContext:', error);
+    }
+  }
+};
 
-  // Essential attributes for all platforms
+// Configure audio element for iOS compatibility
+export const configureAudioForIOS = (audio: HTMLAudioElement): void => {
+  if (!isIOS()) return;
+  
+  // Set attributes for iOS compatibility
   audio.setAttribute('playsinline', 'true');
   audio.setAttribute('webkit-playsinline', 'true');
-  audio.setAttribute('preload', 'metadata');
-  audio.setAttribute('controlslist', 'nodownload');
-  audio.setAttribute('disablePictureInPicture', 'true');
+  audio.preload = 'metadata'; // Changed from 'auto' to reduce data usage
+  
+  // Enable inline playback (prevents fullscreen on iOS)
+  (audio as any).playsInline = true;
+  (audio as any).webkitPlaysInline = true;
+  
+  // Set crossOrigin for CORS
   audio.crossOrigin = 'anonymous';
-
-  // iOS specific configuration - CRITICAL for background audio
-  if (isIOS()) {
-    console.log('📱 Applying iOS-specific background audio configuration');
-
-    // Essential iOS attributes
-    audio.setAttribute('x-webkit-airplay', 'allow');
-    audio.setAttribute('webkit-playsinline', 'true');
-    audio.setAttribute('playsinline', 'true');
-
-    // iOS background audio properties
-    try {
-      (audio as any).playsInline = true;
-      (audio as any).webkitPlaysInline = true;
-      (audio as any).preservesPitch = false;
-      (audio as any).webkitPreservesPitch = false;
-
-      // Critical iOS background audio session properties
-      (audio as any).webkitAudioContext = true;
-      (audio as any).webkitAllowsAirPlay = true;
-
-      // Set audio session category for background playback (iOS specific)
-      if ('webkitAudioSession' in audio) {
-        (audio as any).webkitAudioSession = 'playback';
-      }
-
-      console.log('✅ iOS background audio properties configured');
-    } catch (error) {
-      console.warn('iOS configuration failed:', error);
-    }
-
-    // iOS-specific event handling for background audio
-    audio.addEventListener('webkitbeginfullscreen', () => {
-      console.log('📱 iOS fullscreen begin - maintaining audio');
-    });
-
-    audio.addEventListener('webkitendfullscreen', () => {
-      console.log('📱 iOS fullscreen end - ensuring audio continues');
-    });
-
-    // Handle iOS audio session interruptions
-    audio.addEventListener('webkitaudiointerrupted', () => {
-      console.log('📱 iOS audio interrupted');
-    });
-
-    audio.addEventListener('webkitaudioresumed', () => {
-      console.log('📱 iOS audio resumed');
-    });
-  }
-
-  // Android specific configuration
-  if (isAndroid()) {
-    console.log('🤖 Applying Android-specific configuration');
-    try {
-      (audio as any).mozPreservesPitch = false;
-      (audio as any).webkitPreservesPitch = false;
-    } catch (error) {
-      console.warn('Android configuration failed:', error);
-    }
-  }
-
-  console.log('✅ Audio element configured for reliable background playback');
+  
+  // Disable picture-in-picture
+  (audio as any).disablePictureInPicture = true;
 };
 
+// Handle audio loading with iOS-specific fixes
+export const loadAudioForIOS = async (
+  audio: HTMLAudioElement, 
+  url: string
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (!url) {
+      reject(new Error('No audio URL provided'));
+      return;
+    }
+    
+    // Configure audio element
+    configureAudioForIOS(audio);
+    
+    // Set up event listeners
+    const handleCanPlay = () => {
+      cleanup();
+      resolve();
+    };
+    
+    const handleError = (e: Event) => {
+      cleanup();
+      reject(new Error('Failed to load audio'));
+    };
+    
+    const cleanup = () => {
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('error', handleError);
+    };
+    
+    audio.addEventListener('canplay', handleCanPlay, { once: true });
+    audio.addEventListener('error', handleError, { once: true });
+    
+    // Set source and load
+    audio.src = url;
+    audio.load();
+    
+    // Timeout after 10 seconds
+    setTimeout(() => {
+      cleanup();
+      reject(new Error('Audio load timeout'));
+    }, 10000);
+  });
+};
+
+// Play audio with iOS-specific handling
+export const playAudioForIOS = async (audio: HTMLAudioElement): Promise<void> => {
+  if (!isIOS()) {
+    return audio.play();
+  }
+  
+  try {
+    // Resume audio context if suspended
+    if (audioContext && audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    
+    // Attempt to play
+    await audio.play();
+  } catch (error: any) {
+    // Handle specific iOS errors
+    if (error.name === 'NotAllowedError') {
+      console.warn('Playback blocked - user interaction required');
+      throw new Error('USER_INTERACTION_REQUIRED');
+    } else if (error.name === 'NotSupportedError') {
+      console.warn('Audio format not supported');
+      throw new Error('FORMAT_NOT_SUPPORTED');
+    } else {
+      console.warn('Playback failed:', error);
+      throw error;
+    }
+  }
+};
+
+// Unlock audio on iOS (call this on first user interaction)
+export const unlockAudioOnIOS = (): void => {
+  if (!isIOS()) return;
+  
+  // Initialize audio context
+  initAudioContext();
+  
+  // Create a silent audio element and play it
+  const silentAudio = new Audio();
+  silentAudio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADhAC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAA4T/////////////////////////////////////////////////';
+  configureAudioForIOS(silentAudio);
+  
+  silentAudio.play()
+    .then(() => {
+      silentAudio.pause();
+      silentAudio.remove();
+    })
+    .catch(() => {
+      // Silent error - this is expected on first load
+    });
+};
+
+// Fix for service worker interfering with audio
+export const bypassServiceWorkerForAudio = (url: string): string => {
+  if (!isIOS() || !isPWA()) return url;
+  
+  // Add cache-busting parameter to bypass service worker
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}_t=${Date.now()}`;
+};
+
+// Initialize on module load
+if (typeof window !== 'undefined') {
+  initAudioContext();
+}
+
 // ============================================================================
-// BACKGROUND AUDIO MANAGEMENT
+// BACKGROUND AUDIO MANAGEMENT - OLD WORKING VERSION
 // ============================================================================
 
 /**
@@ -231,10 +230,7 @@ class SimpleBackgroundAudioManager {
       if (!this.audio || this.audio.ended || !this.audio.src || !this.isPlaying) return;
 
       // iOS requires more aggressive handling
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-
-      if (isIOS) {
+      if (isIOS()) {
         // On iOS, prevent ALL system pauses when we should be playing
         if (this.isPlaying && !this.audio.seeking) {
           console.log('📱 iOS pause detected - aggressive resume');
@@ -289,10 +285,7 @@ class SimpleBackgroundAudioManager {
     this.pageHideHandler = () => {
       if (this.isPlaying) {
         console.log('🔄 Page hiding - maintaining playback');
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-          (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-        
-        if (isIOS) {
+        if (isIOS()) {
           // iOS needs immediate action on page hide
           this.maintainBackgroundPlayback();
           // Additional iOS-specific handling
@@ -317,10 +310,7 @@ class SimpleBackgroundAudioManager {
     window.addEventListener('pageshow', this.pageShowHandler);
 
     // iOS-specific event listeners
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-
-    if (isIOS) {
+    if (isIOS()) {
       // Handle iOS app state changes
       window.addEventListener('focus', () => {
         if (this.isPlaying) {
@@ -458,9 +448,7 @@ class SimpleBackgroundAudioManager {
     console.log('⏰ Starting keep-alive monitoring');
 
     // iOS needs more frequent monitoring
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-    const interval = isIOS ? 3000 : 5000; // 3 seconds for iOS, 5 for others
+    const interval = isIOS() ? 3000 : 5000; // 3 seconds for iOS, 5 for others
 
     this.keepAliveInterval = setInterval(() => {
       if (this.isPlaying && this.audio) {
@@ -468,7 +456,7 @@ class SimpleBackgroundAudioManager {
         if (this.audio.paused && !this.audio.ended && this.audio.src) {
           console.log('🚨 Audio unexpectedly paused - attempting resume');
 
-          if (isIOS) {
+          if (isIOS()) {
             // iOS-specific aggressive resume
             console.log('📱 iOS aggressive resume attempt');
             this.audio.play().catch((error) => {
@@ -496,7 +484,7 @@ class SimpleBackgroundAudioManager {
         }
 
         // Maintain wake lock (iOS doesn't support wake lock, but keep for other platforms)
-        if (!this.wakeLock && !isIOS) {
+        if (!this.wakeLock && !isIOS()) {
           this.requestWakeLock();
         }
       }
@@ -545,13 +533,10 @@ class SimpleBackgroundAudioManager {
       navigator.mediaSession.playbackState = this.isPlaying ? 'playing' : 'paused';
 
       // iOS-enhanced action handlers
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-
       navigator.mediaSession.setActionHandler('play', () => {
         console.log('🎵 MediaSession play action');
         if (this.audio && this.audio.paused) {
-          if (isIOS) {
+          if (isIOS()) {
             // iOS-specific play handling
             console.log('📱 iOS MediaSession play');
             this.audio.play().then(() => {
@@ -574,7 +559,7 @@ class SimpleBackgroundAudioManager {
       navigator.mediaSession.setActionHandler('pause', () => {
         console.log('⏸️ MediaSession pause action');
         if (this.audio && !this.audio.paused) {
-          if (isIOS) {
+          if (isIOS()) {
             console.log('📱 iOS MediaSession pause');
           }
           this.audio.pause();
@@ -613,7 +598,7 @@ class SimpleBackgroundAudioManager {
         console.log('Seek backward not supported');
       }
 
-      console.log('🎛️ MediaSession configured' + (isIOS ? ' with iOS enhancements' : ''));
+      console.log('🎛️ MediaSession configured' + (isIOS() ? ' with iOS enhancements' : ''));
     } catch (error) {
       console.warn('MediaSession setup failed:', error);
     }
@@ -650,3 +635,10 @@ class SimpleBackgroundAudioManager {
 
 // Export singleton instance
 export const backgroundAudioManager = new SimpleBackgroundAudioManager();
+
+// Legacy exports for compatibility
+export const markUserInteraction = unlockAudioOnIOS;
+export const resumeAudioContext = initAudioContext;
+export const configureAudioElement = configureAudioForIOS;
+export const getAudioContext = () => audioContext;
+export { isIOS as isAndroid }; // Keep for compatibility

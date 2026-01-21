@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { resolveArtist } from '@/lib/resolveArtist';
-import { backgroundAudioManager, configureAudioElement } from '@/utils/audioManager';
+import { backgroundAudioManager, configureAudioElement, unlockAudioOnIOS, isIOS, playAudioForIOS } from '@/utils/audioManager';
 
 const AudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -124,7 +124,7 @@ const AudioPlayer = () => {
 
       console.log('🎵 Initializing reliable background audio system');
 
-      // Configure audio element for background playback
+      // Configure audio element for background playback (OLD WORKING VERSION)
       configureAudioElement(audio);
 
       // Initialize background audio manager
@@ -134,6 +134,7 @@ const AudioPlayer = () => {
       const handleFirstPlay = () => {
         console.log('🎯 First play detected - initializing audio context');
         initializeAudioContext();
+        unlockAudioOnIOS(); // iOS-specific unlock
         audio.removeEventListener('play', handleFirstPlay);
       };
       audio.addEventListener('play', handleFirstPlay);
@@ -199,7 +200,7 @@ const AudioPlayer = () => {
     }
   }, [currentSong]);
 
-  // Handle play/pause state changes and sync with background audio manager
+  // Handle play/pause state changes - OLD WORKING VERSION
   useEffect(() => {
     console.log('🎛️ Play/pause effect triggered:', { isPlaying, hasAudio: !!audioRef.current });
 
@@ -232,50 +233,22 @@ const AudioPlayer = () => {
         audioContextRef.current.resume().catch(console.warn);
       }
 
-      // iOS-specific handling for more reliable background playback
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-
-      if (isIOS) {
-        console.log('📱 iOS detected - using enhanced playback strategy');
-        
-        // Multiple attempts with different strategies for iOS
-        const playAttempts = [
-          () => audio.play(),
-          () => {
-            // Force reload and play for iOS
-            const currentTime = audio.currentTime;
-            audio.load();
-            audio.currentTime = currentTime;
-            return audio.play();
-          },
-          () => {
-            // Try with explicit user interaction flag
-            setUserInteracted();
-            return audio.play();
-          }
-        ];
-
-        let attemptIndex = 0;
-        const tryPlay = () => {
-          if (attemptIndex >= playAttempts.length) {
-            console.error('❌ All iOS playback attempts failed');
+      // Use iOS-specific playback if on iOS
+      if (isIOS()) {
+        console.log('📱 iOS detected - using iOS-specific playback');
+        playAudioForIOS(audio).then(() => {
+          console.log('✅ iOS audio play() succeeded');
+        }).catch((error) => {
+          console.error('❌ iOS playback failed:', error);
+          
+          // Try standard play as fallback
+          audio.play().catch(() => {
+            console.error('❌ Fallback playback also failed');
             setIsPlaying(false);
-            return;
-          }
-
-          playAttempts[attemptIndex]().then(() => {
-            console.log(`✅ iOS audio play() succeeded on attempt ${attemptIndex + 1}`);
-          }).catch((error) => {
-            console.warn(`❌ iOS playback attempt ${attemptIndex + 1} failed:`, error);
-            attemptIndex++;
-            setTimeout(tryPlay, 200 * attemptIndex); // Increasing delay
           });
-        };
-
-        tryPlay();
+        });
       } else {
-        // Standard handling for other platforms
+        // Standard playback for other platforms
         audio.play().then(() => {
           console.log('✅ Audio play() succeeded');
         }).catch((error) => {
@@ -305,7 +278,7 @@ const AudioPlayer = () => {
     }
   }, [isPlaying, setIsPlaying, setUserInteracted]);
 
-  // MediaSession setup for lock screen controls
+  // MediaSession setup for lock screen controls - OLD WORKING VERSION
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentSong) return;
 
@@ -450,7 +423,12 @@ const AudioPlayer = () => {
     }
 
     if (isPlaying && audioRef.current) {
-      audioRef.current.play().catch(() => { });
+      // Use iOS-specific playback if on iOS
+      if (isIOS()) {
+        playAudioForIOS(audioRef.current).catch(() => { });
+      } else {
+        audioRef.current.play().catch(() => { });
+      }
     }
   }, [isPlaying]);
 
