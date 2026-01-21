@@ -1,6 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { login, signInWithGoogle, register } from '@/services/hybridAuthService';
+import { login, signInWithGoogle, register, signInWithFacebook } from '@/services/hybridAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
@@ -51,6 +51,7 @@ const Login = () => {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [facebookLoading, setFacebookLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true); // Default to login mode
   const navigate = useNavigate();
@@ -167,6 +168,21 @@ const Login = () => {
     }
   };
 
+  const handleFacebookAuth = async () => {
+    setFacebookLoading(true);
+    try {
+      await signInWithFacebook();
+      toast.success(isLogin ? 'Welcome back!' : 'Signed up with Facebook successfully');
+      const redirectTo = location.state?.from || '/home';
+      navigate(redirectTo, { replace: true });
+    } catch (error: any) {
+      console.error('Facebook auth error:', error);
+      toast.error(error.message || `Failed to ${isLogin ? 'login' : 'sign up'} with Facebook`);
+    } finally {
+      setFacebookLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-400 via-green-500 to-green-600 relative overflow-hidden flex items-center justify-center p-8">
       {/* Floating Artist Images Background */}
@@ -248,12 +264,13 @@ const Login = () => {
 
               {/* Continue with Facebook */}
               <Button
+                onClick={handleFacebookAuth}
+                disabled={facebookLoading}
                 variant="outline"
-                disabled={true}
-                className="w-full border-gray-600/30 bg-transparent text-white/40 font-medium py-2.5 rounded-full mb-2 flex items-center justify-center gap-3 text-sm h-auto opacity-50 cursor-not-allowed"
+                className="w-full border-gray-600/30 bg-transparent text-white font-medium py-2.5 rounded-full mb-2 flex items-center justify-center gap-3 text-sm h-auto"
               >
-                <div className="shrink-0 grayscale opacity-50"><FacebookLogo /></div>
-                <span>Facebook (Coming Soon)</span>
+                <div className="shrink-0"><FacebookLogo /></div>
+                <span>{facebookLoading ? (isLogin ? 'Signing in...' : 'Signing up...') : 'Continue with Facebook'}</span>
               </Button>
 
               {/* Continue with Apple - Added */}
@@ -518,12 +535,13 @@ const Login = () => {
                     </div>
 
                     <Button
+                      onClick={handleFacebookAuth}
+                      disabled={facebookLoading}
                       variant="outline"
-                      disabled={true}
-                      className="w-full border-gray-600 text-white/40 hover:bg-gray-800/20 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm opacity-50 cursor-not-allowed"
+                      className="w-full border-gray-600 text-white hover:bg-gray-800/50 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm"
                     >
                       <FacebookLogo />
-                      Facebook (Coming Soon)
+                      {facebookLoading ? (isLogin ? 'Signing in...' : 'Signing up...') : 'Continue with Facebook'}
                     </Button>
 
                     <Button
