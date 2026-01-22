@@ -129,7 +129,6 @@ const Login = () => {
       const redirectTo = location.state?.from || '/home';
       navigate(redirectTo, { replace: true });
     } catch (error: any) {
-      console.error('Auth error:', error);
 
       if (isLogin) {
         if (error.message.includes('user-not-found') || error.message.includes('wrong-password')) {
@@ -161,7 +160,6 @@ const Login = () => {
       const redirectTo = location.state?.from || '/home';
       navigate(redirectTo, { replace: true });
     } catch (error: any) {
-      console.error('Google auth error:', error);
       toast.error(error.message || `Failed to ${isLogin ? 'login' : 'sign up'} with Google`);
     } finally {
       setGoogleLoading(false);
@@ -176,7 +174,6 @@ const Login = () => {
       const redirectTo = location.state?.from || '/home';
       navigate(redirectTo, { replace: true });
     } catch (error: any) {
-      console.error('Facebook auth error:', error);
       toast.error(error.message || `Failed to ${isLogin ? 'login' : 'sign up'} with Facebook`);
     } finally {
       setFacebookLoading(false);

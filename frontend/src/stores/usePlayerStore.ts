@@ -6,12 +6,16 @@ export type Queue = Song[];
 
 export type InterruptionReason = 'call' | 'bluetooth' | 'system' | 'notification' | null;
 
+export type ShuffleMode = 'off' | 'normal' | 'smart';
+
 export interface PlayerState {
   currentSong: Song | null;
   isPlaying: boolean;
   isShuffled: boolean;
+  shuffleMode: ShuffleMode;
   isRepeating: boolean;
   queue: Song[];
+  originalQueue: Song[]; // Store original queue order for shuffle/unshuffle
   currentIndex: number;
   currentTime: number;
   duration: number;
@@ -34,11 +38,13 @@ export interface PlayerState {
   playNext: () => void;
   playPrevious: () => void;
   toggleShuffle: () => void;
+  setShuffleMode: (mode: ShuffleMode) => void;
   toggleRepeat: () => void;
   setUserInteracted: () => void;
   addToQueue: (song: Song) => void;
   playNextInQueue: (song: Song) => void;
   removeFromQueue: (index: number) => void;
+  smartShuffle: () => void;
 }
 
 // Helper to get a random index that's different from the current one
@@ -57,14 +63,78 @@ const getRandomIndex = (currentIndex: number, length: number): number => {
   }
 };
 
+// Helper to shuffle an array using Fisher-Yates algorithm (perfect shuffle like liked songs)
+const shuffleArray = <T>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+// Smart shuffle algorithm - considers song similarity, artist diversity, etc.
+const smartShuffleArray = <T extends Song>(array: T[]): T[] => {
+  if (array.length <= 2) return shuffleArray(array);
+  
+  const shuffled = [...array];
+  const result: T[] = [];
+  const artistCounts: { [key: string]: number } = {};
+  
+  // First pass: Fisher-Yates shuffle
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  
+  // Second pass: Smart reordering to avoid artist clustering
+  while (shuffled.length > 0) {
+    let bestIndex = 0;
+    let bestScore = -1;
+    
+    for (let i = 0; i < shuffled.length; i++) {
+      const song = shuffled[i];
+      const artist = song.artist || 'Unknown';
+      const artistCount = artistCounts[artist] || 0;
+      
+      // Score based on artist diversity and position
+      let score = 1 / (artistCount + 1);
+      
+      // Avoid same artist back-to-back
+      if (result.length > 0) {
+        const lastSong = result[result.length - 1];
+        if (lastSong.artist === artist) {
+          score *= 0.1; // Heavy penalty for same artist
+        }
+      }
+      
+      // Add some randomness
+      score *= Math.random();
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = i;
+      }
+    }
+    
+    const selectedSong = shuffled.splice(bestIndex, 1)[0];
+    result.push(selectedSong);
+    artistCounts[selectedSong.artist || 'Unknown'] = (artistCounts[selectedSong.artist || 'Unknown'] || 0) + 1;
+  }
+  
+  return result;
+};
+
 export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, get) => ({
       currentSong: null,
       isPlaying: false,
       isShuffled: false,
+      shuffleMode: 'off',
       isRepeating: false,
       queue: [],
+      originalQueue: [],
       currentIndex: 0,
       currentTime: 0,
       duration: 0,
@@ -78,33 +148,27 @@ export const usePlayerStore = create<PlayerState>()(
       skipRestoreUntilTs: 0,
 
       setCurrentSong: (song) => {
-        // Filter out blob URLs from old download system
         if (song.audioUrl && song.audioUrl.startsWith('blob:')) {
-          console.warn('Skipping song with blob URL from old download system:', song.title);
           return;
         }
 
-        // Get the current audio element and stop it immediately
         const audio = document.querySelector('audio');
         if (audio) {
           audio.pause();
           audio.currentTime = 0;
-          // Clear the src to stop any ongoing loading/playback
           audio.src = '';
           audio.load();
         }
 
-        // Immediately reset current time when switching songs
         set({
           currentSong: song,
-          currentTime: 0 // Reset time immediately for new song
+          currentTime: 0
         });
       },
 
       setIsPlaying: (isPlaying) => {
-        // If trying to play but user hasn't interacted, don't allow
         if (isPlaying && !get().hasUserInteracted) {
-          set({ isPlaying, hasUserInteracted: true });
+          set({ isPlaying: false });
         } else {
           set({ isPlaying });
         }
@@ -112,7 +176,6 @@ export const usePlayerStore = create<PlayerState>()(
 
       setCurrentTime: (time) => {
         set({ currentTime: time });
-        // Removed frequent localStorage writes - only save on pause/song change
       },
 
       setDuration: (duration) => set({ duration }),
@@ -128,41 +191,52 @@ export const usePlayerStore = create<PlayerState>()(
       playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
 
-        // Filter out songs with blob URLs from old download system
         const validSongs = songs.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
 
         if (validSongs.length === 0) {
-          console.warn('No valid songs to play (all had blob URLs)');
           return;
         }
 
-        // Adjust initial index if songs were filtered out
         const validIndex = Math.max(0, Math.min(initialIndex, validSongs.length - 1));
 
-        // Immediately stop current audio and reset time
         const audio = document.querySelector('audio');
         if (audio) {
           audio.pause();
           audio.currentTime = 0;
-          // Clear the src to completely stop the previous song
           audio.src = '';
           audio.load();
         }
 
-        // Set player state
+        const originalQueue = [...validSongs];
+        let playQueue = [...validSongs];
+        let playIndex = validIndex;
+
+        const { shuffleMode } = get();
+        if (shuffleMode !== 'off' && validSongs.length > 1) {
+          const selectedSong = validSongs[validIndex];
+          const otherSongs = validSongs.filter((_, i) => i !== validIndex);
+          
+          const shuffledOthers = shuffleMode === 'smart' 
+            ? smartShuffleArray(otherSongs)
+            : shuffleArray(otherSongs);
+          
+          playQueue = [selectedSong, ...shuffledOthers];
+          playIndex = 0;
+        }
+
         set({
-          queue: validSongs,
-          currentIndex: validIndex,
-          currentSong: validSongs[validIndex],
-          currentTime: 0, // Reset time for new album
-          hasUserInteracted: true // Assume user interaction when explicitly playing
+          queue: playQueue,
+          originalQueue,
+          currentIndex: playIndex,
+          currentSong: playQueue[playIndex],
+          currentTime: 0,
+          hasUserInteracted: true
         });
 
-        // Save to localStorage as a backup for components that need it directly
         try {
           const playerState = {
-            currentSong: validSongs[validIndex],
-            currentTime: 0, // Reset time for new album
+            currentSong: playQueue[playIndex],
+            currentTime: 0,
             timestamp: new Date().toISOString()
           };
           localStorage.setItem('player_state', JSON.stringify(playerState));
@@ -172,7 +246,7 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       playNext: () => {
-        const { queue, currentIndex, isShuffled, isRepeating } = get();
+        const { queue, currentIndex, shuffleMode, isRepeating } = get();
 
         if (queue.length === 0) return;
 
@@ -204,7 +278,7 @@ export const usePlayerStore = create<PlayerState>()(
           return;
         }
 
-        const newIndex = isShuffled
+        const newIndex = shuffleMode !== 'off'
           ? getRandomIndex(currentIndex, queue.length)
           : currentIndex >= queue.length - 1 ? 0 : currentIndex + 1;
 
@@ -428,7 +502,144 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       toggleShuffle: () => {
-        set(state => ({ isShuffled: !state.isShuffled }));
+        const { shuffleMode, queue, originalQueue, currentSong } = get();
+        
+        // Cycle through shuffle modes: off -> normal -> smart -> off
+        let newShuffleMode: ShuffleMode;
+        switch (shuffleMode) {
+          case 'off':
+            newShuffleMode = 'normal';
+            break;
+          case 'normal':
+            newShuffleMode = 'smart';
+            break;
+          case 'smart':
+            newShuffleMode = 'off';
+            break;
+          default:
+            newShuffleMode = 'normal';
+        }
+
+        const newIsShuffled = newShuffleMode !== 'off';
+
+        if (newIsShuffled) {
+          // Turning shuffle ON
+          if (queue.length > 1 && currentSong) {
+            // Store original queue if not already stored
+            const queueToStore = originalQueue.length > 0 ? originalQueue : [...queue];
+            
+            // Find current song in the queue
+            const currentSongIndex = queue.findIndex(song => 
+              song._id === currentSong._id || 
+              (song as any).id === (currentSong as any).id
+            );
+            
+            if (currentSongIndex !== -1) {
+              // Create shuffled queue with current song first
+              const otherSongs = queue.filter((_, i) => i !== currentSongIndex);
+              const shuffledOthers = newShuffleMode === 'smart' 
+                ? smartShuffleArray(otherSongs)
+                : shuffleArray(otherSongs);
+              const shuffledQueue = [currentSong, ...shuffledOthers];
+              
+              set({
+                isShuffled: newIsShuffled,
+                shuffleMode: newShuffleMode,
+                queue: shuffledQueue,
+                originalQueue: queueToStore,
+                currentIndex: 0 // Current song is now at index 0
+              });
+            } else {
+              // Fallback: just shuffle the entire queue
+              const shuffledQueue = newShuffleMode === 'smart' 
+                ? smartShuffleArray([...queue])
+                : shuffleArray([...queue]);
+              set({
+                isShuffled: newIsShuffled,
+                shuffleMode: newShuffleMode,
+                queue: shuffledQueue,
+                originalQueue: queueToStore,
+                currentIndex: 0
+              });
+            }
+          } else {
+            // Just toggle state if queue is too small
+            set({ 
+              isShuffled: newIsShuffled,
+              shuffleMode: newShuffleMode 
+            });
+          }
+        } else {
+          // Turning shuffle OFF - restore original order
+          if (originalQueue.length > 0 && currentSong) {
+            // Find current song in original queue
+            const originalIndex = originalQueue.findIndex(song => 
+              song._id === currentSong._id || 
+              (song as any).id === (currentSong as any).id
+            );
+            
+            set({
+              isShuffled: newIsShuffled,
+              shuffleMode: newShuffleMode,
+              queue: [...originalQueue],
+              currentIndex: originalIndex !== -1 ? originalIndex : 0
+            });
+          } else {
+            // Just toggle state if no original queue
+            set({ 
+              isShuffled: newIsShuffled,
+              shuffleMode: newShuffleMode 
+            });
+          }
+        }
+      },
+
+      setShuffleMode: (mode: ShuffleMode) => {
+        const { queue, originalQueue, currentSong } = get();
+        const newIsShuffled = mode !== 'off';
+
+        if (newIsShuffled && queue.length > 1 && currentSong) {
+          // Apply the new shuffle mode
+          const queueToStore = originalQueue.length > 0 ? originalQueue : [...queue];
+          const currentSongIndex = queue.findIndex(song => 
+            song._id === currentSong._id || 
+            (song as any).id === (currentSong as any).id
+          );
+          
+          if (currentSongIndex !== -1) {
+            const otherSongs = queue.filter((_, i) => i !== currentSongIndex);
+            const shuffledOthers = mode === 'smart' 
+              ? smartShuffleArray(otherSongs)
+              : shuffleArray(otherSongs);
+            const shuffledQueue = [currentSong, ...shuffledOthers];
+            
+            set({
+              isShuffled: newIsShuffled,
+              shuffleMode: mode,
+              queue: shuffledQueue,
+              originalQueue: queueToStore,
+              currentIndex: 0
+            });
+          }
+        } else if (!newIsShuffled && originalQueue.length > 0 && currentSong) {
+          // Restore original order
+          const originalIndex = originalQueue.findIndex(song => 
+            song._id === currentSong._id || 
+            (song as any).id === (currentSong as any).id
+          );
+          
+          set({
+            isShuffled: newIsShuffled,
+            shuffleMode: mode,
+            queue: [...originalQueue],
+            currentIndex: originalIndex !== -1 ? originalIndex : 0
+          });
+        } else {
+          set({ 
+            isShuffled: newIsShuffled,
+            shuffleMode: mode 
+          });
+        }
       },
 
       toggleRepeat: () => {
@@ -451,6 +662,35 @@ export const usePlayerStore = create<PlayerState>()(
         set({ queue: newQueue });
       },
 
+      smartShuffle: () => {
+        const { queue, originalQueue } = get();
+        if (queue.length === 0) return;
+
+        // Use the perfect shuffle logic from liked songs
+        const songsToShuffle = originalQueue.length > 0 ? [...originalQueue] : [...queue];
+        
+        // Fisher-Yates shuffle algorithm (perfect like liked songs)
+        for (let i = songsToShuffle.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [songsToShuffle[i], songsToShuffle[j]] = [songsToShuffle[j], songsToShuffle[i]];
+        }
+
+        // Store original if not already stored
+        const queueToStore = originalQueue.length > 0 ? originalQueue : [...queue];
+
+        set({
+          queue: songsToShuffle,
+          originalQueue: queueToStore,
+          currentIndex: 0,
+          currentSong: songsToShuffle[0],
+          currentTime: 0,
+          isShuffled: true,
+          shuffleMode: 'smart',
+          hasUserInteracted: true,
+          // Don't auto-play when shuffling - let user decide
+          // isPlaying: true // Removed unwanted autoplay
+        });
+      },
       removeFromQueue: (index: number) => {
         const { queue } = get();
         const newQueue = [...queue];
@@ -464,63 +704,60 @@ export const usePlayerStore = create<PlayerState>()(
       partialize: (state) => ({
         currentSong: state.currentSong,
         queue: state.queue,
+        originalQueue: state.originalQueue,
         currentIndex: state.currentIndex,
         currentTime: state.currentTime,
         isShuffled: state.isShuffled,
+        shuffleMode: state.shuffleMode,
         isRepeating: state.isRepeating,
-        hasUserInteracted: state.hasUserInteracted,
         autoplayBlocked: state.autoplayBlocked,
         wasPlayingBeforeInterruption: state.wasPlayingBeforeInterruption,
         interruptionReason: state.interruptionReason,
         audioOutputDevice: state.audioOutputDevice,
-      })
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isPlaying = false;
+          state.hasUserInteracted = false;
+        }
+      }
     }
   )
 );
 
 // Initialize the store by loading persisted data
 setTimeout(() => {
-  // Auto-restore interrupted playback state from before refresh
   const store = usePlayerStore.getState();
 
-  // Clean up any blob URLs from the current song and queue
+  if (store.isPlaying) {
+    store.setIsPlaying(false);
+  }
+
+  if (store.hasUserInteracted) {
+    usePlayerStore.setState({ hasUserInteracted: false });
+  }
+
   if (store.currentSong && store.currentSong.audioUrl && store.currentSong.audioUrl.startsWith('blob:')) {
-    console.log('Cleaning up blob URL from current song');
     store.setCurrentSong({ ...store.currentSong, audioUrl: '' });
   }
 
   if (store.queue.length > 0) {
     const cleanQueue = store.queue.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
     if (cleanQueue.length !== store.queue.length) {
-      console.log('Cleaned up blob URLs from queue');
       usePlayerStore.setState({ queue: cleanQueue });
     }
   }
 
-  // console.log('Player store initialized with:', store.currentSong?.title || 'no song');
-
-  // If we have a song but no queue, try to reconstruct minimum queue
   if (store.currentSong && store.queue.length === 0) {
-    // console.log('Detected song but no queue, reconstructing minimal queue');
     store.playAlbum([store.currentSong], 0);
   }
 
-  // Check if we should resume playback and restore currentTime
   try {
     const savedState = localStorage.getItem('player_state');
     if (savedState) {
-      const { timestamp, isPlaying, currentTime: savedTime } = JSON.parse(savedState);
-      const timeSinceLastUpdate = Date.now() - new Date(timestamp).getTime();
-
-      // Restore currentTime if it exists and is valid
+      const { currentTime: savedTime } = JSON.parse(savedState);
       if (savedTime && savedTime > 0) {
         store.setCurrentTime(savedTime);
-      }
-
-      // If the last update was recent (within 5 minutes) and playback was active
-      if (timeSinceLastUpdate < 5 * 60 * 1000 && isPlaying) {
-        // console.log('Resuming playback from saved state');
-        store.setIsPlaying(true);
       }
     }
   } catch (_error) {

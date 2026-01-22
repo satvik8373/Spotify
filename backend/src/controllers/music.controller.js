@@ -12,12 +12,9 @@ const fetchFromJioSaavn = async (endpoint, queryParams = {}) => {
     
     const url = `${JIOSAAVN_API_BASE_URL}/${endpoint}${queryString ? `?${queryString}` : ''}`;
     
-    console.log(`Fetching from JioSaavn API: ${url}`);
-    
     const response = await axios.get(url);
     return response.data;
   } catch (error) {
-    console.error(`Error fetching from JioSaavn API (${endpoint}):`, error);
     throw error;
   }
 };
@@ -28,7 +25,6 @@ export const getTrendingSongs = async (req, res) => {
     const data = await fetchFromJioSaavn('trending/songs');
     res.status(200).json(data);
   } catch (error) {
-    console.error('Error getting trending songs:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch trending songs',
@@ -52,7 +48,6 @@ export const searchSongs = async (req, res) => {
     const data = await fetchFromJioSaavn('search', { query });
     res.status(200).json(data);
   } catch (error) {
-    console.error('Error searching songs:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Failed to search songs',
@@ -67,7 +62,6 @@ export const getBollywoodSongs = async (req, res) => {
     const data = await fetchFromJioSaavn('search', { query: 'bollywood hits' });
     res.status(200).json(data);
   } catch (error) {
-    console.error('Error getting Bollywood songs:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch Bollywood songs',
@@ -82,7 +76,6 @@ export const getHollywoodSongs = async (req, res) => {
     const data = await fetchFromJioSaavn('search', { query: 'hollywood hits' });
     res.status(200).json(data);
   } catch (error) {
-    console.error('Error getting Hollywood songs:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch Hollywood songs',
@@ -97,7 +90,6 @@ export const getHindiSongs = async (req, res) => {
     const data = await fetchFromJioSaavn('search', { query: 'hindi top songs' });
     res.status(200).json(data);
   } catch (error) {
-    console.error('Error getting Hindi songs:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch Hindi songs',
@@ -121,7 +113,6 @@ export const getSongDetails = async (req, res) => {
     const data = await fetchFromJioSaavn('songs', { id });
     res.status(200).json(data);
   } catch (error) {
-    console.error('Error getting song details:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch song details',
@@ -145,7 +136,6 @@ export const getAlbumDetails = async (req, res) => {
     const data = await fetchFromJioSaavn('albums', { id });
     res.status(200).json(data);
   } catch (error) {
-    console.error('Error getting album details:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch album details',

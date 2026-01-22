@@ -17,7 +17,7 @@ interface RecentItem {
 export function RecentlyPlayed() {
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
-  const { setCurrentSong, setIsPlaying } = usePlayerStore();
+  const { setCurrentSong } = usePlayerStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export function RecentlyPlayed() {
           setRecentItems(items.slice(0, 8)); // Show 8 most recent items
         }
       } catch (error) {
-        console.error('Error loading recently played items:', error);
+        // Error loading recently played items
       }
     };
 
@@ -70,14 +70,15 @@ export function RecentlyPlayed() {
       localStorage.setItem('recently_played', JSON.stringify(items));
       document.dispatchEvent(new Event('recentlyPlayedUpdated'));
     } catch (error) {
-      console.error('Error adding to recently played:', error);
+      // Error adding to recently played
     }
   };
 
   const handleItemClick = (item: RecentItem) => {
     if (item.type === 'song' && item.data) {
       setCurrentSong(item.data);
-      setIsPlaying(true); // Auto-play the song
+      // Don't auto-play - let user decide when to play
+      // setIsPlaying(true); // Removed unwanted autoplay
       addToRecentlyPlayed(item);
     } else if (item.type === 'playlist' && item.id) {
       navigate(`/playlist/${item.id}`);

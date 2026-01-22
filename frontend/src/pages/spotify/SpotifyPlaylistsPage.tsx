@@ -32,7 +32,7 @@ const SpotifyPlaylistsPage: React.FC = () => {
       const userPlaylists = await spotify.fetchUserPlaylists(50);
       setPlaylists(userPlaylists);
     } catch (error) {
-      console.error('Error loading playlists:', error);
+      // Error loading playlists
     } finally {
       setIsLoading(false);
     }

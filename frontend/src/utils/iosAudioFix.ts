@@ -37,7 +37,7 @@ export const initAudioContext = (): void => {
       document.addEventListener('touchend', resumeAudio, { once: true });
       document.addEventListener('click', resumeAudio, { once: true });
     } catch (error) {
-      console.warn('Failed to initialize AudioContext:', error);
+      // Failed to initialize AudioContext
     }
   }
 };
@@ -124,13 +124,10 @@ export const playAudioForIOS = async (audio: HTMLAudioElement): Promise<void> =>
   } catch (error: any) {
     // Handle specific iOS errors
     if (error.name === 'NotAllowedError') {
-      console.warn('Playback blocked - user interaction required');
       throw new Error('USER_INTERACTION_REQUIRED');
     } else if (error.name === 'NotSupportedError') {
-      console.warn('Audio format not supported');
       throw new Error('FORMAT_NOT_SUPPORTED');
     } else {
-      console.warn('Playback failed:', error);
       throw error;
     }
   }

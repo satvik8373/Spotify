@@ -112,7 +112,6 @@ const SpotifyConvertSyncModal: React.FC<SpotifyConvertSyncModalProps> = ({
       setStage('complete');
       onSyncComplete(result);
     } catch (error) {
-      console.error('Sync failed:', error);
       setStage('selection');
     }
   };

@@ -1,7 +1,8 @@
 {
-  "name": "Mavrixfy",
+  "name": "Mavrixfy V2.0",
   "short_name": "Mavrixfy",
-  "description": "A premium music experience with real-time features and enhanced music discovery",
+  "description": "Mavrixfy V2.0 - Premium music streaming PWA with enhanced performance, background audio stability, and mobile-first experience. Major performance improvements and memory leak fixes.",
+  "version": "2.0.0",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#121212",

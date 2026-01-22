@@ -79,8 +79,6 @@ export const verifyToken = async (req, res, next) => {
 				},
 			});
 		} catch (firebaseError) {
-			console.log("Firebase token verification failed, trying JWT:", firebaseError);
-			
 			// If Firebase fails, try standard JWT as fallback
 			const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key");
 			
@@ -98,7 +96,6 @@ export const verifyToken = async (req, res, next) => {
 			});
 		}
 		
-		console.log("Error in verify token:", error);
 		next(error);
 	}
 };

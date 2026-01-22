@@ -33,7 +33,7 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
           try {
             audioElement.setAttribute('x-webkit-airplay', 'allow');
           } catch (error) {
-            console.warn('iOS audio setup failed:', error);
+            // iOS audio setup failed
           }
         }
       }
@@ -59,7 +59,7 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
     const handleAppStateChange = () => {
       // Basic state change handling
       if (document.hidden) {
-        console.log('iOS PWA backgrounded');
+        // iOS PWA backgrounded
       }
     };
 
@@ -102,10 +102,9 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
       await playAudioSafely(audioElement);
     } catch (error: any) {
       if (error.message === 'USER_INTERACTION_REQUIRED') {
-        console.warn('User interaction required to play audio');
         // You can show a UI prompt here
       } else {
-        console.error('Failed to play audio:', error);
+        // Failed to play audio
       }
       throw error;
     }

@@ -20,7 +20,7 @@ export function PlaylistCard({
   className
 }: PlaylistCardProps) {
   const navigate = useNavigate();
-  const { setCurrentSong, setIsPlaying } = usePlayerStore();
+  const { setCurrentSong } = usePlayerStore();
   const [showEditDialog, setShowEditDialog] = useState(false);
 
   const handleCardClick = () => {
@@ -37,9 +37,9 @@ export function PlaylistCard({
       toast.error('This playlist has no songs');
       return;
     }
-    // Play first song in playlist
+    // Set first song in playlist but don't auto-play
     setCurrentSong(playlist.songs[0]);
-    setIsPlaying(true);
+    // setIsPlaying(true); // Removed unwanted autoplay
   };
 
   // Simple mobile tap behavior - single tap to open

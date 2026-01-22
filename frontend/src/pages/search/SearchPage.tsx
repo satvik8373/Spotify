@@ -119,7 +119,7 @@ const SearchPage = () => {
           try {
             recognition.stop();
           } catch (e) {
-            console.error('Error stopping speech recognition:', e);
+            // Error stopping speech recognition
           }
         }
       }
@@ -151,7 +151,6 @@ const SearchPage = () => {
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error', event.error);
       setIsListening(false);
       toast.error('Speech recognition error', { description: event.error });
     };
@@ -162,7 +161,6 @@ const SearchPage = () => {
       setIsListening(true);
       toast.info('Listening... Speak now');
     } catch (error) {
-      console.error('Speech recognition error', error);
       toast.error('Could not start speech recognition');
       setIsListening(false);
     }
@@ -182,7 +180,6 @@ const SearchPage = () => {
       try {
         setRecentSearches(JSON.parse(savedSearches));
       } catch (error) {
-        console.error('Failed to parse recent searches:', error);
         setRecentSearches([]);
       }
     }
@@ -269,14 +266,13 @@ const SearchPage = () => {
                 await searchIndianSongs(variation);
                 const newResults = useMusicStore.getState().indianSearchResults;
                 if (newResults.length > currentResults.length) {
-                  console.log(`Found better results with variation: "${variation}"`);
                   break; // Found better results with variation
                 }
               }
             }
           }
         } catch (error) {
-          console.error('Search failed:', error);
+          // Search failed
         } finally {
           setIsInitialLoad(false);
           setIsSearching(false);
@@ -293,7 +289,7 @@ const SearchPage = () => {
     }
   }, [query, searchIndianSongs, searchPlaylists]);
 
-  // Handle auto-playing specific song when songId is provided
+  // Handle setting specific song when songId is provided (but don't auto-play)
   useEffect(() => {
     if (songId && indianSearchResults.length > 0) {
       const targetSong = indianSearchResults.find((s: any) =>
@@ -301,16 +297,16 @@ const SearchPage = () => {
       );
 
       if (targetSong) {
-        // Batch state updates to reduce re-renders
+        // Set the song but don't auto-play - let user decide
         usePlayerStore.setState({
           currentSong: targetSong as any,
           hasUserInteracted: true,
-          isPlaying: true
+          // isPlaying: true // Removed unwanted autoplay
         });
 
-        // Show success message with slight delay to avoid blocking UI
+        // Show message without auto-playing
         setTimeout(() => {
-          toast.success(`Now playing: ${targetSong.title}`);
+          toast.success(`Song loaded: ${targetSong.title}`);
         }, 100);
       }
     }
@@ -554,7 +550,7 @@ const SearchPage = () => {
           await searchPlaylists(value.trim());
           setHasRealTimeResults(true);
         } catch (error) {
-          console.error('Real-time search failed:', error);
+          // Real-time search failed
         } finally {
           setIsSearching(false);
         }

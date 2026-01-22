@@ -29,12 +29,11 @@ export function PlaylistSection({
   }
 
   const handleSwipeLeft = (playlist: Playlist) => {
-    console.log('Swiped left on:', playlist.name);
+    // Handle swipe left action
     // Add your swipe left logic here
   };
 
   const handleSwipeRight = (playlist: Playlist) => {
-    console.log('Swiped right on:', playlist.name);
     // Add your swipe right logic here
   };
 

@@ -40,7 +40,7 @@ class FirebaseBatchManager {
     
     try {
       const batch = this.batchOperations.splice(0, this.batchSize);
-      await Promise.all(batch.map(op => op().catch(console.error)));
+      await Promise.all(batch.map(op => op().catch(() => {})));
       
       // Continue processing if more operations exist
       if (this.batchOperations.length > 0) {
@@ -52,7 +52,7 @@ class FirebaseBatchManager {
         this.isProcessing = false;
       }
     } catch (error) {
-      console.error('Batch processing error:', error);
+      // Batch processing error
       this.isProcessing = false;
     }
   }
@@ -115,7 +115,6 @@ export const isSongAlreadyLiked = async (title: string, artist: string): Promise
     
     return exists;
   } catch (error) {
-    console.error('Error checking if song is already liked:', error);
     return false;
   }
 };
@@ -132,7 +131,6 @@ export const addLikedSong = async (
   const { isAuthenticated, userId } = useAuthStore.getState();
   
   if (!isAuthenticated || !userId) {
-    console.warn('User not authenticated, cannot add to liked songs');
     return { added: false, reason: 'Not authenticated' };
   }
 
@@ -140,7 +138,6 @@ export const addLikedSong = async (
     // Check for duplicates first with caching
     const alreadyExists = await isSongAlreadyLiked(song.title, song.artist);
     if (alreadyExists) {
-      console.log(`⚠️ Song already exists in liked songs: "${song.title}" by ${song.artist}`);
       return { added: false, reason: 'Already exists' };
     }
 
@@ -149,8 +146,6 @@ export const addLikedSong = async (
       firebaseBatchManager.addOperation(async () => {
         try {
           const likedSongRef = doc(db, 'users', userId, 'likedSongs', song._id);
-          
-          console.log(`🔒 Saving liked song to user subcollection: users/${userId}/likedSongs/${song._id}`);
           
           // Determine the likedAt timestamp
           let likedAtTimestamp;
@@ -177,7 +172,6 @@ export const addLikedSong = async (
           };
           
           await setDoc(likedSongRef, likedSongData);
-          console.log(`✅ Successfully saved liked song to user subcollection (source: ${source})`);
           
           // Update cache
           const cacheKey = `${userId}:${song.title.toLowerCase().trim()}:${song.artist.toLowerCase().trim()}`;
@@ -188,14 +182,12 @@ export const addLikedSong = async (
           
           resolve({ added: true });
         } catch (error) {
-          console.error('Error adding liked song:', error);
           resolve({ added: false, reason: 'Database error' });
         }
       });
     });
     
   } catch (error) {
-    console.error('Error adding liked song:', error);
     throw error;
   }
 };
@@ -247,7 +239,6 @@ export const addMultipleLikedSongs = async (songs: Song[], source: 'mavrixfy' | 
           batch.set(likedSongRef, likedSongData);
           added++;
         } catch (error) {
-          console.error('Error preparing song for batch:', error);
           errors++;
         }
       }
@@ -269,7 +260,6 @@ export const addMultipleLikedSongs = async (songs: Song[], source: 'mavrixfy' | 
     return { added, skipped, errors };
     
   } catch (error) {
-    console.error('Error in batch add liked songs:', error);
     return { added, skipped, errors: errors + 1 };
   }
 };
@@ -281,20 +271,17 @@ export const removeLikedSong = async (songId: string): Promise<void> => {
   const { isAuthenticated, userId } = useAuthStore.getState();
   
   if (!isAuthenticated || !userId) {
-    console.warn('User not authenticated, cannot remove from liked songs');
     return;
   }
   
   try {
     const likedSongRef = doc(db, 'users', userId, 'likedSongs', songId);
     await deleteDoc(likedSongRef);
-    console.log('Removed song from liked songs');
     
     // Dispatch event to notify other components
     document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
     
   } catch (error) {
-    console.error('Error removing liked song:', error);
     throw error;
   }
 };
@@ -306,13 +293,10 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
   const { isAuthenticated, userId } = useAuthStore.getState();
   
   if (!isAuthenticated || !userId) {
-    console.warn('User not authenticated, cannot load liked songs');
     return [];
   }
 
   try {
-    console.log(`🔍 Loading liked songs from user subcollection: users/${userId}/likedSongs`);
-    
     const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
     
     let snapshot;
@@ -322,7 +306,6 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
       snapshot = await getDocs(q);
     } catch (orderError) {
       // If ordering fails, get all docs without ordering
-      console.log('Ordering by likedAt failed, fetching without order:', orderError);
       snapshot = await getDocs(likedSongsRef);
     }
     
@@ -348,11 +331,9 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
       } as Song & { source?: string; spotifyId?: string; likedAt?: any });
     });
     
-    console.log(`📥 Loaded ${songs.length} liked songs from user subcollection: users/${userId}/likedSongs`);
     return songs;
     
   } catch (error) {
-    console.error('Error loading liked songs from Firestore:', error);
     return [];
   }
 };
@@ -374,7 +355,6 @@ export const isSongLiked = async (songId: string): Promise<boolean> => {
     return songDoc.exists();
     
   } catch (error) {
-    console.error('Error checking if song is liked:', error);
     return false;
   }
 };
@@ -394,7 +374,6 @@ export const toggleLikedSong = async (song: Song): Promise<boolean> => {
       return true;
     }
   } catch (error) {
-    console.error('Error toggling liked song:', error);
     return false;
   }
 };
@@ -416,7 +395,6 @@ export const getLikedSongsCount = async (): Promise<number> => {
     return snapshot.size;
     
   } catch (error) {
-    console.error('Error getting liked songs count:', error);
     return 0;
   }
 };

@@ -37,7 +37,6 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
         setRecentSearches(JSON.parse(saved).slice(0, 5));
       }
     } catch (error) {
-      console.error('Error loading recent searches:', error);
       setRecentSearches(['Latest hits', 'Top songs', 'Popular tracks']);
     }
   }, []);
@@ -67,7 +66,7 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
       localStorage.setItem('recentSearches', JSON.stringify(searches));
       setRecentSearches(searches);
     } catch (error) {
-      console.error('Error saving search term:', error);
+      // Error saving search term
     }
   };
 

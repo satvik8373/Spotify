@@ -407,7 +407,7 @@ export const useAlbumColors = (imageUrl: string | undefined, isLikedSongs: boole
           brightness: result.brightness,
         });
       } catch (error) {
-        console.warn('ColorThief failed, using fallback', error);
+        // ColorThief failed, using fallback
       }
     };
 

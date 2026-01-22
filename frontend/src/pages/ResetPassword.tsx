@@ -28,7 +28,6 @@ const ResetPassword = () => {
       setResetSent(true);
       toast.success('Password reset email sent');
     } catch (error: any) {
-      console.error('Password reset error:', error);
       
       // Handle specific Firebase error messages
       if (error.message.includes('user-not-found')) {

@@ -72,7 +72,6 @@ export const useOptimizedImage = ({
       setLoaded(true);
       onLoad?.();
     } catch (error) {
-      console.warn('Failed to load image:', error);
       setHasError(true);
       setCurrentSrc(fallbackSrc);
       setIsLoading(false);
@@ -114,7 +113,7 @@ export const usePreloadImages = (images: Array<{ src: string; priority?: 'high' 
       await performanceService.preloadImages(images);
       setPreloadedCount(images.length);
     } catch (error) {
-      console.warn('Failed to preload some images:', error);
+      // Failed to preload some images
     } finally {
       setIsPreloading(false);
     }

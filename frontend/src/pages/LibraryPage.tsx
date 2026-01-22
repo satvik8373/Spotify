@@ -65,7 +65,7 @@ const LibraryPage = () => {
         }, 100);
       }
     } catch (error) {
-      console.error('Error loading saved library preferences', error);
+      // Error loading saved library preferences
     }
   }, []);
 
@@ -130,25 +130,20 @@ const LibraryPage = () => {
   // Load library data
   useEffect(() => {
     const loadData = async () => {
-      console.log('LibraryPage: loadData called, isAuthenticated:', isAuthenticated, 'user:', user?.id);
       // Show content immediately
       setIsLibraryLoading(false);
 
       if (isAuthenticated) {
         try {
-          console.log('LibraryPage: Calling fetchUserPlaylists');
           // Check if we need to refresh data
           if (usePlaylistStore.getState().shouldRefresh()) {
             await usePlaylistStore.getState().refreshAllData();
           } else {
             await fetchUserPlaylists();
           }
-          console.log('LibraryPage: fetchUserPlaylists completed');
         } catch (error) {
-          console.error('Error loading playlists', error);
+          // Error loading playlists
         }
-      } else {
-        console.log('LibraryPage: User not authenticated, skipping playlist fetch');
       }
     };
 
@@ -157,15 +152,12 @@ const LibraryPage = () => {
 
   // Debug logging
   useEffect(() => {
-    console.log('LibraryPage: Auth state changed:', { isAuthenticated, loading, user: user?.id });
+    // Auth state changed
   }, [isAuthenticated, loading, user]);
 
   // Debug playlist store state
   useEffect(() => {
-    console.log('LibraryPage: Playlist store state changed:', {
-      userPlaylistsCount: userPlaylists.length,
-      userPlaylists: userPlaylists.map(p => ({ id: p._id, name: p.name }))
-    });
+    // Playlist store state changed
   }, [userPlaylists]);
 
 

@@ -33,6 +33,14 @@ class RequestManager {
   private maxConcurrentRequests = 3;
   private activeRequests = 0;
   private rateLimitDelay = 100; // ms between requests
+  private cleanupInterval: NodeJS.Timeout | null = null;
+
+  constructor() {
+    // Start cleanup interval
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, 5 * 60 * 1000); // 5 minutes
+  }
 
   /**
    * Generate a unique key for the request
@@ -272,14 +280,22 @@ class RequestManager {
       }
     }
   }
+
+  /**
+   * Destroy the request manager and clean up resources
+   */
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.cache.clear();
+    this.pendingRequests.clear();
+    this.requestQueue = [];
+  }
 }
 
 // Create singleton instance
 export const requestManager = new RequestManager();
-
-// Cleanup every 5 minutes
-setInterval(() => {
-  requestManager.cleanup();
-}, 5 * 60 * 1000);
 
 export default requestManager;

@@ -27,7 +27,6 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
     
     return null;
   } catch (error) {
-    console.error("Error getting user profile:", error);
     return null;
   }
 };
@@ -69,7 +68,6 @@ export const saveUserProfile = async (userData: Partial<UserProfile>): Promise<b
     
     return true;
   } catch (error) {
-    console.error("Error saving user profile:", error);
     return false;
   }
 };
@@ -94,7 +92,6 @@ export const updateUserStats = async (stats: {
     
     return true;
   } catch (error) {
-    console.error("Error updating user stats:", error);
     return false;
   }
 };

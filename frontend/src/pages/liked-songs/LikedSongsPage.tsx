@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Shuffle, Search, Plus, ListPlus, User, RefreshCw } from 'lucide-react';
+import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Search, Plus, ListPlus, User, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ShuffleButton } from '@/components/ShuffleButton';
 import { Input } from '@/components/ui/input';
 import { loadLikedSongs, removeLikedSong } from '@/services/likedSongsService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
@@ -328,7 +329,7 @@ const LikedSongsPage = () => {
       // Use the store method instead of direct service call
       await loadLikedSongsFromStore();
     } catch (error) {
-      console.error('Error loading liked songs:', error);
+      // Error loading liked songs
       toast.error('Failed to load liked songs');
     }
   };
@@ -483,26 +484,6 @@ const LikedSongsPage = () => {
     }
   }, [isCurrentPlaylistPlaying, handlePausePlaylist, playAllSongs]);
 
-  // Smart shuffle function
-  const smartShuffle = useCallback(() => {
-    if (likedSongs.length > 0) {
-      const songsToShuffle = [...likedSongs];
-
-      // Fisher-Yates shuffle algorithm
-      for (let i = songsToShuffle.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [songsToShuffle[i], songsToShuffle[j]] = [songsToShuffle[j], songsToShuffle[i]];
-      }
-
-      playAlbum(songsToShuffle, 0);
-      setTimeout(() => {
-        setIsPlaying(true);
-        setUserInteracted();
-        toast.success("Shuffling your liked songs");
-      }, 100);
-    }
-  }, [likedSongs, playAlbum, setIsPlaying, setUserInteracted]);
-
   // Manual Spotify sync
   const handleManualSync = useCallback(async () => {
     if (!isSpotifyConnected) {
@@ -532,7 +513,7 @@ const LikedSongsPage = () => {
       navigate('/liked-songs/sync');
 
     } catch (error) {
-      console.error('Manual sync error:', error);
+      // Manual sync error
       toast.error('Failed to sync with Spotify', { id: 'manual-sync' });
     } finally {
       setIsLoading(false);
@@ -592,15 +573,11 @@ const LikedSongsPage = () => {
                 )}
               </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
+              <ShuffleButton
+                size="md"
                 className="h-10 w-10 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
-                onClick={smartShuffle}
-                disabled={likedSongs.length === 0}
-              >
-                <Shuffle className="h-5 w-5" />
-              </Button>
+                accentColor="#1ed760"
+              />
 
               <Button
                 variant="ghost"
@@ -629,8 +606,8 @@ const LikedSongsPage = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/10">
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10">
+                  <MoreHorizontal className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -684,19 +661,15 @@ const LikedSongsPage = () => {
                 {isCurrentPlaylistPlaying ? (
                   <Pause className="h-7 w-7 fill-current text-black" />
                 ) : (
-                  <Play className="h-7 w-7 fill-current ml-1 text-black" />
+                  <Play className="h-7 w-7 fill-current ml-0.5 text-black" />
                 )}
               </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
+              <ShuffleButton
+                size="lg"
                 className="h-12 w-12 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
-                onClick={smartShuffle}
-                disabled={likedSongs.length === 0}
-              >
-                <Shuffle className="h-6 w-6" />
-              </Button>
+                accentColor="#1ed760"
+              />
 
               <Button
                 variant="ghost"
@@ -713,19 +686,19 @@ const LikedSongsPage = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10"
+                  className="h-12 w-12 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
                   onClick={handleManualSync}
                   disabled={isLoading}
                   title="Sync with Spotify"
                 >
-                  <RefreshCw className={cn("h-5 w-5", isLoading && "animate-spin")} />
+                  <RefreshCw className={cn("h-6 w-6", isLoading && "animate-spin")} />
                 </Button>
               )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10">
-                    <MoreHorizontal className="h-5 w-5" />
+                  <Button variant="ghost" size="icon" className="h-12 w-12 text-white/70 hover:text-white hover:bg-white/10">
+                    <MoreHorizontal className="h-6 w-6" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">

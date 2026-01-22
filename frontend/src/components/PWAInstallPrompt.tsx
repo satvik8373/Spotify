@@ -136,7 +136,6 @@ const PWAInstallPrompt = () => {
       // For Chrome/Edge/Android
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      console.log(`User response to the install prompt: ${outcome}`);
       setDeferredPrompt(null);
     }
     setShowPrompt(false);

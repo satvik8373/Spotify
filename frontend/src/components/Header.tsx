@@ -144,7 +144,6 @@ const Header = ({ className }: HeaderProps) => {
       // Then perform the actual Firebase logout in background
       await signOut();
     } catch (error) {
-      console.error('Error signing out:', error);
       // Still reset auth store in case of error
       useAuthStore.getState().reset();
     }

@@ -1,13 +1,3 @@
-// Node 16 compatibility: provide WebCrypto for Vite runtime that expects global crypto
-// Safe no-op on newer Node versions where globalThis.crypto already exists
-import { webcrypto as nodeWebCrypto } from 'crypto';
-
-
-if (!(globalThis as any).crypto && nodeWebCrypto) {
-  // Use 'typeof globalThis.crypto' to avoid TS error about 'Crypto' not being found
-  (globalThis as any).crypto = nodeWebCrypto;
-}
-
 import path from "path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
@@ -22,10 +12,6 @@ export default defineConfig(({ mode }) => {
 	const cloudinaryPreset = env.REACT_APP_CLOUDINARY_UPLOAD_PRESET || 'spotify_clone';
 	const cloudinaryKey = env.REACT_APP_CLOUDINARY_API_KEY || '';
 	const cloudinarySecret = env.REACT_APP_CLOUDINARY_API_SECRET || '';
-	
-	console.log(`Mode: ${mode}`);
-	console.log(`API URL: ${apiUrl}`);
-	console.log(`Cloudinary Cloud Name: ${cloudinaryName}`);
 	
 	return {
 		plugins: [
@@ -160,8 +146,7 @@ export default defineConfig(({ mode }) => {
 			sourcemap: false,
 			minify: 'esbuild',
 			cssCodeSplit: true,
-			modulePreload: { polyfill: true },
-			target: 'es2018',
+			target: 'es2020', // Updated for better performance
 			commonjsOptions: { transformMixedEsModules: true },
 			rollupOptions: {
 				output: {
@@ -204,7 +189,7 @@ export default defineConfig(({ mode }) => {
 				}
 			},
 			chunkSizeWarningLimit: 1000,
-			assetsInlineLimit: 4096, // Inline small assets as base64
+			assetsInlineLimit: 2048, // Reduced for mobile optimization
 		},
 		define: {
 			'process.env.VITE_API_URL': JSON.stringify(apiUrl),

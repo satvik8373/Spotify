@@ -17,7 +17,7 @@ export const cleanupOfflineData = async (): Promise<void> => {
       try {
         localStorage.removeItem(key);
       } catch (error) {
-        console.warn(`Failed to remove localStorage key: ${key}`, error);
+        // Failed to remove localStorage key
       }
     });
 
@@ -31,19 +31,19 @@ export const cleanupOfflineData = async (): Promise<void> => {
         const deleteRequest = indexedDB.deleteDatabase(dbName);
         
         deleteRequest.onsuccess = () => {
-          console.log('Successfully cleaned up offline database');
+          // Successfully cleaned up offline database
         };
         
         deleteRequest.onerror = () => {
-          console.warn('Failed to delete offline database');
+          // Failed to delete offline database
         };
         
         deleteRequest.onblocked = () => {
-          console.warn('Database deletion blocked - close other tabs and try again');
+          // Database deletion blocked - close other tabs and try again
         };
       }
     } catch (error) {
-      console.warn('Failed to clean up IndexedDB:', error);
+      // Failed to clean up IndexedDB
     }
 
     // Clean up any blob URLs that might be stored in localStorage
@@ -61,21 +61,19 @@ export const cleanupOfflineData = async (): Promise<void> => {
                 const hasChanges = JSON.stringify(cleanedObject) !== JSON.stringify(parsed);
                 if (hasChanges) {
                   localStorage.setItem(key, JSON.stringify(cleanedObject));
-                  console.log(`Cleaned blob URLs from localStorage key: ${key}`);
                 }
               }
             } catch {
               // Not JSON, check if it's a direct blob URL
               if (value.startsWith('blob:')) {
                 localStorage.removeItem(key);
-                console.log(`Removed direct blob URL from localStorage: ${key}`);
               }
             }
           }
         }
       }
     } catch (error) {
-      console.warn('Failed to clean blob URLs from localStorage:', error);
+      // Failed to clean blob URLs from localStorage
     }
 
     // Clean up player store if it contains blob URLs
@@ -105,17 +103,16 @@ export const cleanupOfflineData = async (): Promise<void> => {
           
           if (hasChanges) {
             localStorage.setItem('player-store', JSON.stringify(parsed));
-            console.log('Cleaned blob URLs from player store');
           }
         }
       }
     } catch (error) {
-      console.warn('Failed to clean player store:', error);
+      // Failed to clean player store
     }
 
-    console.log('Offline data cleanup completed');
+    // Offline data cleanup completed
   } catch (error) {
-    console.error('Error during offline data cleanup:', error);
+    // Error during offline data cleanup
   }
 };
 

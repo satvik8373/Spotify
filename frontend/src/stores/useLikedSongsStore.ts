@@ -22,7 +22,7 @@ const convertToLocalSong = (firebaseSong: FirestoreSong): Song => {
         likedAtString = firebaseSong.likedAt;
       }
     } catch (error) {
-      console.warn('Error converting likedAt timestamp:', error);
+      // Error converting likedAt timestamp
     }
   }
 
@@ -111,7 +111,6 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
               const firebaseSongs = await likedSongsFirestoreService.loadLikedSongs();
               songs = firebaseSongs.map(convertToLocalSong);
             } catch (firebaseError) {
-              console.warn('Failed to load from Firebase, falling back to local storage', firebaseError);
               // Fall back to local storage if Firestore fails
               songs = localLikedSongsService.getLikedSongs();
             }
@@ -135,7 +134,6 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
             existingSongs.some((existing, i) => existing._id !== songs[i]?._id);
 
           if (hasChanged) {
-            console.log(`Store loaded ${songs.length} liked songs, ${songIds.size} unique IDs`);
             set({ likedSongs: songs, likedSongIds: songIds });
           }
         } catch (error) {
@@ -163,13 +161,11 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Get the song ID consistently (handle both _id and id)
           const songId = song._id || (song as any).id;
           if (!songId) {
-            console.warn('Cannot like song without ID:', song);
             return;
           }
 
           // First check if it's already liked
           if (get().likedSongIds.has(songId)) {
-            console.log(`Song ${songId} is already liked, skipping`);
             return;
           }
 

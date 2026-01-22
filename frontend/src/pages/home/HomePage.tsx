@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { PlaylistCard } from '../../components/playlist/PlaylistCard';
 import { JioSaavnPlaylistsSection } from '@/components/jiosaavn/JioSaavnPlaylistsSection';
@@ -8,14 +8,6 @@ import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
 import { SectionWrapper } from '@/components/ui/section-wrapper';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
-
-// Interface for recent playlist
-interface RecentPlaylist {
-  _id: string;
-  name: string;
-  imageUrl?: string;
-  lastPlayed: number;
-}
 
 const HomePage = () => {
   const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
@@ -28,7 +20,6 @@ const HomePage = () => {
   const { loadLikedSongs } = useLikedSongsStore();
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
   const [likedSongsColor, setLikedSongsColor] = useState<string | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Load liked songs count
   useEffect(() => {
@@ -71,7 +62,7 @@ const HomePage = () => {
           await fetchPublicPlaylists();
         }
       } catch (error) {
-        console.error('Error initializing homepage:', error);
+        // Error initializing homepage
         // Still show content even if data loading fails
         setIsInitialLoading(false);
       }
@@ -80,18 +71,25 @@ const HomePage = () => {
     initializeHomePage();
   }, [fetchPublicPlaylists]);
 
-  // Load recent playlists from the new service
+  // Load recent playlists from the new service - optimized with useMemo
+  const memoizedDisplayItems = useMemo(() => {
+    return recentlyPlayedService.getDisplayItems(publicPlaylists);
+  }, [publicPlaylists]);
+
   useEffect(() => {
     let isMounted = true;
 
     const updateDisplayItems = () => {
       if (!isMounted) return;
-      const items = recentlyPlayedService.getDisplayItems(publicPlaylists);
-
-      // Only update if items actually changed to prevent re-renders
+      
+      // Use shallow comparison instead of JSON.stringify for better performance
       setDisplayItems(prev => {
-        if (JSON.stringify(prev) === JSON.stringify(items)) return prev;
-        return items;
+        const newItems = memoizedDisplayItems;
+        if (prev.length === newItems.length && 
+            prev.every((item, index) => item._id === newItems[index]?._id)) {
+          return prev;
+        }
+        return newItems;
       });
     };
 
@@ -108,26 +106,24 @@ const HomePage = () => {
       isMounted = false;
       document.removeEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
     };
-  }, [publicPlaylists]);
+  }, [memoizedDisplayItems]);
 
-  // Function to get displayed items (now using the service)
-  const getDisplayedItems = () => {
+  // Function to get displayed items (memoized)
+  const getDisplayedItems = useCallback(() => {
     return displayItems;
-  };
+  }, [displayItems]);
 
-  // Handle color changes with ultra-smooth transitions
-  const handleColorChange = (color: string | null, isLikedSongs: boolean = false) => {
-    setIsTransitioning(true);
+  // Handle color changes - optimized
+  const handleColorChange = useCallback((color: string | null, isLikedSongs: boolean = false) => {
     setHoveredColor(color);
     // If this is the Liked Songs card, save its color as default
     if (isLikedSongs && color) {
       setLikedSongsColor(color);
     }
-    setTimeout(() => setIsTransitioning(false), 500);
-  };
+  }, []);
 
-  // Function to convert any color format to rgba with opacity
-  const colorToRgba = (color: string, opacity: number) => {
+  // Function to convert any color format to rgba with opacity - memoized
+  const colorToRgba = useCallback((color: string, opacity: number) => {
     if (!color || color === '#121212') return `rgba(18, 18, 18, ${opacity})`;
 
     // If it's already an rgb() format, extract the values
@@ -150,12 +146,15 @@ const HomePage = () => {
 
     // Fallback
     return `rgba(18, 18, 18, ${opacity})`;
-  };
+  }, []);
 
-  const activeColor = hoveredColor || likedSongsColor || 'rgb(60, 40, 120)'; // More subtle default purple
+  const activeColor = useMemo(() => 
+    hoveredColor || likedSongsColor || 'rgb(60, 40, 120)', 
+    [hoveredColor, likedSongsColor]
+  );
 
-  // Handle playlist click (works for both regular and JioSaavn playlists)
-  const handlePlaylistClick = (item: any) => {
+  // Handle playlist click (works for both regular and JioSaavn playlists) - optimized
+  const handlePlaylistClick = useCallback((item: any) => {
     // Only handle items with valid IDs
     if (item._id) {
       if (item.type === 'jiosaavn-playlist') {
@@ -190,7 +189,7 @@ const HomePage = () => {
         navigate(`/playlist/${item._id}`);
       }
     }
-  };
+  }, [navigate]);
 
   if (isInitialLoading) {
     return (

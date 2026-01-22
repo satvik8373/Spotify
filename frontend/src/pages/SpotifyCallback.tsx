@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { handleCallback, isAuthenticated as isSpotifyAuthenticated, debugAuthenticationState } from '../services/spotifyService';
+import { handleCallback, isAuthenticated as isSpotifyAuthenticated } from '../services/spotifyService';
 import { Loader, AlertCircle, CheckCircle, Bug } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { PageLoading } from '../components/ui/loading';
@@ -21,7 +21,6 @@ const SpotifyCallback: React.FC = () => {
         const error = params.get('error');
 
         if (error) {
-          console.error('Spotify returned error:', error);
           setError('Spotify authentication was cancelled or failed');
           setErrorDetails(`Error: ${error}`);
           setIsLoading(false);
@@ -29,25 +28,18 @@ const SpotifyCallback: React.FC = () => {
         }
 
         if (!code) {
-          console.error('No authorization code received from Spotify');
           setError('No authorization code received');
           setErrorDetails('The authentication process was incomplete. Please try again.');
           setIsLoading(false);
           return;
         }
 
-        console.log('Starting Spotify authentication process...');
-        console.log('Authorization code received:', code ? 'present' : 'missing');
-        console.log('User ID:', user?.id);
-        
         const success = await handleCallback(code, user?.id);
         
         if (success) {
-          console.log('Spotify authentication successful!');
           
           // Verify tokens are actually stored and valid
           if (isSpotifyAuthenticated()) {
-            console.log('Tokens verified and stored successfully');
             try { sessionStorage.setItem('spotify_sync_prompt', '1'); } catch {}
             
             // Add a small delay to ensure tokens are properly stored
@@ -55,17 +47,14 @@ const SpotifyCallback: React.FC = () => {
             
             setIsAuthenticated(true);
           } else {
-            console.error('Tokens not found after successful authentication');
             setError('Authentication completed but tokens not stored');
             setErrorDetails('Please try logging in again. If the problem persists, check your browser console for more details.');
           }
         } else {
-          console.log('Spotify authentication failed - handleCallback returned false');
           setError('Authentication process incomplete');
           setErrorDetails('The authentication process did not complete successfully. Check the console for detailed logs.');
         }
       } catch (err: any) {
-        console.error('Authentication error:', err);
         setError('Authentication process encountered an error');
         setErrorDetails(err?.message || 'An unexpected error occurred. Check the console for more details.');
       } finally {
@@ -109,9 +98,7 @@ const SpotifyCallback: React.FC = () => {
           </button>
           <button 
             onClick={() => {
-              console.log('=== Manual Debug Triggered ===');
               debugAuthenticationState();
-              alert('Check browser console for detailed authentication state');
             }} 
             className="text-gray-400 hover:text-[#1DB954] px-4 py-2 border border-gray-600 rounded-lg hover:border-[#1DB954] flex items-center gap-2"
           >

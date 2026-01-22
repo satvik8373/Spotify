@@ -57,14 +57,11 @@ export const login = async (email: string, password: string): Promise<UserProfil
     // Check if we have an ongoing login attempt with this email
     const existingLoginPromise = loginCache.get(email);
     if (existingLoginPromise) {
-      console.log("Using cached login promise for", email);
       return existingLoginPromise;
     }
 
     // Create a promise for this login attempt and cache it
     const loginPromise = (async () => {
-      console.log("Starting login process for", email);
-
       // Step 1: Firebase Authentication
       let userCredential;
       try {
@@ -72,7 +69,6 @@ export const login = async (email: string, password: string): Promise<UserProfil
       } catch (error: any) {
         const errorCode = error.code;
         const errorMessage = error.message;
-        console.error("Firebase Auth Error:", errorCode, errorMessage);
 
         // Provide more user-friendly error messages
         if (errorCode === 'auth/user-not-found') {
@@ -113,7 +109,6 @@ export const login = async (email: string, password: string): Promise<UserProfil
           firestoreUser = userDoc.data() as FirestoreUser;
         } else {
           // Create basic profile if not found
-          console.warn("User document not found in Firestore. Using Firebase data...");
           firestoreUser = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || email,
@@ -129,7 +124,6 @@ export const login = async (email: string, password: string): Promise<UserProfil
           });
         }
       } catch (error) {
-        console.warn("Error fetching user document, using Firebase data:", error);
         // Use Firebase data as fallback
         firestoreUser = {
           uid: firebaseUser.uid,
@@ -158,7 +152,6 @@ export const login = async (email: string, password: string): Promise<UserProfil
         // Ignore backend sync errors - user is already authenticated
       });
 
-      console.log("Login completed successfully for", email);
       return userProfile;
     })();
 
@@ -172,7 +165,6 @@ export const login = async (email: string, password: string): Promise<UserProfil
 
     return await loginPromise;
   } catch (error: any) {
-    console.error("Login failed:", error);
     // Clear cache on error
     loginCache.delete(email);
     throw error;
@@ -194,7 +186,6 @@ async function syncWithBackend(idToken: string, firebaseUser: any) {
 
     return response.data;
   } catch (error) {
-    console.error("Error syncing with backend:", error);
     throw error;
   }
 }
@@ -249,10 +240,10 @@ export const register = async (email: string, password: string, fullName: string
         });
 
         if (!response.ok) {
-          console.warn('Failed to register user with backend, but Firebase registration successful');
+          // Failed to register user with backend, but Firebase registration successful
         }
       } catch (error) {
-        console.warn('Backend registration failed, but Firebase registration successful:', error);
+        // Backend registration failed, but Firebase registration successful
       }
     }
 
@@ -262,7 +253,6 @@ export const register = async (email: string, password: string, fullName: string
 
     return userProfile;
   } catch (error: any) {
-    console.error("Error in register:", error);
     throw new Error(error.message || "Failed to register");
   }
 };
@@ -288,7 +278,7 @@ export const signOut = async () => {
         },
         body: JSON.stringify({ uid: userId })
       }).catch(error => {
-        console.warn('Backend logout error:', error);
+        // Backend logout error
       });
     }
 
@@ -314,7 +304,6 @@ export const signOut = async () => {
 
     return { success: true };
   } catch (error: any) {
-    console.error("Error in signOut:", error);
     // Still reset store even if Firebase logout fails
     useAuthStore.getState().reset();
 
@@ -378,10 +367,10 @@ export const updateUserProfile = async (user: User, data: {
         });
 
         if (!response.ok) {
-          console.warn('Failed to update profile with backend, but Firebase update successful');
+          // Failed to update profile with backend, but Firebase update successful
         }
       } catch (error) {
-        console.warn('Backend profile update failed, but Firebase update successful:', error);
+        // Backend profile update failed, but Firebase update successful
       }
     }
 
@@ -393,7 +382,6 @@ export const updateUserProfile = async (user: User, data: {
 
     return { success: true };
   } catch (error: any) {
-    console.error("Error in updateUserProfile:", error);
     throw new Error(error.message || "Failed to update profile");
   }
 };
@@ -415,16 +403,15 @@ export const resetPassword = async (email: string) => {
         });
 
         if (!response.ok) {
-          console.warn('Failed to notify backend about password reset, but Firebase reset successful');
+          // Failed to notify backend about password reset, but Firebase reset successful
         }
       } catch (error) {
-        console.warn('Backend password reset notification failed, but Firebase reset successful:', error);
+        // Backend password reset notification failed, but Firebase reset successful
       }
     }
 
     return { success: true };
   } catch (error: any) {
-    console.error("Error in resetPassword:", error);
     throw new Error(error.message || "Failed to send password reset email");
   }
 };
@@ -466,7 +453,6 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
         // Ensure popup mode works in WebView
         display: 'popup'
       });
-      console.log('🔧 Using WebView-optimized Google sign-in');
     } else {
       // Standard browser configuration
       provider.setCustomParameters({
@@ -475,10 +461,8 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
     }
 
     // Use popup only - redirect causes "missing initial state" error in PWA/WebView
-    console.log('🔐 Starting Google sign-in with popup...');
     const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
-    console.log('✅ Google sign-in successful:', user.email);
 
     // Create a user profile object
     const userProfile: UserProfile = {
@@ -532,13 +516,12 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
         // This step is no longer needed as we are using Firestore exclusively
         // await migrateAnonymousLikedSongs(user.uid);
       } catch (error) {
-        console.error("Background operations failed, but user is authenticated:", error);
+        // Background operations failed, but user is authenticated
       }
     })();
 
     return userProfile;
   } catch (error: any) {
-    console.error("Error in Google login:", error);
     throw new Error(error.message || "Failed to login with Google");
   }
 };
@@ -575,7 +558,6 @@ export const refreshUserData = async (): Promise<UserProfile | null> => {
 
     return userProfile;
   } catch (error) {
-    console.error("Error refreshing user data:", error);
     return null;
   }
 };

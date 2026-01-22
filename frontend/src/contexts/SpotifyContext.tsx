@@ -43,7 +43,6 @@ export const SpotifyProvider: React.FC<{ children: ReactNode }> = ({ children })
           setSavedTracks(userSavedTracks);
         }
       } catch (error) {
-        console.error('Error checking Spotify authentication:', error);
         // If there's an error, assume user is not authenticated
         setAuthenticated(false);
       } finally {
@@ -68,7 +67,6 @@ export const SpotifyProvider: React.FC<{ children: ReactNode }> = ({ children })
       setPlaylists(userPlaylists);
       return userPlaylists;
     } catch (error) {
-      console.error('Error fetching user playlists:', error);
       return [];
     }
   };
@@ -79,7 +77,6 @@ export const SpotifyProvider: React.FC<{ children: ReactNode }> = ({ children })
       setSavedTracks(tracks);
       return tracks;
     } catch (error) {
-      console.error('Error fetching saved tracks:', error);
       return [];
     }
   };
@@ -88,7 +85,6 @@ export const SpotifyProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       return await spotifyService.searchTracks(query, limit);
     } catch (error) {
-      console.error('Error searching tracks:', error);
       return [];
     }
   };
@@ -97,7 +93,6 @@ export const SpotifyProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       return await spotifyService.playTrack(trackUri, deviceId);
     } catch (error) {
-      console.error('Error playing track:', error);
       return false;
     }
   };

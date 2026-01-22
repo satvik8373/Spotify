@@ -24,15 +24,14 @@ export const auth = getAuth(app);
 const initializeAuth = async () => {
   try {
     await setPersistence(auth, browserLocalPersistence);
-    console.log("Firebase persistence set to LOCAL");
   } catch (error) {
-    console.error("Error setting persistence:", error);
+    // Error setting persistence
   }
 };
 
 // Call initialize function
 initializeAuth().catch(error => {
-  console.error("Failed to initialize auth persistence:", error);
+  // Failed to initialize auth persistence
 });
 
 export const db = getFirestore(app);
@@ -45,9 +44,8 @@ if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_USE_EMULATOR
   // Connect to Firebase Storage emulator if it's running
   try {
     connectStorageEmulator(storage, 'localhost', 9199);
-    console.log('Connected to Firebase Storage emulator');
   } catch (error) {
-    console.error('Failed to connect to Firebase Storage emulator:', error);
+    // Failed to connect to Firebase Storage emulator
   }
 }
 

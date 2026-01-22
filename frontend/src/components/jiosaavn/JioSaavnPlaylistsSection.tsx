@@ -48,7 +48,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
           return; // Don't fetch if we have valid cache
         }
       } catch (error) {
-        console.error('Error parsing cached data:', error);
+        // Error parsing cached data
       }
     }
     
@@ -76,7 +76,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       try {
         data = await Promise.race([fetchPromise, timeoutPromise]);
       } catch (timeoutError) {
-        console.warn(`Timeout fetching ${categoryId} playlists, using fallback`);
+        // Timeout fetching playlists, using fallback
         // Fast fallback
         if (categoryId === 'trending') {
           data = await jioSaavnService.searchPlaylists('trending now', limit);
@@ -97,7 +97,6 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       localStorage.setItem(`jiosaavn-${categoryId}`, JSON.stringify(data));
       localStorage.setItem(`jiosaavn-${categoryId}-time`, now.toString());
     } catch (err) {
-      console.error('Error fetching JioSaavn playlists:', err);
       setError('Failed to load playlists');
       toast.error('Failed to load JioSaavn playlists');
     } finally {
@@ -138,7 +137,6 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
         toast.error('No songs found in playlist', { id: 'jiosaavn-play' });
       }
     } catch (error) {
-      console.error('Error playing JioSaavn playlist:', error);
       toast.error('Failed to play playlist', { id: 'jiosaavn-play' });
     }
   };

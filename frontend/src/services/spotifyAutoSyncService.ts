@@ -36,7 +36,7 @@ class BackgroundTaskManager {
         try {
           await task();
         } catch (error) {
-          console.error('Background task error:', error);
+          // Background task error - silently continue
         }
         
         // Delay between tasks to prevent overwhelming the system
@@ -98,7 +98,7 @@ class SpotifyAutoSyncService {
         this.config = { ...this.config, ...JSON.parse(saved) };
       }
     } catch (error) {
-      console.error('Error loading auto-sync config:', error);
+      // Error loading auto-sync config - use defaults
     }
   }
 
@@ -107,20 +107,18 @@ class SpotifyAutoSyncService {
     try {
       localStorage.setItem('spotify-auto-sync-config', JSON.stringify(this.config));
     } catch (error) {
-      console.error('Error saving auto-sync config:', error);
+      // Error saving auto-sync config - continue without saving
     }
   }
 
   // Start auto-sync
   startAutoSync(intervalMinutes: number = 30) {
     if (!isSpotifyAuthenticated()) {
-      console.warn('Cannot start auto-sync: Spotify not authenticated');
       this.notifyListeners({ type: 'error', message: 'Spotify not connected' });
       return false;
     }
 
     if (!useAuthStore.getState().isAuthenticated) {
-      console.warn('Cannot start auto-sync: User not authenticated');
       this.notifyListeners({ type: 'error', message: 'User not authenticated' });
       return false;
     }
@@ -155,7 +153,6 @@ class SpotifyAutoSyncService {
       message: `Auto-sync enabled (every ${intervalMinutes} minutes)` 
     });
 
-    console.log(`✅ Spotify auto-sync started (every ${intervalMinutes} minutes)`);
     return true;
   }
 
@@ -170,18 +167,15 @@ class SpotifyAutoSyncService {
     }
 
     this.notifyListeners({ type: 'stopped', message: 'Auto-sync disabled' });
-    console.log('🛑 Spotify auto-sync stopped');
   }
 
   // Perform the actual sync with optimized batching
   private async performAutoSync() {
     if (this.isCurrentlySyncing) {
-      console.log('⏳ Auto-sync already in progress, skipping...');
       return;
     }
 
     if (!isSpotifyAuthenticated() || !useAuthStore.getState().isAuthenticated) {
-      console.warn('⚠️ Auto-sync skipped: Authentication required');
       this.stopAutoSync();
       return;
     }
@@ -192,8 +186,6 @@ class SpotifyAutoSyncService {
       this.notifyListeners({ type: 'syncing', message: 'Checking for new songs...' });
 
       try {
-        console.log('🔄 Starting auto-sync check...');
-        
         // Get recent Spotify liked songs (last 7 days to be safe)
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - 7);
@@ -201,7 +193,6 @@ class SpotifyAutoSyncService {
         const recentTracks = await this.getRecentSpotifyTracks(cutoffDate);
         
         if (recentTracks.length === 0) {
-          console.log('✅ No new songs found in auto-sync');
           this.config.lastSyncTimestamp = Date.now();
           this.saveConfig();
           this.notifyListeners({ type: 'completed', message: 'No new songs found' });
@@ -212,7 +203,6 @@ class SpotifyAutoSyncService {
         const newSongs = await this.filterNewSongs(recentTracks);
 
         if (newSongs.length === 0) {
-          console.log('✅ All recent songs already in library');
           this.config.lastSyncTimestamp = Date.now();
           this.saveConfig();
           this.notifyListeners({ type: 'completed', message: 'All songs already in library' });
@@ -222,7 +212,6 @@ class SpotifyAutoSyncService {
         // Limit the number of songs to sync at once
         const songsToSync = newSongs.slice(0, this.config.maxSongsPerSync);
         
-        console.log(`🎵 Found ${songsToSync.length} new songs to auto-sync`);
         this.notifyListeners({ 
           type: 'syncing', 
           message: `Adding ${songsToSync.length} new songs...` 
@@ -238,7 +227,6 @@ class SpotifyAutoSyncService {
         this.saveConfig();
 
         if (result.added > 0) {
-          console.log(`✅ Auto-sync completed: Added ${result.added} new songs`);
           this.notifyListeners({ 
             type: 'completed', 
             message: `Added ${result.added} new songs automatically` 
@@ -247,20 +235,16 @@ class SpotifyAutoSyncService {
           // Dispatch event to update UI
           document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
         } else {
-          console.log('✅ Auto-sync completed: No songs were added');
           this.notifyListeners({ type: 'completed', message: 'No new songs were added' });
         }
 
       } catch (error) {
-        console.error('❌ Auto-sync error:', error);
-        
         // Increment retry count
         this.config.retryCount++;
         this.saveConfig();
         
         // If we've exceeded max retries, disable auto-sync
         if (this.config.retryCount >= this.config.maxRetries) {
-          console.error(`❌ Auto-sync failed ${this.config.maxRetries} times, disabling...`);
           this.stopAutoSync();
           this.notifyListeners({ 
             type: 'error', 
@@ -344,7 +328,7 @@ class SpotifyAutoSyncService {
         await new Promise(resolve => setTimeout(resolve, 100));
         
       } catch (error) {
-        console.error('Error converting track:', track.name, error);
+        // Error converting track - skip this track
       }
     }
     
@@ -388,7 +372,7 @@ class SpotifyAutoSyncService {
         if (tracks.length >= 100) break;
       }
     } catch (error) {
-      console.error('Error fetching recent Spotify tracks:', error);
+      // Error fetching recent Spotify tracks
     }
 
     return tracks;
@@ -416,7 +400,6 @@ class SpotifyAutoSyncService {
       }
       return null;
     } catch (error) {
-      console.error('Error searching for song:', error);
       return null;
     }
   }
@@ -437,7 +420,7 @@ class SpotifyAutoSyncService {
       try {
         listener(status);
       } catch (error) {
-        console.error('Error in auto-sync listener:', error);
+        // Error in auto-sync listener
       }
     });
   }
@@ -466,7 +449,6 @@ class SpotifyAutoSyncService {
   // Manual sync trigger
   async triggerManualSync() {
     if (this.isCurrentlySyncing) {
-      console.log('Sync already in progress');
       return false;
     }
     

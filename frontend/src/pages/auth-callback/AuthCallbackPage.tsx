@@ -43,7 +43,6 @@ const AuthCallbackPage = () => {
         setError('Authentication failed. Please try again.');
       }
     } catch (err) {
-      console.error('Error in auth callback:', err);
       setError('An error occurred during authentication. Please try again.');
     }
   }, [isLoaded, isSignedIn, navigate, user]);

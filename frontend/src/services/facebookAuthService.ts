@@ -38,8 +38,6 @@ export const signInWithFacebook = async (): Promise<UserProfile> => {
       display: 'popup'
     });
 
-    console.log('🔐 Starting Facebook sign-in with Firebase...');
-
     // Sign in with popup
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
@@ -47,9 +45,6 @@ export const signInWithFacebook = async (): Promise<UserProfile> => {
     // Get additional user info from Facebook
     const additionalUserInfo = getAdditionalUserInfo(result);
     const facebookProfile = additionalUserInfo?.profile as any;
-
-    console.log('✅ Facebook sign-in successful:', user.email);
-    console.log('📋 Facebook profile:', facebookProfile);
 
     // Create user profile object
     const userProfile: UserProfile = {
@@ -71,7 +66,7 @@ export const signInWithFacebook = async (): Promise<UserProfile> => {
 
     return userProfile;
   } catch (error: any) {
-    console.error('Facebook login error:', error);
+    // Facebook login error
 
     // Handle specific Facebook auth errors
     if (error.code === 'auth/account-exists-with-different-credential') {
@@ -110,14 +105,14 @@ const handleFirestoreSync = async (user: any, facebookProfile: any) => {
         ...userData,
         createdAt: Timestamp.now(),
       });
-      console.log('✅ Created new user document in Firestore');
+      // Created new user document in Firestore
     } else {
       // Update existing user document
       await setDoc(doc(db, "users", user.uid), userData, { merge: true });
-      console.log('✅ Updated existing user document in Firestore');
+      // Updated existing user document in Firestore
     }
   } catch (error) {
-    console.error('❌ Firestore sync failed:', error);
+    // Firestore sync failed
     // Don't throw error as user is already authenticated
   }
 };
@@ -145,9 +140,9 @@ export const linkFacebookAccount = async (): Promise<void> => {
       updatedAt: Timestamp.now(),
     }, { merge: true });
 
-    console.log('✅ Facebook account linked successfully');
+    // Facebook account linked successfully
   } catch (error: any) {
-    console.error('❌ Failed to link Facebook account:', error);
+    // Failed to link Facebook account
     throw new Error(error.message || 'Failed to link Facebook account');
   }
 };

@@ -96,8 +96,7 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
     
     // Listen for successful installations
     window.addEventListener('appinstalled', () => {
-      // Log install to analytics
-      console.log('PWA was installed');
+      // PWA was installed successfully
       // Clear the deferredPrompt so it can't be used again
       setDeferredPrompt(null);
       
@@ -130,10 +129,8 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
     setDeferredPrompt(null);
     
     if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
       // We'll show the home screen tip after installation via the appinstalled event
     } else {
-      console.log('User dismissed the install prompt');
       // Save dismissal to not show again for a while
       localStorage.setItem('install-prompt-dismissed', Date.now().toString());
     }

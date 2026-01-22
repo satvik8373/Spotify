@@ -69,7 +69,6 @@ class FirestoreService<T extends FirebaseDocument> {
       this.setCachedData(cacheKey, results);
       return results;
     } catch (error) {
-      console.error(`Error getting ${this.collectionName}:`, error);
       throw error;
     }
   }
@@ -93,7 +92,6 @@ class FirestoreService<T extends FirebaseDocument> {
         return null;
       }
     } catch (error) {
-      console.error(`Error getting ${this.collectionName} document:`, error);
       throw error;
     }
   }
@@ -111,7 +109,6 @@ class FirestoreService<T extends FirebaseDocument> {
       this.invalidateCache();
       return newDoc;
     } catch (error) {
-      console.error(`Error creating ${this.collectionName} document:`, error);
       throw error;
     }
   }
@@ -130,7 +127,6 @@ class FirestoreService<T extends FirebaseDocument> {
       this.setCachedData(id, newDoc);
       return newDoc;
     } catch (error) {
-      console.error(`Error creating ${this.collectionName} document with ID:`, error);
       throw error;
     }
   }
@@ -160,7 +156,6 @@ class FirestoreService<T extends FirebaseDocument> {
       
       return updatedDoc;
     } catch (error) {
-      console.error(`Error updating ${this.collectionName} document:`, error);
       throw error;
     }
   }
@@ -172,7 +167,6 @@ class FirestoreService<T extends FirebaseDocument> {
       this.invalidateCache();
       this.cache.delete(id);
     } catch (error) {
-      console.error(`Error deleting ${this.collectionName} document:`, error);
       throw error;
     }
   }
@@ -183,12 +177,10 @@ class FirestoreService<T extends FirebaseDocument> {
     const cachedData = this.getCachedData(cacheKey);
     
     if (cachedData && Array.isArray(cachedData)) {
-      console.log(`getByField: Using cached data for ${field}=${value}, count:`, cachedData.length);
       return cachedData;
     }
     
     try {
-      console.log(`getByField: Querying Firestore for ${field}=${value}`);
       const q = query(this.getCollectionRef(), where(field, "==", value));
       const querySnapshot = await getDocs(q);
       const results: T[] = [];
@@ -197,11 +189,9 @@ class FirestoreService<T extends FirebaseDocument> {
         results.push({ id: doc.id, ...doc.data() } as T);
       });
       
-      console.log(`getByField: Firestore query returned ${results.length} documents for ${field}=${value}`);
       this.setCachedData(cacheKey, results);
       return results;
     } catch (error) {
-      console.error(`Error getting ${this.collectionName} by field:`, error);
       throw error;
     }
   }
@@ -276,7 +266,6 @@ export class SongsService extends FirestoreService<FirestoreSong> {
         audioUrl
       });
     } catch (error) {
-      console.error('Error uploading song:', error);
       throw error;
     }
   }
@@ -300,7 +289,6 @@ export class SongsService extends FirestoreService<FirestoreSong> {
       
       return songs;
     } catch (error) {
-      console.error('Error getting featured songs:', error);
       throw error;
     }
   }
@@ -324,7 +312,6 @@ export class SongsService extends FirestoreService<FirestoreSong> {
       
       return songs;
     } catch (error) {
-      console.error('Error getting trending songs:', error);
       throw error;
     }
   }
@@ -361,7 +348,6 @@ export class AlbumsService extends FirestoreService<FirestoreAlbum> {
         imageUrl
       });
     } catch (error) {
-      console.error('Error creating album:', error);
       throw error;
     }
   }
@@ -384,7 +370,6 @@ export class AlbumsService extends FirestoreService<FirestoreAlbum> {
       
       return albums;
     } catch (error) {
-      console.error('Error getting featured albums:', error);
       throw error;
     }
   }
@@ -419,20 +404,16 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
         imageUrl
       });
     } catch (error) {
-      console.error('Error creating playlist:', error);
       throw error;
     }
   }
   
   // Get user playlists
   async getUserPlaylists(userId: string): Promise<FirestorePlaylist[]> {
-    console.log('PlaylistsService.getUserPlaylists: Querying for userId:', userId);
     try {
       const playlists = await this.getByField('createdBy.id', userId);
-      console.log('PlaylistsService.getUserPlaylists: Found playlists:', playlists.length);
       return playlists;
     } catch (error) {
-      console.error('PlaylistsService.getUserPlaylists: Error:', error);
       throw error;
     }
   }
@@ -469,7 +450,6 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
       const updatedSongs = [...songs, song];
       return await this.update(playlistId, { songs: updatedSongs } as Partial<FirestorePlaylist>);
     } catch (error) {
-      console.error('Error adding song to playlist:', error);
       throw error;
     }
   }
@@ -493,7 +473,6 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
       // Update playlist
       return await this.update(playlistId, { songs: updatedSongs } as Partial<FirestorePlaylist>);
     } catch (error) {
-      console.error('Error removing song from playlist:', error);
       throw error;
     }
   }

@@ -140,8 +140,6 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
       // Show success and update preview
       toast.success('Direct upload successful!');
       setImagePreview(result.secure_url);
-      
-      console.log('Cloudinary upload result:', result);
     } catch (error: any) {
       console.error('Direct upload error:', error);
       toast.error(`Direct upload failed: ${error.message || 'Unknown error'}`);

@@ -50,74 +50,6 @@ interface MusicStore {
   convertIndianSongToAppSong: (song: IndianSong) => Song;
 }
 
-// Optimized request manager for music API calls
-class MusicRequestManager {
-  private activeRequests = new Set<string>();
-  private requestQueue: Array<{ key: string; fn: () => Promise<any>; resolve: (value: any) => void; reject: (error: any) => void }> = [];
-  private isProcessing = false;
-  private maxConcurrent = 2; // Limit concurrent music API requests
-  private requestDelay = 200; // Delay between requests to prevent rate limiting
-
-  async executeRequest<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
-    // If request is already active, wait for it
-    if (this.activeRequests.has(key)) {
-      return new Promise((resolve, reject) => {
-        this.requestQueue.push({ key, fn: requestFn, resolve, reject });
-      });
-    }
-
-    return this.processRequest(key, requestFn);
-  }
-
-  private async processRequest<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
-    this.activeRequests.add(key);
-
-    try {
-      const result = await requestFn();
-      return result;
-    } finally {
-      this.activeRequests.delete(key);
-      this.processQueue();
-    }
-  }
-
-  private async processQueue() {
-    if (this.isProcessing || this.activeRequests.size >= this.maxConcurrent) return;
-
-    const nextRequest = this.requestQueue.shift();
-    if (!nextRequest) return;
-
-    this.isProcessing = true;
-
-    // Add delay between requests
-    await new Promise(resolve => setTimeout(resolve, this.requestDelay));
-
-    try {
-      const result = await this.processRequest(nextRequest.key, nextRequest.fn);
-      nextRequest.resolve(result);
-    } catch (error) {
-      nextRequest.reject(error);
-    } finally {
-      this.isProcessing = false;
-      // Continue processing queue
-      setTimeout(() => this.processQueue(), this.requestDelay);
-    }
-  }
-
-  isActive(key: string): boolean {
-    return this.activeRequests.has(key);
-  }
-
-  getStats() {
-    return {
-      activeRequests: this.activeRequests.size,
-      queueLength: this.requestQueue.length
-    };
-  }
-}
-
-const musicRequestManager = new MusicRequestManager();
-
 // Optimized music API request function using request manager
 async function fetchMusicJson(endpoint: string, params: Record<string, any> = {}, cacheTTL: number = 5 * 60 * 1000): Promise<any> {
   return requestManager.request({
@@ -279,115 +211,100 @@ export const useMusicStore = create<MusicStore>((set) => ({
 
   // Indian Music API Methods (optimized with request manager)
   fetchBollywoodSongs: async () => {
-    const key = 'bollywood-songs';
-    return musicRequestManager.executeRequest(key, async () => {
-      set({ isIndianMusicLoading: true });
-      try {
-        const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'bollywood hits', limit: 15 });
-        if (data?.data?.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => convertSaavnTrack(item));
-          set({ bollywoodSongs: formattedResults });
-        } else {
-          set({ bollywoodSongs: [] });
-        }
-      } catch (error) {
+    set({ isIndianMusicLoading: true });
+    try {
+      const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'bollywood hits', limit: 15 });
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => convertSaavnTrack(item));
+        set({ bollywoodSongs: formattedResults });
+      } else {
         set({ bollywoodSongs: [] });
-      } finally {
-        set({ isIndianMusicLoading: false });
       }
-    });
+    } catch (error) {
+      set({ bollywoodSongs: [] });
+    } finally {
+      set({ isIndianMusicLoading: false });
+    }
   },
 
   fetchHollywoodSongs: async () => {
-    const key = 'hollywood-songs';
-    return musicRequestManager.executeRequest(key, async () => {
-      set({ isIndianMusicLoading: true });
-      try {
-        const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'english top hits', limit: 15 });
-        if (data?.data?.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => convertSaavnTrack(item));
-          set({ hollywoodSongs: formattedResults });
-        } else {
-          set({ hollywoodSongs: [] });
-        }
-      } catch (error) {
+    set({ isIndianMusicLoading: true });
+    try {
+      const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'english top hits', limit: 15 });
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => convertSaavnTrack(item));
+        set({ hollywoodSongs: formattedResults });
+      } else {
         set({ hollywoodSongs: [] });
-      } finally {
-        set({ isIndianMusicLoading: false });
       }
-    });
+    } catch (error) {
+      set({ hollywoodSongs: [] });
+    } finally {
+      set({ isIndianMusicLoading: false });
+    }
   },
 
   fetchHindiSongs: async () => {
-    const key = 'hindi-songs';
-    return musicRequestManager.executeRequest(key, async () => {
-      set({ isIndianMusicLoading: true });
-      try {
-        const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'hindi top songs', limit: 15 });
-        if (data?.data?.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => convertSaavnTrack(item));
-          set({ hindiSongs: formattedResults });
-        } else {
-          set({ hindiSongs: [] });
-        }
-      } catch (error) {
+    set({ isIndianMusicLoading: true });
+    try {
+      const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'hindi top songs', limit: 15 });
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => convertSaavnTrack(item));
+        set({ hindiSongs: formattedResults });
+      } else {
         set({ hindiSongs: [] });
-      } finally {
-        set({ isIndianMusicLoading: false });
       }
-    });
+    } catch (error) {
+      set({ hindiSongs: [] });
+    } finally {
+      set({ isIndianMusicLoading: false });
+    }
   },
 
   fetchIndianNewReleases: async () => {
-    const key = 'new-releases';
-    return musicRequestManager.executeRequest(key, async () => {
-      set({ isIndianMusicLoading: true });
-      try {
-        const data = await fetchMusicJson('/jiosaavn/new-releases', { limit: 10 });
-        if (data?.data?.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => convertSaavnTrack(item));
-          set({ indianNewReleases: formattedResults });
-        } else {
-          set({ indianNewReleases: [] });
-        }
-      } catch (error) {
+    set({ isIndianMusicLoading: true });
+    try {
+      const data = await fetchMusicJson('/jiosaavn/new-releases', { limit: 10 });
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => convertSaavnTrack(item));
+        set({ indianNewReleases: formattedResults });
+      } else {
         set({ indianNewReleases: [] });
-      } finally {
-        set({ isIndianMusicLoading: false });
       }
-    });
+    } catch (error) {
+      set({ indianNewReleases: [] });
+    } finally {
+      set({ isIndianMusicLoading: false });
+    }
   },
 
   searchIndianSongs: async query => {
     if (!query || query.trim() === '') return;
 
-    const key = `search-${query.trim()}`;
-    return musicRequestManager.executeRequest(key, async () => {
-      set({ isIndianMusicLoading: true });
-      try {
-        const data = await fetchMusicJson('/jiosaavn/search/songs', { query: query.trim(), limit: 20 }, 60 * 1000);
-        if (data?.data?.results) {
-          const formattedResults = data.data.results
-            .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
-            .map((item: any) => convertSaavnTrack(item));
-          set({ indianSearchResults: formattedResults });
-        } else {
-          set({ indianSearchResults: [] });
-        }
-      } catch (error) {
+    set({ isIndianMusicLoading: true });
+    try {
+      const data = await fetchMusicJson('/jiosaavn/search/songs', { query: query.trim(), limit: 20 }, 60 * 1000);
+      if (data?.data?.results) {
+        const formattedResults = data.data.results
+          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          .map((item: any) => convertSaavnTrack(item));
+        set({ indianSearchResults: formattedResults });
+      } else {
         set({ indianSearchResults: [] });
-      } finally {
-        set({ isIndianMusicLoading: false });
       }
-    });
+    } catch (error) {
+      set({ indianSearchResults: [] });
+    } finally {
+      set({ isIndianMusicLoading: false });
+    }
   },
 
   convertIndianSongToAppSong: (song) => {

@@ -44,14 +44,12 @@ export const createPlaylist = async (req, res) => {
       
       res.status(201).json(playlist);
     } catch (error) {
-      console.error("Error getting user information:", error);
       return res.status(500).json({ 
         message: 'Error creating playlist', 
         error: error.message
       });
     }
   } catch (error) {
-    console.error('Error in createPlaylist:', error);
     res.status(500).json({ 
       message: 'Error creating playlist', 
       error: error.message 
@@ -87,17 +85,6 @@ export const getAllPlaylists = async (req, res) => {
 // Get user's playlists
 export const getUserPlaylists = async (req, res) => {
   try {
-    // Log authentication info for debugging
-    console.log('Auth info:', {
-      userId: req.auth?.userId || req.auth?.uid || 'Not provided',
-      paramUserId: req.params?.userId || 'Not provided',
-      hasAuth: !!req.auth,
-      headers: {
-        authorization: !!req.headers.authorization,
-        cookie: !!req.headers.cookie
-      }
-    });
-    
     // Check if authentication is present
     if (!req.auth || (!req.auth.userId && !req.auth.uid)) {
       return res.status(401).json({ 
@@ -132,7 +119,6 @@ export const getUserPlaylists = async (req, res) => {
     
     res.status(200).json(playlists);
   } catch (error) {
-    console.error('Error in getUserPlaylists:', error.message);
     res.status(500).json({ 
       message: 'Error retrieving user playlists', 
       error: error.message,

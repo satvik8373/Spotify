@@ -131,7 +131,6 @@ export const uploadImage = async (
 
     return response.data.secure_url;
   } catch (error) {
-    console.error('Error uploading image to Cloudinary:', error);
     throw error;
   }
 };
@@ -156,7 +155,6 @@ export const uploadImageFromUrl = async (imageUrl: string): Promise<string> => {
 
     return response.data.secure_url;
   } catch (error) {
-    console.error('Error uploading image URL to Cloudinary:', error);
     throw error;
   }
 };
@@ -226,7 +224,6 @@ export const deleteImage = async (publicId: string): Promise<boolean> => {
     
     return response.data.result === 'ok';
   } catch (error) {
-    console.error('Error deleting image from Cloudinary:', error);
     return false;
   }
 };
@@ -244,7 +241,6 @@ export const getPublicIdFromUrl = (url: string): string | null => {
     const match = url.match(regex);
     return match ? match[2] : null;
   } catch (error) {
-    console.error('Error extracting public ID from URL:', error);
     return null;
   }
 };

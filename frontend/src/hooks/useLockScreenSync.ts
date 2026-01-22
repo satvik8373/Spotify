@@ -21,10 +21,8 @@ export const useLockScreenSync = () => {
       if (document.hidden) {
         // Going to background/lock screen - just mark it
         isLockScreenRef.current = true;
-        console.log('App going to background/lock screen');
       } else if (isLockScreenRef.current) {
         // Coming back from lock screen - sync after a delay
-        console.log('App returning from background/lock screen');
         
         // Use a single, clean sync after lock screen
         syncTimeoutRef.current = setTimeout(() => {
@@ -34,10 +32,6 @@ export const useLockScreenSync = () => {
             
             // Only update if there's a clear mismatch
             if (actuallyPlaying !== isPlaying) {
-              console.log('Syncing state after lock screen:', { 
-                actuallyPlaying, 
-                storeIsPlaying: isPlaying 
-              });
               setIsPlaying(actuallyPlaying);
             }
           }

@@ -42,7 +42,6 @@ export const FacebookLoginButton: React.FC<FacebookLoginButtonProps> = ({
         navigate('/home');
       }
     } catch (error: any) {
-      console.error('Facebook login error:', error);
       const errorMessage = error.message || 'Failed to sign in with Facebook';
       
       if (onError) {

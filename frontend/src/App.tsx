@@ -219,8 +219,6 @@ function AppContent() {
 	// Initialize app and handle splash screen
 	useEffect(() => {
 		const initializeApp = async () => {
-			console.time('AppInitialization');
-			console.log('🚀 App: initializeApp started at', new Date().toISOString());
 			try {
 				// Clear any Firebase auth redirect state to prevent errors
 				clearAuthRedirectState();
@@ -238,7 +236,7 @@ function AppContent() {
 
 				// Start preloading but don't wait for it
 				Promise.all(preloadPromises).catch(() => {
-					console.warn('⚠️ App: Component preload warning');
+					// App: Component preload warning
 				});
 
 				// Set minimum timer for splash screen
@@ -275,14 +273,12 @@ function AppContent() {
 		// 2. Auth loading is complete (to avoid login page flash)
 		// 3. We are currently showing the splash
 		if (minTimeElapsed && !authLoading && showSplash && !splashFading) {
-			console.log('🏁 App: Conditions met (Time: %s, AuthLoaded: %s), fading splash', minTimeElapsed, !authLoading);
 			setSplashFading(true);
 
 			// Hide splash screen after fade animation completes
 			setTimeout(() => {
 				setShowSplash(false);
 				setAppReady(true);
-				console.timeEnd('AppInitialization');
 			}, 200);
 		}
 	}, [minTimeElapsed, authLoading, showSplash, splashFading]);

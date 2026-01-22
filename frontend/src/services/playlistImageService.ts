@@ -25,7 +25,6 @@ export const createPlaylistCoverCollage = async (songs: Song[]): Promise<string>
   const ctx = canvas.getContext('2d');
   
   if (!ctx) {
-    console.error('Could not get canvas context');
     return '/default-playlist.jpg';
   }
 
@@ -73,7 +72,6 @@ export const createPlaylistCoverCollage = async (songs: Song[]): Promise<string>
     // Convert canvas to data URL
     return canvas.toDataURL('image/jpeg', 0.85); // Use JPEG with 85% quality for smaller size
   } catch (error) {
-    console.error('Error creating playlist cover collage:', error);
     return '/default-playlist.jpg';
   }
 };
@@ -95,7 +93,6 @@ export const createDominantColorCover = async (songs: Song[]): Promise<string> =
   const ctx = canvas.getContext('2d');
   
   if (!ctx) {
-    console.error('Could not get canvas context');
     return '/default-playlist.jpg';
   }
 
@@ -186,7 +183,6 @@ export const createDominantColorCover = async (songs: Song[]): Promise<string> =
     // Convert canvas to data URL
     return canvas.toDataURL('image/jpeg', 0.85); // Use JPEG with 85% quality for smaller size
   } catch (error) {
-    console.error('Error creating dominant color cover:', error);
     return '/default-playlist.jpg';
   }
 }; 

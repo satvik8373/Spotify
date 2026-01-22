@@ -51,9 +51,9 @@ export const clearAuthCache = (): void => {
       }
     });
     
-    console.log('✅ Auth cache cleared');
+    // Auth cache cleared
   } catch (error) {
-    console.warn('⚠️ Could not clear auth cache:', error);
+    // Could not clear auth cache
   }
 };
 
@@ -65,8 +65,6 @@ export const configureWebViewAuth = (): void => {
   if (!isWebView()) {
     return;
   }
-  
-  console.log('🔧 Configuring WebView for authentication...');
   
   // Clear any stale auth state
   clearAuthCache();
@@ -83,7 +81,6 @@ export const configureWebViewAuth = (): void => {
   // Add WebView class to body for CSS targeting
   document.body.classList.add('webview-mode');
   
-  console.log('✅ WebView configured for authentication');
 };
 
 /**
@@ -94,7 +91,6 @@ export const getEnvironmentInfo = () => {
     isWebView: isWebView(),
     isCapacitor: isCapacitorApp(),
     userAgent: navigator.userAgent,
-    platform: navigator.platform,
     hasServiceWorker: 'serviceWorker' in navigator,
     hasLocalStorage: typeof localStorage !== 'undefined',
     hasSessionStorage: typeof sessionStorage !== 'undefined',

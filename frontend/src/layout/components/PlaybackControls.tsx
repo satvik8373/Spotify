@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { usePlayerStore } from "@/stores/usePlayerStore";
-import { Laptop2, ListMusic, Mic2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Laptop2, ListMusic, Mic2, Pause, Play, Repeat, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import SongDetailsView from "@/components/SongDetailsView";
 import { LikeButton } from "@/components/LikeButton";
+import { ShuffleButton } from "@/components/ShuffleButton";
 import { cn } from "@/lib/utils";
 import { useLikedSongsStore } from "@/stores/useLikedSongsStore";
 import QueueDrawer from "@/components/QueueDrawer";
@@ -19,7 +20,7 @@ const formatTime = (seconds: number) => {
 };
 
 export const PlaybackControls = () => {
-	const { togglePlay, playNext, playPrevious, toggleShuffle, isShuffled } = usePlayerStore();
+	const { togglePlay, playNext, playPrevious } = usePlayerStore();
 	const { isPlaying, currentSong } = usePlayerSync();
 	const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
 
@@ -262,14 +263,7 @@ export const PlaybackControls = () => {
 					{/* player controls */}
 					<div className="flex flex-col items-center gap-1 flex-1 max-w-[40%]">
 						<div className="flex items-center justify-center gap-5 mb-1">
-							<Button
-								size="icon"
-								variant="ghost"
-								className={cn('hover:text-foreground h-8 w-8', isShuffled ? 'text-green-500' : 'text-muted-foreground')}
-								onClick={toggleShuffle}
-							>
-								<Shuffle className="h-4 w-4" />
-							</Button>
+							<ShuffleButton size="sm" />
 
 							<Button
 								size="icon"

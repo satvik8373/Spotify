@@ -34,7 +34,6 @@ export function usePhoneInterruption(audioRef: React.RefObject<HTMLAudioElement>
                     interruptionReason: reason
                 });
 
-                console.log(`Audio paused due to ${reason || 'interruption'}`);
             }
         };
 
@@ -57,10 +56,8 @@ export function usePhoneInterruption(audioRef: React.RefObject<HTMLAudioElement>
                             playPromise
                                 .then(() => {
                                     setIsPlaying(true);
-                                    console.log('Audio resumed after interruption');
                                 })
                                 .catch((error) => {
-                                    console.warn('Failed to resume audio:', error);
 
                                     // Retry after another delay
                                     setTimeout(() => {
@@ -96,8 +93,6 @@ export function usePhoneInterruption(audioRef: React.RefObject<HTMLAudioElement>
             usePlayerStore.setState({
                 audioOutputDevice: deviceId
             });
-
-            console.log('Audio output device changed:', deviceId);
 
             // On iOS, sometimes we need to replay when output changes
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);

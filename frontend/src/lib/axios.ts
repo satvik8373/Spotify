@@ -34,11 +34,6 @@ if (!FINAL_API_URL.endsWith('/api')) {
 // Remove trailing slash and ensure proper formatting
 const cleanApiUrl = FINAL_API_URL.replace(/\/+$/, '');
 
-console.log('🌍 Environment:', isProduction ? 'Production' : 'Development');
-console.log('🔧 RAW_API_URL:', RAW_API_URL || '(not set)');
-console.log('🔗 API base URL:', cleanApiUrl);
-console.log('📍 Current hostname:', window.location.hostname);
-
 // Create and configure axios instance
 const axiosInstance = axios.create({
 	baseURL: cleanApiUrl,
@@ -86,10 +81,9 @@ axiosInstance.interceptors.response.use(
 	(error) => {
 		// Log errors only when not 404 to reduce console noise
 		if (error.response?.status !== 404) {
-			console.error('API request failed:', error.config?.url, error.message);
+			// API request failed
 		} else {
-			// For 404 errors, log a more concise message without the full error stack
-			console.info(`API endpoint not found: ${error.config?.url} - Using mock data`);
+			// For 404 errors, use mock data without logging
 		}
 		
 		// Handle 401 unauthorized

@@ -88,7 +88,6 @@ export const generatePlaylistCoverFromSongs = async (songs: Song[]): Promise<str
     // Create a collage image from the songs' cover art
     return await createPlaylistCoverCollage(songs);
   } catch (error) {
-    console.error('Error generating playlist cover:', error);
     return '';
   }
 };
@@ -99,22 +98,17 @@ export const getUserPlaylists = async (options?: { limit?: number; page?: number
     const currentUser = auth.currentUser;
     
     if (!currentUser) {
-      console.log('getUserPlaylists: No authenticated user found');
       throw new Error('Not authenticated');
     }
     
     const userId = currentUser.uid;
-    console.log('getUserPlaylists: Fetching playlists for user:', userId);
     
     const firestorePlaylists = await playlistsService.getUserPlaylists(userId);
-    console.log('getUserPlaylists: Firestore returned:', firestorePlaylists.length, 'playlists');
     
     const convertedPlaylists = firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
-    console.log('getUserPlaylists: Converted playlists:', convertedPlaylists.length);
     
     return convertedPlaylists;
   } catch (error) {
-    console.error('Error getting user playlists:', error);
     throw error;
   }
 };
@@ -125,7 +119,6 @@ export const getFeaturedPlaylists = async (options?: { limit?: number; page?: nu
     const firestorePlaylists = await playlistsService.getFeaturedPlaylists();
     return firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
   } catch (error) {
-    console.error('Error getting featured playlists:', error);
     throw error;
   }
 };
@@ -136,7 +129,6 @@ export const getPublicPlaylists = async (options?: { limit?: number; page?: numb
     const firestorePlaylists = await playlistsService.getPublicPlaylists();
     return firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
   } catch (error) {
-    console.error('Error getting public playlists:', error);
     throw error;
   }
 };
@@ -152,7 +144,6 @@ export const getPlaylistById = async (playlistId: string): Promise<Playlist> => 
     
     return convertFirestorePlaylistToPlaylist(firestorePlaylist);
   } catch (error) {
-    console.error('Error getting playlist:', error);
     throw error;
   }
 };
@@ -202,8 +193,6 @@ export const createPlaylist = async (
       const firestorePlaylist = await playlistsService.create(playlistData);
       return convertFirestorePlaylistToPlaylist(firestorePlaylist);
     } catch (firestoreError) {
-      console.error('Firestore playlist creation error:', firestoreError);
-      
       // Create a local playlist object as fallback
       const fallbackPlaylist = {
         id: `local-playlist-${Date.now()}`,
@@ -213,7 +202,6 @@ export const createPlaylist = async (
       return convertFirestorePlaylistToPlaylist(fallbackPlaylist);
     }
   } catch (error) {
-    console.error('Error creating playlist:', error);
     throw error;
   }
 };
@@ -244,7 +232,6 @@ export const updatePlaylist = async (
     const firestorePlaylist = await playlistsService.update(playlistId, updateData);
     return convertFirestorePlaylistToPlaylist(firestorePlaylist);
   } catch (error) {
-    console.error('Error updating playlist:', error);
     throw error;
   }
 };
@@ -263,7 +250,6 @@ export const updatePlaylistCoverFromSongs = async (playlistId: string, songs: So
     // If no cover was generated, return the existing playlist
     return await getPlaylistById(playlistId);
   } catch (error) {
-    console.error('Error updating playlist cover:', error);
     throw error;
   }
 };
@@ -273,7 +259,6 @@ export const deletePlaylist = async (playlistId: string): Promise<void> => {
   try {
     await playlistsService.delete(playlistId);
   } catch (error) {
-    console.error('Error deleting playlist:', error);
     throw error;
   }
 };
@@ -332,7 +317,6 @@ export const addSongToPlaylist = async (playlistId: string, song: Song): Promise
             convertedPlaylist.imageUrl = newCoverUrl;
           }
         } catch (coverError) {
-          console.error('Error generating cover for playlist:', coverError);
           // Continue without updating the cover
         }
       }
@@ -340,7 +324,6 @@ export const addSongToPlaylist = async (playlistId: string, song: Song): Promise
     
     return convertedPlaylist;
   } catch (error) {
-    console.error('Error adding song to playlist:', error);
     throw error;
   }
 };
@@ -351,7 +334,6 @@ export const removeSongFromPlaylist = async (playlistId: string, songId: string)
     const updatedPlaylist = await playlistsService.removeSongFromPlaylist(playlistId, songId);
     return convertFirestorePlaylistToPlaylist(updatedPlaylist);
   } catch (error) {
-    console.error('Error removing song from playlist:', error);
     throw error;
   }
 }; 

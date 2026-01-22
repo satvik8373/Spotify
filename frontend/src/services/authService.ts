@@ -33,7 +33,6 @@ export const login = async (email: string, password: string) => {
     
     return user;
   } catch (error: any) {
-    console.error("Error in login:", error);
     throw new Error(error.message || "Failed to login");
   }
 };
@@ -65,7 +64,6 @@ export const register = async (email: string, password: string, fullName: string
     
     return user;
   } catch (error: any) {
-    console.error("Error in register:", error);
     throw new Error(error.message || "Failed to register");
   }
 };
@@ -76,7 +74,6 @@ export const signOut = async () => {
     await firebaseSignOut(auth);
     useAuthStore.getState().reset();
   } catch (error: any) {
-    console.error("Error in signOut:", error);
     throw new Error(error.message || "Failed to sign out");
   }
 };
@@ -123,7 +120,6 @@ export const updateUserProfile = async (user: User, data: {
     
     return { success: true };
   } catch (error: any) {
-    console.error("Error in updateUserProfile:", error);
     throw new Error(error.message || "Failed to update profile");
   }
 };
@@ -134,7 +130,6 @@ export const resetPassword = async (email: string) => {
     await sendPasswordResetEmail(auth, email);
     return { success: true };
   } catch (error: any) {
-    console.error("Error in resetPassword:", error);
     throw new Error(error.message || "Failed to send password reset email");
   }
 };

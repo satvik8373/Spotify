@@ -4,6 +4,7 @@ import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { ShareSong } from './ShareSong';
+import { ShuffleButton } from './ShuffleButton';
 import {
   ChevronDown,
   MoreHorizontal,
@@ -12,7 +13,6 @@ import {
   Pause,
   SkipForward,
   ListMusic,
-  Shuffle,
   Repeat
 } from 'lucide-react';
 import { LikeButton } from './LikeButton';
@@ -39,8 +39,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     togglePlay,
     playNext,
     playPrevious,
-    toggleShuffle,
-    isShuffled,
     currentTime: storeCurrentTime,
     duration: storeDuration,
     setCurrentTime: setStoreCurrentTime,
@@ -1030,23 +1028,15 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         {/* Controls - Enhanced with professional colors */}
         <div className={cn("flex-shrink-0", getDynamicSpacing())}>
           <div className={cn("max-w-sm mx-auto flex items-center justify-between", responsiveClasses.controls)}>
-            <button
-              onClick={toggleShuffle}
-              className={cn(
-                "p-2 active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full",
-                isShuffled ? "text-white" : "text-white/70"
-              )}
-              style={{
-                backgroundColor: isShuffled ? `${albumColors.accent}40` : 'transparent',
-                boxShadow: isShuffled ? `0 0 12px ${albumColors.accent}30` : 'none',
-              }}
-            >
-              <Shuffle className="h-5 w-5" />
-            </button>
+            <ShuffleButton 
+              size="md"
+              accentColor={albumColors.accent}
+              className="p-2 active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
+            />
 
             <button
               onClick={playPrevious}
-              className="p-2 text-white active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full"
+              className="p-2 text-white active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
             >
               <SkipBack className="h-6 w-6" fill="white" />
             </button>
@@ -1055,14 +1045,11 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Play button clicked!', { isPlaying });
                 
                 // Ensure user interaction is registered
                 const store = usePlayerStore.getState();
                 store.setUserInteracted();
-                console.log('About to call togglePlay...');
                 togglePlay();
-                console.log('togglePlay called');
               }}
               onTouchStart={() => {
                 // Don't preventDefault here to avoid passive event listener warnings

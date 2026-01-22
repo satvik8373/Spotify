@@ -7,7 +7,6 @@ export const useBackgroundRefresh = () => {
     const interval = setInterval(() => {
       // Only refresh if the app is visible and data is stale
       if (!document.hidden && usePlaylistStore.getState().shouldRefresh()) {
-        console.log('Background refresh: Updating playlist data');
         usePlaylistStore.getState().refreshAllData();
       }
     }, 5 * 60 * 1000); // Check every 5 minutes
@@ -15,7 +14,6 @@ export const useBackgroundRefresh = () => {
     // Refresh when app becomes visible after being hidden
     const handleVisibilityChange = () => {
       if (!document.hidden && usePlaylistStore.getState().shouldRefresh()) {
-        console.log('App became visible: Refreshing playlist data');
         usePlaylistStore.getState().refreshAllData();
       }
     };
@@ -23,7 +21,6 @@ export const useBackgroundRefresh = () => {
     // Refresh when window gains focus
     const handleFocus = () => {
       if (usePlaylistStore.getState().shouldRefresh()) {
-        console.log('Window focused: Refreshing playlist data');
         usePlaylistStore.getState().refreshAllData();
       }
     };
@@ -33,7 +30,6 @@ export const useBackgroundRefresh = () => {
       // Wait 3 seconds to ensure connection is stable before refreshing
       setTimeout(() => {
         if (navigator.onLine && usePlaylistStore.getState().shouldRefresh()) {
-          console.log('Back online (stable): Refreshing playlist data');
           usePlaylistStore.getState().refreshAllData();
         }
       }, 3000);

@@ -47,7 +47,6 @@ export class PerformanceService {
     const promises = images.map(({ src, priority = 'low' }) => 
       this.preloadImage(src, priority).catch(() => {
         // Silently fail for non-critical images
-        console.warn(`Failed to preload image: ${src}`);
       })
     );
 
@@ -162,13 +161,12 @@ export class PerformanceService {
       // Measure Core Web Vitals
       if ('web-vital' in window) {
         // This would require the web-vitals library
-        console.log('Web Vitals available');
       }
 
       // Measure custom metrics
       const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          console.log(`${entry.name}: ${entry.startTime}ms`);
+          // Performance entry logged
         }
       });
 

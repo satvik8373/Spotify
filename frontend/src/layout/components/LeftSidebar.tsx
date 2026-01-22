@@ -57,7 +57,6 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                 const count = await getLikedSongsCount();
                 setLikedSongsCount(count);
             } catch (error) {
-                console.error('Error loading liked songs count:', error);
                 setLikedSongsCount(0);
             }
         } else {

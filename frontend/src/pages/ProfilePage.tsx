@@ -31,7 +31,6 @@ const ProfilePage = () => {
     if (!editedName.trim()) return;
 
     if (!currentUser) {
-      console.error('No current user found in hybridAuthService');
       toast.error('Authentication error. Please re-login.');
       return;
     }
@@ -42,7 +41,6 @@ const ProfilePage = () => {
       toast.success('Profile updated successfully');
       setIsEditing(false);
     } catch (error) {
-      console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
     } finally {
       setIsLoading(false);
@@ -59,7 +57,7 @@ const ProfilePage = () => {
       await signOut();
       navigate('/', { replace: true });
     } catch (error) {
-      console.error('Error signing out:', error);
+      // Error signing out
     }
   };
 

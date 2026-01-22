@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useAlbumColors } from '../../hooks/useAlbumColors';
 import { usePlayerSync } from '../../hooks/usePlayerSync';
 import { Button } from '../../components/ui/button';
+import { ShuffleButton } from '../../components/ShuffleButton';
 import '../../styles/playlist-page.css';
 import { ContentLoading, InlineLoading, PageLoading } from '../../components/ui/loading';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
@@ -19,7 +20,6 @@ import {
   Plus,
   Search,
   Heart,
-  Shuffle,
   FileText,
   Trash,
   Pause,
@@ -297,11 +297,11 @@ export function PlaylistPage() {
   // Keep shuffle state in sync with player store
   useEffect(() => {
     // Initial state
-    setIsShuffleOn(usePlayerStore.getState().isShuffled);
+    setIsShuffleOn(usePlayerStore.getState().shuffleMode !== 'off');
     
     // Subscribe to changes
     const unsubscribe = usePlayerStore.subscribe((state) => {
-      setIsShuffleOn(state.isShuffled);
+      setIsShuffleOn(state.shuffleMode !== 'off');
     });
     
     return () => unsubscribe();
@@ -463,8 +463,8 @@ export function PlaylistPage() {
 
         // Make sure shuffle is off before playing in order
         const playerStore = usePlayerStore.getState();
-        if (playerStore.isShuffled) {
-          playerStore.toggleShuffle();
+        if (playerStore.shuffleMode !== 'off') {
+          playerStore.setShuffleMode('off');
         }
         
         // Play the playlist from the beginning
@@ -561,8 +561,8 @@ export function PlaylistPage() {
       }
 
       // Disable shuffle to ensure we play the selected song
-        if (playerStore.isShuffled) {
-          playerStore.toggleShuffle();
+        if (playerStore.shuffleMode !== 'off') {
+          playerStore.setShuffleMode('off');
         }
         
       // Play the selected song
@@ -698,7 +698,7 @@ export function PlaylistPage() {
         toast.success('Playlist cover updated');
       }
     } catch (error) {
-      console.error('Error regenerating cover:', error);
+      // Error regenerating cover
       toast.error('Failed to update cover');
     } finally {
       setIsRegeneratingCover(false);
@@ -896,20 +896,10 @@ export function PlaylistPage() {
                     </Button>
 
               {/* Shuffle button */}
-                    <Button
-                variant="ghost"
-                className={cn(
-                  'w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300',
-                  isShuffleOn ? 'text-green-500' : 'text-muted-foreground hover:text-foreground'
-                )}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Toggle shuffle first
-                  usePlayerStore.getState().toggleShuffle();
-                }}
-              >
-                <Shuffle className="h-6 w-6 sm:h-7 sm:w-7" />
-                    </Button>
+              <ShuffleButton 
+                size="lg"
+                className="transition-all duration-300"
+              />
 
               {/* Play/Pause button - always visible */}
               <Button
@@ -1039,7 +1029,6 @@ export function PlaylistPage() {
                           className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
                           onClick={(e) => {
                             e.stopPropagation();
-                            console.log('Add to queue clicked for:', song.title);
                             usePlayerStore.getState().playNextInQueue(song);
                             toast.success(
                               `Added "${song.title}" to play next`,

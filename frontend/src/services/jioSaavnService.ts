@@ -284,7 +284,6 @@ class JioSaavnService {
 
       return [...exactMatches, ...additionalPlaylists].slice(0, 12);
     } catch (error) {
-      console.error('Error fetching JioSaavn trending playlists:', error);
       // Fast fallback to simple search
       return this.searchPlaylists('trending now', 12);
     }
@@ -309,7 +308,6 @@ class JioSaavnService {
           const playlists = await this.searchPlaylists(term, limit);
           return playlists;
         } catch (error) {
-          console.warn(`Failed to search for trending term: ${term}`, error);
           return [];
         }
       });
@@ -338,7 +336,6 @@ class JioSaavnService {
         })
         .slice(0, limit);
     } catch (error) {
-      console.error('Error fetching trending playlists:', error);
       // Fast fallback to regular trending search
       return this.searchPlaylists('trending now', limit);
     }
@@ -360,7 +357,6 @@ class JioSaavnService {
       
       throw new Error('Failed to fetch playlists');
     } catch (error) {
-      console.error('Error searching JioSaavn playlists:', error);
       throw error;
     }
   }
@@ -452,7 +448,7 @@ class JioSaavnService {
           const playlists = await this.searchPlaylists(term, Math.ceil(limit / 3));
           allPlaylists.push(...playlists);
         } catch (error) {
-          console.warn(`Failed to search for fresh term: ${term}`, error);
+          // Failed to search for fresh term - skip
         }
       }
 
@@ -460,7 +456,6 @@ class JioSaavnService {
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
       return this.sortPlaylistsByFreshness(uniquePlaylists, categoryId).slice(0, limit);
     } catch (error) {
-      console.error(`Error fetching fresh playlists for category ${categoryId}:`, error);
       // Fallback to regular category search
       return this.getPlaylistsByCategory(categoryId, limit);
     }
@@ -481,7 +476,6 @@ class JioSaavnService {
           const playlists = await this.searchPlaylists(term, Math.ceil(limit / 2));
           return playlists;
         } catch (error) {
-          console.warn(`Failed to search for term: ${term}`, error);
           return [];
         }
       });
@@ -493,7 +487,6 @@ class JioSaavnService {
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
       return this.sortPlaylistsByFreshness(uniquePlaylists, categoryId).slice(0, limit);
     } catch (error) {
-      console.error(`Error fetching playlists for category ${categoryId}:`, error);
       // Fallback to first search term
       return this.searchPlaylists(category.searchTerms[0], limit);
     }
@@ -575,13 +568,11 @@ class JioSaavnService {
             const playlists = await this.getPlaylistsByCategory(category.id, 8);
             results[category.id] = playlists;
           } catch (error) {
-            console.error(`Failed to fetch featured playlists for ${category.id}:`, error);
             results[category.id] = [];
           }
         })
       );
     } catch (error) {
-      console.error('Error fetching featured playlists:', error);
       // Fallback to original method
       const featuredCategories = PLAYLIST_CATEGORIES
         .filter(cat => cat.priority >= 7)
@@ -593,7 +584,6 @@ class JioSaavnService {
             const playlists = await this.getPlaylistsByCategory(category.id, 8);
             results[category.id] = playlists;
           } catch (error) {
-            console.error(`Failed to fetch featured playlists for ${category.id}:`, error);
             results[category.id] = [];
           }
         })
@@ -618,7 +608,6 @@ class JioSaavnService {
       
       throw new Error('Failed to fetch playlist details');
     } catch (error) {
-      console.error('Error fetching JioSaavn playlist details:', error);
       throw error;
     }
   }
@@ -674,7 +663,7 @@ class JioSaavnService {
             }
           }
         } catch (error) {
-          console.warn(`Failed to search for exact trending: ${searchTerm}`, error);
+          // Failed to search for exact trending - skip
         }
         
         // Stop if we have enough results for speed
@@ -683,7 +672,6 @@ class JioSaavnService {
 
       return results.slice(0, 8);
     } catch (error) {
-      console.error('Error fetching exact trending playlists:', error);
       return this.getTrendingPlaylists(8);
     }
   }

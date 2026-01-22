@@ -53,7 +53,7 @@ const SpotifySongsPage: React.FC = () => {
       const results = await spotify.searchTracks(searchQuery);
       setSearchResults(results);
     } catch (error) {
-      console.error('Error searching tracks:', error);
+      // Error searching tracks
     } finally {
       setIsSearching(false);
     }

@@ -37,7 +37,7 @@ const AlbumPage = () => {
           });
         }, 1000);
       } catch (error) {
-        console.error('Error fetching album:', error);
+        // Error fetching album
       }
     };
 

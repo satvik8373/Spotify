@@ -62,7 +62,6 @@ export function ShareSong({ song, trigger }: ShareSongProps) {
         });
       } catch (error) {
         // User cancelled or error occurred
-        console.log('Share cancelled');
       }
     } else {
       handleCopyLink();

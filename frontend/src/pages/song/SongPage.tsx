@@ -82,9 +82,9 @@ const SongPage = () => {
         
         if (likedSong) {
           setSong(likedSong);
-          // Auto-play the song
+          // Set the song but DON'T auto-play - let user decide
           setCurrentSong(likedSong as any);
-          setIsPlaying(true);
+          // setIsPlaying(true); // Removed unwanted autoplay
           return;
         }
 
@@ -98,16 +98,15 @@ const SongPage = () => {
 
         if (foundSong) {
           setSong(foundSong);
-          // Auto-play the song
+          // Set the song but DON'T auto-play - let user decide
           setCurrentSong(foundSong as any);
-          setIsPlaying(true);
+          // setIsPlaying(true); // Removed unwanted autoplay
         } else {
           // Song not found
           setError('Song not found');
           toast.error('Song not found. It may have been removed or is not available.');
         }
       } catch (err) {
-        console.error('Error loading song:', err);
         setError('Failed to load song');
         toast.error('Failed to load song. Please try again.');
         setLoading(false);

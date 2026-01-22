@@ -71,7 +71,6 @@ const Register = () => {
       JSON.parse(localStorage.getItem('auth-store') || '{}').isAuthenticated;
 
     if ((isAuthenticated || hasLocalAuth) && !authLoading) {
-      console.log("Already authenticated, redirecting to home");
       navigate('/home', { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate]);
@@ -106,7 +105,6 @@ const Register = () => {
       }
       navigate('/home');
     } catch (error: any) {
-      console.error('Auth error:', error);
 
       if (isLogin) {
         if (error.message.includes('user-not-found') || error.message.includes('wrong-password')) {
@@ -137,7 +135,6 @@ const Register = () => {
       toast.success(isLogin ? 'Welcome back!' : 'Signed up with Google successfully');
       navigate('/home', { replace: true });
     } catch (error: any) {
-      console.error('Google auth error:', error);
       toast.error(error.message || `Failed to ${isLogin ? 'login' : 'sign up'} with Google`);
     } finally {
       setGoogleLoading(false);
@@ -151,7 +148,6 @@ const Register = () => {
       toast.success(isLogin ? 'Welcome back!' : 'Signed up with Facebook successfully');
       navigate('/home', { replace: true });
     } catch (error: any) {
-      console.error('Facebook auth error:', error);
       toast.error(error.message || `Failed to ${isLogin ? 'login' : 'sign up'} with Facebook`);
     } finally {
       setFacebookLoading(false);

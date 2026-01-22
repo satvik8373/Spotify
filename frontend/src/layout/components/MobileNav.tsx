@@ -133,10 +133,9 @@ const MobileNav = () => {
       // Then perform the actual logout
       const result = await signOut();
       if (!result.success) {
-        console.error('Error during logout:', result.error);
+        // Error during logout
       }
     } catch (error) {
-      console.error('Error signing out:', error);
       // Still close the menu and reset auth store
       setShowProfileMenu(false);
     }

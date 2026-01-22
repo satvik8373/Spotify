@@ -12,7 +12,6 @@ export function getLocalStorage(key: string): string | null {
     try {
         return localStorage.getItem(key);
     } catch (error) {
-        console.warn(`Failed to access localStorage for key "${key}":`, error);
         return null;
     }
 }
@@ -26,7 +25,6 @@ export function getSessionStorage(key: string): string | null {
     try {
         return sessionStorage.getItem(key);
     } catch (error) {
-        console.warn(`Failed to access sessionStorage for key "${key}":`, error);
         return null;
     }
 }
@@ -42,7 +40,6 @@ export function setLocalStorage(key: string, value: string): boolean {
         localStorage.setItem(key, value);
         return true;
     } catch (error) {
-        console.warn(`Failed to write to localStorage for key "${key}":`, error);
         return false;
     }
 }
@@ -58,7 +55,6 @@ export function setSessionStorage(key: string, value: string): boolean {
         sessionStorage.setItem(key, value);
         return true;
     } catch (error) {
-        console.warn(`Failed to write to sessionStorage for key "${key}":`, error);
         return false;
     }
 }
@@ -73,7 +69,6 @@ export function removeLocalStorage(key: string): boolean {
         localStorage.removeItem(key);
         return true;
     } catch (error) {
-        console.warn(`Failed to remove from localStorage for key "${key}":`, error);
         return false;
     }
 }
@@ -88,7 +83,6 @@ export function removeSessionStorage(key: string): boolean {
         sessionStorage.removeItem(key);
         return true;
     } catch (error) {
-        console.warn(`Failed to remove from sessionStorage for key "${key}":`, error);
         return false;
     }
 }
@@ -105,7 +99,6 @@ export function getLocalStorageJSON<T>(key: string, defaultValue: T): T {
         if (item === null) return defaultValue;
         return JSON.parse(item) as T;
     } catch (error) {
-        console.warn(`Failed to parse JSON from localStorage for key "${key}":`, error);
         return defaultValue;
     }
 }
@@ -122,7 +115,6 @@ export function getSessionStorageJSON<T>(key: string, defaultValue: T): T {
         if (item === null) return defaultValue;
         return JSON.parse(item) as T;
     } catch (error) {
-        console.warn(`Failed to parse JSON from sessionStorage for key "${key}":`, error);
         return defaultValue;
     }
 }
@@ -138,7 +130,6 @@ export function setLocalStorageJSON<T>(key: string, value: T): boolean {
         localStorage.setItem(key, JSON.stringify(value));
         return true;
     } catch (error) {
-        console.warn(`Failed to write JSON to localStorage for key "${key}":`, error);
         return false;
     }
 }
@@ -154,7 +145,6 @@ export function setSessionStorageJSON<T>(key: string, value: T): boolean {
         sessionStorage.setItem(key, JSON.stringify(value));
         return true;
     } catch (error) {
-        console.warn(`Failed to write JSON to sessionStorage for key "${key}":`, error);
         return false;
     }
 }
@@ -198,7 +188,6 @@ export function clearLocalStorage(): boolean {
         localStorage.clear();
         return true;
     } catch (error) {
-        console.warn('Failed to clear localStorage:', error);
         return false;
     }
 }
@@ -212,7 +201,6 @@ export function clearSessionStorage(): boolean {
         sessionStorage.clear();
         return true;
     } catch (error) {
-        console.warn('Failed to clear sessionStorage:', error);
         return false;
     }
 }
@@ -225,7 +213,6 @@ export function getLocalStorageKeys(): string[] {
     try {
         return Object.keys(localStorage);
     } catch (error) {
-        console.warn('Failed to get localStorage keys:', error);
         return [];
     }
 }
@@ -238,7 +225,6 @@ export function getSessionStorageKeys(): string[] {
     try {
         return Object.keys(sessionStorage);
     } catch (error) {
-        console.warn('Failed to get sessionStorage keys:', error);
         return [];
     }
 }

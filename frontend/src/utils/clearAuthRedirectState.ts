@@ -33,7 +33,7 @@ export const clearAuthRedirectState = () => {
       }
     });
   } catch (error) {
-    console.warn('Could not clear auth redirect state:', error);
+    // Could not clear auth redirect state
   }
 };
 

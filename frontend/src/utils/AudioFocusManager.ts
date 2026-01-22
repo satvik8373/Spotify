@@ -28,6 +28,7 @@ class AudioFocusManager {
     private focusChangeHandler: (() => void) | null = null;
     private beforeUnloadHandler: (() => void) | null = null;
     private audioContextStateChangeHandler: (() => void) | null = null;
+    private deviceCheckInterval: NodeJS.Timeout | null = null;
 
     /**
      * Initialize the audio focus manager
@@ -50,7 +51,7 @@ class AudioFocusManager {
 
             this.setupEventListeners();
         } catch (error) {
-            console.warn('AudioContext initialization failed:', error);
+            // AudioContext initialization failed
         }
     }
 
@@ -121,6 +122,7 @@ class AudioFocusManager {
         }
 
         let previousDevices: MediaDeviceInfo[] = [];
+        let deviceCheckInterval: NodeJS.Timeout | null = null;
 
         const checkDeviceChanges = async () => {
             try {
@@ -156,13 +158,16 @@ class AudioFocusManager {
             }
         };
 
-        // Check periodically
-        setInterval(checkDeviceChanges, 3000);
-
-        // Also listen for device change events
+        // Use event listener primarily, with fallback polling
         if (navigator.mediaDevices.addEventListener) {
             navigator.mediaDevices.addEventListener('devicechange', checkDeviceChanges);
+        } else {
+            // Fallback: Check periodically only if event listener not supported
+            deviceCheckInterval = setInterval(checkDeviceChanges, 5000);
         }
+
+        // Store interval reference for cleanup
+        this.deviceCheckInterval = deviceCheckInterval;
     }
 
     /**
@@ -239,7 +244,7 @@ class AudioFocusManager {
             }
             return this.audioContext.state === 'running';
         } catch (error) {
-            console.warn('Failed to request audio focus:', error);
+            // Failed to request audio focus
             return false;
         }
     }
@@ -286,6 +291,17 @@ class AudioFocusManager {
 
         if (this.beforeUnloadHandler) {
             window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+        }
+
+        if (this.deviceCheckInterval) {
+            clearInterval(this.deviceCheckInterval);
+            this.deviceCheckInterval = null;
+        }
+
+        // Clean up device change listener
+        if (navigator.mediaDevices && navigator.mediaDevices.removeEventListener) {
+            // Note: We can't remove the specific handler since we don't store it
+            // This is a limitation of the current implementation
         }
 
         this.callbacks = null;

@@ -87,7 +87,6 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       window.location.href = loginUrl;
       
     } catch (error) {
-      console.error('Error getting Spotify login URL:', error);
       toast.error('Failed to connect with Spotify. Please try again.');
     } finally {
       setIsLoading(false);
@@ -99,7 +98,6 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       spotifyLogout();
       toast.success('Disconnected from Spotify');
     } catch (error) {
-      console.error('Error disconnecting from Spotify:', error);
       toast.error('Failed to disconnect from Spotify');
     }
   };
@@ -109,7 +107,7 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
       sessionStorage.setItem('spotify_sync_prompt', '1');
       window.location.href = '/liked-songs';
     } catch (error) {
-      console.error('Error navigating to sync:', error);
+      // Error navigating to sync
     }
   };
 

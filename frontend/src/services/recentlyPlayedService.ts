@@ -23,7 +23,7 @@ class RecentlyPlayedService {
       // Sort by most recently played
       return items.sort((a, b) => b.lastPlayed - a.lastPlayed);
     } catch (error) {
-      console.error('Error loading recently played items:', error);
+      // Error loading recently played items
       return [];
     }
   }
@@ -54,7 +54,7 @@ class RecentlyPlayedService {
         detail: limitedItems 
       }));
     } catch (error) {
-      console.error('Error adding to recently played:', error);
+      // Error adding to recently played
     }
   }
 
@@ -200,7 +200,7 @@ class RecentlyPlayedService {
         detail: [] 
       }));
     } catch (error) {
-      console.error('Error clearing recently played:', error);
+      // Error clearing recently played
     }
   }
 
@@ -213,9 +213,9 @@ class RecentlyPlayedService {
           localStorage.removeItem(key);
         }
       });
-      console.log('JioSaavn cache cleared');
+      // JioSaavn cache cleared
     } catch (error) {
-      console.error('Error clearing JioSaavn cache:', error);
+      // Error clearing JioSaavn cache
     }
   }
 
@@ -230,7 +230,7 @@ class RecentlyPlayedService {
         detail: filteredItems 
       }));
     } catch (error) {
-      console.error('Error removing recently played item:', error);
+      // Error removing recently played item
     }
   }
 }

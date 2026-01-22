@@ -37,7 +37,7 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
         setCachedAuth(JSON.parse(cachedAuthState));
       }
     } catch (e) {
-      console.error('Error loading cached auth state:', e);
+      // Error loading cached auth state
     }
     
     // Stop showing loading state after 500ms
@@ -55,7 +55,7 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
         localStorage.setItem('cached_auth_state', JSON.stringify(isActuallyAuthenticated));
         setCachedAuth(isActuallyAuthenticated);
       } catch (e) {
-        console.error('Error saving cached auth state:', e);
+        // Error saving cached auth state
       }
     }
   }, [isActuallyAuthenticated, cachedAuth, user, userId]);
@@ -73,7 +73,6 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
       // Force page reload to clean up any lingering state
       window.location.href = '/';
     } catch (error) {
-      console.error('Error signing out:', error);
       setLocalLoading(false);
     }
   }, []);

@@ -70,7 +70,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
       const data = await jioSaavnService.getPlaylistsByCategory(selectedCategory.id, 50);
       setPlaylists(data);
     } catch (err) {
-      console.error('Error fetching JioSaavn playlists:', err);
+      // Error fetching JioSaavn playlists
       setError('Failed to load playlists');
       toast.error('Failed to load playlists');
     } finally {
@@ -94,7 +94,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
         toast.success(`Found ${result.playlists.length} ${result.detectedCategory.name} playlists`);
       }
     } catch (err) {
-      console.error('Error searching JioSaavn playlists:', err);
+      // Error searching JioSaavn playlists
       setError('Failed to search playlists');
       toast.error('Failed to search playlists');
     } finally {
@@ -127,7 +127,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
         toast.error('No songs found in playlist', { id: 'jiosaavn-play' });
       }
     } catch (error) {
-      console.error('Error playing JioSaavn playlist:', error);
+      // Error playing JioSaavn playlist
       toast.error('Failed to play playlist', { id: 'jiosaavn-play' });
     }
   };

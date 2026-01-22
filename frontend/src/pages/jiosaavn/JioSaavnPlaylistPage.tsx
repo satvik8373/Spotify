@@ -10,10 +10,10 @@ import {
   Download, 
   ChevronLeft, 
   Heart, 
-  Shuffle, 
   Share2 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ShuffleButton } from '@/components/ShuffleButton';
 import { JioSaavnPlaylist, JioSaavnSong, jioSaavnService } from '@/services/jioSaavnService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
@@ -57,10 +57,10 @@ const JioSaavnPlaylistPage: React.FC = () => {
 
   // Keep shuffle state in sync with player store
   useEffect(() => {
-    setIsShuffleOn(usePlayerStore.getState().isShuffled);
+    setIsShuffleOn(usePlayerStore.getState().shuffleMode !== 'off');
     
     const unsubscribe = usePlayerStore.subscribe((state) => {
-      setIsShuffleOn(state.isShuffled);
+      setIsShuffleOn(state.shuffleMode !== 'off');
     });
     
     return () => unsubscribe();
@@ -103,7 +103,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
         const playedPlaylists = JSON.parse(localStorage.getItem('user_played_jiosaavn_playlists') || '[]');
         setHasPlayed(playedPlaylists.includes(playlistId));
       } catch (error) {
-        console.error('Error loading playlist metrics:', error);
+        // Error loading playlist metrics
       }
     }
   }, [playlistId]);
@@ -140,12 +140,11 @@ const JioSaavnPlaylistPage: React.FC = () => {
       
       setSongs(playlistDetails.songs || []);
       
-      // Auto-play if requested
-      if (location.state?.autoPlay && playlistDetails.songs?.length > 0) {
-        handlePlaySong(playlistDetails.songs[0], 0);
-      }
+      // Don't auto-play - let user decide when to play
+      // if (location.state?.autoPlay && playlistDetails.songs?.length > 0) {
+      //   handlePlaySong(playlistDetails.songs[0], 0);
+      // }
     } catch (err) {
-      console.error('Error fetching playlist details:', err);
       setError('Failed to load playlist details');
       toast.error('Failed to load playlist');
     } finally {
@@ -185,7 +184,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
         [metric]: prev[metric] + 1,
       }));
     } catch (error) {
-      console.error('Error updating metrics:', error);
+      // Error updating metrics
     }
   };
 
@@ -211,7 +210,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Error handling like:', error);
+      // Error handling like
     }
   };
 
@@ -390,19 +389,10 @@ const JioSaavnPlaylistPage: React.FC = () => {
               </Button>
 
               {/* Shuffle button */}
-              <Button
-                variant="ghost"
-                className={cn(
-                  'w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300',
-                  isShuffleOn ? 'text-green-500' : 'text-muted-foreground hover:text-foreground'
-                )}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  usePlayerStore.getState().toggleShuffle();
-                }}
-              >
-                <Shuffle className="h-6 w-6 sm:h-7 sm:w-7" />
-              </Button>
+              <ShuffleButton 
+                size="lg"
+                className="transition-all duration-300"
+              />
 
               {/* Play/Pause button */}
               <Button
