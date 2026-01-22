@@ -359,3 +359,75 @@
 .song-details-view {
   overscroll-behavior: none;
 }
+
+/* Queue list styles */
+.queue-list {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  max-height: calc(100vh - 300px); /* Ensure it doesn't overflow */
+}
+
+.queue-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Queue item animations */
+.queue-item {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.queue-item:hover {
+  transform: translateY(-1px);
+}
+
+.queue-item:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Compact swipe area - only when queue is open */
+.swipe-container {
+  cursor: grab;
+  will-change: transform, opacity;
+  transition: none;
+  position: relative;
+  overflow: visible;
+  touch-action: pan-y;
+  transform: translateX(0) scale(1);
+  opacity: 1;
+}
+
+/* Normal swipe container - no size restrictions when queue is closed */
+.swipe-container.normal-size {
+  max-width: none;
+  max-height: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Compact swipe container - smaller when queue is open */
+.swipe-container.compact-size {
+  max-width: 200px;
+  max-height: 200px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Current song indicator animation */
+@keyframes music-bar {
+  0%, 100% { height: 20%; }
+  50% { height: 100%; }
+}
+
+.music-bar {
+  animation: music-bar 1s ease-in-out infinite;
+}
+
+.music-bar:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.music-bar:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.music-bar:nth-child(4) {
+  animation-delay: 0.3s;
+}

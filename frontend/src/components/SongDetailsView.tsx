@@ -43,7 +43,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     duration: storeDuration,
     setCurrentTime: setStoreCurrentTime,
     queue,
-    currentIndex
+    currentIndex,
+    playAlbum
   } = usePlayerStore();
 
   const { currentSong, isPlaying } = usePlayerSync();
@@ -53,7 +54,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const [duration, setDuration] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
-  const [showQueue, setShowQueue] = useState(false);
+  const [showQueue, setShowQueue] = useState(false); // Start with queue closed
   const [showMenu, setShowMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragProgress, setDragProgress] = useState(0);
@@ -79,7 +80,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     hasMovedHorizontally: false,
     initialDirection: null as 'horizontal' | 'vertical' | null
   });
-  
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -113,7 +114,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   // Determine responsive classes based on screen size
   const getResponsiveClasses = () => {
     const { height, isLandscape } = screenSize;
-    
+
     if (isLandscape && height <= 500) {
       return {
         container: 'landscape-compact',
@@ -178,78 +179,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   };
 
   const responsiveClasses = getResponsiveClasses();
-
-  // Calculate optimal album art size based on screen dimensions (Spotify-like)
-  const getAlbumArtSize = () => {
-    const { height, width, isLandscape } = screenSize;
-    
-    // Fallback for initial render or edge cases
-    if (!height || !width) {
-      return {
-        maxWidth: '280px',
-        maxHeight: '280px',
-        size: 280
-      };
-    }
-    
-    // Calculate available space after UI elements
-    const headerHeight = 64; // Header space
-    const bottomHeight = 64; // Bottom actions space
-    const songInfoHeight = isLandscape ? 60 : 80; // Song title/artist space
-    const progressHeight = 60; // Progress bar space
-    const controlsHeight = isLandscape ? 60 : 80; // Controls space
-    const padding = 32; // Total padding
-    
-    const availableHeight = height - headerHeight - bottomHeight - songInfoHeight - progressHeight - controlsHeight - padding;
-    const availableWidth = width - padding;
-    
-    // Professional sizing like Spotify - use more screen real estate on larger devices
-    let maxSize;
-    
-    if (isLandscape && height <= 500) {
-      // Compact landscape mode
-      maxSize = Math.min(availableHeight * 0.8, availableWidth * 0.4, 180);
-    } else if (height <= 568) {
-      // iPhone SE and similar small screens
-      maxSize = Math.min(availableHeight * 0.7, availableWidth * 0.75, 200);
-    } else if (height <= 667) {
-      // iPhone 8 and similar
-      maxSize = Math.min(availableHeight * 0.8, availableWidth * 0.8, 280);
-    } else if (height <= 736) {
-      // iPhone 8 Plus and similar
-      maxSize = Math.min(availableHeight * 0.85, availableWidth * 0.85, 320);
-    } else if (height <= 812) {
-      // iPhone X and similar
-      maxSize = Math.min(availableHeight * 0.9, availableWidth * 0.9, 360);
-    } else {
-      // Large screens - use more space like Spotify
-      maxSize = Math.min(availableHeight * 0.95, availableWidth * 0.9, 400);
-    }
-    
-    // Ensure minimum size for usability
-    maxSize = Math.max(maxSize, 160);
-    
-    return {
-      maxWidth: `${maxSize}px`,
-      maxHeight: `${maxSize}px`,
-      size: maxSize
-    };
-  };
-
-  // Get dynamic spacing based on screen size
-  const getDynamicSpacing = () => {
-    const { height, isLandscape } = screenSize;
-    
-    if (isLandscape && height <= 500) {
-      return 'mb-2';
-    } else if (height <= 568) {
-      return 'mb-3';
-    } else if (height <= 667) {
-      return 'mb-4';
-    } else {
-      return 'mb-6';
-    }
-  };
 
   // Update like status
   useEffect(() => {
@@ -337,7 +266,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const now = Date.now();
     if (immediate || now - lastSeekTimeRef.current > 100) { // Throttle to 10fps for audio seeking
       lastSeekTimeRef.current = now;
-      
+
       if (audioRef.current && !isNaN(newTime)) {
         audioRef.current.currentTime = newTime;
         setCurrentTime(newTime);
@@ -348,7 +277,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       if (dragTimeoutRef.current) {
         clearTimeout(dragTimeoutRef.current);
       }
-      
+
       dragTimeoutRef.current = setTimeout(() => {
         if (audioRef.current && !isNaN(newTime)) {
           audioRef.current.currentTime = newTime;
@@ -383,15 +312,15 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   // Optimized drag handling with RAF for smooth performance
   useEffect(() => {
     let animationFrameId: number | null = null;
-    
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging || !progressRef.current) return;
-      
+
       // Use requestAnimationFrame for smooth visual updates
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
-      
+
       animationFrameId = requestAnimationFrame(() => {
         if (progressRef.current) {
           const rect = progressRef.current.getBoundingClientRect();
@@ -403,14 +332,14 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const handleTouchMove = (e: TouchEvent) => {
       if (!isDragging || !progressRef.current) return;
       e.preventDefault(); // Prevent scrolling during drag
-      
+
       const touch = e.touches[0];
-      
+
       // Use requestAnimationFrame for smooth visual updates
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
-      
+
       animationFrameId = requestAnimationFrame(() => {
         if (progressRef.current) {
           const rect = progressRef.current.getBoundingClientRect();
@@ -422,13 +351,13 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const handleEnd = () => {
       setIsDragging(false);
       setDragProgress(0);
-      
+
       // Clear any pending animation frames
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
       }
-      
+
       // Clear any pending seek timeouts
       if (dragTimeoutRef.current) {
         clearTimeout(dragTimeoutRef.current);
@@ -450,7 +379,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleEnd);
       document.removeEventListener('touchcancel', handleEnd);
-      
+
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
@@ -477,13 +406,13 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       swipeContainerRef.current.style.opacity = '';
       swipeContainerRef.current.style.transition = '';
       swipeContainerRef.current.style.willChange = 'auto';
-      
+
       // Cancel any ongoing animations
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
-      
+
       // Reset swipe state if song changes during swipe
       setSwipeState(prev => ({
         ...prev,
@@ -499,7 +428,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   // Swipe gesture handlers with Spotify-like logic
   const handleSwipeStart = useCallback((clientX: number, clientY: number) => {
     if (isDragging) return; // Don't interfere with progress bar dragging
-    
+
     setSwipeState({
       isDragging: true,
       startX: clientX,
@@ -524,55 +453,55 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const deltaX = clientX - swipeState.startX;
     const deltaY = clientY - swipeState.startY;
     const timeDelta = now - swipeState.lastMoveTime;
-    
+
     // Calculate velocity for momentum (pixels per millisecond)
     const velocity = timeDelta > 0 ? Math.abs(deltaX) / timeDelta : 0;
-    
+
     // Determine initial direction if not set (Spotify-like logic)
     let initialDirection = swipeState.initialDirection;
     if (!initialDirection && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
       initialDirection = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
     }
-    
+
     // Once direction is determined, stick to it (prevents accidental swipes)
     const isVerticalScroll = initialDirection === 'vertical';
-    
+
     // Only process horizontal swipes with higher threshold
     if (!isVerticalScroll && Math.abs(deltaX) > 15) { // Increased from 10 to 15
       const direction = deltaX > 0 ? 'right' : 'left';
-      
+
       // Check if we can actually swipe in this direction
       const canSwipeLeft = currentIndex < queue.length - 1;
       const canSwipeRight = currentIndex > 0;
-      
+
       // Spotify-like resistance when reaching boundaries
       if ((direction === 'left' && !canSwipeLeft) || (direction === 'right' && !canSwipeRight)) {
         // Apply strong resistance at boundaries (like Spotify)
         const resistanceFactor = 0.2; // Much stronger resistance
         const limitedDeltaX = Math.sign(deltaX) * Math.min(Math.abs(deltaX) * resistanceFactor, 40);
-        
+
         if (swipeContainerRef.current) {
           const progress = Math.min(Math.abs(limitedDeltaX) / 40, 1);
           const scale = 1 - (progress * 0.02); // Minimal scaling at boundaries
           const opacity = 1 - (progress * 0.1);
-          
+
           if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
           }
-          
+
           animationFrameRef.current = requestAnimationFrame(() => {
             if (swipeContainerRef.current) {
               // Ensure explicit values to prevent accumulation
               const transformValue = `translateX(${limitedDeltaX}px) scale(${scale})`;
               const opacityValue = opacity.toString();
-              
+
               swipeContainerRef.current.style.transform = transformValue;
               swipeContainerRef.current.style.opacity = opacityValue;
               swipeContainerRef.current.style.willChange = 'transform, opacity';
             }
           });
         }
-        
+
         setSwipeState(prev => ({
           ...prev,
           currentX: clientX,
@@ -588,7 +517,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         }));
         return;
       }
-      
+
       setSwipeState(prev => ({
         ...prev,
         currentX: clientX,
@@ -609,22 +538,22 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         const maxMovement = 120; // Maximum movement distance
         const resistance = Math.abs(deltaX) / maxMovement;
         const clampedResistance = Math.min(resistance, 1);
-        
+
         const movement = deltaX * (1 - clampedResistance * 0.3); // Apply resistance
         const scale = 1 - (clampedResistance * 0.08); // Subtle scaling like Spotify
         const opacity = 1 - (clampedResistance * 0.25); // Gentle opacity change
-        
+
         // Use requestAnimationFrame for smooth performance
         if (animationFrameRef.current) {
           cancelAnimationFrame(animationFrameRef.current);
         }
-        
+
         animationFrameRef.current = requestAnimationFrame(() => {
           if (swipeContainerRef.current) {
             // Ensure we're setting explicit values to prevent accumulation
             const transformValue = `translateX(${movement}px) scale(${scale})`;
             const opacityValue = opacity.toString();
-            
+
             swipeContainerRef.current.style.transform = transformValue;
             swipeContainerRef.current.style.opacity = opacityValue;
             swipeContainerRef.current.style.willChange = 'transform, opacity';
@@ -632,8 +561,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         });
       }
     } else if (isVerticalScroll) {
-      setSwipeState(prev => ({ 
-        ...prev, 
+      setSwipeState(prev => ({
+        ...prev,
         isVerticalScroll: true,
         initialDirection
       }));
@@ -656,13 +585,13 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     if (!swipeState.isDragging) return;
 
     const { deltaX, velocity, direction, isVerticalScroll, hasMovedHorizontally } = swipeState;
-    
+
     // Cancel any pending animation frames to prevent glitches
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
-    
+
     // Reset swipe state
     setSwipeState({
       isDragging: false,
@@ -686,10 +615,10 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       swipeContainerRef.current.style.transform = 'translateX(0px) scale(1)';
       swipeContainerRef.current.style.opacity = '1';
       swipeContainerRef.current.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-      
+
       // Force a reflow to ensure the reset is applied
       swipeContainerRef.current.offsetHeight;
-      
+
       // Then animate to final state
       requestAnimationFrame(() => {
         if (swipeContainerRef.current) {
@@ -697,7 +626,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           swipeContainerRef.current.style.opacity = '';
         }
       });
-      
+
       // Remove transition after animation and ensure clean state
       setTimeout(() => {
         if (swipeContainerRef.current) {
@@ -717,7 +646,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const distanceThreshold = 100; // Increased from 80 to 100
     const velocityThreshold = 0.8; // Increased from 0.3 to 0.8
     const minimumDistance = 60; // Must move at least this much regardless of velocity
-    
+
     // Must meet BOTH distance AND velocity requirements, OR exceed high distance threshold
     const meetsDistanceRequirement = Math.abs(deltaX) >= distanceThreshold;
     const meetsVelocityRequirement = velocity >= velocityThreshold && Math.abs(deltaX) >= minimumDistance;
@@ -727,7 +656,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       // Check boundaries again before triggering
       const canSwipeLeft = currentIndex < queue.length - 1;
       const canSwipeRight = currentIndex > 0;
-      
+
       if ((direction === 'left' && canSwipeLeft) || (direction === 'right' && canSwipeRight)) {
         // Add haptic feedback on mobile devices
         if ('vibrate' in navigator) {
@@ -748,23 +677,23 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   // Touch event handlers with improved gesture recognition
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1) return; // Only handle single touch
-    
+
     // Prevent if touch starts on interactive elements
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('[role="button"]') || target.closest('input')) {
       return;
     }
-    
+
     const touch = e.touches[0];
     handleSwipeStart(touch.clientX, touch.clientY);
   }, [handleSwipeStart]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1 || !swipeState.isDragging) return;
-    
+
     // Only prevent default if we're in a horizontal swipe - but don't use preventDefault in React events
     // The browser will handle this automatically based on our touch-action CSS
-    
+
     const touch = e.touches[0];
     handleSwipeMove(touch.clientX, touch.clientY);
   }, [handleSwipeMove, swipeState.isDragging]);
@@ -780,7 +709,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     if (target.closest('button') || target.closest('[role="button"]') || target.closest('input')) {
       return;
     }
-    
+
     handleSwipeStart(e.clientX, e.clientY);
   }, [handleSwipeStart]);
 
@@ -798,7 +727,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
       document.addEventListener('mouseleave', handleMouseUp);
-      
+
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
@@ -896,186 +825,412 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         )}
       </div>
 
-      {/* Main Content - Flexible layout that adapts to screen size */}
-      <div className="flex-1 flex flex-col justify-center px-4 min-h-0">
-        {/* Album Art - Professional responsive sizing like Spotify with Enhanced Swipe Support */}
-        <div className={cn("flex-shrink-0 flex justify-center", getDynamicSpacing())}>
-          <div 
-            ref={swipeContainerRef}
-            className="relative swipe-container"
-            style={{
-              filter: `drop-shadow(0 25px 50px rgba(0,0,0,0.6))`,
-              touchAction: 'pan-y', // Allow vertical scrolling but handle horizontal ourselves
-            }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onMouseDown={handleMouseDown}
-          >
-            <img
-              src={currentSong.imageUrl}
-              alt={currentSong.title}
-              className="rounded-lg responsive-transition album-art-responsive"
-              style={{
-                maxWidth: getAlbumArtSize().maxWidth,
-                maxHeight: getAlbumArtSize().maxHeight,
-                width: 'auto',
-                height: 'auto',
-                backgroundColor: 'transparent',
-                // Simple shadow effect
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                userSelect: 'none',
-                pointerEvents: 'none', // Prevent image drag
-              }}
-              draggable={false}
-            />
-            
-
-          </div>
-        </div>
-
-        {/* Song Info - Compact */}
-        <div className={cn("flex-shrink-0", getDynamicSpacing())}>
-          <div className="flex items-center justify-between gap-3 max-w-sm mx-auto">
-            <div className="flex-1 min-w-0 overflow-hidden mr-3">
-              {/* Title - PingPong Scroll */}
-              <div>
-                <PingPongScroll
-                  text={currentSong.title}
-                  className={cn(
-                    "font-black text-white mb-0.5 leading-tight tracking-tight py-1 responsive-transition",
-                    responsiveClasses.title
-                  )}
-                  velocity={10}
-                />
+      {/* Main Content - Conditional layout based on queue visibility */}
+      <div className="flex-1 flex flex-col px-4 min-h-0">
+        {showQueue && queue.length > 1 ? (
+          // Compact Layout when Queue is Open
+          <>
+            {/* Compact Top Section - Album Art, Info, Progress, Controls */}
+            <div className="flex-shrink-0 py-4">
+              {/* Album Art - Smaller size */}
+              <div className="flex justify-center mb-4">
+                <div
+                  ref={swipeContainerRef}
+                  className="relative swipe-container"
+                  style={{
+                    filter: `drop-shadow(0 15px 30px rgba(0,0,0,0.5))`,
+                    touchAction: 'pan-y',
+                  }}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onMouseDown={handleMouseDown}
+                >
+                  <img
+                    src={currentSong.imageUrl}
+                    alt={currentSong.title}
+                    className="rounded-lg responsive-transition album-art-responsive"
+                    style={{
+                      width: screenSize.height <= 568 ? '120px' : screenSize.height <= 667 ? '140px' : '160px',
+                      height: screenSize.height <= 568 ? '120px' : screenSize.height <= 667 ? '140px' : '160px',
+                      backgroundColor: 'transparent',
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+                      userSelect: 'none',
+                      pointerEvents: 'none',
+                    }}
+                    draggable={false}
+                  />
+                </div>
               </div>
 
-              {/* Artist - PingPong Scroll */}
-              <div>
-                <PingPongScroll
-                  text={currentSong.artist}
-                  className={cn(
-                    "text-white font-medium responsive-transition",
-                    responsiveClasses.artist
-                  )}
-                  velocity={8}
-                />
+              {/* Song Info - Compact */}
+              <div className="mb-3">
+                <div className="flex items-center justify-between gap-3 max-w-sm mx-auto">
+                  <div className="flex-1 min-w-0 overflow-hidden mr-3">
+                    <div>
+                      <PingPongScroll
+                        text={currentSong.title}
+                        className="font-bold text-white text-base leading-tight tracking-tight py-1"
+                        velocity={10}
+                      />
+                    </div>
+                    <div>
+                      <PingPongScroll
+                        text={currentSong.artist}
+                        className="text-white/80 font-medium text-sm"
+                        velocity={8}
+                      />
+                    </div>
+                  </div>
+                  <LikeButton
+                    isLiked={isLiked}
+                    onToggle={handleLikeToggle}
+                    className="p-1.5 active:scale-90 transition-transform flex-shrink-0 touch-target"
+                    iconSize={20}
+                  />
+                </div>
+              </div>
+
+              {/* Progress Bar - Compact */}
+              <div className="mb-3">
+                <div className="max-w-sm mx-auto">
+                  <div
+                    ref={progressRef}
+                    className="relative w-full py-2 cursor-pointer group touch-target progress-bar-container"
+                    onClick={handleProgressClick}
+                    onMouseDown={handleProgressMouseDown}
+                    onTouchStart={handleProgressTouchStart}
+                    style={{ touchAction: 'none' }}
+                  >
+                    <div className={cn(
+                      "relative w-full rounded-full transition-all duration-150",
+                      isDragging ? "h-1.5" : "h-1 group-hover:h-1.5"
+                    )}
+                      style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                        backdropFilter: 'blur(10px)',
+                      }}
+                    >
+                      <div
+                        className="absolute h-full rounded-full transition-all duration-75 bg-white"
+                        style={{
+                          width: `${displayProgress}%`,
+                        }}
+                      />
+                      <div
+                        className={cn(
+                          "absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full shadow-lg transition-all duration-150 bg-white",
+                          isDragging ? "opacity-100 scale-125" : "opacity-0 group-hover:opacity-100 group-hover:scale-110"
+                        )}
+                        style={{
+                          left: `${displayProgress}%`,
+                          marginLeft: '-6px',
+                          transform: isDragging ? 'translateY(-50%) scale(1.25)' : undefined,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-between mt-1 text-xs text-white/80">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Controls - Compact */}
+              <div className="mb-2">
+                <div className="max-w-xs mx-auto flex items-center justify-between">
+                  <ShuffleButton
+                    size="sm"
+                    className="p-1.5 active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
+                  />
+
+                  <button
+                    onClick={playPrevious}
+                    className="p-1.5 text-white active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
+                  >
+                    <SkipBack className="h-5 w-5" fill="white" />
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+
+                      const store = usePlayerStore.getState();
+                      store.setUserInteracted();
+                      togglePlay();
+                    }}
+                    className="rounded-full flex items-center justify-center active:scale-95 transition-all shadow-lg flex-shrink-0 touch-target bg-white hover:bg-gray-100 w-10 h-10"
+                  >
+                    {isPlaying ? (
+                      <Pause className="h-5 w-5 text-black" fill="black" />
+                    ) : (
+                      <Play className="h-5 w-5 text-black ml-0.5" fill="black" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={playNext}
+                    className="p-1.5 text-white active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10"
+                  >
+                    <SkipForward className="h-5 w-5" fill="white" />
+                  </button>
+
+                  <button
+                    onClick={() => setIsRepeating(!isRepeating)}
+                    className={cn(
+                      "p-1.5 active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10",
+                      isRepeating ? "text-white bg-white/20" : "text-white/70"
+                    )}
+                  >
+                    <Repeat className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
-            <LikeButton
-              isLiked={isLiked}
-              onToggle={handleLikeToggle}
-              className="p-2 -mr-2 active:scale-90 transition-transform flex-shrink-0 touch-target"
-              iconSize={screenSize.height <= 568 ? 24 : 28}
-            />
-          </div>
-        </div>
 
-        {/* Progress Bar - Simple consistent design */}
-        <div className={cn("flex-shrink-0", getDynamicSpacing())}>
-          <div className="max-w-sm mx-auto">
-            <div
-              ref={progressRef}
-              className="relative w-full py-3 cursor-pointer group touch-target progress-bar-container"
-              onClick={handleProgressClick}
-              onMouseDown={handleProgressMouseDown}
-              onTouchStart={handleProgressTouchStart}
-              style={{ touchAction: 'none' }} // Prevent default touch behaviors
-            >
-              <div className={cn(
-                "relative w-full rounded-full transition-all duration-150",
-                isDragging ? "h-1.5" : "h-1 group-hover:h-1.5"
-              )}
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                backdropFilter: 'blur(10px)',
-              }}
+            {/* Queue/Songs List - Large Section */}
+            <div className="flex-1 min-h-0 pb-4">
+              <div className="h-full bg-black/20 backdrop-blur-sm rounded-lg overflow-hidden">
+                <div className="p-3 border-b border-white/10">
+                  <h3 className="text-white font-semibold text-sm">Queue ({queue.length} songs)</h3>
+                </div>
+                <div className="h-full overflow-y-auto queue-list">
+                  <div className="p-3 space-y-1">
+                    {queue.map((song, index) => {
+                      const isCurrentSong = index === currentIndex;
+
+                      return (
+                        <div
+                          key={`${song._id}-${index}`}
+                          className={cn(
+                            "flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer queue-item",
+                            isCurrentSong
+                              ? "bg-white/20 border border-white/30"
+                              : "hover:bg-white/10 active:bg-white/15"
+                          )}
+                          onClick={() => {
+                            if (!isCurrentSong) {
+                              playAlbum(queue, index);
+                            }
+                          }}
+                        >
+                          <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 relative">
+                            <img
+                              src={song.imageUrl}
+                              alt={song.title}
+                              className="w-full h-full object-cover"
+                            />
+                            {isCurrentSong && (
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <div className="flex gap-0.5 items-end h-4">
+                                  <div className="w-0.5 bg-white music-bar"></div>
+                                  <div className="w-0.5 bg-white music-bar"></div>
+                                  <div className="w-0.5 bg-white music-bar"></div>
+                                  <div className="w-0.5 bg-white music-bar"></div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className={cn(
+                              "font-medium truncate leading-tight",
+                              isCurrentSong ? "text-white" : "text-white/90"
+                            )}>
+                              {song.title}
+                            </h4>
+                            <p className={cn(
+                              "text-sm truncate mt-1",
+                              isCurrentSong ? "text-white/80" : "text-white/60"
+                            )}>
+                              {song.artist}
+                            </p>
+                          </div>
+                          <div className={cn(
+                            "text-sm font-mono flex-shrink-0",
+                            isCurrentSong ? "text-white/80" : "text-white/50"
+                          )}>
+                            {formatTime(song.duration || 0)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          // Normal Layout when Queue is Closed
+          <div className="flex flex-col justify-center min-h-0">
+            {/* Album Art - Normal size with responsive sizing */}
+            <div className="flex-shrink-0 flex justify-center mb-6">
+              <div
+                ref={swipeContainerRef}
+                className="relative swipe-container"
+                style={{
+                  filter: `drop-shadow(0 25px 50px rgba(0,0,0,0.6))`,
+                  touchAction: 'pan-y',
+                }}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onMouseDown={handleMouseDown}
               >
-                <div
-                  className="absolute h-full rounded-full transition-all duration-75 bg-white"
-                  style={{ 
-                    width: `${displayProgress}%`,
+                <img
+                  src={currentSong.imageUrl}
+                  alt={currentSong.title}
+                  className="rounded-lg responsive-transition album-art-responsive"
+                  style={{
+                    width: screenSize.height <= 568 ? '200px' : screenSize.height <= 667 ? '260px' : screenSize.height <= 736 ? '300px' : '320px',
+                    height: screenSize.height <= 568 ? '200px' : screenSize.height <= 667 ? '260px' : screenSize.height <= 736 ? '300px' : '320px',
+                    backgroundColor: 'transparent',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                    userSelect: 'none',
+                    pointerEvents: 'none',
                   }}
-                />
-                {/* Enhanced solid draggable thumb */}
-                <div
-                  className={cn(
-                    "absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full shadow-lg transition-all duration-150 bg-white",
-                    isDragging ? "opacity-100 scale-125" : "opacity-0 group-hover:opacity-100 group-hover:scale-110"
-                  )}
-                  style={{ 
-                    left: `${displayProgress}%`, 
-                    marginLeft: '-6px',
-                    transform: isDragging ? 'translateY(-50%) scale(1.25)' : undefined,
-                  }}
+                  draggable={false}
                 />
               </div>
             </div>
-            <div className="flex justify-between mt-1 text-xs text-white">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
+
+            {/* Song Info - Normal */}
+            <div className="flex-shrink-0 mb-6">
+              <div className="flex items-center justify-between gap-3 max-w-sm mx-auto">
+                <div className="flex-1 min-w-0 overflow-hidden mr-3">
+                  <div>
+                    <PingPongScroll
+                      text={currentSong.title}
+                      className={cn(
+                        "font-black text-white mb-0.5 leading-tight tracking-tight py-1 responsive-transition",
+                        responsiveClasses.title
+                      )}
+                      velocity={10}
+                    />
+                  </div>
+                  <div>
+                    <PingPongScroll
+                      text={currentSong.artist}
+                      className={cn(
+                        "text-white font-medium responsive-transition",
+                        responsiveClasses.artist
+                      )}
+                      velocity={8}
+                    />
+                  </div>
+                </div>
+                <LikeButton
+                  isLiked={isLiked}
+                  onToggle={handleLikeToggle}
+                  className="p-2 -mr-2 active:scale-90 transition-transform flex-shrink-0 touch-target"
+                  iconSize={screenSize.height <= 568 ? 24 : 28}
+                />
+              </div>
+            </div>
+
+            {/* Progress Bar - Normal */}
+            <div className="flex-shrink-0 mb-6">
+              <div className="max-w-sm mx-auto">
+                <div
+                  ref={progressRef}
+                  className="relative w-full py-3 cursor-pointer group touch-target progress-bar-container"
+                  onClick={handleProgressClick}
+                  onMouseDown={handleProgressMouseDown}
+                  onTouchStart={handleProgressTouchStart}
+                  style={{ touchAction: 'none' }}
+                >
+                  <div className={cn(
+                    "relative w-full rounded-full transition-all duration-150",
+                    isDragging ? "h-1.5" : "h-1 group-hover:h-1.5"
+                  )}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      backdropFilter: 'blur(10px)',
+                    }}
+                  >
+                    <div
+                      className="absolute h-full rounded-full transition-all duration-75 bg-white"
+                      style={{
+                        width: `${displayProgress}%`,
+                      }}
+                    />
+                    <div
+                      className={cn(
+                        "absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full shadow-lg transition-all duration-150 bg-white",
+                        isDragging ? "opacity-100 scale-125" : "opacity-0 group-hover:opacity-100 group-hover:scale-110"
+                      )}
+                      style={{
+                        left: `${displayProgress}%`,
+                        marginLeft: '-6px',
+                        transform: isDragging ? 'translateY(-50%) scale(1.25)' : undefined,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-between mt-1 text-xs text-white">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Controls - Normal */}
+            <div className="flex-shrink-0 mb-6">
+              <div className={cn("max-w-sm mx-auto flex items-center justify-between", responsiveClasses.controls)}>
+                <ShuffleButton
+                  size="md"
+                  className="p-2 active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
+                />
+
+                <button
+                  onClick={playPrevious}
+                  className="p-2 text-white active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
+                >
+                  <SkipBack className="h-6 w-6" fill="white" />
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const store = usePlayerStore.getState();
+                    store.setUserInteracted();
+                    togglePlay();
+                  }}
+                  className={cn(
+                    "rounded-full flex items-center justify-center active:scale-95 transition-all shadow-lg flex-shrink-0 touch-target bg-white hover:bg-gray-100",
+                    responsiveClasses.playButton || "w-12 h-12"
+                  )}
+                >
+                  {isPlaying ? (
+                    <Pause className="h-6 w-6 text-black" fill="black" />
+                  ) : (
+                    <Play className="h-6 w-6 text-black ml-0.5" fill="black" />
+                  )}
+                </button>
+
+                <button
+                  onClick={playNext}
+                  className="p-2 text-white active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10"
+                >
+                  <SkipForward className="h-6 w-6" fill="white" />
+                </button>
+
+                <button
+                  onClick={() => setIsRepeating(!isRepeating)}
+                  className={cn(
+                    "p-2 active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10",
+                    isRepeating ? "text-white bg-white/20" : "text-white/70"
+                  )}
+                >
+                  <Repeat className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Controls - Enhanced with professional colors */}
-        <div className={cn("flex-shrink-0", getDynamicSpacing())}>
-          <div className={cn("max-w-sm mx-auto flex items-center justify-between", responsiveClasses.controls)}>
-            <ShuffleButton 
-              size="md"
-              className="p-2 active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
-            />
-
-            <button
-              onClick={playPrevious}
-              className="p-2 text-white active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
-            >
-              <SkipBack className="h-6 w-6" fill="white" />
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Ensure user interaction is registered
-                const store = usePlayerStore.getState();
-                store.setUserInteracted();
-                togglePlay();
-              }}
-              onTouchStart={() => {
-                // Don't preventDefault here to avoid passive event listener warnings
-              }}
-              className={cn(
-                "rounded-full flex items-center justify-center active:scale-95 transition-all shadow-lg flex-shrink-0 touch-target bg-white hover:bg-gray-100",
-                responsiveClasses.playButton || "w-12 h-12"
-              )}
-            >
-              {isPlaying ? (
-                <Pause className="h-6 w-6 text-black" fill="black" />
-              ) : (
-                <Play className="h-6 w-6 text-black ml-0.5" fill="black" />
-              )}
-            </button>
-
-            <button
-              onClick={playNext}
-              className="p-2 text-white active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10"
-            >
-              <SkipForward className="h-6 w-6" fill="white" />
-            </button>
-
-            <button
-              onClick={() => setIsRepeating(!isRepeating)}
-              className={cn(
-                "p-2 active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10",
-                isRepeating ? "text-white bg-white/20" : "text-white/70"
-              )}
-            >
-              <Repeat className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Bottom Actions - Fixed height */}
@@ -1086,7 +1241,10 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         <div className="flex items-center justify-center gap-12">
           <button
             onClick={() => setShowQueue(!showQueue)}
-            className="flex flex-col items-center gap-1 text-white/70 hover:text-white active:scale-95 transition-all touch-target"
+            className={cn(
+              "flex flex-col items-center gap-1 active:scale-95 transition-all touch-target",
+              showQueue ? "text-white" : "text-white/70 hover:text-white"
+            )}
           >
             <ListMusic className="h-5 w-5" />
             <span className="text-xs font-medium">Queue</span>
