@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getOptimizedImageUrl } from '@/services/cloudinaryService';
-import { networkOptimizer } from '@/utils/networkOptimizer';
 
 interface OptimizedImageProps {
   src: string;
@@ -41,46 +40,28 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [shouldLoad, setShouldLoad] = useState(priority);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Generate optimized URLs for different formats with aggressive network optimization
+  // Generate optimized URLs for different formats
   const generateImageUrls = () => {
     if (!src || src === fallbackSrc) {
       return { webp: fallbackSrc, jpg: fallbackSrc, original: fallbackSrc };
     }
 
-    // Get network-optimized URL with aggressive cellular optimization
-    const optimizedSrc = networkOptimizer.getOptimizedImageUrl(src, size);
-    const networkConfig = networkOptimizer.getConfig();
-    
-    // Very aggressive quality reduction for cellular
-    const adaptiveQuality = networkConfig.imageQuality === 'minimal' ? 20 :
-                           networkConfig.imageQuality === 'low' ? 30 : 
-                           networkConfig.imageQuality === 'medium' ? 50 : quality;
-
-    // Skip format optimization entirely for cellular to reduce processing
-    if (networkConfig.skipHeavyElements) {
-      return { 
-        jpg: optimizedSrc, 
-        original: optimizedSrc 
-      };
-    }
+    // Use standard quality without network restrictions
+    const adaptiveQuality = quality;
 
     // Check if it's already a Cloudinary URL
-    const isCloudinaryUrl = optimizedSrc.includes('cloudinary.com');
+    const isCloudinaryUrl = src.includes('cloudinary.com');
     
     if (isCloudinaryUrl) {
       // Extract public ID from Cloudinary URL
-      const match = optimizedSrc.match(/\/([^/]+)\/?([^/]+)\/([^/]+)$/);
+      const match = src.match(/\/([^/]+)\/?([^/]+)\/([^/]+)$/);
       if (match && match[3]) {
         const publicId = match[3].split('.')[0];
         
-        // Minimal formats for cellular, skip AVIF entirely
-        const formats = networkConfig.imageQuality === 'minimal' 
-          ? { jpg: 'jpg' }
-          : networkConfig.imageQuality === 'low'
-          ? { jpg: 'jpg', webp: 'webp' }
-          : { webp: 'webp', jpg: 'jpg' };
+        // Support all formats
+        const formats = { webp: 'webp', jpg: 'jpg' };
         
-        const urls: any = { original: optimizedSrc };
+        const urls: any = { original: src };
         
         Object.entries(formats).forEach(([key, fmt]) => {
           urls[key] = getOptimizedImageUrl(publicId, { 
@@ -95,14 +76,14 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       }
     }
 
-    // For non-Cloudinary URLs, return optimized version
-    return { webp: optimizedSrc, jpg: optimizedSrc, original: optimizedSrc };
+    // For non-Cloudinary URLs, return original
+    return { webp: src, jpg: src, original: src };
   };
 
   const imageUrls = generateImageUrls();
 
   useEffect(() => {
-    setCurrentSrc(imageUrls.original);
+    setCurrentSrc(src);
     setIsLoaded(false);
     setHasError(false);
   }, [src]);
@@ -120,42 +101,14 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     onError?.();
   };
 
-  // Intersection Observer for lazy loading with aggressive cellular optimization
+  // Intersection Observer for lazy loading
   useEffect(() => {
     if (priority) {
       setShouldLoad(true);
       return;
     }
 
-    const networkConfig = networkOptimizer.getConfig();
-    
-    // Skip lazy loading entirely for cellular - load immediately when in viewport
-    if (networkConfig.skipHeavyElements) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              setShouldLoad(true);
-              observer.unobserve(entry.target);
-            }
-          });
-        },
-        {
-          rootMargin: '0px', // No preloading margin for cellular
-          threshold: 0.1 // Only load when actually visible
-        }
-      );
-
-      if (imgRef.current) {
-        observer.observe(imgRef.current);
-      }
-
-      return () => observer.disconnect();
-    }
-
-    // Standard lazy loading for other connections
-    const rootMargin = networkConfig.enableDataSaver ? '20px 0px' : '50px 0px';
-    
+    // Standard lazy loading
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -166,7 +119,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
         });
       },
       {
-        rootMargin,
+        rootMargin: '50px 0px',
         threshold: 0.01
       }
     );
@@ -192,14 +145,12 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     }
   }, [currentSrc, priority]);
 
-  const networkConfig = networkOptimizer.getConfig();
   const showPlaceholder = !isLoaded && !hasError;
-  const isCellular = networkConfig.skipHeavyElements;
 
   return (
     <picture className={className}>
-      {/* Skip WebP for cellular to reduce processing */}
-      {!isCellular && imageUrls.webp && (
+      {/* WebP support */}
+      {imageUrls.webp && (
         <source
           srcSet={shouldLoad ? imageUrls.webp : ''}
           type="image/webp"
@@ -207,7 +158,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
         />
       )}
       
-      {/* JPEG fallback - always available */}
+      {/* JPEG fallback */}
       <source
         srcSet={shouldLoad ? imageUrls.jpg : ''}
         type="image/jpeg"
@@ -231,16 +182,6 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           ...(width && height ? { aspectRatio: `${width}/${height}` } : {})
         }}
       />
-      
-      {/* Minimal loading placeholder for cellular */}
-      {showPlaceholder && isCellular && (
-        <div 
-          className="absolute inset-0 flex items-center justify-center bg-gray-900 text-gray-500 text-xs"
-          style={{ aspectRatio: width && height ? `${width}/${height}` : undefined }}
-        >
-          •••
-        </div>
-      )}
     </picture>
   );
 };

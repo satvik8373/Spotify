@@ -1,21 +1,16 @@
 import React from 'react';
-import { networkOptimizer } from '../../utils/networkOptimizer';
 
-interface SlowConnectionSkeletonProps {
+interface HomeSkeletonProps {
   className?: string;
   count?: number;
   type?: 'card' | 'list' | 'grid' | 'recently-played';
 }
 
-const SlowConnectionSkeleton: React.FC<SlowConnectionSkeletonProps> = ({
+const HomeSkeleton: React.FC<HomeSkeletonProps> = ({
   className = '',
   count = 3,
   type = 'card'
 }) => {
-  const networkConfig = networkOptimizer.getConfig();
-  const shouldSkipHeavy = networkConfig.skipHeavyElements;
-  const isCellular = networkOptimizer.isCellularConnection();
-
   // Professional shimmer animation
   const shimmerClass = `
     relative overflow-hidden
@@ -25,30 +20,6 @@ const SlowConnectionSkeleton: React.FC<SlowConnectionSkeletonProps> = ({
     before:bg-gradient-to-r
     before:from-transparent before:via-white/10 before:to-transparent
   `;
-
-  // Minimal skeleton for cellular/slow connections
-  if (shouldSkipHeavy || isCellular) {
-    return (
-      <div className={`space-y-3 ${className}`}>
-        {Array.from({ length: Math.min(count, 2) }).map((_, index) => (
-          <div 
-            key={index} 
-            className={`flex items-center space-x-3 p-3 bg-white/5 rounded-lg backdrop-blur-sm ${shimmerClass}`}
-            style={{ animationDelay: `${index * 0.1}s` }}
-          >
-            <div className="w-10 h-10 bg-white/10 rounded-lg flex-shrink-0" />
-            <div className="flex-1 space-y-2">
-              <div className="h-3 bg-white/10 rounded-full w-2/3" />
-              <div className="h-2 bg-white/8 rounded-full w-1/2" />
-            </div>
-          </div>
-        ))}
-        <div className="text-center text-xs text-white/40 py-2 animate-pulse">
-          Optimizing for cellular...
-        </div>
-      </div>
-    );
-  }
 
   // Recently played skeleton
   const renderRecentlyPlayedCard = () => (
@@ -157,4 +128,4 @@ const SlowConnectionSkeleton: React.FC<SlowConnectionSkeletonProps> = ({
   );
 };
 
-export default SlowConnectionSkeleton;
+export default HomeSkeleton;

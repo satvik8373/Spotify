@@ -1,11 +1,9 @@
 /**
  * Request Manager Service
  * Handles API call deduplication, caching, and background processing optimization
- * Optimized for slow internet connections with adaptive strategies
  */
 
 import axiosInstance from '../lib/axios';
-import { networkOptimizer } from '../utils/networkOptimizer';
 
 interface RequestConfig {
   url: string;
@@ -45,12 +43,6 @@ class RequestManager {
     this.cleanupInterval = setInterval(() => {
       this.cleanup();
     }, 5 * 60 * 1000); // 5 minutes
-
-    // Listen for network changes
-    networkOptimizer.onConfigChange((config) => {
-      this.maxConcurrentRequests = config.maxConcurrentRequests;
-      this.rateLimitDelay = config.enableDataSaver ? 200 : 100;
-    });
   }
 
   /**
@@ -163,7 +155,7 @@ class RequestManager {
   ): Promise<T> {
     const {
       cache = true,
-      cacheTTL = networkOptimizer.getCacheTTL('api'),
+      cacheTTL = 5 * 60 * 1000, // 5 minutes default
       deduplicate = true,
       priority = 'normal',
       retries = 2
@@ -196,13 +188,12 @@ class RequestManager {
     const makeRequest = async (attempt: number = 0): Promise<T> => {
       try {
         const { url, method, params, body, headers = {} } = config;
-        const networkConfig = networkOptimizer.getConfig();
         
         const axiosConfig: any = {
           method: method.toLowerCase(),
           url,
           headers,
-          timeout: networkConfig.requestTimeout,
+          timeout: 10000, // 10 second timeout
           params
         };
 
