@@ -1,58 +1,19 @@
 {
-  "name": "Mavrixfy V2.0",
+  "name": "Mavrixfy",
   "short_name": "Mavrixfy",
-  "description": "Mavrixfy V2.0 - Premium music streaming PWA with enhanced performance, background audio stability, and mobile-first experience. Major performance improvements and memory leak fixes.",
+  "description": "Mavrixfy - Premium music streaming PWA",
   "version": "2.0.0",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#121212",
   "orientation": "portrait-primary",
-  "categories": ["music", "entertainment", "lifestyle"],
-  "lang": "en",
-  "dir": "ltr",
-  "scope": "/",
+  "categories": ["music", "entertainment"],
   "icons": [
     {
       "src": "/mavrixfy.png",
       "type": "image/png",
-      "sizes": "72x72",
-      "purpose": "any"
-    },
-    {
-      "src": "/mavrixfy.png",
-      "type": "image/png",
-      "sizes": "96x96",
-      "purpose": "any"
-    },
-    {
-      "src": "/mavrixfy.png",
-      "type": "image/png",
-      "sizes": "128x128",
-      "purpose": "any"
-    },
-    {
-      "src": "/mavrixfy.png",
-      "type": "image/png",
-      "sizes": "144x144",
-      "purpose": "any"
-    },
-    {
-      "src": "/mavrixfy.png",
-      "type": "image/png",
-      "sizes": "152x152",
-      "purpose": "any"
-    },
-    {
-      "src": "/mavrixfy.png",
-      "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any"
-    },
-    {
-      "src": "/mavrixfy.png",
-      "type": "image/png",
-      "sizes": "384x384",
       "purpose": "any"
     },
     {
@@ -72,46 +33,6 @@
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Liked Songs",
-      "short_name": "Liked",
-      "description": "View your liked songs",
-      "url": "/liked-songs",
-      "icons": [
-        {
-          "src": "/mavrixfy.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Search",
-      "short_name": "Search",
-      "description": "Search for music",
-      "url": "/search",
-      "icons": [
-        {
-          "src": "/mavrixfy.png",
-          "sizes": "96x96"
-        }
-      ]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshot-home.png",
-      "type": "image/png",
-      "sizes": "1080x1920",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "/screenshot-desktop.png",
-      "type": "image/png",
-      "sizes": "1920x1080",
-      "form_factor": "wide"
     }
   ]
 } 

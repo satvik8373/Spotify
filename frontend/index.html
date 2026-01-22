@@ -39,7 +39,7 @@
 		<link rel="icon" type="image/png" sizes="384x384" href="/mavrixfy.png" />
 		<link rel="icon" type="image/png" sizes="512x512" href="/mavrixfy.png" />
 		
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		
 		<!-- Prevent caching in WebView -->
 		<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -48,7 +48,7 @@
 		
 		<meta name="theme-color" content="#121212" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 		<meta name="apple-mobile-web-app-title" content="Mavrixfy" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="format-detection" content="telephone=no" />
@@ -98,45 +98,19 @@
 		
 		<!-- Critical CSS inline for mobile -->
 		<style>
-			/* Mobile-first critical CSS */
+			/* Critical CSS */
 			* { box-sizing: border-box; }
 			body { 
 				margin: 0; 
 				padding: 0; 
 				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-				background-color: #121212 !important; /* Prevent white flicker */
+				background-color: #121212 !important;
 				color: white;
 			}
-			html { background-color: #121212 !important; } /* Prevent white flicker */
+			html { background-color: #121212 !important; }
 			.mobile-device { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 			.mobile-device * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 			.mobile-device input, .mobile-device textarea { -webkit-user-select: text; user-select: text; }
-			
-			/* Mobile-safe-area support */
-			.mobile-device { 
-				padding-top: env(safe-area-inset-top); 
-				padding-bottom: env(safe-area-inset-bottom); 
-			}
-			
-			/* PWA Status bar styling */
-			@supports (padding-top: env(safe-area-inset-top)) {
-				body {
-					padding-top: env(safe-area-inset-top);
-					background-color: #121212 !important;
-				}
-				
-				/* Ensure the root element extends to full height */
-				#root {
-					min-height: 100vh;
-					min-height: 100dvh;
-					background-color: #121212;
-				}
-			}
-			
-			/* Mobile touch targets */
-			@media (max-width: 768px) {
-				button, a, input, select, textarea { min-width: 44px; min-height: 44px; }
-			}
 			
 			/* Smooth fade animation */
 			@keyframes fadeIn {
@@ -185,58 +159,22 @@
 				window.performance.mark('mobile-app-start');
 			}
 			
-			// Dynamic PWA theme color matching with homepage
+			// PWA theme color
 			function updatePWAThemeColors() {
-				const themeColor = '#121212'; // Always use dark theme color for consistency
-				const statusBarStyle = 'black-translucent'; // Translucent status bar for full immersion
+				const themeColor = '#121212';
 				
 				// Update theme-color meta tag
 				let themeMeta = document.querySelector('meta[name="theme-color"]');
 				if (themeMeta) {
 					themeMeta.setAttribute('content', themeColor);
-				} else {
-					themeMeta = document.createElement('meta');
-					themeMeta.setAttribute('name', 'theme-color');
-					themeMeta.setAttribute('content', themeColor);
-					document.head.appendChild(themeMeta);
 				}
 				
-				// Update Apple status bar style
-				const appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-				if (appleMeta) {
-					appleMeta.setAttribute('content', statusBarStyle);
-				}
-				
-				// Update body and html background to match
-				document.documentElement.style.backgroundColor = themeColor;
+				// Update body background
 				document.body.style.backgroundColor = themeColor;
-				document.body.style.transition = 'background-color 0.3s ease';
-				
-				// Ensure root element matches
-				const root = document.getElementById('root');
-				if (root) {
-					root.style.backgroundColor = themeColor;
-					root.style.minHeight = '100vh';
-					root.style.minHeight = '100dvh';
-				}
 			}
 			
 			// Initial theme color update
 			updatePWAThemeColors();
-			
-			// Watch for theme changes
-			const observer = new MutationObserver((mutations) => {
-				mutations.forEach((mutation) => {
-					if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-						updatePWAThemeColors();
-					}
-				});
-			});
-			
-			observer.observe(document.documentElement, {
-				attributes: true,
-				attributeFilter: ['class']
-			});
 		</script>
 	</body>
 </html>
