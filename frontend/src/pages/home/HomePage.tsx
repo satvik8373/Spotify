@@ -8,6 +8,8 @@ import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
 import { SectionWrapper } from '@/components/ui/section-wrapper';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
+import { networkOptimizer } from '@/utils/networkOptimizer';
+import SlowConnectionSkeleton from '@/components/skeletons/SlowConnectionSkeleton';
 
 const HomePage = () => {
   const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
@@ -16,10 +18,22 @@ const HomePage = () => {
 
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [displayItems, setDisplayItems] = useState<any[]>([]);
+  const [networkOptimized, setNetworkOptimized] = useState(false);
   const navigate = useNavigate();
   const { loadLikedSongs } = useLikedSongsStore();
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
   const [likedSongsColor, setLikedSongsColor] = useState<string | null>(null);
+
+  // Network optimization setup
+  useEffect(() => {
+    const handleNetworkChange = () => {
+      const config = networkOptimizer.getConfig();
+      setNetworkOptimized(config.enableDataSaver);
+    };
+
+    networkOptimizer.onConfigChange(handleNetworkChange);
+    handleNetworkChange(); // Initial check
+  }, []);
 
   // Load liked songs count
   useEffect(() => {
@@ -55,11 +69,20 @@ const HomePage = () => {
         // Show content immediately, load data in background
         setIsInitialLoading(false);
 
-        // Check if we need to refresh data
-        if (usePlaylistStore.getState().shouldRefresh()) {
-          await usePlaylistStore.getState().refreshAllData();
+        // For slow connections, prioritize essential data only
+        if (networkOptimized) {
+          // Load only essential playlists
+          const essentialPlaylists = publicPlaylists.slice(0, 6);
+          if (essentialPlaylists.length === 0) {
+            await fetchPublicPlaylists();
+          }
         } else {
-          await fetchPublicPlaylists();
+          // Check if we need to refresh data
+          if (usePlaylistStore.getState().shouldRefresh()) {
+            await usePlaylistStore.getState().refreshAllData();
+          } else {
+            await fetchPublicPlaylists();
+          }
         }
       } catch (error) {
         // Error initializing homepage
@@ -69,7 +92,7 @@ const HomePage = () => {
     };
 
     initializeHomePage();
-  }, [fetchPublicPlaylists]);
+  }, [fetchPublicPlaylists, networkOptimized]);
 
   // Load recent playlists from the new service - optimized with useMemo
   const memoizedDisplayItems = useMemo(() => {
@@ -299,7 +322,7 @@ const HomePage = () => {
               snapToItems={false}
             >
               {publicPlaylists.length > 0 ? (
-                publicPlaylists.slice(0, 20).map((playlist) => (
+                publicPlaylists.slice(0, networkOptimized ? 8 : 20).map((playlist) => (
                   <ScrollItem key={playlist._id} width={120}>
                     <PlaylistCard
                       playlist={playlist}
@@ -309,60 +332,81 @@ const HomePage = () => {
                   </ScrollItem>
                 ))
               ) : isLoading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <ScrollItem key={i} width={120}>
-                    <div className="space-y-3 p-1">
-                      <div className="w-full aspect-square rounded-md bg-muted animate-pulse" />
-                      <div className="h-3 rounded bg-muted animate-pulse" />
-                      <div className="h-2 rounded bg-muted animate-pulse w-3/4" />
-                    </div>
-                  </ScrollItem>
-                ))
+                networkOptimized ? (
+                  <SlowConnectionSkeleton count={4} type="card" className="flex gap-3" />
+                ) : (
+                  Array.from({ length: 8 }).map((_, i) => (
+                    <ScrollItem key={i} width={120}>
+                      <div className="space-y-3 p-1">
+                        <div className="w-full aspect-square rounded-md bg-muted animate-pulse" />
+                        <div className="h-3 rounded bg-muted animate-pulse" />
+                        <div className="h-2 rounded bg-muted animate-pulse w-3/4" />
+                      </div>
+                    </ScrollItem>
+                  ))
+                )
               ) : (
                 <div className="text-zinc-500 text-sm p-4 w-full text-center">No playlists found</div>
               )}
             </HorizontalScroll>
           </SectionWrapper>
 
-          {/* JioSaavn Trending Section */}
-          <section>
-            <JioSaavnPlaylistsSection
-              title="Trending Now"
-              categoryId="trending"
-              limit={14}
-              showViewAll={true}
-            />
-          </section>
+          {/* JioSaavn Sections - Reduced for slow connections */}
+          {!networkOptimized && (
+            <>
+              {/* JioSaavn Trending Section */}
+              <section>
+                <JioSaavnPlaylistsSection
+                  title="Trending Now"
+                  categoryId="trending"
+                  limit={14}
+                  showViewAll={true}
+                />
+              </section>
 
-          {/* JioSaavn Bollywood Section */}
-          <section>
-            <JioSaavnPlaylistsSection
-              title="Bollywood Hits"
-              categoryId="bollywood"
-              limit={14}
-              showViewAll={true}
-            />
-          </section>
+              {/* JioSaavn Bollywood Section */}
+              <section>
+                <JioSaavnPlaylistsSection
+                  title="Bollywood Hits"
+                  categoryId="bollywood"
+                  limit={14}
+                  showViewAll={true}
+                />
+              </section>
 
-          {/* JioSaavn Romantic Section */}
-          <section>
-            <JioSaavnPlaylistsSection
-              title="Romantic Songs"
-              categoryId="romantic"
-              limit={14}
-              showViewAll={true}
-            />
-          </section>
+              {/* JioSaavn Romantic Section */}
+              <section>
+                <JioSaavnPlaylistsSection
+                  title="Romantic Songs"
+                  categoryId="romantic"
+                  limit={14}
+                  showViewAll={true}
+                />
+              </section>
 
-          {/* JioSaavn Punjabi Section */}
-          <section>
-            <JioSaavnPlaylistsSection
-              title="Punjabi Music"
-              categoryId="punjabi"
-              limit={14}
-              showViewAll={true}
-            />
-          </section>
+              {/* JioSaavn Punjabi Section */}
+              <section>
+                <JioSaavnPlaylistsSection
+                  title="Punjabi Music"
+                  categoryId="punjabi"
+                  limit={14}
+                  showViewAll={true}
+                />
+              </section>
+            </>
+          )}
+
+          {/* Essential sections only for slow connections */}
+          {networkOptimized && (
+            <section>
+              <JioSaavnPlaylistsSection
+                title="Trending Now"
+                categoryId="trending"
+                limit={8}
+                showViewAll={true}
+              />
+            </section>
+          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getOptimizedImageUrl } from '@/services/cloudinaryService';
+import { networkOptimizer } from '@/utils/networkOptimizer';
 
 interface OptimizedImageProps {
   src: string;
@@ -15,6 +16,7 @@ interface OptimizedImageProps {
   onLoad?: () => void;
   onError?: () => void;
   fallbackSrc?: string;
+  size?: 'small' | 'medium' | 'large';
 }
 
 const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -30,53 +32,60 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   placeholder,
   onLoad,
   onError,
-  fallbackSrc = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image'
+  fallbackSrc = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image',
+  size = 'medium'
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [currentSrc, setCurrentSrc] = useState<string>('');
+  const [shouldLoad, setShouldLoad] = useState(priority);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Generate optimized URLs for different formats
+  // Generate optimized URLs for different formats with network optimization
   const generateImageUrls = () => {
     if (!src || src === fallbackSrc) {
       return { webp: fallbackSrc, jpg: fallbackSrc, original: fallbackSrc };
     }
 
+    // Get network-optimized URL
+    const optimizedSrc = networkOptimizer.getOptimizedImageUrl(src, size);
+    const networkConfig = networkOptimizer.getConfig();
+    
+    // Adjust quality based on connection
+    const adaptiveQuality = networkConfig.imageQuality === 'low' ? 30 :
+                           networkConfig.imageQuality === 'medium' ? 60 : quality;
+
     // Check if it's already a Cloudinary URL
-    const isCloudinaryUrl = src.includes('cloudinary.com');
+    const isCloudinaryUrl = optimizedSrc.includes('cloudinary.com');
     
     if (isCloudinaryUrl) {
       // Extract public ID from Cloudinary URL
-      const match = src.match(/\/([^/]+)\/?([^/]+)\/([^/]+)$/);
+      const match = optimizedSrc.match(/\/([^/]+)\/?([^/]+)\/([^/]+)$/);
       if (match && match[3]) {
         const publicId = match[3].split('.')[0];
-        return {
-          webp: getOptimizedImageUrl(publicId, { 
+        
+        // Skip AVIF on slow connections to reduce processing time
+        const formats = networkConfig.imageQuality === 'low' 
+          ? { jpg: 'jpg', webp: 'webp' }
+          : { avif: 'avif', webp: 'webp', jpg: 'jpg' };
+        
+        const urls: any = { original: optimizedSrc };
+        
+        Object.entries(formats).forEach(([key, fmt]) => {
+          urls[key] = getOptimizedImageUrl(publicId, { 
             width, 
             height, 
-            quality, 
-            format: 'webp' 
-          }),
-          avif: getOptimizedImageUrl(publicId, { 
-            width, 
-            height, 
-            quality, 
-            format: 'avif' 
-          }),
-          jpg: getOptimizedImageUrl(publicId, { 
-            width, 
-            height, 
-            quality, 
-            format: 'jpg' 
-          }),
-          original: src
-        };
+            quality: adaptiveQuality, 
+            format: fmt as any
+          });
+        });
+        
+        return urls;
       }
     }
 
-    // For non-Cloudinary URLs, return as-is
-    return { webp: src, jpg: src, original: src };
+    // For non-Cloudinary URLs, return optimized version
+    return { webp: optimizedSrc, jpg: optimizedSrc, original: optimizedSrc };
   };
 
   const imageUrls = generateImageUrls();
@@ -100,21 +109,27 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     onError?.();
   };
 
-  // Intersection Observer for lazy loading
+  // Intersection Observer for lazy loading with network-aware thresholds
   useEffect(() => {
-    if (priority) return; // Skip lazy loading for priority images
+    if (priority) {
+      setShouldLoad(true);
+      return;
+    }
 
+    const networkConfig = networkOptimizer.getConfig();
+    const rootMargin = networkConfig.enableDataSaver ? '20px 0px' : '50px 0px';
+    
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && imgRef.current) {
-            imgRef.current.src = currentSrc;
+          if (entry.isIntersecting) {
+            setShouldLoad(true);
             observer.unobserve(entry.target);
           }
         });
       },
       {
-        rootMargin: '50px 0px', // Start loading 50px before the image comes into view
+        rootMargin,
         threshold: 0.01
       }
     );
@@ -124,7 +139,14 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     }
 
     return () => observer.disconnect();
-  }, [currentSrc, priority]);
+  }, [priority]);
+
+  // Load image when shouldLoad becomes true
+  useEffect(() => {
+    if (shouldLoad && imgRef.current && !imgRef.current.src) {
+      imgRef.current.src = currentSrc;
+    }
+  }, [shouldLoad, currentSrc]);
 
   // For priority images, set src immediately
   useEffect(() => {
@@ -133,23 +155,28 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     }
   }, [currentSrc, priority]);
 
+  const networkConfig = networkOptimizer.getConfig();
+  const showPlaceholder = !isLoaded && !hasError;
+
   return (
     <picture className={className}>
-      {/* AVIF format (best compression) */}
-      <source
-        srcSet={imageUrls.avif}
-        type="image/avif"
-        sizes={sizes}
-      />
+      {/* AVIF format (best compression) - skip on slow connections */}
+      {imageUrls.avif && networkConfig.imageQuality !== 'low' && (
+        <source
+          srcSet={shouldLoad ? imageUrls.avif : ''}
+          type="image/avif"
+          sizes={sizes}
+        />
+      )}
       {/* WebP format (good compression, wide support) */}
       <source
-        srcSet={imageUrls.webp}
+        srcSet={shouldLoad ? imageUrls.webp : ''}
         type="image/webp"
         sizes={sizes}
       />
       {/* JPEG fallback */}
       <source
-        srcSet={imageUrls.jpg}
+        srcSet={shouldLoad ? imageUrls.jpg : ''}
         type="image/jpeg"
         sizes={sizes}
       />
@@ -166,10 +193,20 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
         onLoad={handleLoad}
         onError={handleError}
         style={{
-          backgroundColor: placeholder || 'transparent',
+          backgroundColor: showPlaceholder ? (placeholder || '#1f1f1f') : 'transparent',
           ...(width && height ? { aspectRatio: `${width}/${height}` } : {})
         }}
       />
+      
+      {/* Loading placeholder for slow connections */}
+      {showPlaceholder && networkConfig.enableDataSaver && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center bg-gray-800 text-gray-400 text-xs"
+          style={{ aspectRatio: width && height ? `${width}/${height}` : undefined }}
+        >
+          Loading...
+        </div>
+      )}
     </picture>
   );
 };

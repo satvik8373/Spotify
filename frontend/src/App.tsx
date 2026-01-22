@@ -38,6 +38,7 @@ import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
+import SlowConnectionOptimizer from './components/SlowConnectionOptimizer';
 import { useLocation } from 'react-router-dom';
 import { SpotifyProvider } from './contexts/SpotifyContext';
 
@@ -304,37 +305,39 @@ function AppContent() {
 
 	// Main app content - render only after splash completes
 	return (
-		<div className="min-h-screen bg-[#121212]">
-			<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
-				<RouterProvider
-					router={router}
-					future={{ v7_startTransition: true }}
-				/>
-			</Suspense>
-			<Toaster
-				position="bottom-center"
-				toastOptions={{
-					style: {
-						background: '#fff',
-						color: '#000',
-						borderRadius: '8px',
-						fontSize: '14px',
-						padding: '12px 16px',
-						boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-						fontWeight: '500',
-					},
-					success: {
-						iconTheme: {
-							primary: '#1ed760',
-							secondary: 'white',
+		<SlowConnectionOptimizer>
+			<div className="min-h-screen bg-[#121212]">
+				<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
+					<RouterProvider
+						router={router}
+						future={{ v7_startTransition: true }}
+					/>
+				</Suspense>
+				<Toaster
+					position="bottom-center"
+					toastOptions={{
+						style: {
+							background: '#fff',
+							color: '#000',
+							borderRadius: '8px',
+							fontSize: '14px',
+							padding: '12px 16px',
+							boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+							fontWeight: '500',
 						},
-					},
-					duration: 3000,
-				}}
-			/>
-			<PWAInstallPrompt />
-			<AndroidPWAHelper />
-		</div>
+						success: {
+							iconTheme: {
+								primary: '#1ed760',
+								secondary: 'white',
+							},
+						},
+						duration: 3000,
+					}}
+				/>
+				<PWAInstallPrompt />
+				<AndroidPWAHelper />
+			</div>
+		</SlowConnectionOptimizer>
 	);
 }
 

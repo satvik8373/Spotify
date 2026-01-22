@@ -146,22 +146,22 @@ export default defineConfig(({ mode }) => {
 			sourcemap: false,
 			minify: 'esbuild',
 			cssCodeSplit: true,
-			target: 'es2020', // Updated for better performance
+			target: 'es2020',
 			commonjsOptions: { transformMixedEsModules: true },
 			rollupOptions: {
 				output: {
 					manualChunks: {
-						// Core React libraries
+						// Core React libraries - highest priority
 						vendor: [
 							'react', 
 							'react-dom', 
 							'react-router-dom'
 						],
-						// State management
+						// State management - load early
 						store: [
 							'zustand'
 						],
-						// UI components
+						// UI components - can be lazy loaded
 						ui: [
 							'@radix-ui/react-dialog',
 							'@radix-ui/react-dropdown-menu',
@@ -169,27 +169,52 @@ export default defineConfig(({ mode }) => {
 							'@radix-ui/react-tabs',
 							'@radix-ui/react-scroll-area'
 						],
-						// Utilities
+						// Utilities - can be lazy loaded
 						utils: [
 							'lodash',
 							'clsx',
 							'class-variance-authority'
 						],
-						// Firebase
+						// Firebase - lazy load after initial render
 						firebase: [
 							'firebase/app',
 							'firebase/auth',
 							'firebase/firestore'
 						],
-						// Icons
+						// Icons - lazy load
 						icons: [
 							'lucide-react'
+						],
+						// Audio libraries - lazy load
+						audio: [
+							'howler'
+						],
+						// Animation libraries - lazy load
+						animation: [
+							'framer-motion',
+							'gsap'
 						]
+					},
+					// Optimize chunk sizes for slow connections
+					chunkFileNames: (chunkInfo) => {
+						const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
+						return `assets/js/[name]-[hash].js`;
+					},
+					assetFileNames: (assetInfo) => {
+						const info = assetInfo.name.split('.');
+						const ext = info[info.length - 1];
+						if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+							return `assets/img/[name]-[hash][extname]`;
+						}
+						if (/css/i.test(ext)) {
+							return `assets/css/[name]-[hash][extname]`;
+						}
+						return `assets/[name]-[hash][extname]`;
 					}
 				}
 			},
-			chunkSizeWarningLimit: 1000,
-			assetsInlineLimit: 2048, // Reduced for mobile optimization
+			chunkSizeWarningLimit: 800, // Reduced for mobile optimization
+			assetsInlineLimit: 1024, // Reduced to minimize initial bundle size
 		},
 		define: {
 			'process.env.VITE_API_URL': JSON.stringify(apiUrl),

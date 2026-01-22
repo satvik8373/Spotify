@@ -1,10 +1,11 @@
 /**
  * Request Manager Service
  * Handles API call deduplication, caching, and background processing optimization
- * Prevents multiple simultaneous calls to the same endpoint
+ * Optimized for slow internet connections with adaptive strategies
  */
 
 import axiosInstance from '../lib/axios';
+import { networkOptimizer } from '../utils/networkOptimizer';
 
 interface RequestConfig {
   url: string;
@@ -12,6 +13,8 @@ interface RequestConfig {
   params?: Record<string, any>;
   body?: any;
   headers?: Record<string, string>;
+  priority?: 'high' | 'medium' | 'low';
+  cacheTTL?: number;
 }
 
 interface CacheEntry {
@@ -34,12 +37,20 @@ class RequestManager {
   private activeRequests = 0;
   private rateLimitDelay = 100; // ms between requests
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private retryAttempts = new Map<string, number>();
+  private failedRequests = new Set<string>();
 
   constructor() {
     // Start cleanup interval
     this.cleanupInterval = setInterval(() => {
       this.cleanup();
     }, 5 * 60 * 1000); // 5 minutes
+
+    // Listen for network changes
+    networkOptimizer.onConfigChange((config) => {
+      this.maxConcurrentRequests = config.maxConcurrentRequests;
+      this.rateLimitDelay = config.enableDataSaver ? 200 : 100;
+    });
   }
 
   /**
@@ -138,6 +149,7 @@ class RequestManager {
 
   /**
    * Main request method with deduplication and caching
+   * Enhanced with retry logic and slow connection handling
    */
   async request<T>(
     config: RequestConfig,
@@ -146,18 +158,20 @@ class RequestManager {
       cacheTTL?: number;
       deduplicate?: boolean;
       priority?: 'high' | 'normal' | 'low';
+      retries?: number;
     } = {}
   ): Promise<T> {
     const {
       cache = true,
-      cacheTTL = 5 * 60 * 1000, // 5 minutes default
+      cacheTTL = networkOptimizer.getCacheTTL('api'),
       deduplicate = true,
-      priority = 'normal'
+      priority = 'normal',
+      retries = 2
     } = options;
 
     const key = this.generateKey(config);
 
-    // Check cache first
+    // Check cache first - more aggressive caching on slow connections
     if (cache) {
       const cachedData = this.getFromCache(key);
       if (cachedData !== null) {
@@ -178,15 +192,17 @@ class RequestManager {
       }
     }
 
-    // Create the actual request function using axios
-    const makeRequest = async (): Promise<T> => {
+    // Create the actual request function with retry logic
+    const makeRequest = async (attempt: number = 0): Promise<T> => {
       try {
         const { url, method, params, body, headers = {} } = config;
+        const networkConfig = networkOptimizer.getConfig();
         
         const axiosConfig: any = {
           method: method.toLowerCase(),
           url,
           headers,
+          timeout: networkConfig.requestTimeout,
           params
         };
 
@@ -202,7 +218,28 @@ class RequestManager {
           this.setCache(key, data, cacheTTL);
         }
 
+        // Clear retry count on success
+        this.retryAttempts.delete(key);
+        this.failedRequests.delete(key);
+
         return data;
+      } catch (error: any) {
+        // Handle retry logic for slow connections
+        if (attempt < retries && this.shouldRetry(error)) {
+          const currentAttempts = this.retryAttempts.get(key) || 0;
+          this.retryAttempts.set(key, currentAttempts + 1);
+          
+          // Exponential backoff with jitter
+          const delay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 1000, 10000);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          return makeRequest(attempt + 1);
+        }
+
+        // Mark as failed after all retries
+        this.failedRequests.add(key);
+        this.retryAttempts.delete(key);
+        throw error;
       } finally {
         // Clean up pending request
         this.pendingRequests.delete(key);
@@ -267,6 +304,18 @@ class RequestManager {
   }
 
   /**
+   * Check if error should trigger a retry
+   */
+  private shouldRetry(error: any): boolean {
+    // Retry on network errors, timeouts, and 5xx server errors
+    if (!error.response) return true; // Network error
+    if (error.code === 'ECONNABORTED') return true; // Timeout
+    if (error.response.status >= 500) return true; // Server error
+    if (error.response.status === 429) return true; // Rate limit
+    return false;
+  }
+
+  /**
    * Cleanup method to be called periodically
    */
   cleanup(): void {
@@ -278,6 +327,14 @@ class RequestManager {
       if (now - pending.timestamp > 30000) {
         this.pendingRequests.delete(key);
       }
+    }
+
+    // Clean up old retry attempts
+    this.retryAttempts.clear();
+    
+    // Clean up failed requests older than 5 minutes
+    if (this.failedRequests.size > 100) {
+      this.failedRequests.clear();
     }
   }
 
