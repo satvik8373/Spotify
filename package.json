@@ -7,10 +7,7 @@
   },
   "scripts": {
     "postinstall": "node scripts/install.js",
-    "build": "node scripts/build.js",
-    "build:fast": "cd frontend && npm run build:fast",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && npm run dev"
+    "build": "node scripts/build.js"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",

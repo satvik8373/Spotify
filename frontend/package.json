@@ -7,7 +7,6 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:fast": "vite build --mode development",
     "build:mobile": "tsc && vite build && node scripts/add-cache-busting.js",
     "build:optimized": "node scripts/build-optimized.js",
     "vercel-build": "vite build",

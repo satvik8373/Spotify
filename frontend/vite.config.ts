@@ -116,14 +116,9 @@ export default defineConfig(({ mode }) => {
 		},
 		server: {
 			port: 3000,
-			// Optimize HMR for faster development
+		
 			hmr: {
 				overlay: false,
-			},
-			// Faster file watching
-			watch: {
-				usePolling: false,
-				interval: 100,
 			},
 			proxy: {
 				'/api': {
@@ -153,31 +148,52 @@ export default defineConfig(({ mode }) => {
 			cssCodeSplit: true,
 			target: 'es2020',
 			commonjsOptions: { transformMixedEsModules: true },
-			// Optimize for faster builds
-			reportCompressedSize: false,
-			chunkSizeWarningLimit: 1000,
 			rollupOptions: {
 				output: {
-					manualChunks: (id) => {
-						// More efficient chunking strategy
-						if (id.includes('node_modules')) {
-							if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-								return 'vendor-react';
-							}
-							if (id.includes('@radix-ui')) {
-								return 'vendor-ui';
-							}
-							if (id.includes('firebase')) {
-								return 'vendor-firebase';
-							}
-							if (id.includes('framer-motion') || id.includes('gsap')) {
-								return 'vendor-animation';
-							}
-							if (id.includes('howler')) {
-								return 'vendor-audio';
-							}
-							return 'vendor-other';
-						}
+					manualChunks: {
+						// Core React libraries - highest priority
+						vendor: [
+							'react', 
+							'react-dom', 
+							'react-router-dom'
+						],
+						// State management - load early
+						store: [
+							'zustand'
+						],
+						// UI components - can be lazy loaded
+						ui: [
+							'@radix-ui/react-dialog',
+							'@radix-ui/react-dropdown-menu',
+							'@radix-ui/react-slider',
+							'@radix-ui/react-tabs',
+							'@radix-ui/react-scroll-area'
+						],
+						// Utilities - can be lazy loaded
+						utils: [
+							'lodash',
+							'clsx',
+							'class-variance-authority'
+						],
+						// Firebase - lazy load after initial render
+						firebase: [
+							'firebase/app',
+							'firebase/auth',
+							'firebase/firestore'
+						],
+						// Icons - lazy load
+						icons: [
+							'lucide-react'
+						],
+						// Audio libraries - lazy load
+						audio: [
+							'howler'
+						],
+						// Animation libraries - lazy load
+						animation: [
+							'framer-motion',
+							'gsap'
+						]
 					},
 					// Optimize chunk sizes for slow connections
 					chunkFileNames: (chunkInfo) => {
@@ -208,26 +224,7 @@ export default defineConfig(({ mode }) => {
 			'process.env.REACT_APP_CLOUDINARY_API_SECRET': JSON.stringify(cloudinarySecret)
 		},
 		esbuild: {
-			drop: mode === 'production' ? ['console', 'debugger'] : [],
-			// Faster builds in development
-			target: 'es2020',
-			logOverride: {
-				'this-is-undefined-in-esm': 'silent',
-			}
-		},
-		// Optimize dependency pre-bundling
-		optimizeDeps: {
-			include: [
-				'react',
-				'react-dom',
-				'react-router-dom',
-				'zustand',
-				'axios',
-				'firebase/app',
-				'firebase/auth',
-				'firebase/firestore'
-			],
-			exclude: ['@vite/client', '@vite/env']
+			drop: ['console', 'debugger']
 		}
 	}
 });
