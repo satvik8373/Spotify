@@ -1,0 +1,6 @@
+{
+  "cacheDir": "node_modules/.vite",
+  "optimizeDeps": {
+    "force": false
+  }
+}
