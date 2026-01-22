@@ -4,7 +4,6 @@ import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Search, 
 import { Button } from '@/components/ui/button';
 import { ShuffleButton } from '@/components/ShuffleButton';
 import { Input } from '@/components/ui/input';
-import { loadLikedSongs, removeLikedSong } from '@/services/likedSongsService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -20,7 +19,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ContentLoading } from '@/components/ui/loading';
 import { LikeButton } from '@/components/LikeButton';
 
 // Format time
@@ -50,9 +48,16 @@ const MemoizedSongItem = React.memo(({
   onAddToQueue: () => void;
   onUnlike: () => void;
 }) => {
+  // Use CSS transforms instead of layout changes to prevent reflows
+  const itemStyle = {
+    transform: 'translateZ(0)', // Force hardware acceleration
+    willChange: 'auto' // Let browser optimize
+  };
+
   return (
     <div
       onClick={onPlay}
+      style={itemStyle}
       className={cn(
         "group relative rounded-md cursor-pointer items-center",
         isMobile
@@ -97,19 +102,23 @@ const MemoizedSongItem = React.memo(({
       {/* Song info - Spotify-style with better album artwork */}
       <div className="flex items-center min-w-0 flex-1">
         <div className={cn(
-          "flex-shrink-0 overflow-hidden rounded shadow-md relative group/artwork",
+          "flex-shrink-0 overflow-hidden rounded shadow-md relative",
           isMobile ? "w-14 h-14 mr-3" : "w-12 h-12 mr-3"
         )}>
           <img
             src={song.imageUrl || '/placeholder-song.jpg'}
             alt={song.title}
-            className="w-full h-full object-cover transition-transform duration-200 group-hover/artwork:scale-105"
+            className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+            style={{ 
+              contentVisibility: 'auto',
+              containIntrinsicSize: isMobile ? '56px 56px' : '48px 48px'
+            }}
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = '/placeholder-song.jpg';
             }}
           />
-          {/* Source indicator - show Spotify icon for Spotify-synced songs */}
-
         </div>
         <div className="min-w-0 flex-1">
           <div className={cn(
@@ -263,16 +272,15 @@ const MemoizedSongItem = React.memo(({
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison function for React.memo
-  // Return true if props are equal (skip re-render), false if different (do re-render)
-  const prevId = prevProps.song._id || (prevProps.song as any).id;
-  const nextId = nextProps.song._id || (nextProps.song as any).id;
+  // More stable comparison to prevent excessive re-renders
+  const prevId = prevProps.song._id;
+  const nextId = nextProps.song._id;
 
+  // Only re-render if the song ID changed or playing state changed
+  // Don't check other props to reduce sensitivity to changes
   return (
     prevId === nextId &&
-    prevProps.index === nextProps.index &&
-    prevProps.isMobile === nextProps.isMobile &&
-    prevProps.isSongPlaying === nextProps.isSongPlaying // KEY: This ensures re-render when playing state changes
+    prevProps.isSongPlaying === nextProps.isSongPlaying
   );
 });
 
@@ -294,20 +302,23 @@ const LikedSongsPage = () => {
   // Use the store instead of local state for liked songs
   const { likedSongs, loadLikedSongs: loadLikedSongsFromStore, removeLikedSong: removeLikedSongFromStore } = useLikedSongsStore();
 
+  // Force re-render when liked songs change
+  const [, forceUpdate] = useState({});
+
+  // Subscribe to store changes to force re-renders
+  useEffect(() => {
+    // Use a simpler approach - just subscribe to the store directly
+    const unsubscribe = useLikedSongsStore.subscribe(() => {
+      // Force re-render when the store state changes
+      forceUpdate({});
+    });
+
+    return unsubscribe;
+  }, []);
+
   // Load liked songs on mount
   useEffect(() => {
     loadAndSetLikedSongs();
-
-    // Subscribe to liked songs updates
-    const handleLikedSongsUpdated = () => {
-      loadAndSetLikedSongs();
-    };
-
-    document.addEventListener('likedSongsUpdated', handleLikedSongsUpdated);
-
-    return () => {
-      document.removeEventListener('likedSongsUpdated', handleLikedSongsUpdated);
-    };
   }, [isAuthenticated]);
 
   // Handle window resize
@@ -378,8 +389,8 @@ const LikedSongsPage = () => {
     if (!isPlaying || !currentSong) return false;
 
     // Get primary IDs for comparison - be more strict about ID matching
-    const currentSongId = currentSong._id || (currentSong as any).id;
-    const songId = song._id || (song as any).id;
+    const currentSongId = currentSong._id;
+    const songId = song._id;
 
     // Only return true if we have valid IDs and they match exactly
     if (currentSongId && songId) {
@@ -407,10 +418,9 @@ const LikedSongsPage = () => {
     }
 
     playAlbum(visibleSongs, index);
-    setTimeout(() => {
-      setIsPlaying(true);
-      setUserInteracted();
-    }, 50);
+    // Remove setTimeout to prevent performance violations
+    setIsPlaying(true);
+    setUserInteracted();
   }, [currentSong, togglePlay, playAlbum, visibleSongs, setIsPlaying, setUserInteracted, isSongPlaying]);
 
   const handleAddToQueue = useCallback((song: Song) => {
@@ -422,6 +432,11 @@ const LikedSongsPage = () => {
   }, []);
 
   const handleUnlikeSong = useCallback(async (songId: string) => {
+    if (!songId || songId === 'undefined' || songId === 'null') {
+      toast.error('Cannot remove song: Invalid ID');
+      return;
+    }
+    
     try {
       // Use the store method instead of direct service call
       await removeLikedSongFromStore(songId);
@@ -440,10 +455,9 @@ const LikedSongsPage = () => {
   const playAllSongs = useCallback(() => {
     if (likedSongs.length > 0) {
       playAlbum(likedSongs, 0);
-      setTimeout(() => {
-        setIsPlaying(true);
-        setUserInteracted();
-      }, 100);
+      // Remove setTimeout to prevent performance violations
+      setIsPlaying(true);
+      setUserInteracted();
     }
   }, [likedSongs, playAlbum, setIsPlaying, setUserInteracted]);
 
@@ -453,8 +467,8 @@ const LikedSongsPage = () => {
     
     // Check if the current song is in the liked songs list
     return likedSongs.some(song => {
-      const currentSongId = currentSong._id || (currentSong as any).id;
-      const songId = song._id || (song as any).id;
+      const currentSongId = currentSong._id;
+      const songId = song._id;
       
       if (currentSongId && songId) {
         return currentSongId === songId;
@@ -759,8 +773,8 @@ const LikedSongsPage = () => {
             )}
 
             {visibleSongs.map((song, index) => {
-              // Create a unique key that handles edge cases
-              const uniqueKey = song._id || (song as any).id || `${song.title}-${song.artist}-${index}`;
+              // Create a unique key using the Firestore document ID
+              const uniqueKey = song._id || `${song.title}-${song.artist}-${index}`;
 
               return (
                 <MemoizedSongItem
@@ -772,7 +786,14 @@ const LikedSongsPage = () => {
                   onPlay={() => handlePlaySong(song, index)}
                   onTogglePlay={togglePlay}
                   onAddToQueue={() => handleAddToQueue(song)}
-                  onUnlike={() => handleUnlikeSong(song._id)}
+                  onUnlike={() => {
+                    const songId = song._id;
+                    if (songId) {
+                      handleUnlikeSong(songId);
+                    } else {
+                      toast.error('Cannot remove song: No valid ID found');
+                    }
+                  }}
                 />
               );
             })}

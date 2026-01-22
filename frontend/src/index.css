@@ -5,6 +5,40 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Professional shimmer animation for loading skeletons */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Smooth fade-in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Smooth scale animation */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @layer base {
   :root {
     --background: 20 14.3% 4.1%;
@@ -62,6 +96,48 @@
     /* Prevent any horizontal movement */
   }
 
+  /* INSTANT PAGE LOADING - NO ANIMATIONS */
+  * {
+    transition: none !important;
+    animation: none !important;
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+  }
+
+  /* Override all animations for instant loading */
+  .animate-spin,
+  .animate-pulse,
+  .animate-fade-in,
+  .skeleton-pulse,
+  .skeleton-shimmer,
+  .loading-smooth,
+  .state-transition {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Prevent layout shifts */
+  img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Instant button responses */
+  button, 
+  [role="button"],
+  .cursor-pointer {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  button:active,
+  [role="button"]:active,
+  .cursor-pointer:active {
+    transform: none !important;
+    opacity: 0.8;
+  }
+
   /* PWA Safe Area Support */
   .pwa-safe-area {
     background-color: #121212 !important;
@@ -93,10 +169,10 @@
     box-sizing: border-box;
   }
 
-  /* Ensure smooth page transitions */
+  /* Ensure instant page transitions */
   .main-content {
     transform: translateX(0);
-    transition: none;
+    transition: none !important;
   }
 
   /* Prevent any page-level horizontal animations */
@@ -110,6 +186,31 @@
   /* Spotify-like main content area padding for mobile */
   .overflow-auto.p-6 {
     padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Instant loading states */
+  .loading-container {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* No skeleton animations - instant display */
+  .skeleton-pulse,
+  .skeleton-shimmer,
+  .skeleton-loading {
+    background: rgba(255, 255, 255, 0.1) !important;
+    animation: none !important;
+  }
+
+  /* Instant opacity changes only */
+  .opacity-0 {
+    opacity: 0;
+  }
+  
+  .opacity-100 {
+    opacity: 1;
   }
 }
 

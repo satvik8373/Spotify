@@ -137,11 +137,13 @@ export const PlaybackControls = () => {
 	useEffect(() => {
 		if (currentSong) {
 			setIsTransitioning(true);
-			// Short delay to ensure smooth transition
-			const timer = setTimeout(() => {
-				setIsTransitioning(false);
-			}, 300);
-			return () => clearTimeout(timer);
+			// Use requestAnimationFrame instead of setTimeout to avoid performance violations
+			const animationId = requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					setIsTransitioning(false);
+				});
+			});
+			return () => cancelAnimationFrame(animationId);
 		}
 	}, [currentSong]);
 

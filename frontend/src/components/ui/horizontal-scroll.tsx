@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,26 +26,30 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  const checkScrollButtons = useCallback(() => {
-    if (!scrollRef.current) return;
-    
-    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-    setCanScrollLeft(scrollLeft > 5);
-    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
-  }, []);
-
+  // Simple effect that only runs once
   useEffect(() => {
-    checkScrollButtons();
     const scrollElement = scrollRef.current;
-    if (scrollElement) {
-      scrollElement.addEventListener('scroll', checkScrollButtons, { passive: true });
-      window.addEventListener('resize', checkScrollButtons);
-      return () => {
-        scrollElement.removeEventListener('scroll', checkScrollButtons);
-        window.removeEventListener('resize', checkScrollButtons);
-      };
-    }
-  }, [children, checkScrollButtons]);
+    if (!scrollElement) return;
+
+    const updateScrollButtons = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollElement;
+      setCanScrollLeft(scrollLeft > 5);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+    };
+
+    // Add event listeners
+    scrollElement.addEventListener('scroll', updateScrollButtons, { passive: true });
+    window.addEventListener('resize', updateScrollButtons);
+
+    // Initial check after a brief delay to ensure DOM is ready
+    const timer = setTimeout(updateScrollButtons, 100);
+
+    return () => {
+      clearTimeout(timer);
+      scrollElement.removeEventListener('scroll', updateScrollButtons);
+      window.removeEventListener('resize', updateScrollButtons);
+    };
+  }, []); // No dependencies to avoid infinite loops
 
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;

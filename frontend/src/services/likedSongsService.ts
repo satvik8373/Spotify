@@ -1,5 +1,5 @@
 import { useAuthStore } from "@/stores/useAuthStore";
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, serverTimestamp, writeBatch, where, limit } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, serverTimestamp, writeBatch, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Song } from "@/types";
 
@@ -145,7 +145,12 @@ export const addLikedSong = async (
     return new Promise((resolve) => {
       firebaseBatchManager.addOperation(async () => {
         try {
-          const likedSongRef = doc(db, 'users', userId, 'likedSongs', song._id);
+          // CRITICAL: Use song._id as the Firestore document ID consistently
+          // This ensures that when we delete, we use the same ID
+          const documentId = song._id;
+          const likedSongRef = doc(db, 'users', userId, 'likedSongs', documentId);
+          
+          console.log('addLikedSong: Saving song with document ID:', documentId, 'title:', song.title);
           
           // Determine the likedAt timestamp
           let likedAtTimestamp;
@@ -158,7 +163,7 @@ export const addLikedSong = async (
           }
 
           const likedSongData: LikedSong = {
-            id: song._id,
+            id: song._id, // Store the original song ID in the data
             title: song.title,
             artist: song.artist,
             albumName: song.albumId || '',
@@ -275,8 +280,36 @@ export const removeLikedSong = async (songId: string): Promise<void> => {
   }
   
   try {
+    // First, check if the document exists with the given ID
     const likedSongRef = doc(db, 'users', userId, 'likedSongs', songId);
-    await deleteDoc(likedSongRef);
+    
+    // Check if document exists before attempting deletion
+    const docSnap = await getDoc(likedSongRef);
+    if (!docSnap.exists()) {
+      // Try to find the document by searching all liked songs
+      const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+      const snapshot = await getDocs(likedSongsRef);
+      
+      let foundDocId = null;
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        
+        // Check if this document matches our song by ID or by title/artist
+        if (doc.id === songId || data.id === songId) {
+          foundDocId = doc.id;
+        }
+      });
+      
+      if (foundDocId && foundDocId !== songId) {
+        const correctRef = doc(db, 'users', userId, 'likedSongs', foundDocId);
+        await deleteDoc(correctRef);
+      } else {
+        throw new Error(`Song not found in Firestore with ID: ${songId}`);
+      }
+    } else {
+      // Document exists, delete it normally
+      await deleteDoc(likedSongRef);
+    }
     
     // Dispatch event to notify other components
     document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
@@ -314,8 +347,16 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
     snapshot.forEach(docSnap => {
       const data = docSnap.data() as LikedSong;
       
+      // CRITICAL: Always use the Firestore document ID as the primary ID
+      // This ensures that when we delete, we use the correct document ID
+      const songId = docSnap.id; // Use Firestore document ID
+      
+      if (!songId) {
+        return; // Skip songs without valid IDs
+      }
+      
       songs.push({
-        _id: data.id,
+        _id: songId, // Use Firestore document ID as _id
         title: data.title,
         artist: data.artist,
         imageUrl: data.imageUrl,
@@ -327,8 +368,10 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
         // Preserve source information for UI indicators
         source: data.source,
         spotifyId: data.spotifyId,
-        likedAt: data.likedAt // Keep the liked timestamp
-      } as Song & { source?: string; spotifyId?: string; likedAt?: any });
+        likedAt: data.likedAt, // Keep the liked timestamp
+        // Store the original data.id as a separate field for reference
+        originalId: data.id
+      } as Song & { source?: string; spotifyId?: string; likedAt?: any; originalId?: string });
     });
     
     return songs;

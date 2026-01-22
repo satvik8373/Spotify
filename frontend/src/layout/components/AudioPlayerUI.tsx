@@ -37,8 +37,18 @@ const MarqueeText = React.memo(({ text, className }: { text: string, className?:
 
         if (needsScrolling) {
           setStartAnimation(false);
-          const timer = setTimeout(() => setStartAnimation(true), 3000);
-          return () => clearTimeout(timer);
+          // Use requestIdleCallback instead of setTimeout to avoid performance violations
+          const idleCallback = (window as any).requestIdleCallback ? 
+            (window as any).requestIdleCallback(() => setStartAnimation(true), { timeout: 3000 }) :
+            setTimeout(() => setStartAnimation(true), 3000);
+          
+          return () => {
+            if ((window as any).requestIdleCallback && typeof idleCallback === 'number') {
+              (window as any).cancelIdleCallback(idleCallback);
+            } else {
+              clearTimeout(idleCallback as number);
+            }
+          };
         } else {
           setStartAnimation(false);
         }

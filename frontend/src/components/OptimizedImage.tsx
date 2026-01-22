@@ -41,19 +41,28 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [shouldLoad, setShouldLoad] = useState(priority);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Generate optimized URLs for different formats with network optimization
+  // Generate optimized URLs for different formats with aggressive network optimization
   const generateImageUrls = () => {
     if (!src || src === fallbackSrc) {
       return { webp: fallbackSrc, jpg: fallbackSrc, original: fallbackSrc };
     }
 
-    // Get network-optimized URL
+    // Get network-optimized URL with aggressive cellular optimization
     const optimizedSrc = networkOptimizer.getOptimizedImageUrl(src, size);
     const networkConfig = networkOptimizer.getConfig();
     
-    // Adjust quality based on connection
-    const adaptiveQuality = networkConfig.imageQuality === 'low' ? 30 :
-                           networkConfig.imageQuality === 'medium' ? 60 : quality;
+    // Very aggressive quality reduction for cellular
+    const adaptiveQuality = networkConfig.imageQuality === 'minimal' ? 20 :
+                           networkConfig.imageQuality === 'low' ? 30 : 
+                           networkConfig.imageQuality === 'medium' ? 50 : quality;
+
+    // Skip format optimization entirely for cellular to reduce processing
+    if (networkConfig.skipHeavyElements) {
+      return { 
+        jpg: optimizedSrc, 
+        original: optimizedSrc 
+      };
+    }
 
     // Check if it's already a Cloudinary URL
     const isCloudinaryUrl = optimizedSrc.includes('cloudinary.com');
@@ -64,10 +73,12 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       if (match && match[3]) {
         const publicId = match[3].split('.')[0];
         
-        // Skip AVIF on slow connections to reduce processing time
-        const formats = networkConfig.imageQuality === 'low' 
+        // Minimal formats for cellular, skip AVIF entirely
+        const formats = networkConfig.imageQuality === 'minimal' 
+          ? { jpg: 'jpg' }
+          : networkConfig.imageQuality === 'low'
           ? { jpg: 'jpg', webp: 'webp' }
-          : { avif: 'avif', webp: 'webp', jpg: 'jpg' };
+          : { webp: 'webp', jpg: 'jpg' };
         
         const urls: any = { original: optimizedSrc };
         
@@ -109,7 +120,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     onError?.();
   };
 
-  // Intersection Observer for lazy loading with network-aware thresholds
+  // Intersection Observer for lazy loading with aggressive cellular optimization
   useEffect(() => {
     if (priority) {
       setShouldLoad(true);
@@ -117,6 +128,32 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     }
 
     const networkConfig = networkOptimizer.getConfig();
+    
+    // Skip lazy loading entirely for cellular - load immediately when in viewport
+    if (networkConfig.skipHeavyElements) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              setShouldLoad(true);
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        {
+          rootMargin: '0px', // No preloading margin for cellular
+          threshold: 0.1 // Only load when actually visible
+        }
+      );
+
+      if (imgRef.current) {
+        observer.observe(imgRef.current);
+      }
+
+      return () => observer.disconnect();
+    }
+
+    // Standard lazy loading for other connections
     const rootMargin = networkConfig.enableDataSaver ? '20px 0px' : '50px 0px';
     
     const observer = new IntersectionObserver(
@@ -157,29 +194,26 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   const networkConfig = networkOptimizer.getConfig();
   const showPlaceholder = !isLoaded && !hasError;
+  const isCellular = networkConfig.skipHeavyElements;
 
   return (
     <picture className={className}>
-      {/* AVIF format (best compression) - skip on slow connections */}
-      {imageUrls.avif && networkConfig.imageQuality !== 'low' && (
+      {/* Skip WebP for cellular to reduce processing */}
+      {!isCellular && imageUrls.webp && (
         <source
-          srcSet={shouldLoad ? imageUrls.avif : ''}
-          type="image/avif"
+          srcSet={shouldLoad ? imageUrls.webp : ''}
+          type="image/webp"
           sizes={sizes}
         />
       )}
-      {/* WebP format (good compression, wide support) */}
-      <source
-        srcSet={shouldLoad ? imageUrls.webp : ''}
-        type="image/webp"
-        sizes={sizes}
-      />
-      {/* JPEG fallback */}
+      
+      {/* JPEG fallback - always available */}
       <source
         srcSet={shouldLoad ? imageUrls.jpg : ''}
         type="image/jpeg"
         sizes={sizes}
       />
+      
       {/* Fallback img element */}
       <img
         ref={imgRef}
@@ -198,13 +232,13 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
         }}
       />
       
-      {/* Loading placeholder for slow connections */}
-      {showPlaceholder && networkConfig.enableDataSaver && (
+      {/* Minimal loading placeholder for cellular */}
+      {showPlaceholder && isCellular && (
         <div 
-          className="absolute inset-0 flex items-center justify-center bg-gray-800 text-gray-400 text-xs"
+          className="absolute inset-0 flex items-center justify-center bg-gray-900 text-gray-500 text-xs"
           style={{ aspectRatio: width && height ? `${width}/${height}` : undefined }}
         >
-          Loading...
+          •••
         </div>
       )}
     </picture>

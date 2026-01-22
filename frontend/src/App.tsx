@@ -7,11 +7,15 @@ import { spotifyAutoSyncService } from './services/spotifyAutoSyncService';
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON } from './utils/storageUtils';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
-const MainLayout = lazy(() => import('./layout/MainLayout'));
-const HomePage = lazy(() => import('./pages/home/HomePage'));
-const SearchPage = lazy(() => import('./pages/search/SearchPage'));
-const LibraryPage = lazy(() => import('./pages/LibraryPage'));
-const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
+
+// Preload critical components immediately - no lazy loading for main pages
+import MainLayout from './layout/MainLayout';
+import HomePage from './pages/home/HomePage';
+import SearchPage from './pages/search/SearchPage';
+import LibraryPage from './pages/LibraryPage';
+import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
+
+// Lazy load less critical pages only
 const SyncLikedSongsPage = lazy(() => import('./pages/liked-songs/SyncLikedSongsPage'));
 const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
 const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.PlaylistPage })));
@@ -27,10 +31,9 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const JioSaavnPlaylistPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistPage'));
 const JioSaavnPlaylistsPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistsPage'));
 const JioSaavnCategoriesPage = lazy(() => import('./pages/jiosaavn/JioSaavnCategoriesPage'));
-// import SharedSongPage from './pages/SharedSongPage';
+
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-//
 
 // DON'T lazy load auth pages to prevent flickering
 import Login from './pages/Login';
@@ -69,7 +72,7 @@ const ErrorFallback = () => (
 	</div>
 );
 
-// Auth gate that redirects to login if not authenticated
+// Auth gate that redirects to login if not authenticated - optimized for instant loading
 const AuthGate = ({ children }: { children: React.ReactNode }) => {
 	const { isAuthenticated, loading } = useAuth();
 	const location = useLocation();
@@ -82,18 +85,18 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 		return <>{children}</>;
 	}
 
-	// Show minimal loading while auth is being determined - invisible background
-	if (loading) {
-		return <div className="min-h-screen bg-[#121212]" />;
-	}
-
-	// If not authenticated, redirect to login
-	if (!isAuthenticated) {
+	// If not authenticated, redirect to login immediately - no loading state
+	if (!isAuthenticated && !loading) {
 		return <Navigate to="/login" state={{ from: location.pathname }} replace />;
 	}
 
-	// User is authenticated, render children
-	return <>{children}</>;
+	// Show content immediately if authenticated
+	if (isAuthenticated) {
+		return <>{children}</>;
+	}
+
+	// Minimal loading state - no animation
+	return <div className="min-h-screen bg-[#121212]" />;
 };
 
 const LandingRedirector = () => {
@@ -141,20 +144,19 @@ const router = createBrowserRouter(
 				},
 				{
 					path: '/albums/:albumId',
-					element: <AuthGate><AlbumPage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><AlbumPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/library',
 					element: <AuthGate><LibraryPage /></AuthGate>
 				},
-
 				{
 					path: '/liked-songs',
 					element: <AuthGate><LikedSongsPage /></AuthGate>
 				},
 				{
 					path: '/liked-songs/sync',
-					element: <AuthGate><SyncLikedSongsPage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SyncLikedSongsPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/search',
@@ -162,44 +164,43 @@ const router = createBrowserRouter(
 				},
 				{
 					path: '/profile',
-					element: <AuthGate><ProfilePage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><ProfilePage /></Suspense></AuthGate>
 				},
 				{
 					path: '/playlist/:id',
-					element: <AuthGate><PlaylistPage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PlaylistPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/song/:songId',
-					element: <AuthGate><SongPage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SongPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/jiosaavn/playlist/:playlistId',
-					element: <AuthGate><JioSaavnPlaylistPage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnPlaylistPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/jiosaavn/playlists',
-					element: <AuthGate><JioSaavnPlaylistsPage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnPlaylistsPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/jiosaavn/categories',
-					element: <AuthGate><JioSaavnCategoriesPage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnCategoriesPage /></Suspense></AuthGate>
 				},
-
 				{
 					path: '/privacy',
-					element: <PrivacyPolicy />
+					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PrivacyPolicy /></Suspense>
 				},
 				{
 					path: '/terms',
-					element: <TermsOfService />
+					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TermsOfService /></Suspense>
 				},
 				{
 					path: '/about',
-					element: <About />
+					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><About /></Suspense>
 				},
 				{
 					path: '/settings',
-					element: <AuthGate><SettingsPage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SettingsPage /></Suspense></AuthGate>
 				},
 				{
 					path: '*',
@@ -207,17 +208,20 @@ const router = createBrowserRouter(
 				}
 			]
 		}
-	]
+	],
+	{
+		future: {
+			v7_relativeSplatPath: true
+		}
+	}
 );
 
 function AppContent() {
 	const [showSplash, setShowSplash] = useState(true);
-	const [splashFading, setSplashFading] = useState(false);
 	const [appReady, setAppReady] = useState(false);
-	const { loading: authLoading } = useAuth();
-	const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+	// Auth loading state is handled internally by useAuth hook
 
-	// Initialize app and handle splash screen
+	// Initialize app and handle splash screen - minimal delay
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
@@ -226,24 +230,6 @@ function AppContent() {
 
 				// Initialize performance optimizations immediately
 				performanceService.addResourceHints();
-
-				// Preload critical components in parallel (non-blocking)
-				const preloadPromises = [
-					import('./layout/MainLayout'),
-					import('./pages/home/HomePage'),
-					import('./pages/search/SearchPage'),
-					import('./pages/LibraryPage')
-				];
-
-				// Start preloading but don't wait for it
-				Promise.all(preloadPromises).catch(() => {
-					// App: Component preload warning
-				});
-
-				// Set minimum timer for splash screen
-				setTimeout(() => {
-					setMinTimeElapsed(true);
-				}, 500); // 500ms minimum display time
 
 				// Clean up offline data and sync
 				cleanupOfflineData().catch(() => { });
@@ -258,61 +244,44 @@ function AppContent() {
 					}, 3000);
 				}
 
+				// Minimal splash time - 200ms only
+				setTimeout(() => {
+					setShowSplash(false);
+					setAppReady(true);
+				}, 200);
+
 			} catch (error) {
 				console.error("Error initializing app:", error);
-				setMinTimeElapsed(true); // Ensure we don't get stuck
+				setShowSplash(false);
+				setAppReady(true);
 			}
 		};
 
 		initializeApp();
 	}, []);
 
-	// Handle splash screen dismissal
-	useEffect(() => {
-		// Only dismiss when:
-		// 1. Minimum time has passed (to avoid flash)
-		// 2. Auth loading is complete (to avoid login page flash)
-		// 3. We are currently showing the splash
-		if (minTimeElapsed && !authLoading && showSplash && !splashFading) {
-			setSplashFading(true);
-
-			// Hide splash screen after fade animation completes
-			setTimeout(() => {
-				setShowSplash(false);
-				setAppReady(true);
-			}, 200);
-		}
-	}, [minTimeElapsed, authLoading, showSplash, splashFading]);
-
-	// No additional prefetching needed - components are preloaded during splash
-
-	// Show splash screen for 500ms total with smooth fade
+	// Show minimal splash screen
 	if (showSplash) {
 		return (
-			<div
-				className={`fixed inset-0 bg-black transition-opacity duration-200 ease-out ${splashFading ? 'opacity-0' : 'opacity-100'}`}
-				style={{ willChange: 'opacity' }}
-			>
+			<div className="fixed inset-0 bg-[#121212]">
 				<SplashScreen />
 			</div>
 		);
 	}
 
-	// Don't render router until app is ready to prevent login page flash
+	// Don't render router until app is ready
 	if (!appReady) {
 		return <div className="min-h-screen bg-[#121212]" />;
 	}
 
-	// Main app content - render only after splash completes
+	// Main app content - no suspense wrapper to avoid delays
 	return (
 		<SlowConnectionOptimizer>
 			<div className="min-h-screen bg-[#121212]">
-				<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
-					<RouterProvider
-						router={router}
-						future={{ v7_startTransition: true }}
-					/>
-				</Suspense>
+				<RouterProvider
+					router={router}
+					future={{ v7_startTransition: true }}
+				/>
 				<Toaster
 					position="bottom-center"
 					toastOptions={{

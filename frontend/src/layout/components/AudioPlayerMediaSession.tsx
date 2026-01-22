@@ -58,12 +58,13 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
       store.setIsPlaying(true);
 
       // Enhanced reliability for background playback
-      setTimeout(() => {
+      // Use requestAnimationFrame instead of setTimeout to avoid performance violations
+      requestAnimationFrame(() => {
         const audio = document.querySelector('audio');
         if (audio && audio.paused && !audio.ended) {
           audio.play().catch(() => { });
         }
-      }, 100);
+      });
     });
 
     // Seeking handler

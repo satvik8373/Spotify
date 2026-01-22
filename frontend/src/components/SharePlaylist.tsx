@@ -4,6 +4,7 @@ import { Share2, Copy, MessageCircle, Facebook, Twitter, Link } from 'lucide-rea
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -94,6 +95,9 @@ export function SharePlaylist({ playlist, trigger }: SharePlaylistProps) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Share Playlist</DialogTitle>
+          <DialogDescription>
+            Share this playlist with others using the link below.
+          </DialogDescription>
         </DialogHeader>
         
         {/* Playlist Preview */}

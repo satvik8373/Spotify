@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { PlaylistCard } from '../../components/playlist/PlaylistCard';
 import { JioSaavnPlaylistsSection } from '@/components/jiosaavn/JioSaavnPlaylistsSection';
@@ -16,9 +16,11 @@ const HomePage = () => {
   const fetchPublicPlaylists = usePlaylistStore(state => state.fetchPublicPlaylists);
   const isLoading = usePlaylistStore(state => state.isLoading);
 
-  const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true); // Start with true
   const [displayItems, setDisplayItems] = useState<any[]>([]);
   const [networkOptimized, setNetworkOptimized] = useState(false);
+  const [skipHeavyElements, setSkipHeavyElements] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if we've loaded data before
   const navigate = useNavigate();
   const { loadLikedSongs } = useLikedSongsStore();
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
@@ -29,6 +31,7 @@ const HomePage = () => {
     const handleNetworkChange = () => {
       const config = networkOptimizer.getConfig();
       setNetworkOptimized(config.enableDataSaver);
+      setSkipHeavyElements(config.skipHeavyElements);
     };
 
     networkOptimizer.onConfigChange(handleNetworkChange);
@@ -66,87 +69,86 @@ const HomePage = () => {
   useEffect(() => {
     const initializeHomePage = async () => {
       try {
-        // Show content immediately, load data in background
-        setIsInitialLoading(false);
+        // For cellular/slow connections, load minimal data only
+        if (skipHeavyElements) {
+          // Load only essential data - liked songs and 3 playlists max
+          if (publicPlaylists.length === 0) {
+            // Load minimal playlists only
+            await fetchPublicPlaylists().catch(() => {}); // Wait for essential data
+          }
+          setHasLoadedOnce(true);
+          setIsInitialLoading(false);
+          return; // Skip heavy data loading
+        }
 
-        // For slow connections, prioritize essential data only
+        // For moderate optimization, reduce data
         if (networkOptimized) {
-          // Load only essential playlists
-          const essentialPlaylists = publicPlaylists.slice(0, 6);
-          if (essentialPlaylists.length === 0) {
-            await fetchPublicPlaylists();
+          if (publicPlaylists.length === 0) {
+            await fetchPublicPlaylists().catch(() => {}); // Wait for data
           }
+          setHasLoadedOnce(true);
+          setIsInitialLoading(false);
         } else {
-          // Check if we need to refresh data
+          // Full data loading for good connections
           if (usePlaylistStore.getState().shouldRefresh()) {
-            await usePlaylistStore.getState().refreshAllData();
-          } else {
-            await fetchPublicPlaylists();
+            await usePlaylistStore.getState().refreshAllData().catch(() => {});
+          } else if (publicPlaylists.length === 0) {
+            await fetchPublicPlaylists().catch(() => {});
           }
+          setHasLoadedOnce(true);
+          setIsInitialLoading(false);
         }
       } catch (error) {
-        // Error initializing homepage
-        // Still show content even if data loading fails
+        // Error initializing homepage - show content anyway
+        setHasLoadedOnce(true);
         setIsInitialLoading(false);
       }
     };
 
-    initializeHomePage();
-  }, [fetchPublicPlaylists, networkOptimized]);
-
-  // Load recent playlists from the new service - optimized with useMemo
-  const memoizedDisplayItems = useMemo(() => {
-    return recentlyPlayedService.getDisplayItems(publicPlaylists);
-  }, [publicPlaylists]);
+    // Only initialize if we haven't loaded once
+    if (!hasLoadedOnce) {
+      initializeHomePage();
+    } else {
+      // If we've loaded before, show content immediately
+      setIsInitialLoading(false);
+    }
+  }, [fetchPublicPlaylists, networkOptimized, skipHeavyElements, hasLoadedOnce]); // Removed publicPlaylists.length to prevent infinite loops
 
   useEffect(() => {
-    let isMounted = true;
-
-    const updateDisplayItems = () => {
-      if (!isMounted) return;
-      
-      // Use shallow comparison instead of JSON.stringify for better performance
-      setDisplayItems(prev => {
-        const newItems = memoizedDisplayItems;
-        if (prev.length === newItems.length && 
-            prev.every((item, index) => item._id === newItems[index]?._id)) {
-          return prev;
-        }
-        return newItems;
-      });
-    };
-
-    // Initial load
-    updateDisplayItems();
+    // Calculate recent items inside the effect to avoid dependency issues
+    const currentRecentItems = recentlyPlayedService.getDisplayItems(publicPlaylists);
+    setDisplayItems(currentRecentItems);
 
     // Listen for updates to recently played
     const handleRecentlyPlayedUpdated = () => {
-      updateDisplayItems();
+      const newItems = recentlyPlayedService.getDisplayItems(publicPlaylists);
+      setDisplayItems(newItems);
     };
 
-    document.addEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
+    // Add event listener
+    window.addEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
+
     return () => {
-      isMounted = false;
-      document.removeEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
+      window.removeEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
     };
-  }, [memoizedDisplayItems]);
+  }, [publicPlaylists]); // Only depend on publicPlaylists, not recentItems
 
-  // Function to get displayed items (memoized)
-  const getDisplayedItems = useCallback(() => {
+  // Function to get displayed items - no memoization
+  const getDisplayedItems = () => {
     return displayItems;
-  }, [displayItems]);
+  };
 
-  // Handle color changes - optimized
-  const handleColorChange = useCallback((color: string | null, isLikedSongs: boolean = false) => {
+  // Handle color changes - simplified
+  const handleColorChange = (color: string | null, isLikedSongs: boolean = false) => {
     setHoveredColor(color);
     // If this is the Liked Songs card, save its color as default
     if (isLikedSongs && color) {
       setLikedSongsColor(color);
     }
-  }, []);
+  };
 
-  // Function to convert any color format to rgba with opacity - memoized
-  const colorToRgba = useCallback((color: string, opacity: number) => {
+  // Function to convert any color format to rgba with opacity - simplified
+  const colorToRgba = (color: string, opacity: number) => {
     if (!color || color === '#121212') return `rgba(18, 18, 18, ${opacity})`;
 
     // If it's already an rgb() format, extract the values
@@ -169,192 +171,201 @@ const HomePage = () => {
 
     // Fallback
     return `rgba(18, 18, 18, ${opacity})`;
-  }, []);
+  };
 
-  const activeColor = useMemo(() => 
-    hoveredColor || likedSongsColor || 'rgb(60, 40, 120)', 
-    [hoveredColor, likedSongsColor]
-  );
+  const activeColor = hoveredColor || likedSongsColor || 'rgb(60, 40, 120)';
 
-  // Handle playlist click (works for both regular and JioSaavn playlists) - optimized
-  const handlePlaylistClick = useCallback((item: any) => {
-    // Only handle items with valid IDs
+  // Handle playlist click - simplified
+  const handlePlaylistClick = (item: any) => {
     if (item._id) {
       if (item.type === 'jiosaavn-playlist') {
-        // Add JioSaavn playlist to recent
         recentlyPlayedService.addJioSaavnPlaylist(item.data || {
           id: item._id,
           name: item.name,
           image: item.imageUrl
         });
-        // Navigate to JioSaavn playlist
         navigate(`/jiosaavn/playlist/${item._id}`, {
           state: { playlist: item.data }
         });
       } else if (item.type === 'album') {
-        // Add album to recent
         recentlyPlayedService.addAlbum({
           _id: item._id,
           name: item.name,
           imageUrl: item.imageUrl
         });
-        // Navigate to album
         navigate(`/albums/${item._id}`);
       } else {
-        // Regular playlist
         recentlyPlayedService.addPlaylist({
           _id: item._id,
           name: item.name,
           imageUrl: item.imageUrl,
           isPublic: true
         });
-        // Navigate to playlist
         navigate(`/playlist/${item._id}`);
       }
     }
-  }, [navigate]);
+  };
 
-  if (isInitialLoading) {
+  if (isInitialLoading && !hasLoadedOnce) {
     return (
-      <div className="min-h-screen bg-[#121212]"></div>
+      <div className="min-h-screen bg-[#121212] py-4 space-y-6 relative w-full z-10 pb-32 md:pb-8 animate-[fadeIn_0.3s_ease-out]">
+        {/* Recently played skeleton */}
+        <div className="px-4 md:px-6 mb-6 w-full">
+          <SlowConnectionSkeleton count={4} type="recently-played" className="" />
+        </div>
+        
+        {/* Made for you section skeleton */}
+        <div className="px-4 md:px-6">
+          <div className="mb-4 space-y-2">
+            <div className="h-6 bg-white/10 rounded-full w-32 animate-pulse" />
+            <div className="h-4 bg-white/8 rounded-full w-48 animate-pulse" />
+          </div>
+          <SlowConnectionSkeleton count={6} type="card" className="" />
+        </div>
+        
+        {/* Additional sections skeleton */}
+        <div className="px-4 md:px-6">
+          <div className="mb-4 space-y-2">
+            <div className="h-6 bg-white/10 rounded-full w-28 animate-pulse" />
+            <div className="h-4 bg-white/8 rounded-full w-40 animate-pulse" />
+          </div>
+          <SlowConnectionSkeleton count={5} type="card" className="" />
+        </div>
+      </div>
     );
   }
 
 
 
   return (
-    <div className="min-h-screen bg-[#121212] overflow-x-hidden relative">
-      {/* Dynamic Background Setup - Spotify-style gradient flow */}
-      {/* Dynamic Background Setup - Spotify-style gradient flow */}
-      <div
-        className="absolute top-0 left-0 right-0 pointer-events-none hidden md:block"
-        style={{
-          height: '350px',
-          background: `linear-gradient(180deg, 
-            ${colorToRgba(activeColor, 0.4)} 0%, 
-            ${colorToRgba(activeColor, 0.35)} 10%, 
-            ${colorToRgba(activeColor, 0.28)} 20%, 
-            ${colorToRgba(activeColor, 0.22)} 30%, 
-            ${colorToRgba(activeColor, 0.17)} 40%, 
-            ${colorToRgba(activeColor, 0.13)} 50%, 
-            ${colorToRgba(activeColor, 0.09)} 60%, 
-            ${colorToRgba(activeColor, 0.06)} 70%, 
-            ${colorToRgba(activeColor, 0.04)} 80%, 
-            ${colorToRgba(activeColor, 0.02)} 90%, 
-            ${colorToRgba(activeColor, 0.01)} 95%, 
-            transparent 100%)`,
-          transition: 'background 1000ms ease',
-          willChange: 'background'
-        }}
-      />
+    <div className="min-h-screen bg-[#121212] overflow-x-hidden relative animate-[fadeIn_0.4s_ease-out]">
+      {/* Skip dynamic background for cellular connections */}
+      {!skipHeavyElements && (
+        <div
+          className="absolute top-0 left-0 right-0 pointer-events-none hidden md:block"
+          style={{
+            height: '350px',
+            background: `linear-gradient(180deg, 
+              ${colorToRgba(activeColor, 0.4)} 0%, 
+              ${colorToRgba(activeColor, 0.35)} 10%, 
+              ${colorToRgba(activeColor, 0.28)} 20%, 
+              ${colorToRgba(activeColor, 0.22)} 30%, 
+              ${colorToRgba(activeColor, 0.17)} 40%, 
+              ${colorToRgba(activeColor, 0.13)} 50%, 
+              ${colorToRgba(activeColor, 0.09)} 60%, 
+              ${colorToRgba(activeColor, 0.06)} 70%, 
+              ${colorToRgba(activeColor, 0.04)} 80%, 
+              ${colorToRgba(activeColor, 0.02)} 90%, 
+              ${colorToRgba(activeColor, 0.01)} 95%, 
+              transparent 100%)`,
+            transition: 'background 1000ms ease',
+            willChange: 'background'
+          }}
+        />
+      )}
 
       <div className="py-4 space-y-4 relative w-full z-10 pb-32 md:pb-8">
-        {/* Top Filter Pills */}
-        <div className="px-4 md:px-6 hidden md:flex items-center gap-2 mb-1.5 sticky top-0 z-20 pt-2">
-          {/* Profile Placeholder from image */}
-          <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 mr-1 hidden md:block">
-            <img
-              src="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
+        {/* Skip filter pills for cellular */}
+        {!skipHeavyElements && (
+          <div className="px-4 md:px-6 hidden md:flex items-center gap-2 mb-1.5 sticky top-0 z-20 pt-2">
+            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 mr-1 hidden md:block">
+              <img
+                src="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <button className="px-3 py-1.5 rounded-full bg-[#1ed760] text-black text-[13px] font-bold transition-colors">
+              All
+            </button>
+            <button className="px-3 py-1.5 rounded-full bg-white/10 text-white text-[13px] font-bold hover:bg-white/20 transition-colors">
+              Music
+            </button>
+            <button className="px-3 py-1.5 rounded-full bg-white/10 text-white text-[13px] font-bold hover:bg-white/20 transition-colors">
+              Podcasts
+            </button>
           </div>
-          <button className="px-3 py-1.5 rounded-full bg-[#1ed760] text-black text-[13px] font-bold transition-colors">
-            All
-          </button>
-          <button className="px-3 py-1.5 rounded-full bg-white/10 text-white text-[13px] font-bold hover:bg-white/20 transition-colors">
-            Music
-          </button>
-          <button className="px-3 py-1.5 rounded-full bg-white/10 text-white text-[13px] font-bold hover:bg-white/20 transition-colors">
-            Podcasts
-          </button>
-        </div>
+        )}
 
         <div className="w-full overflow-x-hidden">
-          {/* Recently Played Section */}
-          {getDisplayedItems().length > 0 && (
-            <section className="px-4 md:px-6 mb-6 w-full">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-[6px] w-full max-w-full">
-                {/* Liked Songs Card - Pinned First */}
-                <RecentlyPlayedCard
-                  id="liked-songs"
-                  title="Liked Songs"
-                  imageUrl="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
-                  subtitle="Playlist"
-                  type="playlist"
-                  onClick={() => navigate('/liked-songs')}
-                  onPlay={() => navigate('/liked-songs')}
-                  onHoverChange={(color) => handleColorChange(color, true)}
-                />
+          {/* Recently Played Section - Always show, even if empty */}
+          <section className="px-4 md:px-6 mb-6 w-full animate-[scaleIn_0.4s_ease-out]">
+            <div className={`grid ${skipHeavyElements ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-4'} gap-[6px] w-full max-w-full`}>
+              {/* Liked Songs Card - Always show */}
+              <RecentlyPlayedCard
+                id="liked-songs"
+                title="Liked Songs"
+                imageUrl="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
+                subtitle="Playlist"
+                type="playlist"
+                onClick={() => navigate('/liked-songs')}
+                onPlay={() => navigate('/liked-songs')}
+                onHoverChange={(color) => handleColorChange(color, true)}
+              />
 
-                {/* Other recently played items - up to 7 more for total of 8 */}
-                {getDisplayedItems().slice(0, 7).map((item: any) => {
-                  const itemId = item._id || item.id;
-                  return (
-                    <RecentlyPlayedCard
-                      key={itemId}
-                      id={itemId}
-                      title={item.title || item.name}
-                      imageUrl={item.image || item.imageUrl}
-                      subtitle={item.description || 'Playlist'}
-                      type="playlist"
-                      onClick={() => handlePlaylistClick(item)}
-                      onPlay={() => handlePlaylistClick(item)}
-                      onHoverChange={handleColorChange}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-          )}
+              {/* Other recently played items - limited for cellular */}
+              {!skipHeavyElements && getDisplayedItems().slice(0, 7).map((item: any) => {
+                const itemId = item._id || item.id;
+                return (
+                  <RecentlyPlayedCard
+                    key={itemId}
+                    id={itemId}
+                    title={item.title || item.name}
+                    imageUrl={item.image || item.imageUrl}
+                    subtitle={item.description || 'Playlist'}
+                    type="playlist"
+                    onClick={() => handlePlaylistClick(item)}
+                    onPlay={() => handlePlaylistClick(item)}
+                    onHoverChange={handleColorChange}
+                  />
+                );
+              })}
+            </div>
+          </section>
 
-          {/* Public Playlists Section */}
+          {/* Public Playlists Section - Minimal for cellular */}
           <SectionWrapper
             title="Made for you"
-            subtitle="Your personal mix of music"
-            showViewAll={true}
+            subtitle={skipHeavyElements ? "Essential playlists" : "Your personal mix of music"}
+            showViewAll={!skipHeavyElements}
             onViewAll={() => navigate('/library')}
           >
             <HorizontalScroll
               itemWidth={120}
               gap={10}
-              showArrows={true}
+              showArrows={!skipHeavyElements}
               snapToItems={false}
             >
               {publicPlaylists.length > 0 ? (
-                publicPlaylists.slice(0, networkOptimized ? 8 : 20).map((playlist) => (
+                publicPlaylists.slice(0, skipHeavyElements ? 3 : networkOptimized ? 8 : 20).map((playlist, index) => (
                   <ScrollItem key={playlist._id} width={120}>
-                    <PlaylistCard
-                      playlist={playlist}
-                      showDescription={true}
-                      className="hover:bg-card/50 transition-colors"
-                    />
+                    <div 
+                      className="animate-[scaleIn_0.3s_ease-out]"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <PlaylistCard
+                        playlist={playlist}
+                        showDescription={!skipHeavyElements}
+                        className="hover:bg-card/50 transition-all duration-200 hover:scale-105"
+                      />
+                    </div>
                   </ScrollItem>
                 ))
-              ) : isLoading ? (
-                networkOptimized ? (
-                  <SlowConnectionSkeleton count={4} type="card" className="flex gap-3" />
-                ) : (
-                  Array.from({ length: 8 }).map((_, i) => (
-                    <ScrollItem key={i} width={120}>
-                      <div className="space-y-3 p-1">
-                        <div className="w-full aspect-square rounded-md bg-muted animate-pulse" />
-                        <div className="h-3 rounded bg-muted animate-pulse" />
-                        <div className="h-2 rounded bg-muted animate-pulse w-3/4" />
-                      </div>
-                    </ScrollItem>
-                  ))
-                )
+              ) : (isInitialLoading || isLoading) ? (
+                <SlowConnectionSkeleton count={skipHeavyElements ? 3 : 6} type="card" className="" />
+              ) : hasLoadedOnce ? (
+                <div className="text-zinc-500 text-sm p-4 w-full text-center animate-[fadeIn_0.3s_ease-out]">
+                  {skipHeavyElements ? "No essential content available" : "No playlists found"}
+                </div>
               ) : (
-                <div className="text-zinc-500 text-sm p-4 w-full text-center">No playlists found</div>
+                <SlowConnectionSkeleton count={skipHeavyElements ? 3 : 6} type="card" className="" />
               )}
             </HorizontalScroll>
           </SectionWrapper>
 
-          {/* JioSaavn Sections - Reduced for slow connections */}
-          {!networkOptimized && (
+          {/* JioSaavn Sections - Skip entirely for cellular, minimal for slow connections */}
+          {!skipHeavyElements && !networkOptimized && (
             <>
-              {/* JioSaavn Trending Section */}
               <section>
                 <JioSaavnPlaylistsSection
                   title="Trending Now"
@@ -364,7 +375,6 @@ const HomePage = () => {
                 />
               </section>
 
-              {/* JioSaavn Bollywood Section */}
               <section>
                 <JioSaavnPlaylistsSection
                   title="Bollywood Hits"
@@ -374,7 +384,6 @@ const HomePage = () => {
                 />
               </section>
 
-              {/* JioSaavn Romantic Section */}
               <section>
                 <JioSaavnPlaylistsSection
                   title="Romantic Songs"
@@ -384,7 +393,6 @@ const HomePage = () => {
                 />
               </section>
 
-              {/* JioSaavn Punjabi Section */}
               <section>
                 <JioSaavnPlaylistsSection
                   title="Punjabi Music"
@@ -396,16 +404,28 @@ const HomePage = () => {
             </>
           )}
 
-          {/* Essential sections only for slow connections */}
-          {networkOptimized && (
+          {/* Single essential section for moderate optimization */}
+          {!skipHeavyElements && networkOptimized && (
             <section>
               <JioSaavnPlaylistsSection
                 title="Trending Now"
                 categoryId="trending"
-                limit={8}
+                limit={6}
                 showViewAll={true}
               />
             </section>
+          )}
+
+          {/* Cellular mode message */}
+          {skipHeavyElements && (
+            <div className="px-4 md:px-6 py-8 text-center">
+              <div className="bg-gray-800/30 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-2">Cellular Mode Active</h3>
+                <p className="text-gray-400 text-sm">
+                  Heavy elements disabled to save data. Switch to WiFi for full experience.
+                </p>
+              </div>
+            </div>
           )}
         </div>
       </div>

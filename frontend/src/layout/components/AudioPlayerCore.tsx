@@ -45,8 +45,18 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
 
   // Disable autoplay for first 3 seconds after page load
   useEffect(() => {
-    const timer = setTimeout(() => setIsInitialLoad(false), 3000);
-    return () => clearTimeout(timer);
+    // Use requestIdleCallback or queueMicrotask instead of setTimeout
+    const idleCallback = (window as any).requestIdleCallback ? 
+      (window as any).requestIdleCallback(() => setIsInitialLoad(false), { timeout: 3000 }) :
+      setTimeout(() => setIsInitialLoad(false), 3000);
+    
+    return () => {
+      if ((window as any).requestIdleCallback && typeof idleCallback === 'number') {
+        (window as any).cancelIdleCallback(idleCallback);
+      } else {
+        clearTimeout(idleCallback as number);
+      }
+    };
   }, []);
 
   // Override audio play method during initial load to prevent autoplay
