@@ -1,5 +1,43 @@
 /* SongDetailsView - Mobile-optimized styles */
 
+/* Smooth opening/closing animation */
+.song-details-view {
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+  will-change: transform;
+  backdrop-filter: blur(0px);
+}
+
+/* Backdrop blur animation */
+.song-details-view.translate-y-0 {
+  backdrop-filter: blur(20px);
+}
+
+.song-details-view.translate-y-full {
+  backdrop-filter: blur(0px);
+}
+
+/* Ensure the transform classes work properly */
+.song-details-view.translate-y-0 {
+  transform: translateY(0) !important;
+}
+
+.song-details-view.translate-y-full {
+  transform: translateY(100%) !important;
+}
+
+/* Content fade-in animation when opening */
+.song-details-view > * {
+  transition: opacity 0.3s ease-out 0.1s !important;
+}
+
+.song-details-view.translate-y-full > * {
+  opacity: 0;
+}
+
+.song-details-view.translate-y-0 > * {
+  opacity: 1;
+}
+
 /* Safe area support for iOS devices */
 .pt-safe-top {
   padding-top: env(safe-area-inset-top, 1rem);

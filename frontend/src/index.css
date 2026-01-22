@@ -96,12 +96,43 @@
     /* Prevent any horizontal movement */
   }
 
-  /* INSTANT PAGE LOADING - NO ANIMATIONS */
+  /* INSTANT PAGE LOADING - NO ANIMATIONS (except for specific components) */
   * {
     transition: none !important;
     animation: none !important;
     animation-duration: 0s !important;
     transition-duration: 0s !important;
+  }
+
+  /* Allow animations for specific components that need them */
+  .song-details-view,
+  .song-details-view *,
+  .song-details-view.translate-y-0,
+  .song-details-view.translate-y-full,
+  .transition-transform,
+  .duration-300,
+  .ease-out,
+  .shimmer-animation,
+  .shimmer-animation *,
+  [class*="shimmer"],
+  [class*="shimmer"] *,
+  [role="dialog"],
+  [role="dialog"] *,
+  .modal,
+  .modal *,
+  .dropdown,
+  .dropdown *,
+  .toast,
+  .toast * {
+    transition: revert !important;
+    animation: revert !important;
+    animation-duration: revert !important;
+    transition-duration: revert !important;
+  }
+
+  /* Specific override for SongDetailsView animation */
+  .song-details-view.transition-transform {
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
   }
 
   /* Override all animations for instant loading */
