@@ -922,12 +922,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 width: 'auto',
                 height: 'auto',
                 backgroundColor: 'transparent',
-                // Enhanced solid color glow effect
-                boxShadow: `
-                  0 0 0 2px ${albumColors.vibrant},
-                  0 8px 32px rgba(0,0,0,0.4),
-                  0 0 80px ${albumColors.primary}
-                `,
+                // Simple shadow effect
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
                 userSelect: 'none',
                 pointerEvents: 'none', // Prevent image drag
               }}
@@ -975,7 +971,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           </div>
         </div>
 
-        {/* Progress Bar - Enhanced with solid vibrant colors */}
+        {/* Progress Bar - Simple consistent design */}
         <div className={cn("flex-shrink-0", getDynamicSpacing())}>
           <div className="max-w-sm mx-auto">
             <div
@@ -991,28 +987,25 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 isDragging ? "h-1.5" : "h-1 group-hover:h-1.5"
               )}
               style={{
-                backgroundColor: albumColors.muted,
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(10px)',
               }}
               >
                 <div
-                  className="absolute h-full rounded-full transition-all duration-75"
+                  className="absolute h-full rounded-full transition-all duration-75 bg-white"
                   style={{ 
                     width: `${displayProgress}%`,
-                    background: `linear-gradient(90deg, ${albumColors.lightVibrant} 0%, ${albumColors.accent} 100%)`,
-                    boxShadow: `0 0 12px ${albumColors.accent}`,
                   }}
                 />
                 {/* Enhanced solid draggable thumb */}
                 <div
                   className={cn(
-                    "absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full shadow-lg transition-all duration-150",
+                    "absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full shadow-lg transition-all duration-150 bg-white",
                     isDragging ? "opacity-100 scale-125" : "opacity-0 group-hover:opacity-100 group-hover:scale-110"
                   )}
                   style={{ 
                     left: `${displayProgress}%`, 
                     marginLeft: '-6px',
-                    background: albumColors.lightVibrant,
-                    boxShadow: `0 2px 8px rgba(0,0,0,0.4), 0 0 0 2px ${albumColors.accent}`,
                     transform: isDragging ? 'translateY(-50%) scale(1.25)' : undefined,
                   }}
                 />
@@ -1030,7 +1023,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           <div className={cn("max-w-sm mx-auto flex items-center justify-between", responsiveClasses.controls)}>
             <ShuffleButton 
               size="md"
-              accentColor={albumColors.accent}
               className="p-2 active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
             />
 
@@ -1055,19 +1047,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 // Don't preventDefault here to avoid passive event listener warnings
               }}
               className={cn(
-                "rounded-full flex items-center justify-center active:scale-95 transition-all shadow-xl flex-shrink-0 touch-target",
+                "rounded-full flex items-center justify-center active:scale-95 transition-all shadow-lg flex-shrink-0 touch-target bg-white hover:bg-gray-100",
                 responsiveClasses.playButton || "w-12 h-12"
               )}
-              style={{
-                background: albumColors.lightVibrant && albumColors.accent 
-                  ? `linear-gradient(135deg, ${albumColors.lightVibrant} 0%, ${albumColors.accent} 100%)`
-                  : 'linear-gradient(135deg, #1ed760 0%, #1db954 100%)', // Spotify green fallback
-                boxShadow: albumColors.accent 
-                  ? `0 4px 16px rgba(0,0,0,0.4), 0 0 24px ${albumColors.accent}`
-                  : '0 4px 16px rgba(0,0,0,0.4), 0 0 24px #1ed760',
-                position: 'relative',
-                zIndex: 10,
-              }}
             >
               {isPlaying ? (
                 <Pause className="h-6 w-6 text-black" fill="black" />
@@ -1086,13 +1068,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             <button
               onClick={() => setIsRepeating(!isRepeating)}
               className={cn(
-                "p-2 active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full",
-                isRepeating ? "text-white" : "text-white/70"
+                "p-2 active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10",
+                isRepeating ? "text-white bg-white/20" : "text-white/70"
               )}
-              style={{
-                backgroundColor: isRepeating ? `${albumColors.accent}40` : 'transparent',
-                boxShadow: isRepeating ? `0 0 12px ${albumColors.accent}30` : 'none',
-              }}
             >
               <Repeat className="h-5 w-5" />
             </button>
