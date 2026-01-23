@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Music, Filter, TrendingUp, Sparkles } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { JioSaavnPlaylistCard } from '@/components/jiosaavn/JioSaavnPlaylistCard';
@@ -165,7 +165,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#121212] text-white">
-      <ScrollArea className="h-screen">
+      <CustomScrollbar className="h-screen">
         <div className="pb-32 md:pb-24">
           {/* Header */}
           <div className="sticky top-0 z-10 bg-[#121212]/95 backdrop-blur-sm border-b border-white/10">
@@ -375,7 +375,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
             )}
           </div>
         </div>
-      </ScrollArea>
+      </CustomScrollbar>
     </div>
   );
 };

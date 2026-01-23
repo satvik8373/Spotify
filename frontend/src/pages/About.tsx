@@ -1,5 +1,4 @@
 import React from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import Footer from '@/components/Footer';
 import { Music, Users, Heart, Shield } from 'lucide-react';
 
@@ -9,8 +8,7 @@ const About = () => {
       <div className="max-w-4xl mx-auto px-6 py-8">
         <h1 className="text-3xl font-bold mb-8">About Mavrixfy</h1>
         
-        <ScrollArea className="h-[calc(100vh-200px)]">
-          <div className="space-y-8 text-gray-300">
+        <div className="space-y-8 text-gray-300 pb-8">
             <section>
               <div className="flex items-center gap-3 mb-4">
                 <Music className="h-6 w-6 text-green-500" />
@@ -137,7 +135,6 @@ const About = () => {
               </p>
             </div>
           </div>
-        </ScrollArea>
         
         <Footer />
       </div>

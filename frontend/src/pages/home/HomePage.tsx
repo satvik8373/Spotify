@@ -229,13 +229,6 @@ const HomePage = () => {
       <div className="py-4 space-y-4 relative w-full z-10 pb-32 md:pb-8">
         {/* Filter pills */}
         <div className="px-4 md:px-6 hidden md:flex items-center gap-2 mb-1.5 sticky top-0 z-20 pt-2">
-          <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 mr-1 hidden md:block">
-            <img
-              src="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
-          </div>
           <button className="px-3 py-1.5 rounded-full bg-[#1ed760] text-black text-[13px] font-bold transition-colors">
             All
           </button>
@@ -295,6 +288,7 @@ const HomePage = () => {
               gap={10}
               showArrows={true}
               snapToItems={false}
+              edgeToEdge={true}
             >
               {publicPlaylists.length > 0 ? (
                 publicPlaylists.slice(0, 20).map((playlist, index) => (

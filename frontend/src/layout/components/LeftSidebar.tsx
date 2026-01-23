@@ -15,6 +15,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../../components/playlist/CreatePlaylistDialog';
 import { getLikedSongsCount } from '@/services/likedSongsService';
+import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 // Removed Spotify section per request
 
 interface LeftSidebarProps {
@@ -131,7 +132,7 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
             )}
 
             {/* Playlists */}
-            <div className="flex-1 overflow-y-auto min-h-0 pb-2 sidebar-scroll px-1">
+            <CustomScrollbar className="flex-1 min-h-0 pb-2 px-1">
                 <div className="space-y-0.5 py-1">
 
                     {/* Liked Songs */}
@@ -209,7 +210,7 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                         </div>
                     )}
                 </div>
-            </div>
+            </CustomScrollbar>
 
             <CreatePlaylistDialog isOpen={showCreateDialog} onClose={() => setShowCreateDialog(false)} />
         </div>

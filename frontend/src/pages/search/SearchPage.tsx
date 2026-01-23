@@ -4,7 +4,7 @@ import { useMusicStore } from '@/stores/useMusicStore';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 import {
   Play,
   Search,
@@ -785,7 +785,7 @@ const SearchPage = () => {
 
   return (
     <div className="min-h-screen bg-[#121212] overflow-x-hidden w-full">
-      <ScrollArea className="h-screen w-full">
+      <CustomScrollbar className="h-screen w-full">
         <div className="pt-6 pb-32 md:pb-24 w-full px-3 md:px-4 box-border">
           {/* Search Header */}
           <div className="mb-8">
@@ -1356,7 +1356,7 @@ const SearchPage = () => {
             renderEmptyState()
           )}
         </div>
-      </ScrollArea>
+      </CustomScrollbar>
     </div>
   );
 };

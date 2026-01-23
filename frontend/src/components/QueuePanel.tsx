@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { X, Trash2, ListMusic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 import gsap from 'gsap';
 
 interface QueuePanelProps {
@@ -99,7 +99,7 @@ const QueuePanel: React.FC<QueuePanelProps> = ({ onClose }) => {
             </div>
 
             {/* Content */}
-            <ScrollArea className="flex-1 w-full overflow-hidden">
+            <CustomScrollbar className="flex-1 w-full">
                 <div className="px-3">
                     <div className="py-3 space-y-4">
                         {/* Now Playing */}
@@ -196,7 +196,7 @@ const QueuePanel: React.FC<QueuePanelProps> = ({ onClose }) => {
                         </div>
                     </div>
                 </div>
-            </ScrollArea>
+            </CustomScrollbar>
             </div>
         </div>
     );

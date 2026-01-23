@@ -232,6 +232,14 @@
   width: 100%;
 }
 
+/* Spotify-like font rendering for audio player */
+.playback-controls-text {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+
 /* Single line marquee for song details */
 .single-line-marquee {
   display: block;

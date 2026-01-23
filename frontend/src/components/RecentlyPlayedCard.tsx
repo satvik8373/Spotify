@@ -57,7 +57,7 @@ export function RecentlyPlayedCard({
   return (
     <div
       className={cn(
-        'group relative h-[44px] w-full rounded-[4px] overflow-hidden cursor-pointer transition-all duration-300 ease-in-out',
+        'group relative h-[48px] md:h-[44px] w-full rounded-[4px] overflow-hidden cursor-pointer transition-all duration-300 ease-in-out',
         'recently-played-card bg-white/10 hover:bg-white/20'
       )}
       onClick={!isMobile ? handleCardClick : undefined}
@@ -74,7 +74,7 @@ export function RecentlyPlayedCard({
       {/* Content */}
       <div className="relative flex items-center h-full z-10">
         {/* Image */}
-        <div className="relative w-[44px] h-full flex-shrink-0">
+        <div className="relative w-[48px] md:w-[44px] h-full flex-shrink-0">
           <div className="relative w-full h-full rounded-[4px] overflow-hidden shadow-md">
             {imageUrl ? (
               <img

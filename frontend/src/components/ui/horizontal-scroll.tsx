@@ -10,6 +10,7 @@ interface HorizontalScrollProps {
   gap?: number;
   snapToItems?: boolean;
   autoHideArrows?: boolean;
+  edgeToEdge?: boolean;
 }
 
 export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
@@ -20,6 +21,7 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
   gap = 16,
   snapToItems = false,
   autoHideArrows = true,
+  edgeToEdge = false,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -112,13 +114,14 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
       )}
 
       {/* Scroll Container */}
-      <div className="px-4 md:px-6 w-full overflow-hidden">
+      <div className={cn("w-full overflow-hidden", edgeToEdge ? "" : "px-4 md:px-6")}>
         <div
           ref={scrollRef}
           className={cn(
             "flex gap-4 overflow-x-auto overflow-y-hidden",
             "scrollbar-hide",
             snapToItems && "snap-x snap-mandatory",
+            edgeToEdge && "pl-4 md:pl-6 pr-4 md:pr-6",
             className
           )}
           style={{

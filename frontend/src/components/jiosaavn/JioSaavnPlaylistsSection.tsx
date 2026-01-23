@@ -206,6 +206,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
         gap={10}
         showArrows={true}
         snapToItems={false}
+        edgeToEdge={true}
       >
         {isLoading ? (
           // Loading skeleton

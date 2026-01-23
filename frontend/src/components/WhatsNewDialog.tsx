@@ -6,7 +6,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,7 @@ export function WhatsNewDialog({ open, onOpenChange }: WhatsNewDialogProps) {
                 </div>
 
                 {/* Scrollable Content */}
-                <ScrollArea className="h-[60vh] w-full p-6 pt-2">
+                <CustomScrollbar className="h-[60vh] w-full p-6 pt-2">
                     <div className="space-y-8">
                         {/* Mobile Experience Section */}
                         <section>
@@ -123,7 +123,7 @@ export function WhatsNewDialog({ open, onOpenChange }: WhatsNewDialogProps) {
                             </div>
                         </section>
                     </div>
-                </ScrollArea>
+                </CustomScrollbar>
 
                 {/* Footer */}
                 <DialogFooter className="p-4 border-t border-[#333] bg-[#1a1a1a]">

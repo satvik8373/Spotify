@@ -11,6 +11,7 @@ import { useLikedSongsStore } from "@/stores/useLikedSongsStore";
 import QueueDrawer from "@/components/QueueDrawer";
 import ElasticSlider from "@/components/ui/ElasticSlider";
 import { usePlayerSync } from "@/hooks/usePlayerSync";
+import { PingPongScroll } from "@/components/PingPongScroll";
 
 const formatTime = (seconds: number) => {
 	if (isNaN(seconds)) return "0:00";
@@ -229,80 +230,86 @@ export const PlaybackControls = () => {
 			{/* Desktop Player */}
 			<footer
 				ref={playerRef}
-				className="h-[72px] px-4 hidden sm:block transition-opacity duration-300 bg-black text-foreground"
+				className="h-[90px] px-4 hidden sm:block transition-opacity duration-300 bg-black text-foreground border-t border-white/5"
 				style={{ opacity: isTransitioning ? 0.95 : 1 }}
 			>
-				<div className="flex justify-between items-center h-full max-w-[1800px] mx-auto">
+				<div className="flex justify-between items-center h-full max-w-[1800px] mx-auto py-2">
 					{/* currently playing song */}
-					<div className="flex items-center gap-4 min-w-[180px] w-[30%]">
+					<div className="flex items-center gap-3 min-w-[180px] w-[30%]">
 						{currentSong && (
 							<>
-								<div className="relative group cursor-default">
+								<div className="relative group cursor-pointer">
 									<img
 										src={currentSong.imageUrl}
 										alt={currentSong.title}
-										className="w-14 h-14 object-cover shadow-md"
+										className="w-14 h-14 object-cover rounded-md"
 									/>
 								</div>
-								<div className="flex-1 min-w-0">
-									<div className="font-medium truncate text-sm text-foreground hover:underline">
-										{currentSong.title}
-									</div>
-									<div className="text-xs text-muted-foreground truncate hover:underline">
-										{currentSong.artist}
-									</div>
+								<div className="flex-1 min-w-0 max-w-[200px]">
+									<PingPongScroll
+										text={currentSong.title}
+										className="text-sm text-white hover:underline cursor-pointer leading-tight mb-0.5"
+										velocity={30}
+										delay={2}
+									/>
+									<PingPongScroll
+										text={currentSong.artist}
+										className="text-[11px] text-white/60 hover:underline hover:text-white cursor-pointer leading-tight"
+										velocity={25}
+										delay={2}
+									/>
 								</div>
 								<LikeButton
 									isLiked={isLiked}
 									onToggle={(e) => handleLikeToggle(e)}
-									className="hover:scale-105"
-									iconSize={20}
+									className="hover:scale-110 transition-transform flex-shrink-0"
+									iconSize={16}
 								/>
 							</>
 						)}
 					</div>
 
 					{/* player controls */}
-					<div className="flex flex-col items-center gap-1 flex-1 max-w-[40%]">
-						<div className="flex items-center justify-center gap-5 mb-1">
+					<div className="flex flex-col items-center gap-2 flex-1 max-w-[40%]">
+						<div className="flex items-center justify-center gap-4 mb-0">
 							<ShuffleButton size="sm" />
 
 							<Button
 								size="icon"
 								variant="ghost"
-								className="hover:text-foreground text-muted-foreground h-8 w-8"
+								className="hover:text-white text-white/70 h-8 w-8 hover:scale-105 transition-all"
 								onClick={playPrevious}
 								disabled={!currentSong}
 							>
-								<SkipBack className="h-4 w-4" />
+								<SkipBack className="h-4 w-4 fill-current" />
 							</Button>
 
 							<Button
 								size="icon"
-								className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-8 w-8 flex items-center justify-center transition-transform hover:scale-105"
+								className="bg-white hover:bg-white hover:scale-110 text-black rounded-full h-8 w-8 flex items-center justify-center transition-all"
 								onClick={togglePlay}
 								disabled={!currentSong}
 							>
 								{isPlaying ?
-									<Pause className="h-4 w-4" /> :
-									<Play className="h-4 w-4 ml-[1px]" />
+									<Pause className="h-4 w-4 fill-current" /> :
+									<Play className="h-4 w-4 ml-[1px] fill-current" />
 								}
 							</Button>
 
 							<Button
 								size="icon"
 								variant="ghost"
-								className="hover:text-foreground text-muted-foreground h-8 w-8"
+								className="hover:text-white text-white/70 h-8 w-8 hover:scale-105 transition-all"
 								onClick={playNext}
 								disabled={!currentSong}
 							>
-								<SkipForward className="h-4 w-4" />
+								<SkipForward className="h-4 w-4 fill-current" />
 							</Button>
 
 							<Button
 								size="icon"
 								variant="ghost"
-								className={cn('hover:text-foreground h-8 w-8', isRepeating ? 'text-green-500' : 'text-muted-foreground')}
+								className={cn('hover:text-white h-8 w-8 hover:scale-105 transition-all', isRepeating ? 'text-[#1ed760]' : 'text-white/70')}
 								onClick={toggleRepeat}
 							>
 								<Repeat className="h-4 w-4" />
@@ -310,10 +317,10 @@ export const PlaybackControls = () => {
 						</div>
 
 						<div className="flex items-center gap-2 w-full">
-							<div className="text-[11px] text-muted-foreground w-[35px] text-right">{formatTime(currentTime)}</div>
-							<div className="w-full relative">
+							<div className="text-[11px] text-white/70 w-[40px] text-right font-normal tabular-nums">{formatTime(currentTime)}</div>
+							<div className="w-full relative group">
 								<div
-									className="relative w-full cursor-pointer"
+									className="relative w-full cursor-pointer py-1"
 									onClick={(e) => {
 										const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
 										const offsetX = e.clientX - rect.left;
@@ -321,28 +328,30 @@ export const PlaybackControls = () => {
 										seekTo(pct * (isNaN(duration) ? 0 : duration));
 									}}
 								>
-									<div className="h-[3px] w-full rounded-full overflow-hidden bg-black/30 dark:bg-white/25">
+									<div className="h-1 w-full rounded-full overflow-hidden bg-white/30 group-hover:bg-white/40 transition-colors">
 										<div
-											className="h-full bg-[#1ed760] rounded-full"
+											className="h-full bg-white rounded-full relative"
 											style={{ width: `${(isNaN(duration) || duration === 0) ? 0 : (currentTime / duration) * 100}%` }}
-										/>
+										>
+											<div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" />
+										</div>
 									</div>
 								</div>
 							</div>
-							<div className="text-[11px] text-muted-foreground w-[35px]">{formatTime(duration)}</div>
+							<div className="text-[11px] text-white/70 w-[40px] font-normal tabular-nums">{formatTime(duration)}</div>
 						</div>
 					</div>
 
 					{/* volume controls */}
 					<div className="flex items-center gap-4 min-w-[180px] w-[30%] justify-end">
 						<div className="flex items-center gap-2">
-							<Button size="icon" variant="ghost" className="hover:text-foreground text-muted-foreground h-8 w-8">
+							<Button size="icon" variant="ghost" className="hover:text-white text-white/70 h-8 w-8 hover:scale-105 transition-all">
 								<Mic2 className="h-4 w-4" />
 							</Button>
 							<Button
 								size="icon"
 								variant="ghost"
-								className="hover:text-foreground h-8 w-8 text-muted-foreground"
+								className="hover:text-white h-8 w-8 text-white/70 hover:scale-105 transition-all"
 								onClick={() => {
 									// Dispatch event to toggle queue in MainLayout
 									window.dispatchEvent(new Event('toggleQueue'));
@@ -355,7 +364,7 @@ export const PlaybackControls = () => {
 							>
 								<ListMusic className="h-4 w-4" />
 							</Button>
-							<Button size="icon" variant="ghost" className="hover:text-foreground text-muted-foreground h-8 w-8">
+							<Button size="icon" variant="ghost" className="hover:text-white text-white/70 h-8 w-8 hover:scale-105 transition-all">
 								<Laptop2 className="h-4 w-4" />
 							</Button>
 						</div>

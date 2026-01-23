@@ -28,8 +28,7 @@ const LibraryPage = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { userPlaylists, fetchUserPlaylists } = usePlaylistStore();
 
-  // Scroll management
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  // Scroll management - use parent container
   const [scrollPosition, setScrollPosition] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -37,7 +36,7 @@ const LibraryPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [pinnedPlaylists, setPinnedPlaylists] = useState<string[]>([]);
 
-  // Remember previously viewed playlists and scroll position
+  // Remember previously viewed playlists
   useEffect(() => {
     // Load saved pinned playlists from localStorage
     try {
@@ -50,19 +49,6 @@ const LibraryPage = () => {
       const savedViewMode = localStorage.getItem('mavrix-library-view-mode');
       if (savedViewMode && (savedViewMode === 'grid' || savedViewMode === 'list')) {
         setViewMode(savedViewMode as 'grid' | 'list');
-      }
-
-      // Load saved scroll position
-      const savedScrollPosition = sessionStorage.getItem('mavrix-library-scroll');
-      if (savedScrollPosition) {
-        const position = parseInt(savedScrollPosition, 10);
-        // Defer scroll restoration until after render
-        setTimeout(() => {
-          if (scrollAreaRef.current) {
-            scrollAreaRef.current.scrollTop = position;
-            setScrollPosition(position);
-          }
-        }, 100);
       }
     } catch (error) {
       // Error loading saved library preferences
@@ -81,25 +67,32 @@ const LibraryPage = () => {
     localStorage.setItem('mavrix-library-view-mode', viewMode);
   }, [viewMode]);
 
-  // Handle scroll events
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const currentPos = e.currentTarget.scrollTop;
-    setScrollPosition(currentPos);
-    setShowScrollTop(currentPos > 300);
-
-    // Save scroll position to session storage
-    sessionStorage.setItem('mavrix-library-scroll', currentPos.toString());
-  };
-
-  // Scroll to top function
+  // Scroll to top function - scroll the parent container
   const scrollToTop = () => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
+    // Find the parent scrollable container
+    const scrollContainer = document.querySelector('.custom-scrollbar-hide');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({
         top: 0,
         behavior: 'smooth'
       });
     }
   };
+
+  // Listen for scroll events on parent container
+  useEffect(() => {
+    const scrollContainer = document.querySelector('.custom-scrollbar-hide');
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const currentPos = scrollContainer.scrollTop;
+      setScrollPosition(currentPos);
+      setShowScrollTop(currentPos > 300);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Filtered playlists
   const filteredPlaylists = userPlaylists;
@@ -116,10 +109,8 @@ const LibraryPage = () => {
     });
   };
 
-  // Navigate to playlist with scroll position preservation
+  // Navigate to playlist
   const navigateToPlaylist = (playlistId: string) => {
-    // Save current scroll position before navigation
-    sessionStorage.setItem('mavrix-library-scroll', scrollPosition.toString());
     navigate(`/playlist/${playlistId}`);
   };
 
@@ -164,18 +155,11 @@ const LibraryPage = () => {
 
 
   return (
-    <main className="h-full overflow-hidden px-[6px] bg-gradient-to-b from-background to-background/95 dark:from-[#191414] dark:to-[#191414] text-foreground">
-      <div className="h-full flex flex-col">
-        {/* Library content */}
-        <div
-          ref={scrollAreaRef}
-          className="flex-1 pb-32 md:pb-24 overflow-y-auto smooth-scroll"
-          onScroll={handleScroll}
-        >
-          <div className="p-2 sm:p-4 pt-4">
-            {isLibraryLoading || loading ? (
-              <div className="h-64"></div>
-            ) : !isAuthenticated ? (
+    <main className="min-h-full px-[6px] text-foreground">
+      <div className="p-2 sm:p-4 pt-4 pb-8">
+        {isLibraryLoading || loading ? (
+          <div className="h-64"></div>
+        ) : !isAuthenticated ? (
               <div className="bg-card border border-border rounded-lg p-8 text-center">
                 <Library className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h2 className="text-xl font-semibold mb-2">Sign in to view your library</h2>
@@ -433,8 +417,6 @@ const LibraryPage = () => {
               </div>
             )}
           </div>
-        </div>
-      </div>
 
       {/* Scroll to top button */}
       {showScrollTop && (

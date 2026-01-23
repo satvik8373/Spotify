@@ -1,5 +1,4 @@
 import React from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import Footer from '@/components/Footer';
 
 const TermsOfService = () => {
@@ -8,8 +7,7 @@ const TermsOfService = () => {
       <div className="max-w-4xl mx-auto px-6 py-8">
         <h1 className="text-3xl font-bold mb-8">Terms of Service</h1>
         
-        <ScrollArea className="h-[calc(100vh-200px)]">
-          <div className="space-y-6 text-gray-300">
+        <div className="space-y-6 text-gray-300 pb-8">
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">1. Acceptance of Terms</h2>
               <p className="mb-4">
@@ -109,7 +107,6 @@ const TermsOfService = () => {
               </p>
             </div>
           </div>
-        </ScrollArea>
         
         <Footer />
       </div>

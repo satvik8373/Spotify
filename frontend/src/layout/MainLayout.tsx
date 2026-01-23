@@ -10,6 +10,7 @@ import QueuePanel from '@/components/QueuePanel';
 import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
 import DesktopFooter from '@/components/DesktopFooter';
+import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 
 
 const MainLayout = () => {
@@ -136,7 +137,7 @@ const MainLayout = () => {
 
       {/* Main content area */}
       <div
-        className="flex-1 flex overflow-hidden md:px-2 md:pb-2 md:gap-2 relative z-0"
+        className="flex-1 flex overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-black"
         style={{
           height: isMobile
             ? `calc(100vh - ${mobileSubtractPx}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))`
@@ -169,10 +170,10 @@ const MainLayout = () => {
 
         {/* Main content */}
         <div className="flex-1 h-full overflow-hidden">
-          <div className="h-full overflow-y-auto overflow-x-hidden mobile-scroll-fix bg-[#121212] md:rounded-lg">
+          <CustomScrollbar className="h-full mobile-scroll-fix bg-[#121212] md:rounded-lg">
             <Outlet />
             <DesktopFooter />
-          </div>
+          </CustomScrollbar>
         </div>
 
         {/* Queue Panel - Desktop only */}
