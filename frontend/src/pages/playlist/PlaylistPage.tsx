@@ -26,6 +26,7 @@ import {
   Image as ImageIcon,
   ChevronLeft,
   ListPlus,
+  MoreHorizontal,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
@@ -41,6 +42,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '../../components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu';
 import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
@@ -957,16 +964,65 @@ export function PlaylistPage() {
               />
 
               {/* More options button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-10 h-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
-                title="More options"
-              >
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
-                </svg>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-10 h-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+                    title="More options"
+                  >
+                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+                    </svg>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-popover text-popover-foreground border-border">
+                  <DropdownMenuItem
+                    onClick={() => openAddSongsDialog('search')}
+                    className="hover:bg-accent"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Songs
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem
+                    onClick={() => openAddSongsDialog('upload')}
+                    className="hover:bg-accent"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Upload File
+                  </DropdownMenuItem>
+                  
+                  {isOwner && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => setShowEditDialog(true)}
+                        className="hover:bg-accent"
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit Playlist
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuItem
+                        onClick={() => setIsEditMode(!isEditMode)}
+                        className="hover:bg-accent"
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        {isEditMode ? 'Exit Edit Mode' : 'Edit Songs'}
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuItem
+                        onClick={handleDeletePlaylist}
+                        className="hover:bg-accent text-red-500 hover:text-red-600"
+                      >
+                        <Trash className="h-4 w-4 mr-2" />
+                        Delete Playlist
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Owner actions - normal size */}
               {isOwner && (
@@ -1119,19 +1175,64 @@ export function PlaylistPage() {
 
                       {/* More options - normal size */}
                       <div className="hidden md:block md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          title="More options"
-                        >
-                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
-                          </svg>
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                              title="More options"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+                              </svg>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="bg-popover text-popover-foreground border-border">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Add to queue functionality
+                                const { addToQueue } = usePlayerStore.getState();
+                                addToQueue(song);
+                                toast.success(`Added "${song.title}" to queue`);
+                              }}
+                              className="hover:bg-accent"
+                            >
+                              <ListPlus className="h-4 w-4 mr-2" />
+                              Add to Queue
+                            </DropdownMenuItem>
+                            
+                            {!song.audioUrl && (
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleFindAudio(song, index, e);
+                                }}
+                                className="hover:bg-accent"
+                              >
+                                <Search className="h-4 w-4 mr-2" />
+                                Find Audio
+                              </DropdownMenuItem>
+                            )}
+                            
+                            {isOwner && (
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveSong(song._id, e);
+                                }}
+                                className="hover:bg-accent text-red-500 hover:text-red-600"
+                              >
+                                <Trash className="h-4 w-4 mr-2" />
+                                Remove from Playlist
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
 
                       {/* Owner edit actions */}

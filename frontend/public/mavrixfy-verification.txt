@@ -1,0 +1,4 @@
+mavrixfy-domain-verification-2026
+This file verifies ownership of mavrixfy.site domain
+Contact: hello@mavrixfy.site
+Website: https://mavrixfy.site

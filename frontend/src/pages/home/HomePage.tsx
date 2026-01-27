@@ -3,7 +3,7 @@ import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { PlaylistCard } from '../../components/playlist/PlaylistCard';
 import { JioSaavnPlaylistsSection } from '@/components/jiosaavn/JioSaavnPlaylistsSection';
 import { RecentlyPlayedCard } from '@/components/RecentlyPlayedCard';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
 import { SectionWrapper } from '@/components/ui/section-wrapper';
@@ -238,6 +238,22 @@ const HomePage = () => {
           <button className="px-3 py-1.5 rounded-full bg-white/10 text-white text-[13px] font-bold hover:bg-white/20 transition-colors">
             Podcasts
           </button>
+          
+          {/* Privacy Policy Link in Pills Area */}
+          <div className="ml-auto flex items-center gap-4">
+            <Link 
+              to="/privacy" 
+              className="text-white/60 hover:text-white text-xs transition-colors"
+            >
+              Privacy Policy
+            </Link>
+            <Link 
+              to="/terms" 
+              className="text-white/60 hover:text-white text-xs transition-colors"
+            >
+              Terms
+            </Link>
+          </div>
         </div>
 
         <div className="w-full overflow-x-hidden">
