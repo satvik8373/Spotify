@@ -3,7 +3,18 @@ Allow: /
 
 Sitemap: https://mavrixfy.site/sitemap.xml
 
-# Privacy Policy
+# Privacy Policy and Legal Pages
 Allow: /privacy
 Allow: /terms
 Allow: /about
+
+# Domain Verification Files
+Allow: /mavrixfy-verification.txt
+Allow: /verification.txt
+Allow: /domain-verification.html
+Allow: /google-site-verification.html
+Allow: /.well-known/
+
+# Contact and Support
+Allow: /contact
+Allow: /support

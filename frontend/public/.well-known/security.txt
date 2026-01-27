@@ -1,0 +1,9 @@
+Contact: hello@mavrixfy.site
+Expires: 2027-01-27T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://mavrixfy.site/.well-known/security.txt
+
+# Mavrixfy Security Information
+# Domain: mavrixfy.site
+# Owner: Mavrixfy Team
+# Application: Music Streaming Platform

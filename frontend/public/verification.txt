@@ -1,0 +1,15 @@
+Domain: mavrixfy.site
+Owner: Mavrixfy Development Team
+Contact: hello@mavrixfy.site
+Verification: mavrixfy-domain-2026
+Date: 2026-01-27
+
+This file confirms ownership of the mavrixfy.site domain by the Mavrixfy team.
+
+Application: Mavrixfy Music Streaming Platform
+Description: Free music streaming service with social features
+Privacy Policy: https://mavrixfy.site/privacy
+Terms of Service: https://mavrixfy.site/terms
+
+The domain mavrixfy.site is registered to and operated by the Mavrixfy development team.
+All services provided comply with applicable privacy laws and regulations.
