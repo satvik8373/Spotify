@@ -14,6 +14,7 @@ import HomePage from './pages/home/HomePage';
 import SearchPage from './pages/search/SearchPage';
 import LibraryPage from './pages/LibraryPage';
 import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
+import LandingPage from './pages/LandingPage';
 
 // Lazy load less critical pages only
 const SyncLikedSongsPage = lazy(() => import('./pages/liked-songs/SyncLikedSongsPage'));
@@ -101,13 +102,13 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 const LandingRedirector = () => {
 	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 
-	// Check cache FIRST - instant redirect without waiting for Firebase
+	// Check cache FIRST - if authenticated, redirect to home
 	if (hasCachedAuth) {
 		return <Navigate to="/home" replace />;
 	}
 
-	// No cached auth, go to login immediately
-	return <Navigate to="/login" replace />;
+	// No cached auth, show public landing page
+	return <LandingPage />;
 };
 
 // Configure the router with React Router v6
@@ -132,6 +133,18 @@ const router = createBrowserRouter(
 		{
 			path: '/spotify-callback',
 			element: <SpotifyCallback />
+		},
+		{
+			path: '/privacy',
+			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PrivacyPolicy /></Suspense>
+		},
+		{
+			path: '/terms',
+			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TermsOfService /></Suspense>
+		},
+		{
+			path: '/about',
+			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><About /></Suspense>
 		},
 		{
 			element: <MainLayout />,
@@ -184,18 +197,6 @@ const router = createBrowserRouter(
 				{
 					path: '/jiosaavn/categories',
 					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnCategoriesPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/privacy',
-					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PrivacyPolicy /></Suspense>
-				},
-				{
-					path: '/terms',
-					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TermsOfService /></Suspense>
-				},
-				{
-					path: '/about',
-					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><About /></Suspense>
 				},
 				{
 					path: '/settings',
