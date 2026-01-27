@@ -1,5 +1,6 @@
 import React from 'react';
 import { Instagram, Twitter, Facebook } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const DesktopFooter = () => {
     return (
@@ -12,9 +13,9 @@ const DesktopFooter = () => {
                         <div className="flex flex-col gap-4">
                             <h3 className="font-bold text-white text-base">Company</h3>
                             <ul className="flex flex-col gap-2">
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">About</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Jobs</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">For the Record</a></li>
+                                <li><Link to="/about" className="text-[#a7a7a7] hover:text-white hover:underline">About</Link></li>
+                                <li><a href="mailto:careers@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Jobs</a></li>
+                                <li><a href="mailto:hello@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Contact</a></li>
                             </ul>
                         </div>
 
@@ -22,11 +23,11 @@ const DesktopFooter = () => {
                         <div className="flex flex-col gap-4">
                             <h3 className="font-bold text-white text-base">Communities</h3>
                             <ul className="flex flex-col gap-2">
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">For Artists</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Developers</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Advertising</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Investors</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Vendors</a></li>
+                                <li><a href="mailto:artists@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">For Artists</a></li>
+                                <li><a href="mailto:developers@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Developers</a></li>
+                                <li><a href="mailto:advertising@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Advertising</a></li>
+                                <li><a href="mailto:investors@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Investors</a></li>
+                                <li><a href="mailto:vendors@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Vendors</a></li>
                             </ul>
                         </div>
 
@@ -34,37 +35,52 @@ const DesktopFooter = () => {
                         <div className="flex flex-col gap-4">
                             <h3 className="font-bold text-white text-base">Useful links</h3>
                             <ul className="flex flex-col gap-2">
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Support</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Free Mobile App</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Popular by Country</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Import your music</a></li>
+                                <li><a href="mailto:support@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Support</a></li>
+                                <li><Link to="/home" className="text-[#a7a7a7] hover:text-white hover:underline">Free Mobile App</Link></li>
+                                <li><Link to="/search" className="text-[#a7a7a7] hover:text-white hover:underline">Discover Music</Link></li>
+                                <li><Link to="/liked-songs/sync" className="text-[#a7a7a7] hover:text-white hover:underline">Import your music</Link></li>
                             </ul>
                         </div>
 
-                        {/* Spotify Plans Column */}
+                        {/* Mavrixfy Plans Column */}
                         <div className="flex flex-col gap-4">
-                            <h3 className="font-bold text-white text-base">Spotify Plans</h3>
+                            <h3 className="font-bold text-white text-base">Mavrixfy Plans</h3>
                             <ul className="flex flex-col gap-2">
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Premium Lite</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Premium Standard</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Premium Platinum</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Premium Student</a></li>
-                                <li><a href="#" className="text-[#a7a7a7] hover:text-white hover:underline">Spotify Free</a></li>
+                                <li><Link to="/home" className="text-[#a7a7a7] hover:text-white hover:underline">Free Streaming</Link></li>
+                                <li><Link to="/library" className="text-[#a7a7a7] hover:text-white hover:underline">Personal Library</Link></li>
+                                <li><Link to="/liked-songs" className="text-[#a7a7a7] hover:text-white hover:underline">Liked Songs</Link></li>
+                                <li><Link to="/search" className="text-[#a7a7a7] hover:text-white hover:underline">Music Discovery</Link></li>
+                                <li><Link to="/home" className="text-[#a7a7a7] hover:text-white hover:underline">Mavrixfy Free</Link></li>
                             </ul>
                         </div>
                     </div>
 
                     {/* Social Icons */}
                     <div className="flex gap-4">
-                        <button className="w-10 h-10 rounded-full bg-[#292929] hover:bg-[#727272] flex items-center justify-center text-white transition-colors">
+                        <a 
+                            href="https://instagram.com/mavrixfy" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="w-10 h-10 rounded-full bg-[#292929] hover:bg-[#727272] flex items-center justify-center text-white transition-colors"
+                        >
                             <Instagram size={20} />
-                        </button>
-                        <button className="w-10 h-10 rounded-full bg-[#292929] hover:bg-[#727272] flex items-center justify-center text-white transition-colors">
+                        </a>
+                        <a 
+                            href="https://twitter.com/mavrixfy" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="w-10 h-10 rounded-full bg-[#292929] hover:bg-[#727272] flex items-center justify-center text-white transition-colors"
+                        >
                             <Twitter size={20} fill="currentColor" />
-                        </button>
-                        <button className="w-10 h-10 rounded-full bg-[#292929] hover:bg-[#727272] flex items-center justify-center text-white transition-colors">
+                        </a>
+                        <a 
+                            href="https://facebook.com/mavrixfy" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="w-10 h-10 rounded-full bg-[#292929] hover:bg-[#727272] flex items-center justify-center text-white transition-colors"
+                        >
                             <Facebook size={20} fill="currentColor" />
-                        </button>
+                        </a>
                     </div>
                 </div>
 
@@ -74,16 +90,16 @@ const DesktopFooter = () => {
                 {/* Bottom Section */}
                 <div className="flex justify-between items-center text-sm">
                     <div className="flex gap-6 flex-wrap">
-                        <a href="#" className="text-[#a7a7a7] hover:text-white">Legal</a>
-                        <a href="#" className="text-[#a7a7a7] hover:text-white">Safety & Privacy Center</a>
-                        <a href="#" className="text-[#a7a7a7] hover:text-white">Privacy Policy</a>
-                        <a href="#" className="text-[#a7a7a7] hover:text-white">Cookies</a>
-                        <a href="#" className="text-[#a7a7a7] hover:text-white">About Ads</a>
-                        <a href="#" className="text-[#a7a7a7] hover:text-white">Accessibility</a>
+                        <Link to="/terms" className="text-[#a7a7a7] hover:text-white">Legal</Link>
+                        <Link to="/privacy" className="text-[#a7a7a7] hover:text-white">Safety & Privacy Center</Link>
+                        <Link to="/privacy" className="text-[#a7a7a7] hover:text-white">Privacy Policy</Link>
+                        <Link to="/privacy" className="text-[#a7a7a7] hover:text-white">Cookies</Link>
+                        <Link to="/about" className="text-[#a7a7a7] hover:text-white">About Ads</Link>
+                        <Link to="/about" className="text-[#a7a7a7] hover:text-white">Accessibility</Link>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                         <div className="text-[#a7a7a7]">
-                            Copyright @ Mavrixfy & Team
+                            © {new Date().getFullYear()} Mavrixfy. All rights reserved.
                         </div>
                         <div className="text-[#a7a7a7] text-xs">
                             Developed by Satvik Patel

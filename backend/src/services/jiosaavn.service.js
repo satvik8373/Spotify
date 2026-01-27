@@ -26,12 +26,40 @@ export const searchSongs = async (query, limit = 20) => {
 };
 
 /**
- * Get trending songs from JioSaavn
+ * Get trending songs from JioSaavn with 2026 focus
  * @param {number} limit - Number of results to return
  * @returns {Promise<Object>} - Trending songs
  */
 export const getTrendingSongs = async (limit = 20) => {
   try {
+    // Try 2026-specific trending terms first
+    const trending2026Terms = [
+      'trending songs 2026',
+      'top hits 2026', 
+      'latest bollywood 2026',
+      'superhits 2026',
+      'viral songs 2026'
+    ];
+
+    for (const term of trending2026Terms) {
+      try {
+        const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/search/songs`, {
+          params: {
+            query: term,
+            page: 1,
+            limit
+          }
+        });
+        
+        if (response.data && response.data.results && response.data.results.length > 0) {
+          return response.data;
+        }
+      } catch (error) {
+        console.warn(`Failed to fetch with term: ${term}`, error.message);
+      }
+    }
+
+    // Fallback to general trending
     const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/search/songs`, {
       params: {
         query: 'trending songs',
@@ -47,12 +75,40 @@ export const getTrendingSongs = async (limit = 20) => {
 };
 
 /**
- * Get new releases from JioSaavn
+ * Get new releases from JioSaavn with 2026 focus
  * @param {number} limit - Number of results to return
  * @returns {Promise<Object>} - New releases
  */
 export const getNewReleases = async (limit = 20) => {
   try {
+    // Try 2026-specific new release terms first
+    const newRelease2026Terms = [
+      'new releases 2026',
+      'latest songs 2026',
+      'fresh bollywood 2026',
+      'new hindi songs 2026',
+      'latest hits 2026'
+    ];
+
+    for (const term of newRelease2026Terms) {
+      try {
+        const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/search/songs`, {
+          params: {
+            query: term,
+            page: 1,
+            limit
+          }
+        });
+        
+        if (response.data && response.data.results && response.data.results.length > 0) {
+          return response.data;
+        }
+      } catch (error) {
+        console.warn(`Failed to fetch with term: ${term}`, error.message);
+      }
+    }
+
+    // Fallback to general new releases
     const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/search/songs`, {
       params: {
         query: 'new releases',
