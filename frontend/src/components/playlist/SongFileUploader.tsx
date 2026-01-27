@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, X, CheckCircle, AlertCircle, Search, ArrowRight, Check, ChevronDown, ChevronRight, ExternalLink, Copy, HelpCircle, ChevronLeft, ArrowLeftRight } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle, AlertCircle, Search, ArrowRight, Check, ChevronLeft, ArrowLeftRight, ExternalLink, Copy, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { useMusicStore } from '@/stores/useMusicStore';
@@ -9,13 +9,7 @@ import { Progress } from '../../components/ui/progress';
 import { Badge } from '../../components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { ContentLoading } from '@/components/ui/loading';
-import { 
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { cn } from '@/lib/utils';
+import { ChevronRight } from 'lucide-react';
 
 interface SongFileUploaderProps {
   playlistId: string;
@@ -25,15 +19,18 @@ interface SongFileUploaderProps {
 interface ParsedSong {
   title: string;
   artist: string;
+  album?: string;
   duration?: string;
   imageUrl?: string;
   audioUrl?: string;
   status: 'ready' | 'added' | 'error' | 'searching';
   message?: string;
+  matchConfidence?: 'high' | 'medium' | 'low';
 }
 
 export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps) {
   const [parsedSongs, setParsedSongs] = useState<ParsedSong[]>([]);
+  const [displaySongs, setDisplaySongs] = useState<ParsedSong[]>([]); // Separate state for display
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -47,9 +44,10 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
   });
   const [currentPage, setCurrentPage] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const processingRef = useRef(false); // Track processing state to prevent re-render issues
   const navigate = useNavigate();
   
-  const { addSongToPlaylist, currentPlaylist } = usePlaylistStore();
+  const { addSongToPlaylist } = usePlaylistStore();
   const { convertIndianSongToAppSong, searchIndianSongs } = useMusicStore();
 
   // Mark that the user has used the importer when they complete an import
@@ -72,22 +70,105 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
     const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
     const songs: ParsedSong[] = [];
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const columns = line.split(',').map(col => col.trim());
+    if (lines.length === 0) return songs;
+
+    // Parse CSV properly handling quoted fields
+    const parseCSVLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = '';
+      let inQuotes = false;
       
-      // Skip header line if it looks like a header
-      if (i === 0 && (columns[0].toLowerCase() === 'title' || columns[0].toLowerCase() === 'song')) {
-        continue;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = line[i + 1];
+        
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            current += '"';
+            i++; // Skip next quote
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
       }
+      result.push(current.trim());
+      return result;
+    };
+
+    // Parse header to detect column indices
+    const headerLine = parseCSVLine(lines[0]);
+    const headers = headerLine.map(h => h.toLowerCase().trim());
+    
+    // Detect column indices for different formats
+    const trackNameIdx = headers.findIndex(h => 
+      h.includes('track name') || h.includes('song') || h.includes('title') || h === 'name'
+    );
+    const artistIdx = headers.findIndex(h => 
+      h.includes('artist') || h.includes('singer')
+    );
+    const albumIdx = headers.findIndex(h => 
+      h.includes('album')
+    );
+    const durationIdx = headers.findIndex(h => 
+      h.includes('duration')
+    );
+
+    // If no proper headers found, assume simple format: title, artist
+    const hasHeaders = trackNameIdx !== -1 || artistIdx !== -1;
+    const startIdx = hasHeaders ? 1 : 0;
+
+    for (let i = startIdx; i < lines.length; i++) {
+      const columns = parseCSVLine(lines[i]);
       
-      if (columns.length >= 2) {
+      if (columns.length < 2) continue;
+
+      let title = '';
+      let artist = '';
+      let album = '';
+      let duration = '';
+
+      if (hasHeaders) {
+        // Use detected column indices
+        title = trackNameIdx !== -1 ? columns[trackNameIdx] : columns[1];
+        artist = artistIdx !== -1 ? columns[artistIdx] : columns[3];
+        album = albumIdx !== -1 ? columns[albumIdx] : '';
+        duration = durationIdx !== -1 ? columns[durationIdx] : '';
+      } else {
+        // Simple format: title, artist
+        title = columns[0];
+        artist = columns[1];
+        duration = columns[2] || '';
+      }
+
+      // Clean up the data
+      title = title.replace(/^["']|["']$/g, '').trim();
+      artist = artist.replace(/^["']|["']$/g, '').trim();
+      album = album.replace(/^["']|["']$/g, '').trim();
+      
+      // Convert duration from ms to seconds if needed
+      if (duration && !duration.includes(':')) {
+        const ms = parseInt(duration);
+        if (!isNaN(ms)) {
+          const seconds = Math.floor(ms / 1000);
+          const mins = Math.floor(seconds / 60);
+          const secs = seconds % 60;
+          duration = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+      }
+
+      if (title && artist) {
         songs.push({
-          title: columns[0] || 'Unknown Title',
-          artist: columns[1] || 'Unknown Artist',
-          duration: columns[2] || '0:00',
-          imageUrl: columns[3] || '',
-          audioUrl: columns[4] || '',
+          title,
+          artist,
+          album,
+          duration: duration || '0:00',
+          imageUrl: '',
+          audioUrl: '',
           status: 'ready'
         });
       }
@@ -186,18 +267,59 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
     }
   };
 
-  // New function to search for song details using the music API
-  const searchForSongDetails = async (title: string, artist: string): Promise<any> => {
+  // Enhanced function to search for song details with better matching
+  const searchForSongDetails = async (title: string, artist: string, album?: string): Promise<any> => {
     try {
-      const searchQuery = `${title} ${artist}`.trim();
-      await searchIndianSongs(searchQuery);
-      
-      // Get search results from store
-      const results = useMusicStore.getState().indianSearchResults;
-      
-      if (results && results.length > 0) {
-        return results[0]; // Return the first result
+      // Create multiple search queries for better matching
+      const queries = [
+        `${title} ${artist}`.trim(),
+        title.trim(),
+        `${artist} ${title}`.trim()
+      ];
+
+      // If album is provided, add it to search
+      if (album) {
+        queries.unshift(`${title} ${artist} ${album}`.trim());
       }
+
+      let bestMatch: any = null;
+      let bestScore = 0;
+
+      // Try each query
+      for (const searchQuery of queries) {
+        await searchIndianSongs(searchQuery);
+        
+        // Get search results from store
+        const results = useMusicStore.getState().indianSearchResults;
+        
+        if (results && results.length > 0) {
+          // Score each result based on similarity
+          for (const result of results.slice(0, 5)) { // Check top 5 results
+            const score = calculateMatchScore(
+              { title, artist, album },
+              { 
+                title: result.title, 
+                artist: result.artist || '', 
+                album: result.album || '' 
+              }
+            );
+
+            if (score > bestScore) {
+              bestScore = score;
+              bestMatch = result;
+            }
+          }
+        }
+
+        // If we found a high confidence match, stop searching
+        if (bestScore >= 0.7) break;
+      }
+
+      // Only return if we have a reasonable match
+      if (bestMatch && bestScore >= 0.4) {
+        return { ...bestMatch, matchScore: bestScore };
+      }
+
       return null;
     } catch (error) {
       console.error('Error searching for song:', error);
@@ -205,26 +327,121 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
     }
   };
 
+  // Calculate similarity score between two songs
+  const calculateMatchScore = (
+    original: { title: string; artist: string; album?: string },
+    candidate: { title: string; artist: string; album?: string }
+  ): number => {
+    let score = 0;
+    let maxScore = 0;
+
+    // Title matching (most important - 50% weight)
+    maxScore += 50;
+    const titleSimilarity = stringSimilarity(
+      normalizeString(original.title),
+      normalizeString(candidate.title)
+    );
+    score += titleSimilarity * 50;
+
+    // Artist matching (40% weight)
+    maxScore += 40;
+    const artistSimilarity = stringSimilarity(
+      normalizeString(original.artist),
+      normalizeString(candidate.artist)
+    );
+    score += artistSimilarity * 40;
+
+    // Album matching (10% weight, if available)
+    if (original.album && candidate.album) {
+      maxScore += 10;
+      const albumSimilarity = stringSimilarity(
+        normalizeString(original.album),
+        normalizeString(candidate.album)
+      );
+      score += albumSimilarity * 10;
+    }
+
+    return score / maxScore;
+  };
+
+  // Normalize string for comparison
+  const normalizeString = (str: string): string => {
+    return str
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '') // Remove special characters
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+  };
+
+  // Calculate string similarity using Levenshtein distance
+  const stringSimilarity = (str1: string, str2: string): number => {
+    if (str1 === str2) return 1;
+    if (!str1 || !str2) return 0;
+
+    // Check if one string contains the other
+    if (str1.includes(str2) || str2.includes(str1)) {
+      return 0.8;
+    }
+
+    // Calculate Levenshtein distance
+    const matrix: number[][] = [];
+    const len1 = str1.length;
+    const len2 = str2.length;
+
+    for (let i = 0; i <= len1; i++) {
+      matrix[i] = [i];
+    }
+
+    for (let j = 0; j <= len2; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+
+    const distance = matrix[len1][len2];
+    const maxLen = Math.max(len1, len2);
+    return 1 - distance / maxLen;
+  };
+
   const addSongsToPlaylist = async () => {
     if (parsedSongs.length === 0) return;
     
+    // Set processing flag
+    processingRef.current = true;
     setIsProcessing(true);
     setProgress(0);
     setAddedSongsCount(0);
+    setIsComplete(false);
+    
+    // Initialize display songs - create a working copy
+    const workingSongs = parsedSongs.map(song => ({ ...song }));
+    setDisplaySongs([...workingSongs]);
+    
     // Clear any existing toast notifications
     toast.dismiss();
     
     const progressToastId = 'progress-toast';
-    toast.loading('Processing songs...', {
+    toast.loading('Starting import...', {
       id: progressToastId,
+      duration: Infinity, // Keep toast visible
     });
     
-    const updatedSongs = [...parsedSongs];
     let addedCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
     
-    for (let i = 0; i < updatedSongs.length; i++) {
-      const song = updatedSongs[i];
+    // Process songs one by one
+    for (let i = 0; i < workingSongs.length; i++) {
+      const song = workingSongs[i];
       
       // Skip already processed songs
       if (song.status === 'added') {
@@ -239,48 +456,94 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
       
       try {
         // Update status to searching
-        updatedSongs[i] = { ...song, status: 'searching', message: 'Searching for song...' };
-        setParsedSongs([...updatedSongs]);
+        workingSongs[i] = { ...song, status: 'searching', message: 'Searching...' };
+        
+        // Update display state - use requestAnimationFrame to batch updates
+        requestAnimationFrame(() => {
+          if (processingRef.current) {
+            setDisplaySongs([...workingSongs]);
+          }
+        });
         
         // Calculate and update progress
-        const currentProgress = Math.round(((i + 1) / updatedSongs.length) * 100);
+        const currentProgress = Math.round(((i + 1) / workingSongs.length) * 100);
         setProgress(currentProgress);
-        toast.loading(`Processing ${i + 1}/${updatedSongs.length}: ${song.title}`, { 
-          id: progressToastId 
-        });
         
-        // Search for the song to get audio URL and other details
-        const searchResult = await searchForSongDetails(song.title, song.artist);
+        // Update toast every 3 songs
+        if (i % 3 === 0 || i === workingSongs.length - 1) {
+          toast.loading(`Processing ${i + 1}/${workingSongs.length}: ${song.title.substring(0, 30)}...`, { 
+            id: progressToastId,
+            duration: Infinity,
+          });
+        }
         
-        // Create app song with found details or fallback to defaults
-        const appSong: Song = convertIndianSongToAppSong({
-          id: `imported-${Date.now()}-${i}`,
-          title: song.title,
-          artist: song.artist,
-          image: searchResult?.image || song.imageUrl || '/placeholder-song.jpg',
-          url: searchResult?.url || song.audioUrl || '',
-          duration: searchResult?.duration || song.duration || '0'
-        });
+        // Search for the song with enhanced matching
+        const searchResult = await searchForSongDetails(song.title, song.artist, song.album);
         
-        // Add to playlist
-        await addSongToPlaylist(playlistId, appSong);
+        // Determine match confidence
+        let matchConfidence: 'high' | 'medium' | 'low' = 'low';
+        let statusMessage = '';
         
-        // Update status
-        updatedSongs[i] = {
-          ...song,
-          status: 'added',
-          message: searchResult?.url ? 'Added with audio' : 'Added (no audio found)',
-          imageUrl: searchResult?.image || song.imageUrl,
-          audioUrl: searchResult?.url || song.audioUrl
-        };
+        if (searchResult) {
+          const matchScore = searchResult.matchScore || 0;
+          
+          if (matchScore >= 0.7) {
+            matchConfidence = 'high';
+            statusMessage = 'Added (verified match)';
+          } else if (matchScore >= 0.5) {
+            matchConfidence = 'medium';
+            statusMessage = 'Added (likely match)';
+          } else {
+            matchConfidence = 'low';
+            statusMessage = 'Added (low confidence)';
+          }
+        } else {
+          statusMessage = 'Added (no audio found)';
+        }
         
-        addedCount++;
-        setAddedSongsCount(addedCount);
+        // Only add if we have audio URL or it's a high confidence match
+        if (searchResult?.url || !searchResult) {
+          // Create app song with found details or fallback to defaults
+          const appSong: Song = convertIndianSongToAppSong({
+            id: `imported-${Date.now()}-${i}`,
+            title: song.title,
+            artist: song.artist,
+            album: searchResult?.album || song.album,
+            image: searchResult?.image || song.imageUrl || '/placeholder-song.jpg',
+            url: searchResult?.url || song.audioUrl || '',
+            duration: searchResult?.duration || song.duration || '0'
+          });
+          
+          // Add to playlist
+          await addSongToPlaylist(playlistId, appSong);
+          
+          // Update status
+          workingSongs[i] = {
+            ...song,
+            status: 'added',
+            message: statusMessage,
+            matchConfidence,
+            imageUrl: searchResult?.image || song.imageUrl,
+            audioUrl: searchResult?.url || song.audioUrl,
+            album: searchResult?.album || song.album
+          };
+          
+          addedCount++;
+          setAddedSongsCount(addedCount);
+        } else {
+          // Skip songs without audio
+          workingSongs[i] = {
+            ...song,
+            status: 'error',
+            message: 'No audio source found'
+          };
+          skippedCount++;
+        }
       } catch (error) {
         console.error('Error adding song to playlist:', error);
         
         // Update status to error
-        updatedSongs[i] = {
+        workingSongs[i] = {
           ...song,
           status: 'error',
           message: 'Failed to add'
@@ -289,39 +552,60 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
         errorCount++;
       }
       
-      // Update the UI
-      setParsedSongs([...updatedSongs]);
+      // Update display state using requestAnimationFrame
+      requestAnimationFrame(() => {
+        if (processingRef.current) {
+          setDisplaySongs([...workingSongs]);
+        }
+      });
       
-      // Add a small delay between requests to avoid rate limiting
-      if (i < updatedSongs.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 300));
+      // Add a delay between requests to avoid rate limiting
+      if (i < workingSongs.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
     
+    // Final update
+    setParsedSongs([...workingSongs]);
+    setDisplaySongs([...workingSongs]);
+    
     // Hide the progress toast
     toast.dismiss(progressToastId);
+    
+    // Clear processing flag
+    processingRef.current = false;
     
     // All songs processed, show completion status
     setIsProcessing(false);
     setIsComplete(true);
     
+    // Show detailed completion message
     if (addedCount > 0) {
-      if (errorCount > 0) {
-        toast.success(`Added ${addedCount} out of ${parsedSongs.length} songs to the playlist`);
-      } else {
-        toast.success(`Successfully added all ${addedCount} songs to the playlist!`);
+      const highConfidence = workingSongs.filter(s => s.matchConfidence === 'high').length;
+      
+      let message = `Successfully added ${addedCount} songs to the playlist!`;
+      if (highConfidence > 0) {
+        message += ` (${highConfidence} verified matches)`;
       }
-    } else if (errorCount > 0) {
-      toast.error(`Failed to add ${errorCount} songs. Please try again.`);
+      if (errorCount > 0 || skippedCount > 0) {
+        message += ` ${errorCount + skippedCount} songs could not be added.`;
+      }
+      
+      toast.success(message, { duration: 5000 });
+    } else if (errorCount > 0 || skippedCount > 0) {
+      toast.error(`Failed to add ${errorCount + skippedCount} songs. Please check the file format.`, { duration: 5000 });
     }
   };
 
   const resetUpload = () => {
+    processingRef.current = false;
     setParsedSongs([]);
+    setDisplaySongs([]);
     setFileName(null);
     setProgress(0);
     setAddedSongsCount(0);
     setIsComplete(false);
+    setIsProcessing(false);
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -766,23 +1050,23 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
         </div>
       )}
 
-      {/* Processing display */}
-      {isProcessing && !isComplete && (
-        <div className="border rounded-lg p-6">
+      {/* Processing display - Always render when processing to prevent unmounting */}
+      {isProcessing && !isComplete && displaySongs.length > 0 && (
+        <div key="processing-section" className="border rounded-lg p-6 bg-background">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-medium">Adding Songs...</h3>
               <Badge variant="outline">
-                {addedSongsCount}/{parsedSongs.length}
+                {addedSongsCount}/{displaySongs.length}
               </Badge>
             </div>
             
             <Progress value={progress} className="h-2" />
             
-            <div className="max-h-[30vh] overflow-y-auto border rounded-lg p-2">
-              {parsedSongs.map((song, index) => (
+            <div className="max-h-[30vh] overflow-y-auto border rounded-lg p-2 bg-secondary/20">
+              {displaySongs.map((song, index) => (
                 <div
-                  key={index}
+                  key={`processing-song-${index}-${song.title}`}
                   className="flex items-center justify-between py-2 px-2 border-b last:border-0 text-xs sm:text-sm"
                 >
                   <div className="flex-1 min-w-0">
@@ -793,10 +1077,39 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
                       </div>
                     </div>
                   </div>
-                  <div className="ml-2 flex-shrink-0">
-                    {song.status === 'added' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                    {song.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
-                    {song.status === 'searching' && <Search className="h-4 w-4 animate-pulse" />}
+                  <div className="ml-2 flex-shrink-0 flex items-center gap-1">
+                    {song.status === 'added' && (
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        {song.matchConfidence === 'high' && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-green-500/10 text-green-600 border-green-500/30">
+                            Verified
+                          </Badge>
+                        )}
+                        {song.matchConfidence === 'medium' && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                            Likely
+                          </Badge>
+                        )}
+                        {song.matchConfidence === 'low' && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-orange-500/10 text-orange-600 border-orange-500/30">
+                            Low
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                    {song.status === 'error' && (
+                      <div className="flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                        <span className="text-[10px] text-red-500">{song.message}</span>
+                      </div>
+                    )}
+                    {song.status === 'searching' && (
+                      <div className="flex items-center gap-1">
+                        <Search className="h-4 w-4 animate-pulse text-blue-500" />
+                        <span className="text-[10px] text-blue-500">Searching...</span>
+                      </div>
+                    )}
                     {song.status === 'ready' && <div className="h-4 w-4" />}
                   </div>
                 </div>
@@ -808,15 +1121,67 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
 
       {/* Completion summary */}
       {isComplete && (
-        <div className="border rounded-lg p-6 text-center">
+        <div className="border rounded-lg p-6">
           <div className="flex flex-col items-center justify-center">
             <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
               <Check className="h-6 w-6 text-green-600 dark:text-green-300" />
             </div>
             <h3 className="text-lg font-medium mb-2">Import Complete</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Successfully added {addedSongsCount} songs to your playlist.
+              Successfully added {addedSongsCount} out of {parsedSongs.length} songs to your playlist.
             </p>
+            
+            {/* Match quality breakdown */}
+            <div className="w-full max-w-md mb-4 p-3 bg-secondary rounded-lg">
+              <div className="text-xs font-medium mb-2 text-center">Match Quality</div>
+              <div className="space-y-2">
+                {parsedSongs.filter(s => s.matchConfidence === 'high').length > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                      <span>Verified matches</span>
+                    </div>
+                    <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                      {parsedSongs.filter(s => s.matchConfidence === 'high').length}
+                    </Badge>
+                  </div>
+                )}
+                {parsedSongs.filter(s => s.matchConfidence === 'medium').length > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                      <span>Likely matches</span>
+                    </div>
+                    <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                      {parsedSongs.filter(s => s.matchConfidence === 'medium').length}
+                    </Badge>
+                  </div>
+                )}
+                {parsedSongs.filter(s => s.matchConfidence === 'low').length > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-orange-500"></div>
+                      <span>Low confidence</span>
+                    </div>
+                    <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
+                      {parsedSongs.filter(s => s.matchConfidence === 'low').length}
+                    </Badge>
+                  </div>
+                )}
+                {parsedSongs.filter(s => s.status === 'error').length > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                      <span>Failed</span>
+                    </div>
+                    <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">
+                      {parsedSongs.filter(s => s.status === 'error').length}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            </div>
+            
             <div className="flex flex-col sm:flex-row gap-3">
               <Button onClick={finishAndViewPlaylist}>
                 View Playlist

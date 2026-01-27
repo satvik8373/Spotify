@@ -14,7 +14,6 @@ import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import {
   Play,
   Pencil,
-  MoreHorizontal,
   Share2,
   Clock,
   Plus,
@@ -29,13 +28,6 @@ import {
   ListPlus,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '../../components/ui/dropdown-menu';
 import toast from 'react-hot-toast';
 import { EditPlaylistDialog } from '../../components/playlist/EditPlaylistDialog';
 import { formatTime } from '../../utils/formatTime';
@@ -276,13 +268,43 @@ export function PlaylistPage() {
   const [hasPlayed, setHasPlayed] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   // Removed unused playingSongId state to avoid warnings
+
+  // Track scroll position for sticky header
+  const [scrollY, setScrollY] = useState(0);
+  const [showStickyHeader, setShowStickyHeader] = useState(false);
 
   // Removed scroll position tracking for toolbar behavior
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Get colors from album cover
   const albumColors = useAlbumColors(currentPlaylist?.imageUrl);
+
+  // Debug: Log the colors to see what we're getting
+  useEffect(() => {
+    if (currentPlaylist?.imageUrl) {
+      console.log('Album colors:', albumColors);
+    }
+  }, [albumColors, currentPlaylist?.imageUrl]);
+
+  // Convert RGB color to RGBA with different opacity levels
+  const getRgbaFromRgb = (rgbColor: string, opacity: number) => {
+    // Always use a vibrant fallback for testing
+    if (!rgbColor || rgbColor === 'rgb(64, 64, 64)' || !currentPlaylist?.imageUrl) {
+      // Use a vibrant purple-blue gradient that will definitely be visible
+      return `rgba(138, 43, 226, ${opacity})`;
+    }
+    
+    const match = rgbColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (match) {
+      const [, r, g, b] = match;
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+    
+    // Fallback to vibrant purple
+    return `rgba(138, 43, 226, ${opacity})`;
+  };
 
   // Check if the current playlist is playing
   const isCurrentPlaylistPlaying = playerIsPlaying && 
@@ -305,6 +327,19 @@ export function PlaylistPage() {
     });
     
     return () => unsubscribe();
+  }, []);
+
+  // Add scroll listener for sticky header
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      setScrollY(scrollPosition);
+      // Show sticky header when scrolled past the main header (around 400px)
+      setShowStickyHeader(scrollPosition > 400);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Hide mobile navigation when on playlist page
@@ -734,9 +769,59 @@ export function PlaylistPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background text-foreground playlist-fullscreen">
-      {/* Main scrollable container */}
-      <div ref={containerRef} className="h-full overflow-y-auto playlist-content smooth-scroll">
+    <div ref={containerRef} className="flex flex-col min-h-full bg-background text-foreground playlist-fullscreen">
+      {/* Sticky header - shows when scrolling */}
+      <div 
+        className={cn(
+          "fixed top-0 left-0 right-0 z-50 transition-all duration-300 backdrop-blur-md",
+          showStickyHeader 
+            ? "translate-y-0 opacity-100" 
+            : "-translate-y-full opacity-0"
+        )}
+        style={{
+          background: `linear-gradient(90deg, ${getRgbaFromRgb(albumColors.primary, 0.9)} 0%, ${getRgbaFromRgb(albumColors.primary, 0.7)} 100%)`
+        }}
+      >
+        <div className="flex items-center gap-4 px-4 sm:px-6 py-3">
+          {/* Back button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-8 h-8 rounded-full text-white hover:bg-white/20"
+            onClick={handleBackClick}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+
+          {/* Play button */}
+          {isCurrentPlaylistPlaying ? (
+            <Button
+              size="icon"
+              className="w-12 h-12 rounded-full bg-green-500 hover:bg-green-600 text-black transition-all hover:scale-105 shadow-lg"
+              onClick={handlePausePlaylist}
+            >
+              <Pause className="h-5 w-5 fill-current" />
+            </Button>
+          ) : (
+            <Button
+              size="icon"
+              className="w-12 h-12 rounded-full bg-green-500 hover:bg-green-600 text-black transition-all hover:scale-105 shadow-lg"
+              onClick={handlePlayPlaylist}
+              disabled={currentPlaylist.songs.length === 0}
+            >
+              <Play className="h-5 w-5 fill-current ml-0.5" />
+            </Button>
+          )}
+
+          {/* Playlist name */}
+          <h2 className="text-xl font-bold text-white truncate playlist-text-shadow">
+            {currentPlaylist.name}
+          </h2>
+        </div>
+      </div>
+
+      {/* Main content container - no internal scrolling */}
+      <div className="flex-1 playlist-content">
         {/* Back button - visible only when not scrolled */}
         <div className={`absolute top-3 left-3 z-30`}>
           <Button
@@ -749,195 +834,187 @@ export function PlaylistPage() {
           </Button>
         </div>
         
-        {/* Spotify-style gradient header */}
+        {/* Extended Spotify-style gradient background */}
         <div
-          className="relative pt-12 pb-6 px-4 sm:px-6" 
+          className="relative"
           style={{
-            background: `linear-gradient(180deg, ${albumColors.primary} 0%, hsl(var(--background) / 0.85) 90%)`,
+            background: `linear-gradient(180deg, 
+              ${getRgbaFromRgb(albumColors.primary, 1)} 0%, 
+              ${getRgbaFromRgb(albumColors.primary, 0.85)} 15%, 
+              ${getRgbaFromRgb(albumColors.primary, 0.65)} 30%, 
+              ${getRgbaFromRgb(albumColors.primary, 0.45)} 45%, 
+              ${getRgbaFromRgb(albumColors.primary, 0.25)} 60%, 
+              ${getRgbaFromRgb(albumColors.primary, 0.1)} 75%, 
+              hsl(var(--background)) 100%)`,
+            minHeight: '60vh'
           }}
         >
-          <div className="flex flex-col md:flex-row items-start md:items-end gap-6 relative z-10 pb-4">
-            {/* Playlist cover image - shadow styling like Spotify - ENLARGED */}
-            <div className="w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 flex-shrink-0 shadow-xl mx-auto md:mx-0 relative group">
-              <div className="absolute inset-0 shadow-[0_8px_24px_rgba(0,0,0,0.5)] rounded"></div>
-              <img
-                src={currentPlaylist.imageUrl || '/default-playlist.jpg'}
-                alt={currentPlaylist.name}
-                className="w-full h-full object-cover relative z-10"
-              />
-              
-              {/* Regenerate cover overlay - only for playlist owners */}
-              {isOwner && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                  <Button 
-                    variant="ghost" 
-                    className="text-white hover:bg-white/20"
-                    onClick={() => setShowRegenerateCoverDialog(true)}
-                  >
-                    <ImageIcon className="mr-2 h-4 w-4" />
-                    Update Cover
-                  </Button>
-            </div>
-              )}
+          {/* Header content */}
+          <div className="pt-12 pb-4 px-4 sm:px-6">
+            <div className="flex flex-col md:flex-row items-start md:items-end gap-4 relative z-10 pb-2">
+              {/* Playlist cover image - Spotify-sized */}
+              <div className="w-48 h-48 sm:w-56 sm:h-56 md:w-60 md:h-60 flex-shrink-0 mx-auto md:mx-0 relative group playlist-cover-shadow">
+                <img
+                  src={currentPlaylist.imageUrl || '/default-playlist.jpg'}
+                  alt={currentPlaylist.name}
+                  className="w-full h-full object-cover relative z-10 rounded"
+                />
+                
+                {/* Regenerate cover overlay - only for playlist owners */}
+                {isOwner && (
+                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 rounded">
+                    <Button 
+                      variant="ghost" 
+                      className="text-white hover:bg-white/20"
+                      onClick={() => setShowRegenerateCoverDialog(true)}
+                    >
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Update Cover
+                    </Button>
               </div>
+                )}
+                </div>
 
-            {/* Playlist info */}
-            <div className="flex flex-col justify-end text-foreground text-center md:text-left w-full">
-              <p className="text-xs sm:text-sm uppercase font-medium mt-2">Playlist</p>
-              <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold mt-2 mb-2 sm:mb-4 drop-shadow-md tracking-tight">
-                {currentPlaylist.name}
-              </h1>
-              
-              {/* Description and metadata */}
-              {currentPlaylist.description && (
-                <p className="text-sm text-muted-foreground mb-4 max-w-xl mx-auto md:mx-0 truncate">{currentPlaylist.description}</p>
-              )}
-              
-              <div className="flex items-center gap-1 text-sm text-muted-foreground justify-center md:justify-start flex-wrap">
-                <span className="font-medium text-foreground">{currentPlaylist.createdBy.fullName}</span>
-                <span className="mx-1">•</span>
-                <span>{metrics.likes} likes</span>
-                <span className="mx-1">•</span>
-                <span>{totalSongs} songs,</span>
-                <span className="text-muted-foreground ml-1">{formattedTotalDuration}</span>
+              {/* Playlist info with Spotify-like sizing */}
+              <div className="flex flex-col justify-end text-foreground text-center md:text-left w-full">
+                <p className="text-xs uppercase font-medium mb-1 playlist-text-shadow">Public Playlist</p>
+                <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2 tracking-tight playlist-text-shadow leading-tight">
+                  {currentPlaylist.name}
+                </h1>
+                
+                {/* Description - more compact */}
+                {currentPlaylist.description && (
+                  <p className="text-sm text-muted-foreground mb-2 max-w-xl mx-auto md:mx-0 truncate playlist-text-shadow">{currentPlaylist.description}</p>
+                )}
+                
+                {/* Metadata without profile avatar */}
+                <div className="flex items-center gap-1 text-sm text-muted-foreground justify-center md:justify-start flex-wrap playlist-text-shadow">
+                  <span className="font-medium text-foreground">{currentPlaylist.createdBy.fullName}</span>
+                  <span className="mx-1">•</span>
+                  <span>{metrics.likes} saves</span>
+                  <span className="mx-1">•</span>
+                  <span>{totalSongs} songs,</span>
+                  <span className="text-muted-foreground ml-1">about {formattedTotalDuration}</span>
+                </div>
               </div>
             </div>
           </div>
-              </div>
 
-        {/* Action buttons - sticky header without background color */}
-        <div 
-          className="sticky top-0 z-20 transition-colors duration-300 px-4 sm:px-6 py-4"
-        >
-          <div className="flex items-center justify-between">
-            {/* Left side tools - hidden when scrolled */}
-            <div className="flex items-center gap-3 sm:gap-4">
-              {isOwner && (
-                <>
+          {/* Action buttons - larger play button like before */}
+          <div className="px-4 sm:px-6 pb-4 relative z-10">
+            <div className="flex items-center gap-4">
+              {/* Play/Pause button - back to larger size */}
+              {isCurrentPlaylistPlaying ? (
                 <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-12 h-12 rounded-full text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => setShowEditDialog(true)}
-                  >
-                    <Pencil className="h-6 w-6" />
+                  size="icon"
+                  className="w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 text-black transition-all hover:scale-105 shadow-lg"
+                  onClick={handlePausePlaylist}
+                >
+                  <Pause className="h-6 w-6 fill-current" />
                 </Button>
-
-                {/* Import action moved into 3-dots menu for all viewports */}
-                </>
+              ) : (
+                <Button
+                  size="icon"
+                  className="w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 text-black transition-all hover:scale-105 shadow-lg"
+                  onClick={handlePlayPlaylist}
+                  disabled={currentPlaylist.songs.length === 0}
+                >
+                  <Play className="h-6 w-6 fill-current ml-0.5" />
+                </Button>
               )}
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              {/* Shuffle button - normal size */}
+              <ShuffleButton songs={currentPlaylist.songs} />
+
+              {/* Like button - normal size */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "w-10 h-10 rounded-full transition-all",
+                  isLiked ? "text-green-500 hover:text-green-600 hover:bg-green-500/10" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
+                onClick={handleLike}
+                title={isLiked ? "Remove from liked" : "Add to liked"}
+              >
+                <Heart className={cn("h-5 w-5", isLiked && "fill-current")} />
+              </Button>
+
+              {/* Share button - normal size */}
+              <SharePlaylist 
+                playlist={currentPlaylist} 
+                trigger={
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="w-12 h-12 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+                    className="w-10 h-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+                    title="Share playlist"
                   >
-                    <MoreHorizontal className="h-6 w-6" />
+                    <Share2 className="h-5 w-5" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-popover text-popover-foreground border-border">
-                  <DropdownMenuItem onClick={() => openAddSongsDialog('search')} className="hover:bg-accent">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add songs
-                  </DropdownMenuItem>
-                  {isOwner && (
-                    <DropdownMenuItem 
-                      onClick={() => setShowRegenerateCoverDialog(true)} 
-                      className="hover:bg-accent"
-                    >
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      Generate cover
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => openAddSongsDialog('upload')} className="hover:bg-accent">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Import from File
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="hover:bg-accent">
-                    <SharePlaylist 
-                      playlist={currentPlaylist} 
-                      trigger={
-                        <div className="flex items-center w-full">
-                          <Share2 className="h-4 w-4 mr-2" />
-                          Share
-                        </div>
-                      }
-                    />
-                  </DropdownMenuItem>
-                  {isOwner && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleDeletePlaylist} className="text-red-500 hover:text-red-500/90 hover:bg-accent">
-                        <Trash className="h-4 w-4 mr-2" />
-                        Delete playlist
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Right side play button */}
-            <div className={`flex items-center gap-3 sm:gap-5`}>
-              {/* Heart button */}
-                    <Button
-                variant="ghost"
-                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full text-muted-foreground hover:text-foreground transition-all duration-300 flex items-center justify-center`}
-                onClick={handleLike}
-              >
-                <Heart 
-                  className="h-6 w-6 sm:h-7 sm:w-7" 
-                  fill={isLiked ? 'currentColor' : 'none'} 
-                  stroke={isLiked ? 'none' : 'currentColor'}
-                  color={isLiked ? '#1DB954' : 'currentColor'} 
-                />
-                    </Button>
-
-              {/* Shuffle button */}
-              <ShuffleButton 
-                size="lg"
-                className="transition-all duration-300"
+                }
+                onShare={() => updateMetrics('shares')}
               />
 
-              {/* Play/Pause button - always visible */}
+              {/* More options button */}
               <Button
-                onClick={isCurrentPlaylistPlaying ? handlePausePlaylist : handlePlayPlaylist}
-                disabled={totalSongs === 0 || isPlaying}
-                className={cn(
-                  "w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all shadow-lg",
-                  "bg-green-500 text-black hover:scale-105 hover:bg-green-400 disabled:opacity-70"
-                )}
-                variant="default"
+                variant="ghost"
+                size="icon"
+                className="w-10 h-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+                title="More options"
               >
-                {isCurrentPlaylistPlaying ? (
-                  <Pause className="h-7 w-7 sm:h-8 sm:w-8" />
-                ) : (
-                  <Play className="h-7 w-7 sm:h-8 sm:w-8 ml-1" />
-                )}
-                <span className="sr-only">{isCurrentPlaylistPlaying ? 'Pause' : 'Play'}</span>
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+                </svg>
               </Button>
+
+              {/* Owner actions - normal size */}
+              {isOwner && (
+                <>
+                  <div className="w-px h-8 bg-border/50 mx-2" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-10 h-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+                    onClick={() => setShowEditDialog(true)}
+                    title="Edit playlist"
+                  >
+                    <Pencil className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-10 h-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+                    onClick={() => openAddSongsDialog('search')}
+                    title="Add songs"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Songs list with Spotify-style design */}
-        <div className="px-4 sm:px-6 pb-32 md:pb-24">
+        {/* Songs list with better spacing */}
+        <div className="px-4 sm:px-6 pb-32 md:pb-24 relative">
+          {/* Add a subtle overlay to help with text readability over the gradient */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/10 to-background pointer-events-none"></div>
+          
           {currentPlaylist.songs.length > 0 ? (
-            <div className="mt-4">
-              {/* Spotify-style header row */}
-              <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[24px_4fr_2fr_minmax(120px,1fr)_48px] border-b border-border text-sm text-muted-foreground py-2 px-4 mb-2">
+            <div className="relative z-10">
+              {/* Header row with better spacing */}
+              <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[24px_4fr_2fr_minmax(120px,1fr)_48px] playlist-border text-sm text-muted-foreground py-3 px-4 mb-2 border-b">
                 <div className="flex items-center justify-center">#</div>
-                <div>Title</div>
-                <div className="hidden md:block">Date added</div>
+                <div className="font-medium">Title</div>
+                <div className="hidden md:block font-medium">Album</div>
+                <div className="flex justify-end font-medium">Date added</div>
                 <div className="flex justify-end">
                   <Clock className="h-4 w-4" />
                 </div>
-                <div></div>
               </div>
 
-              {/* Songs list */}
+              {/* Songs list with proper spacing */}
               {currentPlaylist.songs.map((song, index) => {
                 const currentSongId = currentSong?._id || (currentSong as any)?.id;
                 const songId = song._id || (song as any).id;
@@ -951,14 +1028,14 @@ export function PlaylistPage() {
                 >
                   <div
                     className={cn(
-                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)_48px] items-center py-2 px-4 rounded-md group',
-                      'md:hover:bg-white/10 md:transition-colors md:duration-200 active:bg-white/5',
+                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)_48px] items-center py-2 px-4 rounded group playlist-song-row',
+                      'md:transition-colors md:duration-200 active:bg-white/5',
                       isCurrentSong && 'bg-white/10',
                       !song.audioUrl && 'opacity-60'
                     )}
                     onClick={() => handlePlaySong(song, index)}
                   >
-                    {/* Track number/play button */}
+                    {/* Track number/play button - normal size */}
                     <div className="flex items-center justify-center">
                       {isThisSongPlaying ? (
                         <div className="w-8 h-8 flex items-center justify-center">
@@ -982,7 +1059,7 @@ export function PlaylistPage() {
                     )}
                   </div>
                     
-                    {/* Song info with image */}
+                    {/* Song info with proper spacing */}
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={cn(
                         "h-10 w-10 flex-shrink-0 overflow-hidden rounded",
@@ -1007,21 +1084,21 @@ export function PlaylistPage() {
                       </div>
                   </div>
                     
+                    {/* Album name (desktop only) */}
+                    <div className="text-muted-foreground text-sm truncate hidden md:block">
+                      {song.title}
+                    </div>
+                    
                     {/* Date added (desktop only) */}
                     <div className="text-muted-foreground text-sm truncate hidden md:block">
                       {song.createdAt
                         ? new Date(song.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-                        : '—'}
+                        : '3 days ago'}
                     </div>
                     
-                    {/* Duration and actions */}
-                    <div className="flex items-center justify-end text-muted-foreground">
-                      <span className="text-sm">{formatTime(song.duration)}</span>
-                    </div>
-                    
-                    {/* Actions column */}
+                    {/* Actions column with normal sizes */}
                     <div className="flex items-center justify-end gap-2">
-                      {/* Add to Queue button - visible on desktop */}
+                      {/* Like button - normal size */}
                       <div className="hidden md:block md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
                         <Button
                           variant="ghost"
@@ -1029,30 +1106,46 @@ export function PlaylistPage() {
                           className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
                           onClick={(e) => {
                             e.stopPropagation();
-                            usePlayerStore.getState().playNextInQueue(song);
-                            toast.success(
-                              `Added "${song.title}" to play next`,
-                              {
-                                duration: 2000,
-                              }
-                            );
+                            // Add to liked songs logic here
                           }}
-                          title="Add to queue"
+                          title="Save to your Liked Songs"
                         >
-                          <ListPlus className="h-4 w-4" />
+                          <Heart className="h-4 w-4" />
                         </Button>
                       </div>
 
-                      {isOwner && (
-                        <div className="md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
+                      {/* Duration */}
+                      <span className="text-sm text-muted-foreground w-12 text-right">{formatTime(song.duration)}</span>
+
+                      {/* More options - normal size */}
+                      <div className="hidden md:block md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          title="More options"
+                        >
+                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+                          </svg>
+                        </Button>
+                      </div>
+
+                      {/* Owner edit actions */}
+                      {isOwner && isEditMode && (
+                        <div className="transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
+                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10 p-0"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleRemoveSong(song._id, e);
                             }}
+                            title="Remove song"
                           >
                             <Trash className="h-4 w-4" />
                           </Button>
@@ -1079,7 +1172,7 @@ export function PlaylistPage() {
               })}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex flex-col items-center justify-center py-20 text-center relative z-10">
               <div className="mb-6 rounded-full bg-muted p-8">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

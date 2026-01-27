@@ -30,16 +30,33 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
 
     // Register action handlers once
     navigator.mediaSession.setActionHandler('play', () => {
-      usePlayerStore.getState().setIsPlaying(true);
-      if (audioRef.current && audioRef.current.paused) {
-        audioRef.current.play().catch(() => { });
+      const store = usePlayerStore.getState();
+      store.setUserInteracted();
+      store.setIsPlaying(true);
+      
+      // Get the actual audio element from DOM for reliability
+      const audio = document.querySelector('audio') as HTMLAudioElement;
+      if (audio && audio.paused) {
+        audio.play().catch((error) => {
+          console.debug('MediaSession play failed:', error);
+          // Retry after a short delay for CarPlay compatibility
+          setTimeout(() => {
+            if (audio && audio.paused) {
+              audio.play().catch(() => {});
+            }
+          }, 100);
+        });
       }
     });
 
     navigator.mediaSession.setActionHandler('pause', () => {
-      usePlayerStore.getState().setIsPlaying(false);
-      if (audioRef.current && !audioRef.current.paused) {
-        audioRef.current.pause();
+      const store = usePlayerStore.getState();
+      store.setIsPlaying(false);
+      
+      // Get the actual audio element from DOM for reliability
+      const audio = document.querySelector('audio') as HTMLAudioElement;
+      if (audio && !audio.paused) {
+        audio.pause();
       }
     });
 
@@ -48,6 +65,15 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
       store.setUserInteracted();
       if (store.playPrevious) {
         store.playPrevious();
+        
+        // Ensure playback continues after track change
+        setTimeout(() => {
+          const audio = document.querySelector('audio') as HTMLAudioElement;
+          if (audio && audio.paused && !audio.ended) {
+            store.setIsPlaying(true);
+            audio.play().catch(() => {});
+          }
+        }, 200);
       }
     });
 
@@ -57,49 +83,103 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
       store.playNext();
       store.setIsPlaying(true);
 
-      // Enhanced reliability for background playback
-      // Use requestAnimationFrame instead of setTimeout to avoid performance violations
-      requestAnimationFrame(() => {
-        const audio = document.querySelector('audio');
+      // Enhanced reliability for CarPlay and background playback
+      setTimeout(() => {
+        const audio = document.querySelector('audio') as HTMLAudioElement;
         if (audio && audio.paused && !audio.ended) {
-          audio.play().catch(() => { });
+          audio.play().catch((error) => {
+            console.debug('MediaSession next track play failed:', error);
+            // Additional retry for CarPlay
+            setTimeout(() => {
+              if (audio && audio.paused && !audio.ended) {
+                audio.play().catch(() => {});
+              }
+            }, 300);
+          });
         }
-      });
+      }, 100);
     });
 
-    // Seeking handler
+    // Seeking handler with improved CarPlay compatibility
     try {
       navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (audioRef.current && details.seekTime !== undefined) {
-          audioRef.current.currentTime = details.seekTime;
+        // Get the actual audio element from DOM for reliability
+        const audio = document.querySelector('audio') as HTMLAudioElement;
+        if (audio && details.seekTime !== undefined) {
+          const seekTime = Math.max(0, Math.min(details.seekTime, audio.duration || 0));
+          audio.currentTime = seekTime;
           
           const store = usePlayerStore.getState();
           if (store.setCurrentTime) {
-            store.setCurrentTime(details.seekTime);
+            store.setCurrentTime(seekTime);
           }
 
-          // Update position state after seeking
+          // Update position state immediately after seeking for CarPlay
           if ('setPositionState' in navigator.mediaSession) {
-            navigator.mediaSession.setPositionState({
-              duration: audioRef.current.duration,
-              playbackRate: audioRef.current.playbackRate,
-              position: details.seekTime
-            });
+            try {
+              navigator.mediaSession.setPositionState({
+                duration: audio.duration || 0,
+                playbackRate: audio.playbackRate || 1,
+                position: seekTime
+              });
+            } catch (e) {
+              console.debug('MediaSession position update after seek failed:', e);
+            }
+          }
+
+          // If we were playing, ensure playback continues after seek
+          if (store.isPlaying && audio.paused) {
+            audio.play().catch(() => {});
+          }
+        }
+      });
+
+      // Add support for seeking backward/forward (CarPlay specific)
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        const audio = document.querySelector('audio') as HTMLAudioElement;
+        if (audio) {
+          const seekOffset = details.seekOffset || 10; // Default 10 seconds
+          const newTime = Math.max(0, audio.currentTime - seekOffset);
+          audio.currentTime = newTime;
+          
+          const store = usePlayerStore.getState();
+          if (store.setCurrentTime) {
+            store.setCurrentTime(newTime);
+          }
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        const audio = document.querySelector('audio') as HTMLAudioElement;
+        if (audio) {
+          const seekOffset = details.seekOffset || 10; // Default 10 seconds
+          const newTime = Math.min(audio.duration || 0, audio.currentTime + seekOffset);
+          audio.currentTime = newTime;
+          
+          const store = usePlayerStore.getState();
+          if (store.setCurrentTime) {
+            store.setCurrentTime(newTime);
           }
         }
       });
     } catch (error) {
-      // Silent error handling
+      console.debug('MediaSession seek handlers setup failed:', error);
     }
 
     return () => {
       // Cleanup handlers on unmount
       if (isMediaSessionSupported()) {
-        navigator.mediaSession.setActionHandler('play', null);
-        navigator.mediaSession.setActionHandler('pause', null);
-        navigator.mediaSession.setActionHandler('previoustrack', null);
-        navigator.mediaSession.setActionHandler('nexttrack', null);
-        navigator.mediaSession.setActionHandler('seekto', null);
+        try {
+          navigator.mediaSession.setActionHandler('play', null);
+          navigator.mediaSession.setActionHandler('pause', null);
+          navigator.mediaSession.setActionHandler('previoustrack', null);
+          navigator.mediaSession.setActionHandler('nexttrack', null);
+          navigator.mediaSession.setActionHandler('seekto', null);
+          navigator.mediaSession.setActionHandler('seekbackward', null);
+          navigator.mediaSession.setActionHandler('seekforward', null);
+        } catch (error) {
+          console.debug('MediaSession cleanup failed:', error);
+        }
       }
     };
   }, [audioRef]);
@@ -135,28 +215,53 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
     }
   }, [isPlaying]);
 
-  // Update position state periodically (throttled)
+  // Update position state more frequently for better CarPlay/lock screen sync
   useEffect(() => {
-    if (!isMediaSessionSupported() || !isPlaying || !currentSong) return;
+    if (!isMediaSessionSupported() || !currentSong) return;
 
-    const positionUpdateInterval = setInterval(() => {
-      if (audioRef.current && 'setPositionState' in navigator.mediaSession) {
+    let positionUpdateInterval: NodeJS.Timeout | null = null;
+
+    const updatePositionState = () => {
+      // Get the actual audio element from DOM to ensure we have the right reference
+      const audio = document.querySelector('audio') as HTMLAudioElement;
+      if (audio && 'setPositionState' in navigator.mediaSession) {
         try {
-          navigator.mediaSession.setPositionState({
-            duration: audioRef.current.duration || 0,
-            playbackRate: audioRef.current.playbackRate || 1,
-            position: audioRef.current.currentTime || 0
-          });
+          const duration = audio.duration || 0;
+          const position = audio.currentTime || 0;
+          const playbackRate = audio.playbackRate || 1;
+
+          // Only update if we have valid values
+          if (!isNaN(duration) && !isNaN(position) && duration > 0) {
+            navigator.mediaSession.setPositionState({
+              duration,
+              playbackRate,
+              position: Math.min(position, duration) // Ensure position doesn't exceed duration
+            });
+          }
         } catch (e) {
-          // Ignore position state errors
+          // Ignore position state errors but try to recover
+          console.debug('MediaSession position update failed:', e);
         }
       }
-    }, 2000); // Update every 2 seconds instead of 1 second
+    };
+
+    if (isPlaying) {
+      // Update immediately when playback starts
+      updatePositionState();
+      
+      // Update every 500ms for smooth progress bar in CarPlay/lock screen
+      positionUpdateInterval = setInterval(updatePositionState, 500);
+    } else {
+      // Update once when paused to ensure correct state
+      updatePositionState();
+    }
 
     return () => {
-      clearInterval(positionUpdateInterval);
+      if (positionUpdateInterval) {
+        clearInterval(positionUpdateInterval);
+      }
     };
-  }, [isPlaying, currentSong, audioRef]);
+  }, [isPlaying, currentSong]);
 
   return null; // This component doesn't render anything
 };

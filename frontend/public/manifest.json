@@ -9,6 +9,13 @@
   "theme_color": "#121212",
   "orientation": "portrait-primary",
   "categories": ["music", "entertainment"],
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "icons": [
     {
       "src": "/mavrixfy.png",
@@ -34,5 +41,33 @@
       "sizes": "512x512",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Search Music",
+      "short_name": "Search",
+      "description": "Search for songs and artists",
+      "url": "/search",
+      "icons": [
+        {
+          "src": "/mavrixfy.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Liked Songs",
+      "short_name": "Liked",
+      "description": "Your liked songs",
+      "url": "/liked-songs",
+      "icons": [
+        {
+          "src": "/mavrixfy.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 } 

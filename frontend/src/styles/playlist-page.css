@@ -18,20 +18,49 @@
 
 /* Fullscreen playlist styles */
 .playlist-fullscreen {
-  max-height: 100vh !important;
   position: relative;
   z-index: 1;
 }
 
-/* Playlist content with appropriate height */
+/* Playlist content - no internal scrolling, let parent handle it */
 .playlist-content {
-  height: 100% !important;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Add safe area inset padding for iOS devices */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .playlist-content {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-} 
+/* Enhanced gradient background for Spotify-like effect */
+.playlist-gradient-bg {
+  background: linear-gradient(
+    180deg,
+    var(--playlist-primary-color) 0%,
+    rgba(var(--playlist-primary-rgb), 0.85) 15%,
+    rgba(var(--playlist-primary-rgb), 0.65) 30%,
+    rgba(var(--playlist-primary-rgb), 0.45) 45%,
+    rgba(var(--playlist-primary-rgb), 0.25) 60%,
+    rgba(var(--playlist-primary-rgb), 0.1) 75%,
+    hsl(var(--background)) 100%
+  );
+  min-height: 60vh;
+}
+
+/* Smooth text shadow for better readability over gradients */
+.playlist-text-shadow {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Enhanced hover effects for song rows */
+.playlist-song-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+/* Improved border styling for better visibility over gradients */
+.playlist-border {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Enhanced shadow for playlist cover */
+.playlist-cover-shadow {
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 16px 56px rgba(0, 0, 0, 0.3);
+}

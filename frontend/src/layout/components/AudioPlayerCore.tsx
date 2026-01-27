@@ -413,7 +413,18 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
   }, [setCurrentTime, setDuration, onTimeUpdate]);
 
   if (!currentSong) {
-    return <audio ref={audioRef} preload="auto" />;
+    return (
+      <audio 
+        ref={audioRef} 
+        preload="auto" 
+        playsInline
+        webkit-playsinline="true"
+        x-webkit-airplay="allow"
+        crossOrigin="anonymous"
+        controls={false}
+        style={{ display: 'none' }}
+      />
+    );
   }
 
   return (
@@ -432,8 +443,40 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       playsInline
       webkit-playsinline="true"
       x-webkit-airplay="allow"
+      // CarPlay specific attributes
+      controls={false}
+      crossOrigin="anonymous"
+      // Ensure proper audio session for CarPlay
+      onPlay={() => {
+        // Update MediaSession when audio actually starts playing
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'playing';
+        }
+      }}
+      onPause={() => {
+        // Update MediaSession when audio actually pauses
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'paused';
+        }
+      }}
+      onSeeked={() => {
+        // Update position state after seeking for CarPlay sync
+        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && audioRef.current) {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration || 0,
+              playbackRate: audioRef.current.playbackRate || 1,
+              position: audioRef.current.currentTime || 0
+            });
+          } catch (e) {
+            // Ignore position state errors
+          }
+        }
+      }}
       loop={usePlayerStore.getState().isRepeating}
       data-testid="audio-element"
+      // Additional CarPlay compatibility
+      style={{ display: 'none' }} // Hide the audio element completely
     />
   );
 };
