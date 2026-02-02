@@ -1,24 +1,4 @@
 mavrixfy-domain-verification-2026
 This file verifies ownership of mavrixfy.site domain
-
-Domain: mavrixfy.site
-Owner: Mavrixfy Team
 Contact: hello@mavrixfy.site
 Website: https://mavrixfy.site
-Verification Date: 2026-01-27
-
-Application Details:
-- Name: Mavrixfy
-- Type: Music Streaming Platform
-- Description: Free music streaming service with playlist creation and social features
-- Privacy Policy: https://mavrixfy.site/privacy
-- Terms of Service: https://mavrixfy.site/terms
-
-Technical Details:
-- Platform: React/TypeScript Web Application
-- Hosting: Vercel
-- Domain Registration: Verified Owner
-- SSL Certificate: Active
-
-This domain is owned and operated by the Mavrixfy development team.
-All content and services are provided in accordance with our privacy policy and terms of service.
