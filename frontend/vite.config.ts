@@ -150,71 +150,52 @@ export default defineConfig(({ mode }) => {
 			commonjsOptions: { transformMixedEsModules: true },
 			rollupOptions: {
 				output: {
-					manualChunks: {
-						// Core React libraries - highest priority
-						vendor: [
-							'react', 
-							'react-dom', 
-							'react-router-dom'
-						],
-						// State management - load early
-						store: [
-							'zustand'
-						],
-						// UI components - can be lazy loaded
-						ui: [
-							'@radix-ui/react-dialog',
-							'@radix-ui/react-dropdown-menu',
-							'@radix-ui/react-slider',
-							'@radix-ui/react-tabs',
-							'@radix-ui/react-scroll-area'
-						],
-						// Utilities - can be lazy loaded
-						utils: [
-							'lodash',
-							'clsx',
-							'class-variance-authority'
-						],
-						// Firebase - lazy load after initial render
-						firebase: [
-							'firebase/app',
-							'firebase/auth',
-							'firebase/firestore'
-						],
-						// Icons - lazy load
-						icons: [
-							'lucide-react'
-						],
-						// Audio libraries - lazy load
-						audio: [
-							'howler'
-						],
-						// Animation libraries - lazy load
-						animation: [
-							'framer-motion',
-							'gsap'
-						]
+					manualChunks: (id) => {
+						// Optimized chunking strategy for faster loading
+						if (id.includes('node_modules')) {
+							if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+								return 'vendor-react';
+							}
+							if (id.includes('zustand')) {
+								return 'vendor-state';
+							}
+							if (id.includes('@radix-ui')) {
+								return 'vendor-ui';
+							}
+							if (id.includes('firebase')) {
+								return 'vendor-firebase';
+							}
+							if (id.includes('lucide-react') || id.includes('react-icons')) {
+								return 'vendor-icons';
+							}
+							if (id.includes('framer-motion') || id.includes('gsap')) {
+								return 'vendor-animation';
+							}
+							return 'vendor-other';
+						}
 					},
-					// Optimize chunk sizes for slow connections
-					chunkFileNames: (chunkInfo) => {
-						const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
-						return `assets/js/[name]-[hash].js`;
-					},
+					chunkFileNames: 'assets/js/[name]-[hash].js',
 					assetFileNames: (assetInfo) => {
-						const info = assetInfo.name.split('.');
-						const ext = info[info.length - 1];
-						if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
-							return `assets/img/[name]-[hash][extname]`;
+						const ext = assetInfo.name.split('.').pop();
+						if (/png|jpe?g|svg|gif|webp|avif/i.test(ext)) {
+							return 'assets/img/[name]-[hash][extname]';
 						}
 						if (/css/i.test(ext)) {
-							return `assets/css/[name]-[hash][extname]`;
+							return 'assets/css/[name]-[hash][extname]';
 						}
-						return `assets/[name]-[hash][extname]`;
+						return 'assets/[name]-[hash][extname]';
 					}
+				},
+				onwarn(warning, warn) {
+					// Suppress circular dependency warnings
+					if (warning.code === 'CIRCULAR_DEPENDENCY') return;
+					warn(warning);
 				}
 			},
-			chunkSizeWarningLimit: 800, // Reduced for mobile optimization
-			assetsInlineLimit: 1024, // Reduced to minimize initial bundle size
+			chunkSizeWarningLimit: 1000,
+			assetsInlineLimit: 2048, // Inline small assets
+			reportCompressedSize: false, // Faster builds
+			cssMinify: true,
 		},
 		define: {
 			'process.env.VITE_API_URL': JSON.stringify(apiUrl),
@@ -224,7 +205,13 @@ export default defineConfig(({ mode }) => {
 			'process.env.REACT_APP_CLOUDINARY_API_SECRET': JSON.stringify(cloudinarySecret)
 		},
 		esbuild: {
-			drop: ['console', 'debugger']
+			drop: mode === 'production' ? ['console', 'debugger'] : [],
+			legalComments: 'none',
+			treeShaking: true
+		},
+		optimizeDeps: {
+			include: ['react', 'react-dom', 'react-router-dom', 'zustand'],
+			exclude: ['@vite/client', '@vite/env']
 		}
 	}
 });

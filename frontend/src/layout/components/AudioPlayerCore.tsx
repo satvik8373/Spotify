@@ -106,12 +106,11 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
     };
   }, [currentSong]);
 
-  // Optimized song end handling - consolidated event listeners
+  // Ultra-optimized song end handling - minimal overhead
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    let endingDetectionInterval: NodeJS.Timeout | null = null;
     let lastTimeUpdate = 0;
     let isHandlingEnd = false;
 
@@ -129,87 +128,52 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         return;
       }
 
-      // Move to next song
       state.playNext();
       state.setIsPlaying(true);
-
-      setTimeout(() => {
-        const newAudio = audioRef.current;
-        if (newAudio) {
-          newAudio.play().catch(() => { });
-        }
+      
+      requestAnimationFrame(() => {
+        audioRef.current?.play().catch(() => { });
         isHandlingEnd = false;
-      }, 100);
+      });
     };
 
-    // Single consolidated timeupdate listener with throttling
+    // Throttled timeupdate with requestAnimationFrame
     const handleTimeUpdate = () => {
-      const now = Date.now();
-      if (now - lastTimeUpdate < 1000) return; // Throttled to 1 second
+      const now = performance.now();
+      if (now - lastTimeUpdate < 500) return; // 500ms throttle
       lastTimeUpdate = now;
 
       if (!audio || isNaN(audio.duration) || audio.duration <= 0) return;
 
-      // Update parent component
       onTimeUpdate(audio.currentTime, audio.duration);
 
-      // Check for song end
       if (audio.currentTime >= audio.duration - 0.3 && !audio.paused) {
         handleSongEnd();
       }
     };
 
-    // Single event listeners
-    audio.addEventListener('ended', handleSongEnd);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-
-    // Reduced frequency background monitor
-    endingDetectionInterval = setInterval(() => {
-      if (!isPlaying || !audio) return;
-
-      // Background/lockscreen end detection
-      if (document.hidden && audio.currentTime >= audio.duration - 0.5) {
-        handleSongEnd();
-      }
-
-      // Resume paused audio
-      if (audio.paused && !audio.ended) {
-        audio.play().catch(() => { });
-      }
-    }, 3000); // Reduced frequency
+    audio.addEventListener('ended', handleSongEnd, { passive: true });
+    audio.addEventListener('timeupdate', handleTimeUpdate, { passive: true });
 
     return () => {
       audio.removeEventListener('ended', handleSongEnd);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
-      if (endingDetectionInterval) clearInterval(endingDetectionInterval);
     };
   }, [isPlaying, onTimeUpdate]);
 
-  // Optimized background playback monitor
+  // Minimal background playback monitor - only when needed
   useEffect(() => {
-    if (!currentSong || !audioRef.current) return;
+    if (!currentSong || !audioRef.current || !document.hidden) return;
 
     const backgroundPlaybackMonitor = setInterval(() => {
       const state = usePlayerStore.getState();
       const audio = audioRef.current;
-      if (!audio) return;
-
-      if (audioFocusState.isInterrupted || !state.hasUserInteracted) {
-        return;
-      }
+      if (!audio || audioFocusState.isInterrupted || !state.hasUserInteracted) return;
 
       if (audio.paused && state.isPlaying && !audio.ended && !state.wasPlayingBeforeInterruption) {
         audio.play().catch(() => { });
       }
-
-      if (!isNaN(audio.duration) && audio.duration > 0) {
-        if (audio.ended || (audio.currentTime >= audio.duration - 0.5 && audio.currentTime > 0)) {
-          state.playNext();
-          state.setIsPlaying(true);
-          setTimeout(() => audioRef.current?.play().catch(() => { }), 100);
-        }
-      }
-    }, 3000); // Reduced frequency
+    }, 5000); // Only check every 5s when in background
 
     return () => clearInterval(backgroundPlaybackMonitor);
   }, [currentSong, isPlaying, audioFocusState.isInterrupted]);
@@ -305,20 +269,20 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         audio.src = songUrl;
         audio.load();
 
-        // Preload next song (optimized)
-        const nextIndex = (usePlayerStore.getState().currentIndex + 1) % usePlayerStore.getState().queue.length;
-        const nextSong = usePlayerStore.getState().queue[nextIndex];
-        if (nextSong && nextSong.audioUrl) {
-          const preloadAudio = new Audio();
-          preloadAudio.src = nextSong.audioUrl;
-          preloadAudio.load();
-          
-          // Properly dispose of preload element
-          setTimeout(() => {
-            preloadAudio.src = '';
-            preloadAudio.remove();
-          }, 2000);
-        }
+        // Preload next song only when current song is playing smoothly
+        requestIdleCallback(() => {
+          const state = usePlayerStore.getState();
+          const nextIndex = (state.currentIndex + 1) % state.queue.length;
+          const nextSong = state.queue[nextIndex];
+          if (nextSong?.audioUrl && isValidUrl(nextSong.audioUrl)) {
+            const preloadAudio = new Audio();
+            preloadAudio.preload = 'metadata';
+            preloadAudio.src = nextSong.audioUrl;
+            setTimeout(() => {
+              preloadAudio.src = '';
+            }, 3000);
+          }
+        }, { timeout: 2000 });
       } else {
         // Same song, just play/resume
         if (audio.paused) {

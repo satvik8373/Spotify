@@ -31,9 +31,9 @@ class RequestManager {
   private pendingRequests = new Map<string, PendingRequest>();
   private requestQueue: Array<() => Promise<any>> = [];
   private isProcessingQueue = false;
-  private maxConcurrentRequests = 3;
+  private maxConcurrentRequests = 6; // Increased for better throughput
   private activeRequests = 0;
-  private rateLimitDelay = 100; // ms between requests
+  private rateLimitDelay = 50; // Reduced delay for faster responses
   private cleanupInterval: NodeJS.Timeout | null = null;
   private retryAttempts = new Map<string, number>();
   private failedRequests = new Set<string>();
@@ -100,7 +100,7 @@ class RequestManager {
   }
 
   /**
-   * Process the request queue with rate limiting
+   * Process the request queue with optimized rate limiting
    */
   private async processQueue(): Promise<void> {
     if (this.isProcessingQueue) return;
@@ -113,9 +113,16 @@ class RequestManager {
         request()
           .finally(() => {
             this.activeRequests--;
-            // Continue processing queue after a delay
-            setTimeout(() => this.processQueue(), this.rateLimitDelay);
+            // Use requestAnimationFrame for smoother processing
+            if (this.requestQueue.length > 0) {
+              requestAnimationFrame(() => this.processQueue());
+            }
           });
+        
+        // Minimal delay only if queue is large
+        if (this.requestQueue.length > 10) {
+          await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay));
+        }
       }
     }
 
@@ -193,7 +200,7 @@ class RequestManager {
           method: method.toLowerCase(),
           url,
           headers,
-          timeout: 10000, // 10 second timeout
+          timeout: 15000, // Increased timeout for slow connections
           params
         };
 

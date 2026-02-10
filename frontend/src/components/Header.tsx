@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { signOut } from '@/services/hybridAuthService';
 import { debounce } from 'lodash';
 import { WhatsNewDialog } from './WhatsNewDialog';
+import { useOptimizedAvatar } from '@/hooks/useOptimizedAvatar';
 
 import {
   DropdownMenu,
@@ -33,6 +34,12 @@ const Header = ({ className }: HeaderProps) => {
   const searchFormRef = useRef<HTMLFormElement>(null);
   const authProcessedRef = useRef(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+  
+  // Optimized avatar loading with rate limiting
+  const { avatarUrl, isLoading: avatarLoading } = useOptimizedAvatar(
+    user?.picture,
+    `https://ui-avatars.com/api/?background=1db954&color=fff&name=${encodeURIComponent(user?.name || 'User')}`
+  );
 
   // Extract search query from URL when navigating to search page
   useEffect(() => {
@@ -241,8 +248,13 @@ const Header = ({ className }: HeaderProps) => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="w-8 h-8 rounded-full bg-[#1f1f1f] hover:scale-105 flex items-center justify-center overflow-hidden transition-transform">
-                      {user.picture ? (
-                        <img src={user.picture} alt={user.name || 'User'} className="w-full h-full object-cover" />
+                      {avatarUrl && !avatarLoading ? (
+                        <img 
+                          src={avatarUrl} 
+                          alt={user.name || 'User'} 
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
                       ) : (
                         <User className="h-5 w-5 text-[#a7a7a7]" />
                       )}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, memo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import LeftSidebar from './components/LeftSidebar';
 import AudioPlayer from './components/AudioPlayer';
@@ -12,55 +12,69 @@ import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
 import DesktopFooter from '@/components/DesktopFooter';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 
+// Memoized components to prevent unnecessary re-renders
+const MemoizedLeftSidebar = memo(LeftSidebar);
+const MemoizedAudioPlayer = memo(AudioPlayer);
+const MemoizedPlaybackControls = memo(PlaybackControls);
+const MemoizedMobileNav = memo(MobileNav);
+const MemoizedHeader = memo(Header);
+const MemoizedQueuePanel = memo(QueuePanel);
+const MemoizedDesktopFooter = memo(DesktopFooter);
+
 
 const MainLayout = () => {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showQueue, setShowQueue] = useState(false);
-  const { currentSong } = usePlayerStore();
+  const currentSong = usePlayerStore(state => state.currentSong); // Selective subscription
   const hasActiveSong = !!currentSong;
   const location = useLocation();
   const { width, isCollapsed, setWidth, toggleCollapse, setCollapsed } = useSidebarStore();
   const isResizing = useRef(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const COLLAPSE_THRESHOLD = 120; // Width threshold to auto-collapse when dragging left
+  const COLLAPSE_THRESHOLD = 120;
 
-  // Enable background refresh
   useBackgroundRefresh();
 
-  // Listen for queue toggle events
+  // Listen for queue toggle events (optimized)
   useEffect(() => {
-    const handleToggleQueue = () => {
-      setShowQueue(prev => !prev);
-    };
-
-    window.addEventListener('toggleQueue', handleToggleQueue);
+    const handleToggleQueue = () => setShowQueue(prev => !prev);
+    window.addEventListener('toggleQueue', handleToggleQueue, { passive: true });
     return () => window.removeEventListener('toggleQueue', handleToggleQueue);
   }, []);
 
-
-
+  // Optimized mobile detection with debouncing
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setIsMobile(window.innerWidth < 768);
+      }, 100);
     };
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener('resize', checkMobile, { passive: true });
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', checkMobile);
+    };
   }, []);
 
-  // Set viewport width variable for proper mobile rendering
+  // Optimized viewport width variable
   useEffect(() => {
+    let rafId: number;
     const setVw = () => {
-      // Store viewport width as CSS variable
-      document.documentElement.style.setProperty('--vw', `${window.innerWidth * 0.01}px`);
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--vw', `${window.innerWidth * 0.01}px`);
+      });
     };
 
     setVw();
-    window.addEventListener('resize', setVw);
-    window.addEventListener('orientationchange', setVw);
+    window.addEventListener('resize', setVw, { passive: true });
+    window.addEventListener('orientationchange', setVw, { passive: true });
 
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener('resize', setVw);
       window.removeEventListener('orientationchange', setVw);
     };
@@ -132,7 +146,7 @@ const MainLayout = () => {
     <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative pwa-safe-area">
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block flex-shrink-0 relative z-[100]">
-        <Header />
+        <MemoizedHeader />
       </div>
 
       {/* Main content area */}
@@ -146,7 +160,7 @@ const MainLayout = () => {
         }}
       >
         {/* Audio player component - hidden but functional */}
-        <AudioPlayer />
+        <MemoizedAudioPlayer />
 
         {/* Left sidebar - hidden on mobile */}
         {!isMobile && (
@@ -156,9 +170,9 @@ const MainLayout = () => {
             style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px` }}
           >
             <div className="h-full bg-[#121212] rounded-lg overflow-hidden">
-              <LeftSidebar isCollapsed={isCollapsed} onToggleCollapse={toggleCollapse} />
+              <MemoizedLeftSidebar isCollapsed={isCollapsed} onToggleCollapse={toggleCollapse} />
             </div>
-            {/* Resize handle - always visible, even when collapsed */}
+            {/* Resize handle */}
             <div
               onMouseDown={handleMouseDown}
               className="absolute right-0 top-0 bottom-0 w-2 cursor-grab active:cursor-grabbing z-10 flex items-center justify-center group/resize"
@@ -172,7 +186,7 @@ const MainLayout = () => {
         <div className="flex-1 h-full overflow-hidden">
           <CustomScrollbar className="h-full mobile-scroll-fix bg-[#121212] md:rounded-lg">
             <Outlet />
-            <DesktopFooter />
+            <MemoizedDesktopFooter />
           </CustomScrollbar>
         </div>
 
@@ -180,17 +194,17 @@ const MainLayout = () => {
         {!isMobile && showQueue && (
           <div className="w-[280px] min-w-[280px] h-full flex-shrink-0">
             <div className="h-full bg-[#121212] rounded-lg overflow-hidden">
-              <QueuePanel onClose={() => setShowQueue(false)} />
+              <MemoizedQueuePanel onClose={() => setShowQueue(false)} />
             </div>
           </div>
         )}
       </div>
 
       {/* Playback controls - visible on desktop only when there's a song */}
-      {currentSong && !isMobile && <PlaybackControls />}
+      {currentSong && !isMobile && <MemoizedPlaybackControls />}
 
       {/* Mobile Navigation */}
-      <MobileNav />
+      <MemoizedMobileNav />
     </div>
   );
 };

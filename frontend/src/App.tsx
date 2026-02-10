@@ -100,14 +100,20 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 };
 
 const LandingRedirector = () => {
+	const { isAuthenticated, loading } = useAuth();
 	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
 
-	// Check cache FIRST - if authenticated, redirect to home
-	if (hasCachedAuth) {
+	// Show minimal loading while checking auth
+	if (loading && !hasCachedAuth) {
+		return <div className="min-h-screen bg-[#121212]" />;
+	}
+
+	// If authenticated (either from cache or real-time), redirect to home
+	if (isAuthenticated || hasCachedAuth) {
 		return <Navigate to="/home" replace />;
 	}
 
-	// No cached auth, show public landing page
+	// Not authenticated, show public landing page
 	return <LandingPage />;
 };
 

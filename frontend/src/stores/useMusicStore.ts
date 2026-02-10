@@ -50,10 +50,10 @@ interface MusicStore {
   convertIndianSongToAppSong: (song: IndianSong) => Song;
 }
 
-// Optimized music API request function using request manager
-async function fetchMusicJson(endpoint: string, params: Record<string, any> = {}, cacheTTL: number = 5 * 60 * 1000): Promise<any> {
+// Optimized music API request function with aggressive caching
+async function fetchMusicJson(endpoint: string, params: Record<string, any> = {}, cacheTTL: number = 10 * 60 * 1000): Promise<any> {
   return requestManager.request({
-    url: endpoint, // Don't add /api prefix since axiosInstance already has the correct baseURL
+    url: endpoint,
     method: 'GET',
     params
   }, {

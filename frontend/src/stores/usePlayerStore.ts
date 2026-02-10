@@ -175,7 +175,11 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       setCurrentTime: (time) => {
-        set({ currentTime: time });
+        // Only update if difference is significant (reduce re-renders)
+        const current = get().currentTime;
+        if (Math.abs(current - time) > 0.5) {
+          set({ currentTime: time });
+        }
       },
 
       setDuration: (duration) => set({ duration }),

@@ -9,6 +9,8 @@ import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll'
 import { SectionWrapper } from '@/components/ui/section-wrapper';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import HomeSkeleton from '@/components/skeletons/HomeSkeleton';
+import { updateMetaTags, metaPresets } from '@/utils/metaTags';
+import { SEOHead } from '@/components/SEOHead';
 
 const HomePage = () => {
   const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
@@ -27,6 +29,11 @@ const HomePage = () => {
   useEffect(() => {
     loadLikedSongs();
   }, [loadLikedSongs]);
+
+  // Update meta tags for home page
+  useEffect(() => {
+    updateMetaTags(metaPresets.home());
+  }, []);
 
   // Auto-refresh when app becomes visible
   useEffect(() => {
@@ -202,7 +209,14 @@ const HomePage = () => {
 
 
   return (
-    <div className="min-h-screen bg-[#121212] overflow-x-hidden relative animate-[fadeIn_0.4s_ease-out]">
+    <>
+      <SEOHead
+        title="Mavrixfy - Stream Music Online"
+        description="Discover and stream millions of songs online. Create playlists, sync with Spotify, and enjoy high-quality music streaming on Mavrixfy."
+        keywords="music streaming, online music, spotify alternative, create playlists, stream songs, music player, free music, bollywood music, hindi songs"
+        url="https://mavrixfy.site"
+      />
+      <div className="min-h-screen bg-[#121212] overflow-x-hidden relative animate-[fadeIn_0.4s_ease-out]">
       {/* Dynamic background */}
       <div
         className="absolute top-0 left-0 right-0 pointer-events-none hidden md:block"
@@ -372,6 +386,7 @@ const HomePage = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
