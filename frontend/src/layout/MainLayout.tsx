@@ -144,9 +144,8 @@ const MainLayout = () => {
   const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : width;
 
   return (
-    <>
+    <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative pwa-safe-area">
       <PageTracker />
-      <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative pwa-safe-area">
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block flex-shrink-0 relative z-[100]">
         <MemoizedHeader />
@@ -209,7 +208,6 @@ const MainLayout = () => {
       {/* Mobile Navigation */}
       <MemoizedMobileNav />
     </div>
-    </>
   );
 };
 
