@@ -11,7 +11,7 @@ import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
 import DesktopFooter from '@/components/DesktopFooter';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
-import { PageTracker } from '@/components/PageTracker';
+import { usePageTracking } from '@/hooks/useAnalytics';
 
 // Memoized components to prevent unnecessary re-renders
 const MemoizedLeftSidebar = memo(LeftSidebar);
@@ -35,6 +35,9 @@ const MainLayout = () => {
   const COLLAPSE_THRESHOLD = 120;
 
   useBackgroundRefresh();
+  
+  // Track page views
+  usePageTracking();
 
   // Listen for queue toggle events (optimized)
   useEffect(() => {
@@ -145,7 +148,6 @@ const MainLayout = () => {
 
   return (
     <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative pwa-safe-area">
-      <PageTracker />
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block flex-shrink-0 relative z-[100]">
         <MemoizedHeader />
