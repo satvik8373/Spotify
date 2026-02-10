@@ -14,7 +14,7 @@ export const updateMetaTags = (config: MetaTagsConfig) => {
   const {
     title,
     description,
-    image = 'https://mavrixfy.com/mavrixfy.png',
+    image = 'https://mavrixfy.site/mavrixfy.png',
     url = window.location.href,
     type = 'website'
   } = config;
