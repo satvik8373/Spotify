@@ -11,7 +11,6 @@ import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
 import DesktopFooter from '@/components/DesktopFooter';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
-import analyticsService from '@/services/analyticsService';
 
 // Memoized components to prevent unnecessary re-renders
 const MemoizedLeftSidebar = memo(LeftSidebar);
@@ -35,12 +34,6 @@ const MainLayout = () => {
   const COLLAPSE_THRESHOLD = 120;
 
   useBackgroundRefresh();
-
-  // Track page views on route change
-  useEffect(() => {
-    const pageTitle = document.title;
-    analyticsService.trackPageView(location.pathname, pageTitle);
-  }, [location.pathname]);
 
   // Listen for queue toggle events (optimized)
   useEffect(() => {
