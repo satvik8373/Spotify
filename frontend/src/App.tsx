@@ -3,6 +3,7 @@ import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
 import { spotifyAutoSyncService } from './services/spotifyAutoSyncService';
+import { usePageTracking } from './hooks/useAnalytics';
 
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON } from './utils/storageUtils';
@@ -226,6 +227,9 @@ function AppContent() {
 	const [showSplash, setShowSplash] = useState(true);
 	const [appReady, setAppReady] = useState(false);
 	// Auth loading state is handled internally by useAuth hook
+	
+	// Track page views automatically
+	usePageTracking();
 
 	// Initialize app and handle splash screen - minimal delay
 	useEffect(() => {
