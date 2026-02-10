@@ -63,16 +63,47 @@ const NotFoundFallback = () => (
 );
 
 // Error page for when something goes wrong
-const ErrorFallback = () => (
-	<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-		<div className="text-center max-w-md">
-			<h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
-			<p className="text-muted-foreground mb-8">
-				We're sorry, but there was an error loading this page. Please try refreshing.
-			</p>
+const ErrorFallback = ({ error }: { error?: Error }) => {
+	useEffect(() => {
+		// Log error details for debugging
+		if (error) {
+			console.error('Error Boundary caught:', {
+				message: error.message,
+				stack: error.stack,
+				name: error.name,
+				userAgent: navigator.userAgent,
+				url: window.location.href
+			});
+		}
+	}, [error]);
+
+	return (
+		<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+			<div className="text-center max-w-md">
+				<h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
+				<p className="text-muted-foreground mb-8">
+					We're sorry, but there was an error loading this page. Please try refreshing.
+				</p>
+				{error && (
+					<details className="text-left bg-card p-4 rounded-lg mb-4">
+						<summary className="cursor-pointer text-sm text-muted-foreground mb-2">
+							Error Details
+						</summary>
+						<pre className="text-xs text-red-500 overflow-auto">
+							{error.message}
+						</pre>
+					</details>
+				)}
+				<button
+					onClick={() => window.location.reload()}
+					className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+				>
+					Refresh Page
+				</button>
+			</div>
 		</div>
-	</div>
-);
+	);
+};
 
 // Auth gate that redirects to login if not authenticated - optimized for instant loading
 const AuthGate = ({ children }: { children: React.ReactNode }) => {

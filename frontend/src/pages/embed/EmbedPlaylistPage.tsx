@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import axiosInstance from '@/lib/axios';
 
 interface Song {
   _id: string;
@@ -57,8 +56,25 @@ const EmbedPlaylistPage = () => {
   useEffect(() => {
     const fetchPlaylist = async () => {
       try {
-        const response = await axiosInstance.get(`/playlists/${id}`);
-        setPlaylist(response.data);
+        // Use fetch instead of axiosInstance to avoid auth headers
+        const apiUrl = import.meta.env.VITE_API_URL || 
+          (window.location.hostname.includes('mavrixfy.site') 
+            ? 'https://spotify-api-drab.vercel.app/api' 
+            : 'http://localhost:5000/api');
+        
+        const response = await fetch(`${apiUrl}/playlists/${id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setPlaylist(data);
         setLoading(false);
       } catch (error) {
         console.error('Failed to fetch playlist:', error);
