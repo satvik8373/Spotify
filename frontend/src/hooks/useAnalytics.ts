@@ -4,6 +4,7 @@ import analyticsService from '@/services/analyticsService';
 
 /**
  * Hook to track page views automatically
+ * MUST be used inside RouterProvider context
  */
 export const usePageTracking = () => {
   const location = useLocation();
@@ -13,6 +14,18 @@ export const usePageTracking = () => {
     const pageTitle = document.title;
     analyticsService.trackPageView(location.pathname, pageTitle);
   }, [location]);
+};
+
+/**
+ * Track page view without router context
+ * Use this for initial page load tracking
+ */
+export const trackInitialPageView = () => {
+  if (typeof window !== 'undefined') {
+    const pageTitle = document.title;
+    const pagePath = window.location.pathname;
+    analyticsService.trackPageView(pagePath, pageTitle);
+  }
 };
 
 /**

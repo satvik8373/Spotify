@@ -11,6 +11,7 @@ import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
 import DesktopFooter from '@/components/DesktopFooter';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
+import { PageTracker } from '@/components/PageTracker';
 
 // Memoized components to prevent unnecessary re-renders
 const MemoizedLeftSidebar = memo(LeftSidebar);
@@ -143,7 +144,9 @@ const MainLayout = () => {
   const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : width;
 
   return (
-    <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative pwa-safe-area">
+    <>
+      <PageTracker />
+      <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative pwa-safe-area">
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block flex-shrink-0 relative z-[100]">
         <MemoizedHeader />
@@ -206,6 +209,7 @@ const MainLayout = () => {
       {/* Mobile Navigation */}
       <MemoizedMobileNav />
     </div>
+    </>
   );
 };
 
