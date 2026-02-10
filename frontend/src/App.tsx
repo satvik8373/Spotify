@@ -33,6 +33,9 @@ const JioSaavnPlaylistPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylis
 const JioSaavnPlaylistsPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistsPage'));
 const JioSaavnCategoriesPage = lazy(() => import('./pages/jiosaavn/JioSaavnCategoriesPage'));
 
+// Embed page
+const EmbedPlaylistPage = lazy(() => import('./pages/embed/EmbedPlaylistPage'));
+
 import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -150,6 +153,10 @@ const router = createBrowserRouter(
 		{
 			path: '/about',
 			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><About /></Suspense>
+		},
+		{
+			path: '/embed/playlist/:id',
+			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><EmbedPlaylistPage /></Suspense>
 		},
 		{
 			element: <MainLayout />,

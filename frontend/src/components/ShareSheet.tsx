@@ -4,15 +4,16 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Code } from 'lucide-react';
 import * as Icons from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { SharePlatform, ShareCardContent } from '@/lib/shareCard/types';
 import { generateShareCard } from '@/lib/shareCard/cardGenerator';
 import { handlePlatformShare, getPlatformName, getPlatformIcon, isPlatformAvailable } from '@/lib/shareCard/platformHandlers';
+import EmbedPlaylistModal from './EmbedPlaylistModal';
 import toast from 'react-hot-toast';
 
 interface ShareSheetProps {
@@ -38,6 +39,7 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<SharePlatform | null>(null);
   const [previewCard, setPreviewCard] = useState<string | null>(null);
+  const [showEmbedModal, setShowEmbedModal] = useState(false);
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -113,9 +115,20 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
     }
   };
 
+  const handleEmbedClick = () => {
+    onClose(); // Close share sheet
+    setShowEmbedModal(true); // Open embed modal
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md p-0 gap-0 bg-[#282828] border-none">
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-md p-0 gap-0 bg-[#282828] border-none">
+          <DialogTitle className="sr-only">Share {content.title}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Share this {content.type} on social media or copy the link
+          </DialogDescription>
+          
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h2 className="text-lg font-semibold text-white">Share</h2>
@@ -186,6 +199,26 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
                   </button>
                 );
               })}
+              
+              {/* Embed Option */}
+              {content.type === 'playlist' && (
+                <button
+                  onClick={handleEmbedClick}
+                  disabled={isGenerating}
+                  className={cn(
+                    'flex flex-col items-center gap-2 p-4 rounded-lg transition-all',
+                    'hover:bg-white/10 active:scale-95',
+                    isGenerating && 'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center bg-white/10 text-white transition-colors">
+                    <Code className="h-6 w-6" />
+                  </div>
+                  <span className="text-xs text-white/80 text-center">
+                    Embed
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </ScrollArea>
@@ -214,5 +247,19 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
         </div>
       </DialogContent>
     </Dialog>
+    
+    {/* Embed Modal - Separate Dialog */}
+    {content.type === 'playlist' && content.metadata?.songs && (
+      <EmbedPlaylistModal
+        isOpen={showEmbedModal}
+        onClose={() => setShowEmbedModal(false)}
+        playlistId={content.id}
+        playlistTitle={content.title}
+        playlistSubtitle={content.subtitle}
+        playlistCover={content.imageUrl}
+        songs={content.metadata.songs}
+      />
+    )}
+    </>
   );
 };

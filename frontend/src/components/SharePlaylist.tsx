@@ -27,7 +27,13 @@ export const SharePlaylist = ({ playlist, trigger }: SharePlaylistProps) => {
     imageUrl: playlist.imageUrl || '',
     metadata: {
       trackCount: playlist.songs?.length || 0,
-      duration: playlist.songs?.reduce((acc, song) => acc + (song.duration || 0), 0) || 0
+      duration: playlist.songs?.reduce((acc, song) => acc + (song.duration || 0), 0) || 0,
+      songs: playlist.songs?.map(song => ({
+        id: song._id,
+        title: song.title,
+        artist: song.artist,
+        duration: song.duration
+      })) || []
     }
   };
 

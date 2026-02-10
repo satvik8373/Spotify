@@ -41,6 +41,12 @@ export interface ShareCardContent {
     trackCount?: number;
     year?: number;
     stats?: Record<string, any>;
+    songs?: Array<{
+      id: string;
+      title: string;
+      artist: string;
+      duration: number;
+    }>;
   };
 }
 
