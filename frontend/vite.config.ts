@@ -153,8 +153,16 @@ export default defineConfig(({ mode }) => {
 					manualChunks: (id) => {
 						// Optimized chunking strategy for faster loading
 						if (id.includes('node_modules')) {
-							if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+							// Keep React and ReactDOM together, but separate from React Router
+							if (id.includes('react-dom')) {
 								return 'vendor-react';
+							}
+							if (id.includes('react') && !id.includes('react-router') && !id.includes('react-icons')) {
+								return 'vendor-react';
+							}
+							// React Router in its own chunk to avoid module resolution issues
+							if (id.includes('react-router')) {
+								return 'vendor-router';
 							}
 							if (id.includes('zustand')) {
 								return 'vendor-state';
