@@ -1,4 +1,4 @@
-import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter, Navigate, useLocation } from 'react-router-dom';
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
