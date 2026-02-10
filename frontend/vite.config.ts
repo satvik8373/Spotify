@@ -147,44 +147,18 @@ export default defineConfig(({ mode }) => {
 			minify: 'esbuild',
 			cssCodeSplit: true,
 			target: 'es2020',
-			commonjsOptions: { transformMixedEsModules: true },
+			commonjsOptions: { 
+				transformMixedEsModules: true,
+				requireReturnsDefault: 'auto'
+			},
 			rollupOptions: {
 				output: {
-					manualChunks: (id) => {
-						// Optimized chunking strategy for faster loading
-						if (id.includes('node_modules')) {
-							// Keep React and ReactDOM together, but separate from React Router
-							if (id.includes('react-dom')) {
-								return 'vendor-react';
-							}
-							if (id.includes('react') && !id.includes('react-router') && !id.includes('react-icons')) {
-								return 'vendor-react';
-							}
-							// React Router in its own chunk to avoid module resolution issues
-							if (id.includes('react-router')) {
-								return 'vendor-router';
-							}
-							if (id.includes('zustand')) {
-								return 'vendor-state';
-							}
-							if (id.includes('@radix-ui')) {
-								return 'vendor-ui';
-							}
-							if (id.includes('firebase')) {
-								return 'vendor-firebase';
-							}
-							if (id.includes('lucide-react') || id.includes('react-icons')) {
-								return 'vendor-icons';
-							}
-							if (id.includes('framer-motion') || id.includes('gsap')) {
-								return 'vendor-animation';
-							}
-							return 'vendor-other';
-						}
-					},
+					// Simplified chunking to avoid module resolution issues
+					manualChunks: undefined,
 					chunkFileNames: 'assets/js/[name]-[hash].js',
 					assetFileNames: (assetInfo) => {
-						const ext = assetInfo.name.split('.').pop();
+						if (!assetInfo.name) return 'assets/[name]-[hash][extname]';
+						const ext = assetInfo.name.split('.').pop() || '';
 						if (/png|jpe?g|svg|gif|webp|avif/i.test(ext)) {
 							return 'assets/img/[name]-[hash][extname]';
 						}
