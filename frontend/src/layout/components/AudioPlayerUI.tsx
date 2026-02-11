@@ -38,10 +38,10 @@ const MarqueeText = React.memo(({ text, className }: { text: string, className?:
         if (needsScrolling) {
           setStartAnimation(false);
           // Use requestIdleCallback instead of setTimeout to avoid performance violations
-          const idleCallback = (window as any).requestIdleCallback ? 
+          const idleCallback = (window as any).requestIdleCallback ?
             (window as any).requestIdleCallback(() => setStartAnimation(true), { timeout: 3000 }) :
             setTimeout(() => setStartAnimation(true), 3000);
-          
+
           return () => {
             if ((window as any).requestIdleCallback && typeof idleCallback === 'number') {
               (window as any).cancelIdleCallback(idleCallback);
@@ -142,7 +142,7 @@ const AudioPlayerUI: React.FC<AudioPlayerUIProps> = ({
     const handleLikeUpdate = (e: Event) => {
       if (!currentSong) return;
       const songId = (currentSong as any).id || currentSong._id;
-      
+
       if (e instanceof CustomEvent && e.detail) {
         if (e.detail.songId && e.detail.songId !== songId) {
           return;
@@ -618,7 +618,7 @@ const AudioPlayerUI: React.FC<AudioPlayerUIProps> = ({
 
           <div className="px-6 pb-12">
             <div className="flex items-center justify-between mb-8">
-              <ShuffleButton 
+              <ShuffleButton
                 size="md"
                 accentColor={albumColors.accent}
                 className="h-10 w-10"
