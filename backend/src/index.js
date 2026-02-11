@@ -63,9 +63,10 @@ const corsOptions = {
       try { hostname = new URL(origin).hostname; } catch {}
 
       const isNgrok = hostname.endsWith('.ngrok-free.app') || hostname.endsWith('.ngrok.io');
-      const isAllowed = defaultAllowed.includes(origin) || isNgrok;
+      const isMavrixfy = hostname === 'mavrixfy.site' || hostname === 'www.mavrixfy.site';
+      const isAllowed = defaultAllowed.includes(origin) || isNgrok || isMavrixfy;
 
-      console.log('CORS check:', { origin, hostname, isNgrok, isAllowed, defaultAllowed });
+      console.log('CORS check:', { origin, hostname, isNgrok, isMavrixfy, isAllowed });
       return callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
     } catch (e) {
       // Fallback: deny if anything goes wrong
