@@ -65,7 +65,7 @@ export const PlaybackControls = () => {
 			console.warn('Audio element not found');
 			return;
 		}
-		
+
 		audioRef.current = audioElement;
 		const audio = audioRef.current;
 
@@ -77,7 +77,7 @@ export const PlaybackControls = () => {
 				setCurrentTime(audio.currentTime);
 			}
 		};
-		
+
 		const updateDuration = () => {
 			if (audio && !isNaN(audio.duration)) {
 				setDuration(audio.duration);
@@ -87,7 +87,7 @@ export const PlaybackControls = () => {
 		const handleEnded = () => {
 			if (isRepeating && audio) {
 				audio.currentTime = 0;
-				audio.play().catch(() => {});
+				audio.play().catch(() => { });
 			} else {
 				// Only call playNext once to avoid race conditions
 				const store = usePlayerStore.getState();

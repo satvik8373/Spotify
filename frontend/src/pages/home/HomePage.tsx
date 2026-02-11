@@ -10,6 +10,7 @@ import { SectionWrapper } from '@/components/ui/section-wrapper';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import HomeSkeleton from '@/components/skeletons/HomeSkeleton';
 import { updateMetaTags, metaPresets } from '@/utils/metaTags';
+import { ValentineBanner } from '@/components/ValentineBanner';
 
 const HomePage = () => {
   const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
@@ -62,9 +63,9 @@ const HomePage = () => {
       try {
         // Load all content properly without restrictions
         if (usePlaylistStore.getState().shouldRefresh()) {
-          await usePlaylistStore.getState().refreshAllData().catch(() => {});
+          await usePlaylistStore.getState().refreshAllData().catch(() => { });
         } else if (publicPlaylists.length === 0) {
-          await fetchPublicPlaylists().catch(() => {});
+          await fetchPublicPlaylists().catch(() => { });
         }
         setHasLoadedOnce(true);
         setIsInitialLoading(false);
@@ -183,7 +184,7 @@ const HomePage = () => {
         <div className="px-4 md:px-6 mb-6 w-full">
           <HomeSkeleton count={4} type="recently-played" className="" />
         </div>
-        
+
         {/* Made for you section skeleton */}
         <div className="px-4 md:px-6">
           <div className="mb-4 space-y-2">
@@ -192,7 +193,7 @@ const HomePage = () => {
           </div>
           <HomeSkeleton count={6} type="card" className="" />
         </div>
-        
+
         {/* Additional sections skeleton */}
         <div className="px-4 md:px-6">
           <div className="mb-4 space-y-2">
@@ -233,6 +234,11 @@ const HomePage = () => {
       />
 
       <div className="py-4 space-y-4 relative w-full z-10 pb-32 md:pb-8">
+        {/* Valentine Banner */}
+        <div className="px-4 md:px-6 w-full mb-2">
+          <ValentineBanner />
+        </div>
+
         {/* Filter pills */}
         <div className="px-4 md:px-6 hidden md:flex items-center gap-2 mb-1.5 sticky top-0 z-20 pt-2">
           <button className="px-3 py-1.5 rounded-full bg-[#1ed760] text-black text-[13px] font-bold transition-colors">
@@ -244,17 +250,17 @@ const HomePage = () => {
           <button className="px-3 py-1.5 rounded-full bg-white/10 text-white text-[13px] font-bold hover:bg-white/20 transition-colors">
             Podcasts
           </button>
-          
+
           {/* Privacy Policy Link in Pills Area */}
           <div className="ml-auto flex items-center gap-4">
-            <Link 
-              to="/privacy" 
+            <Link
+              to="/privacy"
               className="text-white/60 hover:text-white text-xs transition-colors"
             >
               Privacy Policy
             </Link>
-            <Link 
-              to="/terms" 
+            <Link
+              to="/terms"
               className="text-white/60 hover:text-white text-xs transition-colors"
             >
               Terms
@@ -315,7 +321,7 @@ const HomePage = () => {
               {publicPlaylists.length > 0 ? (
                 publicPlaylists.slice(0, 20).map((playlist, index) => (
                   <ScrollItem key={playlist._id} width={120}>
-                    <div 
+                    <div
                       className="animate-[scaleIn_0.3s_ease-out]"
                       style={{ animationDelay: `${index * 0.05}s` }}
                     >
@@ -340,6 +346,15 @@ const HomePage = () => {
           </SectionWrapper>
 
           {/* JioSaavn Sections */}
+          <section>
+            <JioSaavnPlaylistsSection
+              title="Valentine Special ❤️"
+              categoryId="valentine"
+              limit={14}
+              showViewAll={true}
+            />
+          </section>
+
           <section>
             <JioSaavnPlaylistsSection
               title="Trending Now"

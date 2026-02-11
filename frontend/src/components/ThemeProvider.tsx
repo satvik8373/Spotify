@@ -11,29 +11,31 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   useEffect(() => {
     // Initialize theme on mount
     const root = document.documentElement;
-    
+
     // Remove existing theme classes
     root.classList.remove('light', 'dark');
-    
+
     if (theme === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       root.classList.add(systemTheme);
     } else {
       root.classList.add(theme);
     }
-    
+
     // Update meta theme-color for mobile browsers
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      metaThemeColor.setAttribute('content', isDark ? '#000000' : '#ffffff');
+      const isDark = theme === 'dark' || theme === 'valentine' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      // For valentine, use a specific pink color for browser UI
+      const themeColor = theme === 'valentine' ? '#2f0a12' : (isDark ? '#000000' : '#ffffff');
+      metaThemeColor.setAttribute('content', themeColor);
     }
   }, [theme]);
 
   useEffect(() => {
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
+
     const handleChange = () => {
       const { theme } = useThemeStore.getState();
       if (theme === 'system') {
@@ -41,7 +43,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         root.classList.remove('light', 'dark');
         const systemTheme = mediaQuery.matches ? 'dark' : 'light';
         root.classList.add(systemTheme);
-        
+
         // Update meta theme-color
         const metaThemeColor = document.querySelector('meta[name="theme-color"]');
         if (metaThemeColor) {

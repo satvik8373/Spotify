@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light' | 'dark' | 'system' | 'valentine';
 
 interface ThemeState {
   theme: Theme;
@@ -33,17 +33,17 @@ export const useThemeStore = create<ThemeState>()(
 // Function to apply theme to document
 const applyTheme = (theme: Theme) => {
   const root = document.documentElement;
-  
+
   // Remove existing theme classes
   root.classList.remove('light', 'dark');
-  
+
   if (theme === 'system') {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     root.classList.add(systemTheme);
   } else {
     root.classList.add(theme);
   }
-  
+
   // Update meta theme-color for mobile browsers
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (metaThemeColor) {
@@ -56,7 +56,7 @@ const applyTheme = (theme: Theme) => {
 if (typeof window !== 'undefined') {
   const { theme } = useThemeStore.getState();
   applyTheme(theme);
-  
+
   // Listen for system theme changes
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
     const { theme } = useThemeStore.getState();

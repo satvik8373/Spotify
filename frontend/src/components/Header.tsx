@@ -34,7 +34,7 @@ const Header = ({ className }: HeaderProps) => {
   const searchFormRef = useRef<HTMLFormElement>(null);
   const authProcessedRef = useRef(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
-  
+
   // Optimized avatar loading with rate limiting
   const { avatarUrl, isLoading: avatarLoading } = useOptimizedAvatar(
     user?.picture,
@@ -249,9 +249,9 @@ const Header = ({ className }: HeaderProps) => {
                   <DropdownMenuTrigger asChild>
                     <button className="w-8 h-8 rounded-full bg-[#1f1f1f] hover:scale-105 flex items-center justify-center overflow-hidden transition-transform">
                       {avatarUrl && !avatarLoading ? (
-                        <img 
-                          src={avatarUrl} 
-                          alt={user.name || 'User'} 
+                        <img
+                          src={avatarUrl}
+                          alt={user.name || 'User'}
                           className="w-full h-full object-cover"
                           loading="lazy"
                         />

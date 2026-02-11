@@ -26,7 +26,7 @@ export const LikeButton = ({
         // Only animate if the liked state actually changed and we're not processing
         if (isLiked !== prevIsLiked.current && !isProcessing) {
             prevIsLiked.current = isLiked;
-            
+
             if (isLiked) {
                 setIsAnimating(true);
                 // Use a simple timeout for animation - this won't cause performance issues
@@ -43,19 +43,19 @@ export const LikeButton = ({
         // Prevent event bubbling to avoid conflicts
         e.preventDefault();
         e.stopPropagation();
-        
+
         // Prevent multiple rapid clicks
         if (isProcessing) return;
-        
+
         setIsProcessing(true);
-        
+
         // Haptic feedback if available
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
             navigator.vibrate(30); // Shorter vibration
         }
 
         onToggle(e);
-        
+
         // Reset processing state after a short delay
         setTimeout(() => {
             setIsProcessing(false);

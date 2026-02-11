@@ -60,7 +60,7 @@ const corsOptions = {
 
       // Parse hostname safely
       let hostname = '';
-      try { hostname = new URL(origin).hostname; } catch {}
+      try { hostname = new URL(origin).hostname; } catch { }
 
       const isNgrok = hostname.endsWith('.ngrok-free.app') || hostname.endsWith('.ngrok.io');
       const isMavrixfy = hostname === 'mavrixfy.site' || hostname === 'www.mavrixfy.site';
@@ -94,19 +94,19 @@ app.use(express.json()); // to parse req.body
 app.use(async (req, res, next) => {
   // Initialize req.auth if not set
   req.auth = req.auth || {};
-  
+
   const authHeader = req.headers.authorization;
-  
+
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const idToken = authHeader.split('Bearer ')[1];
-    
+
     try {
       const decodedToken = await admin.auth().verifyIdToken(idToken);
-              req.auth = {
-          uid: decodedToken.uid,
-          email: decodedToken.email,
-          firebase: decodedToken
-        };
+      req.auth = {
+        uid: decodedToken.uid,
+        email: decodedToken.email,
+        firebase: decodedToken
+      };
       console.log(`Firebase auth successful for user: ${decodedToken.uid}`);
     } catch (error) {
       // Check if it's a Firebase initialization error
@@ -119,7 +119,7 @@ app.use(async (req, res, next) => {
       // Don't fail the request - allow other auth methods to be checked
     }
   }
-  
+
   next();
 });
 
@@ -149,7 +149,7 @@ if (!process.env.VERCEL) {
           return;
         }
         for (const file of files) {
-          fs.unlink(path.join(tempDir, file), (err) => {});
+          fs.unlink(path.join(tempDir, file), (err) => { });
         }
       });
     }
@@ -178,14 +178,14 @@ app.use("/api/otp", otpRoutes);
 
 // Special route to handle Spotify callback directly
 app.get('/spotify-callback', (req, res) => {
-	// Redirect to our API endpoint that handles the callback
-	const { code, state } = req.query;
-	res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
+  // Redirect to our API endpoint that handles the callback
+  const { code, state } = req.query;
+  res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
 });
 
 // Add a root route handler
 app.get('/', (req, res) => {
-	res.json({ 
+  res.json({
     message: 'Mavrixfy API - Welcome! Use /api/playlists, /api/songs, etc.',
     environment: process.env.NODE_ENV || 'development',
     vercel: process.env.VERCEL ? 'yes' : 'no',
@@ -195,36 +195,36 @@ app.get('/', (req, res) => {
 });
 
 if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
-	app.use(express.static(path.join(__dirname, "../frontend/dist")));
-	app.get("*", (req, res) => {
-		res.sendFile(path.resolve(__dirname, "../frontend", "dist", "index.html"));
-	});
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "../frontend", "dist", "index.html"));
+  });
 }
 
 // Add error handling middleware with CORS headers
 app.use((err, req, res, next) => {
-	console.error('Error:', err);
-	
-	// Ensure CORS headers are set even on errors
-	const origin = req.headers.origin;
-	const allowedOrigins = [
-		'http://localhost:3000',
-		'http://localhost:5173',
-		'https://mavrixfy.site',
-		'https://www.mavrixfy.site'
-	];
-	
-	if (origin && allowedOrigins.includes(origin)) {
-		res.setHeader('Access-Control-Allow-Origin', origin);
-		res.setHeader('Access-Control-Allow-Credentials', 'true');
-	}
-	
-	res.status(err.status || 500).json({
-		message: process.env.NODE_ENV === "production" 
-			? "An error occurred" 
-			: err.message,
-		error: process.env.NODE_ENV === "development" ? err : {}
-	});
+  console.error('Error:', err);
+
+  // Ensure CORS headers are set even on errors
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://mavrixfy.site',
+    'https://www.mavrixfy.site'
+  ];
+
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
+  res.status(err.status || 500).json({
+    message: process.env.NODE_ENV === "production"
+      ? "An error occurred"
+      : err.message,
+    error: process.env.NODE_ENV === "development" ? err : {}
+  });
 });
 
 // Start server
@@ -233,7 +233,7 @@ httpServer.listen(PORT, () => {
   console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Running on Vercel: ${process.env.VERCEL ? 'Yes' : 'No'}`);
-  
+
   // Verify email configuration
   verifyEmailConfig().then(isReady => {
     if (isReady) {
