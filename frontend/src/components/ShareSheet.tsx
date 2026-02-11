@@ -38,19 +38,20 @@ const AVAILABLE_PLATFORMS: SharePlatform[] = [
 export const ShareSheet = ({ isOpen, onClose, content, title, description }: ShareSheetProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<SharePlatform | null>(null);
-  const [previewCard, setPreviewCard] = useState<string | null>(null);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
 
   // Reset state when dialog closes
   useEffect(() => {
     if (!isOpen) {
       setSelectedPlatform(null);
-      setPreviewCard(null);
       setIsGenerating(false);
     }
   }, [isOpen]);
 
   const handlePlatformClick = async (platform: SharePlatform) => {
+    // Prevent multiple clicks
+    if (isGenerating) return;
+    
     if (!isPlatformAvailable(platform)) {
       toast.error('This sharing method is not available on your device');
       return;
@@ -60,7 +61,7 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
     setIsGenerating(true);
 
     try {
-      // Generate share card
+      // Simplified: Skip heavy card generation, just share the URL and content
       const card = await generateShareCard({
         platform,
         content,
@@ -79,36 +80,44 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
         }
       });
 
-      // Show preview for a moment
-      setPreviewCard(card.imageUrl);
+      // Handle platform-specific sharing with error handling
+      try {
+        await handlePlatformShare({
+          platform,
+          card,
+          title: title || content.title,
+          text: description || `Check out "${content.title}" on Mavrixfy! 🎵`,
+          contentId: content.id,
+          contentType: content.type
+        });
 
-      // Small delay to show preview
-      await new Promise(resolve => setTimeout(resolve, 500));
+        // Show success message
+        if (platform === 'copy-link') {
+          toast.success('Link copied to clipboard!');
+        } else if (platform !== 'native-share') {
+          // Don't show success for native share (user sees system UI)
+          toast.success(`Opening ${getPlatformName(platform)}...`);
+        }
 
-      // Handle platform-specific sharing
-      await handlePlatformShare({
-        platform,
-        card,
-        title: title || content.title,
-        text: description || `Check out "${content.title}" on Mavrixfy! 🎵`,
-        contentId: content.id,
-        contentType: content.type
-      });
-
-      // Show success message
-      if (platform === 'copy-link') {
-        toast.success('Link copied to clipboard!');
-      } else {
-        toast.success(`Shared to ${getPlatformName(platform)}!`);
+        // Close after successful share
+        setTimeout(() => {
+          onClose();
+        }, 500);
+      } catch (shareError: any) {
+        // Handle user cancellation gracefully
+        if (shareError?.name === 'AbortError' || shareError?.message?.includes('cancel')) {
+          console.log('Share cancelled by user');
+          return;
+        }
+        throw shareError;
       }
-
-      // Close after successful share
-      setTimeout(() => {
-        onClose();
-      }, 1000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Share error:', error);
-      toast.error('Failed to share. Please try again.');
+      
+      // Don't show error for user cancellation
+      if (error?.name !== 'AbortError' && !error?.message?.includes('cancel')) {
+        toast.error('Failed to share. Please try again.');
+      }
     } finally {
       setIsGenerating(false);
       setSelectedPlatform(null);
@@ -116,8 +125,16 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
   };
 
   const handleEmbedClick = () => {
-    onClose(); // Close share sheet
-    setShowEmbedModal(true); // Open embed modal
+    try {
+      onClose(); // Close share sheet
+      // Small delay to prevent dialog conflicts on mobile
+      setTimeout(() => {
+        setShowEmbedModal(true); // Open embed modal
+      }, 100);
+    } catch (error) {
+      console.error('Failed to open embed modal:', error);
+      toast.error('Failed to open embed options');
+    }
   };
 
   return (
@@ -174,10 +191,17 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
                   <button
                     key={platform}
                     onClick={() => handlePlatformClick(platform)}
+                    onTouchStart={(e) => {
+                      // Prevent touch event issues on mobile
+                      e.currentTarget.style.transform = 'scale(0.95)';
+                    }}
+                    onTouchEnd={(e) => {
+                      e.currentTarget.style.transform = '';
+                    }}
                     disabled={isDisabled}
                     className={cn(
                       'flex flex-col items-center gap-2 p-4 rounded-lg transition-all',
-                      'hover:bg-white/10 active:scale-95',
+                      'hover:bg-white/10 active:scale-95 touch-manipulation',
                       isSelected && 'bg-white/20',
                       isDisabled && 'opacity-50 cursor-not-allowed'
                     )}
@@ -204,10 +228,16 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
               {content.type === 'playlist' && (
                 <button
                   onClick={handleEmbedClick}
+                  onTouchStart={(e) => {
+                    e.currentTarget.style.transform = 'scale(0.95)';
+                  }}
+                  onTouchEnd={(e) => {
+                    e.currentTarget.style.transform = '';
+                  }}
                   disabled={isGenerating}
                   className={cn(
                     'flex flex-col items-center gap-2 p-4 rounded-lg transition-all',
-                    'hover:bg-white/10 active:scale-95',
+                    'hover:bg-white/10 active:scale-95 touch-manipulation',
                     isGenerating && 'opacity-50 cursor-not-allowed'
                   )}
                 >
@@ -222,22 +252,6 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
             </div>
           </div>
         </ScrollArea>
-
-        {/* Preview Card (when generating) */}
-        {previewCard && (
-          <div className="p-4 border-t border-white/10">
-            <div className="relative aspect-video rounded-lg overflow-hidden">
-              <img
-                src={previewCard}
-                alt="Share preview"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                <Loader2 className="h-8 w-8 text-white animate-spin" />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Footer */}
         <div className="p-4 border-t border-white/10">

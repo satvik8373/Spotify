@@ -1,10 +1,11 @@
 /**
  * Platform-Specific Share Handlers
- * Handles sharing logic for each social platform
+ * Handles sharing logic for each social platform with mobile-safe error handling
  */
 
 import { SharePlatform, GeneratedShareCard } from './types';
 import { trackShare } from '@/utils/shareTracking';
+import { safeLocalStorage } from '@/utils/iosStorageHandler';
 
 export interface ShareOptions {
   platform: SharePlatform;
@@ -17,111 +18,134 @@ export interface ShareOptions {
 
 /**
  * Main share handler - routes to platform-specific handlers
+ * Wrapped in try-catch to prevent mobile crashes
  */
 export const handlePlatformShare = async (options: ShareOptions): Promise<void> => {
   const { platform } = options;
   
-  // Track share event
-  trackShare(
-    options.contentType as any,
-    options.contentId,
-    platform,
-    undefined
-  );
+  try {
+    // Track share event
+    trackShare(
+      options.contentType as any,
+      options.contentId,
+      platform,
+      undefined
+    );
+  } catch (e) {
+    // Tracking failed, continue anyway
+    console.warn('Share tracking failed:', e);
+  }
   
-  switch (platform) {
-    case 'instagram-story':
-      return handleInstagramStory(options);
-    case 'instagram-feed':
-      return handleInstagramFeed(options);
-    case 'whatsapp':
-      return handleWhatsApp(options);
-    case 'whatsapp-status':
-      return handleWhatsAppStatus(options);
-    case 'facebook':
-      return handleFacebook(options);
-    case 'twitter':
-      return handleTwitter(options);
-    case 'snapchat':
-      return handleSnapchat(options);
-    case 'telegram':
-      return handleTelegram(options);
-    case 'copy-link':
-      return handleCopyLink(options);
-    case 'native-share':
-      return handleNativeShare(options);
-    default:
-      throw new Error(`Unsupported platform: ${platform}`);
+  try {
+    switch (platform) {
+      case 'instagram-story':
+        return await handleInstagramStory(options);
+      case 'instagram-feed':
+        return await handleInstagramFeed(options);
+      case 'whatsapp':
+        return await handleWhatsApp(options);
+      case 'whatsapp-status':
+        return await handleWhatsAppStatus(options);
+      case 'facebook':
+        return await handleFacebook(options);
+      case 'twitter':
+        return await handleTwitter(options);
+      case 'snapchat':
+        return await handleSnapchat(options);
+      case 'telegram':
+        return await handleTelegram(options);
+      case 'copy-link':
+        return await handleCopyLink(options);
+      case 'native-share':
+        return await handleNativeShare(options);
+      default:
+        throw new Error(`Unsupported platform: ${platform}`);
+    }
+  } catch (error) {
+    console.error(`Share failed for ${platform}:`, error);
+    // Don't throw - let the UI handle the error gracefully
+    throw error;
   }
 };
 
 /**
- * Instagram Story - Opens Instagram with sticker
+ * Instagram Story - Opens Instagram with deep link
+ * Simplified: No image generation, just share URL
  */
 const handleInstagramStory = async (options: ShareOptions) => {
-  const { card } = options;
-  
-  // Check if Instagram app is available (mobile only)
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  
-  if (isMobile) {
-    // Try to open Instagram app with deep link
-    const instagramUrl = `instagram://story-camera`;
-    window.location.href = instagramUrl;
+  try {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     
-    // Fallback: Download image and show instructions
-    setTimeout(() => {
-      downloadImage(card.imageBlob, 'mavrixfy-share.png');
-      alert('Image downloaded! Open Instagram and upload from your gallery.');
-    }, 1000);
-  } else {
-    // Desktop: Download image with instructions
-    downloadImage(card.imageBlob, 'mavrixfy-share.png');
-    alert('Image downloaded! Open Instagram on your phone and upload to your story.');
+    if (isMobile) {
+      // Try to open Instagram app with deep link
+      const instagramUrl = `instagram://story-camera`;
+      window.location.href = instagramUrl;
+    } else {
+      // Desktop: Just copy link
+      await handleCopyLink(options);
+    }
+  } catch (error) {
+    console.error('Instagram story share failed:', error);
+    throw error;
   }
 };
 
 /**
- * Instagram Feed - Download image
+ * Instagram Feed - Simplified to just copy link
  */
 const handleInstagramFeed = async (options: ShareOptions) => {
-  const { card } = options;
-  downloadImage(card.imageBlob, 'mavrixfy-share.png');
-  alert('Image downloaded! Open Instagram and create a new post.');
+  try {
+    await handleCopyLink(options);
+  } catch (error) {
+    console.error('Instagram feed share failed:', error);
+    throw error;
+  }
 };
 
 /**
- * WhatsApp - Share with image and link
+ * WhatsApp - Share with link (no image generation)
+ * Mobile-safe with proper error handling
  */
 const handleWhatsApp = async (options: ShareOptions) => {
   const { text, card } = options;
   
-  // Try Web Share API first (supports images on mobile)
-  if (navigator.share && navigator.canShare?.({ files: [new File([card.imageBlob], 'share.png', { type: 'image/png' })] })) {
-    try {
-      await navigator.share({
-        title: options.title,
-        text: text,
-        files: [new File([card.imageBlob], 'mavrixfy-share.png', { type: 'image/png' })]
-      });
-      return;
-    } catch (error) {
-      // User cancelled or error - fall through to URL method
+  try {
+    // Try Web Share API first (without heavy image)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: options.title,
+          text: text,
+          url: card.shareUrl
+        });
+        return;
+      } catch (error: any) {
+        // User cancelled or share failed - fall through to URL method
+        if (error.name !== 'AbortError') {
+          console.warn('Web Share API failed:', error);
+        }
+      }
     }
+    
+    // Fallback: WhatsApp URL with text only
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n\n' + card.shareUrl)}`;
+    window.open(whatsappUrl, '_blank');
+  } catch (error) {
+    console.error('WhatsApp share failed:', error);
+    throw error;
   }
-  
-  // Fallback: WhatsApp URL with text only
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n\n' + card.shareUrl)}`;
-  window.open(whatsappUrl, '_blank');
 };
 
 /**
- * WhatsApp Status - Similar to Instagram Story
+ * WhatsApp Status - Simplified to just copy link
  */
 const handleWhatsAppStatus = async (options: ShareOptions) => {
-  const { card } = options;
-  downloadImage(card.imageBlob, 'mavrixfy-share.png');
-  alert('Image downloaded! Open WhatsApp and add to your status.');
+  try {
+    await handleCopyLink(options);
+  } catch (error) {
+    console.error('WhatsApp status share failed:', error);
+    throw error;
+  }
 };
 
 /**
@@ -143,12 +167,15 @@ const handleTwitter = async (options: ShareOptions) => {
 };
 
 /**
- * Snapchat - Download image with instructions
+ * Snapchat - Simplified to just copy link
  */
 const handleSnapchat = async (options: ShareOptions) => {
-  const { card } = options;
-  downloadImage(card.imageBlob, 'mavrixfy-share.png');
-  alert('Image downloaded! Open Snapchat and upload to your story.');
+  try {
+    await handleCopyLink(options);
+  } catch (error) {
+    console.error('Snapchat share failed:', error);
+    throw error;
+  }
 };
 
 /**
@@ -162,30 +189,46 @@ const handleTelegram = async (options: ShareOptions) => {
 
 /**
  * Copy Link - Copy to clipboard
+ * Mobile-safe with proper error handling
  */
 const handleCopyLink = async (options: ShareOptions) => {
   const { card } = options;
   
   try {
-    await navigator.clipboard.writeText(card.shareUrl);
-    // Show success toast (would use your toast system)
-    console.log('Link copied to clipboard!');
+    // Try modern clipboard API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(card.shareUrl);
+      return;
+    }
   } catch (error) {
-    // Fallback for older browsers
+    console.warn('Clipboard API failed, trying fallback:', error);
+  }
+  
+  // Fallback for older browsers or when clipboard API fails
+  try {
     const textArea = document.createElement('textarea');
     textArea.value = card.shareUrl;
     textArea.style.position = 'fixed';
     textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
     document.body.appendChild(textArea);
+    textArea.focus();
     textArea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textArea);
-    console.log('Link copied to clipboard!');
+    
+    try {
+      document.execCommand('copy');
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  } catch (error) {
+    console.error('Copy to clipboard failed:', error);
+    throw new Error('Failed to copy link');
   }
 };
 
 /**
- * Native Share - Use Web Share API
+ * Native Share - Use Web Share API (without heavy image)
+ * Mobile-safe with proper error handling
  */
 const handleNativeShare = async (options: ShareOptions) => {
   const { title, text, card } = options;
@@ -196,41 +239,30 @@ const handleNativeShare = async (options: ShareOptions) => {
   }
   
   try {
-    // Try sharing with image
-    const file = new File([card.imageBlob], 'mavrixfy-share.png', { type: 'image/png' });
-    
-    if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({
-        title,
-        text,
-        files: [file]
-      });
-    } else {
-      // Share without image
-      await navigator.share({
-        title,
-        text,
-        url: card.shareUrl
-      });
+    // Share without image (much lighter and more reliable)
+    await navigator.share({
+      title,
+      text,
+      url: card.shareUrl
+    });
+  } catch (error: any) {
+    // Don't throw on user cancellation
+    if (error.name === 'AbortError') {
+      console.log('Share cancelled by user');
+      return;
     }
-  } catch (error) {
-    // User cancelled or error
-    console.log('Share cancelled');
+    console.error('Native share failed:', error);
+    throw error;
   }
 };
 
 /**
- * Helper: Download image
+ * Helper: Download image - REMOVED, no longer needed
+ * Keeping stub for compatibility
  */
-const downloadImage = (blob: Blob, filename: string) => {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+const downloadImage = (_blob: Blob, _filename: string) => {
+  // No-op: We don't generate images anymore
+  console.log('Image download skipped - using lightweight sharing');
 };
 
 /**
