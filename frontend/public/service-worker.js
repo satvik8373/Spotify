@@ -1,21 +1,27 @@
-// Service Worker for Mavrixfy
-const CACHE_NAME = 'mavrixfy-v2.0.3';
-const STATIC_CACHE = 'mavrixfy-static-v1.0.3';
-const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.3';
+// Service Worker for Mavrixfy - iOS PWA Compatible
+const CACHE_NAME = 'mavrixfy-v2.0.4';
+const STATIC_CACHE = 'mavrixfy-static-v1.0.4';
+const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.4';
 
-// Files to cache immediately
+// Detect iOS
+const isIOS = /iPad|iPhone|iPod/.test(self.navigator.userAgent);
+
+// Files to cache immediately (minimal for iOS)
 const STATIC_FILES = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/mavrixfy.png',
-  '/mavrixfy_loading.mp4',
-  '/browserconfig.xml',
-  '/pwa-icon-fix.css'
+  '/mavrixfy.png'
 ];
 
-// Install event - cache static files
+// Install event - cache static files (skip on iOS to avoid issues)
 self.addEventListener('install', (event) => {
+  if (isIOS) {
+    // Skip caching on iOS to prevent storage issues
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
+  
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
@@ -25,7 +31,8 @@ self.addEventListener('install', (event) => {
         return self.skipWaiting();
       })
       .catch((error) => {
-        // swallow
+        console.error('Cache install failed:', error);
+        return self.skipWaiting();
       })
   );
 });
@@ -49,7 +56,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - handle requests
+// Fetch event - handle requests (simplified for iOS)
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -59,7 +66,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle different types of requests
+  // For iOS, use simpler network-first strategy to avoid cache issues
+  if (isIOS) {
+    event.respondWith(
+      fetch(request).catch(() => {
+        // Only try cache as last resort
+        return caches.match(request).then(response => {
+          return response || new Response(null, { status: 504 });
+        });
+      })
+    );
+    return;
+  }
+
+  // Handle different types of requests (non-iOS)
   if (url.origin === self.location.origin) {
     // Check if this is a JioSaavn API request through our backend
     if (url.pathname.startsWith('/api/jiosaavn/')) {

@@ -1,7 +1,9 @@
 /**
  * Safe storage utilities that never throw errors
- * Handles cases where storage is not available (incognito mode, privacy settings, etc.)
+ * Handles cases where storage is not available (incognito mode, privacy settings, iOS PWA, etc.)
  */
+
+import { safeLocalStorage, safeSessionStorage } from './iosStorageHandler';
 
 /**
  * Safely get an item from localStorage
@@ -10,7 +12,7 @@
  */
 export function getLocalStorage(key: string): string | null {
     try {
-        return localStorage.getItem(key);
+        return safeLocalStorage.getItem(key);
     } catch (error) {
         return null;
     }
@@ -23,7 +25,7 @@ export function getLocalStorage(key: string): string | null {
  */
 export function getSessionStorage(key: string): string | null {
     try {
-        return sessionStorage.getItem(key);
+        return safeSessionStorage.getItem(key);
     } catch (error) {
         return null;
     }
@@ -37,7 +39,7 @@ export function getSessionStorage(key: string): string | null {
  */
 export function setLocalStorage(key: string, value: string): boolean {
     try {
-        localStorage.setItem(key, value);
+        safeLocalStorage.setItem(key, value);
         return true;
     } catch (error) {
         return false;
@@ -52,7 +54,7 @@ export function setLocalStorage(key: string, value: string): boolean {
  */
 export function setSessionStorage(key: string, value: string): boolean {
     try {
-        sessionStorage.setItem(key, value);
+        safeSessionStorage.setItem(key, value);
         return true;
     } catch (error) {
         return false;
@@ -66,7 +68,7 @@ export function setSessionStorage(key: string, value: string): boolean {
  */
 export function removeLocalStorage(key: string): boolean {
     try {
-        localStorage.removeItem(key);
+        safeLocalStorage.removeItem(key);
         return true;
     } catch (error) {
         return false;
@@ -80,7 +82,7 @@ export function removeLocalStorage(key: string): boolean {
  */
 export function removeSessionStorage(key: string): boolean {
     try {
-        sessionStorage.removeItem(key);
+        safeSessionStorage.removeItem(key);
         return true;
     } catch (error) {
         return false;
@@ -95,7 +97,7 @@ export function removeSessionStorage(key: string): boolean {
  */
 export function getLocalStorageJSON<T>(key: string, defaultValue: T): T {
     try {
-        const item = localStorage.getItem(key);
+        const item = safeLocalStorage.getItem(key);
         if (item === null) return defaultValue;
         return JSON.parse(item) as T;
     } catch (error) {
@@ -111,7 +113,7 @@ export function getLocalStorageJSON<T>(key: string, defaultValue: T): T {
  */
 export function getSessionStorageJSON<T>(key: string, defaultValue: T): T {
     try {
-        const item = sessionStorage.getItem(key);
+        const item = safeSessionStorage.getItem(key);
         if (item === null) return defaultValue;
         return JSON.parse(item) as T;
     } catch (error) {
@@ -127,7 +129,7 @@ export function getSessionStorageJSON<T>(key: string, defaultValue: T): T {
  */
 export function setLocalStorageJSON<T>(key: string, value: T): boolean {
     try {
-        localStorage.setItem(key, JSON.stringify(value));
+        safeLocalStorage.setItem(key, JSON.stringify(value));
         return true;
     } catch (error) {
         return false;
@@ -142,7 +144,7 @@ export function setLocalStorageJSON<T>(key: string, value: T): boolean {
  */
 export function setSessionStorageJSON<T>(key: string, value: T): boolean {
     try {
-        sessionStorage.setItem(key, JSON.stringify(value));
+        safeSessionStorage.setItem(key, JSON.stringify(value));
         return true;
     } catch (error) {
         return false;
@@ -156,8 +158,8 @@ export function setSessionStorageJSON<T>(key: string, value: T): boolean {
 export function isLocalStorageAvailable(): boolean {
     try {
         const testKey = '__storage_test__';
-        localStorage.setItem(testKey, 'test');
-        localStorage.removeItem(testKey);
+        safeLocalStorage.setItem(testKey, 'test');
+        safeLocalStorage.removeItem(testKey);
         return true;
     } catch {
         return false;
@@ -171,8 +173,8 @@ export function isLocalStorageAvailable(): boolean {
 export function isSessionStorageAvailable(): boolean {
     try {
         const testKey = '__storage_test__';
-        sessionStorage.setItem(testKey, 'test');
-        sessionStorage.removeItem(testKey);
+        safeSessionStorage.setItem(testKey, 'test');
+        safeSessionStorage.removeItem(testKey);
         return true;
     } catch {
         return false;
@@ -185,7 +187,7 @@ export function isSessionStorageAvailable(): boolean {
  */
 export function clearLocalStorage(): boolean {
     try {
-        localStorage.clear();
+        safeLocalStorage.clear();
         return true;
     } catch (error) {
         return false;
@@ -198,7 +200,7 @@ export function clearLocalStorage(): boolean {
  */
 export function clearSessionStorage(): boolean {
     try {
-        sessionStorage.clear();
+        safeSessionStorage.clear();
         return true;
     } catch (error) {
         return false;
@@ -211,7 +213,12 @@ export function clearSessionStorage(): boolean {
  */
 export function getLocalStorageKeys(): string[] {
     try {
-        return Object.keys(localStorage);
+        const keys: string[] = [];
+        for (let i = 0; i < safeLocalStorage.length; i++) {
+            const key = safeLocalStorage.key(i);
+            if (key) keys.push(key);
+        }
+        return keys;
     } catch (error) {
         return [];
     }
@@ -223,7 +230,12 @@ export function getLocalStorageKeys(): string[] {
  */
 export function getSessionStorageKeys(): string[] {
     try {
-        return Object.keys(sessionStorage);
+        const keys: string[] = [];
+        for (let i = 0; i < safeSessionStorage.length; i++) {
+            const key = safeSessionStorage.key(i);
+            if (key) keys.push(key);
+        }
+        return keys;
     } catch (error) {
         return [];
     }

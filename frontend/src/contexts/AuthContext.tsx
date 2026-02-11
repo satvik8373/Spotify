@@ -4,6 +4,7 @@ import { auth } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { getLocalStorageJSON } from '@/utils/storageUtils';
 
 interface User {
   id: string;
@@ -36,9 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check for cached auth immediately to avoid loading state
   const cachedAuthStore = (() => {
     try {
-      const raw = localStorage.getItem('auth-store');
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
+      const parsed = getLocalStorageJSON('auth-store', null);
+      if (!parsed) return null;
       return parsed?.state || parsed;
     } catch {
       return null;
