@@ -23,7 +23,7 @@
 
 /* Navigation items container should have the gradient */
 .mobile-nav-gradient-container .grid {
-    background: linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%) !important;
+    background: linear-gradient(0deg, #121212 0%, #121212 30%, rgba(18, 18, 18, 0.98) 45%, rgba(18, 18, 18, 0.92) 55%, rgba(18, 18, 18, 0.8) 65%, rgba(18, 18, 18, 0.6) 75%, rgba(18, 18, 18, 0.35) 85%, rgba(18, 18, 18, 0.15) 93%, transparent 100%) !important;
 }
 
 /* Ensure hover states work but don't add backgrounds */
@@ -54,16 +54,10 @@
 
     /* Navigation grid should still have gradient */
     .mobile-nav-gradient-container .grid {
-        background: linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%) !important;
+        background: linear-gradient(0deg, #121212 0%, #121212 30%, rgba(18, 18, 18, 0.98) 45%, rgba(18, 18, 18, 0.92) 55%, rgba(18, 18, 18, 0.8) 65%, rgba(18, 18, 18, 0.6) 75%, rgba(18, 18, 18, 0.35) 85%, rgba(18, 18, 18, 0.15) 93%, transparent 100%) !important;
     }
 }
 
-    /* Navigation grid transparency */
-    .mobile-nav-gradient-container .grid {
-        background: transparent !important;
-        background-color: transparent !important;
-    }
-}
 
 /* iOS Safari and PWA viewport fixes */
 @supports (-webkit-touch-callout: none) {

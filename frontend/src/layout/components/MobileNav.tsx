@@ -438,7 +438,7 @@ const MobileNav = () => {
                       }}
                       className="p-2 transition-transform duration-200 active:scale-90"
                     >
-                    {isPlaying ? (
+                      {isPlaying ? (
                         <Pause
                           className="h-5 w-5"
                           fill="currentColor"
@@ -483,7 +483,7 @@ const MobileNav = () => {
         <div
           className="relative grid grid-cols-4 h-14 px-2 pt-0 pb-2"
           style={{
-            background: 'linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0.95) 10%, rgba(18, 18, 18, 0.9) 25%, rgba(18, 18, 18, 0.8) 40%, rgba(18, 18, 18, 0.6) 60%, rgba(18, 18, 18, 0.4) 75%, rgba(18, 18, 18, 0.2) 85%, rgba(18, 18, 18, 0.1) 95%, transparent 100%)',
+            background: 'linear-gradient(0deg, #121212 0%, #121212 30%, rgba(18, 18, 18, 0.98) 45%, rgba(18, 18, 18, 0.92) 55%, rgba(18, 18, 18, 0.8) 65%, rgba(18, 18, 18, 0.6) 75%, rgba(18, 18, 18, 0.35) 85%, rgba(18, 18, 18, 0.15) 93%, transparent 100%)',
             border: 'none',
             boxShadow: 'none',
           }}
