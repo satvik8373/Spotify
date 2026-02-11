@@ -34,12 +34,19 @@ class ErrorBoundary extends Component<Props, State> {
     const isIOSPWA = ('standalone' in window.navigator) && (window.navigator as any).standalone === true;
     const isIOSSafari = /iPhone|iPad|iPod/.test(navigator.userAgent);
     
+    // Check if this is an audio-related error
+    const isAudioError = error.message?.toLowerCase().includes('audio') || 
+                        error.message?.toLowerCase().includes('play') ||
+                        error.message?.toLowerCase().includes('media') ||
+                        error.stack?.toLowerCase().includes('audioplayer');
+    
     // Log error details with iOS-specific info
     console.error('React Error Boundary caught:', {
       error: {
         message: error.message,
         name: error.name,
-        stack: error.stack
+        stack: error.stack,
+        isAudioError
       },
       errorInfo: {
         componentStack: errorInfo.componentStack
@@ -58,10 +65,27 @@ class ErrorBoundary extends Component<Props, State> {
     try {
       sessionStorage.setItem('last_error', JSON.stringify({
         message: error.message,
+        isAudioError,
         timestamp: Date.now()
       }));
     } catch (e) {
       // Storage not available
+    }
+
+    // If it's an audio error, try to reset audio state
+    if (isAudioError) {
+      try {
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.pause();
+          audio.src = '';
+          audio.load();
+        }
+        // Clear player state
+        localStorage.removeItem('player_state');
+      } catch (e) {
+        // Ignore cleanup errors
+      }
     }
 
     this.setState({

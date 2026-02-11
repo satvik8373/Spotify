@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePhoneInterruption } from '../../hooks/usePhoneInterruption';
+import { initAudioContext, unlockAudioOnIOS, isIOS } from '@/utils/iosAudioFix';
 
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
@@ -43,20 +44,32 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
   // Use phone interruption hook for automatic pause/resume during calls
   const audioFocusState = usePhoneInterruption(audioRef);
 
+  // Initialize audio context for iOS on mount
+  useEffect(() => {
+    if (isIOS()) {
+      initAudioContext();
+      
+      // Unlock audio on first user interaction
+      const handleFirstInteraction = () => {
+        unlockAudioOnIOS();
+        document.removeEventListener('touchstart', handleFirstInteraction);
+        document.removeEventListener('click', handleFirstInteraction);
+      };
+      
+      document.addEventListener('touchstart', handleFirstInteraction, { once: true });
+      document.addEventListener('click', handleFirstInteraction, { once: true });
+      
+      return () => {
+        document.removeEventListener('touchstart', handleFirstInteraction);
+        document.removeEventListener('click', handleFirstInteraction);
+      };
+    }
+  }, []);
+
   // Disable autoplay for first 3 seconds after page load
   useEffect(() => {
-    // Use requestIdleCallback or queueMicrotask instead of setTimeout
-    const idleCallback = (window as any).requestIdleCallback ? 
-      (window as any).requestIdleCallback(() => setIsInitialLoad(false), { timeout: 3000 }) :
-      setTimeout(() => setIsInitialLoad(false), 3000);
-    
-    return () => {
-      if ((window as any).requestIdleCallback && typeof idleCallback === 'number') {
-        (window as any).cancelIdleCallback(idleCallback);
-      } else {
-        clearTimeout(idleCallback as number);
-      }
-    };
+    const timer = setTimeout(() => setIsInitialLoad(false), 3000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Override audio play method during initial load to prevent autoplay
@@ -209,6 +222,9 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         return;
       }
 
+      // Wrap in try-catch for mobile safety
+      try {
+
       // Check if we need to load a new song
       if (prevSongRef.current !== songUrl) {
         const currentLoadingOperation = Date.now() + Math.random();
@@ -270,19 +286,23 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         audio.load();
 
         // Preload next song only when current song is playing smoothly
-        requestIdleCallback(() => {
-          const state = usePlayerStore.getState();
-          const nextIndex = (state.currentIndex + 1) % state.queue.length;
-          const nextSong = state.queue[nextIndex];
-          if (nextSong?.audioUrl && isValidUrl(nextSong.audioUrl)) {
-            const preloadAudio = new Audio();
-            preloadAudio.preload = 'metadata';
-            preloadAudio.src = nextSong.audioUrl;
-            setTimeout(() => {
-              preloadAudio.src = '';
-            }, 3000);
+        setTimeout(() => {
+          try {
+            const state = usePlayerStore.getState();
+            const nextIndex = (state.currentIndex + 1) % state.queue.length;
+            const nextSong = state.queue[nextIndex];
+            if (nextSong?.audioUrl && isValidUrl(nextSong.audioUrl)) {
+              const preloadAudio = new Audio();
+              preloadAudio.preload = 'metadata';
+              preloadAudio.src = nextSong.audioUrl;
+              setTimeout(() => {
+                preloadAudio.src = '';
+              }, 3000);
+            }
+          } catch (error) {
+            // Preload failed, continue without it
           }
-        }, { timeout: 2000 });
+        }, 2000);
       } else {
         // Same song, just play/resume
         if (audio.paused) {
@@ -303,10 +323,21 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
           isHandlingPlayback.current = false;
         }
       }
+      } catch (error) {
+        // Catch any errors during playback setup
+        console.error('Audio playback error:', error);
+        setIsPlaying(false);
+        isHandlingPlayback.current = false;
+        onLoadingChange(false);
+      }
     } else {
       // Pause the audio
-      if (audioRef.current && !audioRef.current.paused) {
-        audioRef.current.pause();
+      try {
+        if (audioRef.current && !audioRef.current.paused) {
+          audioRef.current.pause();
+        }
+      } catch (error) {
+        // Ignore pause errors
       }
       isHandlingPlayback.current = false;
     }
@@ -387,20 +418,32 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         crossOrigin="anonymous"
         controls={false}
         style={{ display: 'none' }}
+        onError={(e) => {
+          console.error('Audio element error (no song):', e);
+        }}
       />
     );
   }
 
+  const audioUrl = currentSong?.audioUrl && !currentSong.audioUrl.startsWith('blob:') ? 
+    currentSong.audioUrl.replace(/^http:\/\//, 'https://') : undefined;
+
   return (
     <audio
       ref={audioRef}
-      src={currentSong?.audioUrl && !currentSong.audioUrl.startsWith('blob:') ? 
-        currentSong.audioUrl.replace(/^http:\/\//, 'https://') : undefined}
+      src={audioUrl}
       onTimeUpdate={updateAudioMetadata}
       onLoadedMetadata={updateAudioMetadata}
-      onError={() => {
+      onError={(e) => {
+        console.error('Audio playback error:', e);
         if (currentSong) {
-          setTimeout(() => playNext(), 1000);
+          setTimeout(() => {
+            try {
+              playNext();
+            } catch (error) {
+              console.error('Error in playNext after audio error:', error);
+            }
+          }, 1000);
         }
       }}
       preload="auto"
@@ -412,29 +455,41 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       crossOrigin="anonymous"
       // Ensure proper audio session for CarPlay
       onPlay={() => {
-        // Update MediaSession when audio actually starts playing
-        if ('mediaSession' in navigator) {
-          navigator.mediaSession.playbackState = 'playing';
+        try {
+          // Update MediaSession when audio actually starts playing
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'playing';
+          }
+        } catch (error) {
+          console.error('Error updating media session on play:', error);
         }
       }}
       onPause={() => {
-        // Update MediaSession when audio actually pauses
-        if ('mediaSession' in navigator) {
-          navigator.mediaSession.playbackState = 'paused';
+        try {
+          // Update MediaSession when audio actually pauses
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'paused';
+          }
+        } catch (error) {
+          console.error('Error updating media session on pause:', error);
         }
       }}
       onSeeked={() => {
-        // Update position state after seeking for CarPlay sync
-        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && audioRef.current) {
-          try {
-            navigator.mediaSession.setPositionState({
-              duration: audioRef.current.duration || 0,
-              playbackRate: audioRef.current.playbackRate || 1,
-              position: audioRef.current.currentTime || 0
-            });
-          } catch (e) {
-            // Ignore position state errors
+        try {
+          // Update position state after seeking for CarPlay sync
+          if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && audioRef.current) {
+            try {
+              navigator.mediaSession.setPositionState({
+                duration: audioRef.current.duration || 0,
+                playbackRate: audioRef.current.playbackRate || 1,
+                position: audioRef.current.currentTime || 0
+              });
+            } catch (e) {
+              // Ignore position state errors
+            }
           }
+        } catch (error) {
+          console.error('Error updating position state:', error);
         }
       }}
       loop={usePlayerStore.getState().isRepeating}
