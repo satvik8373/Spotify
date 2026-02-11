@@ -43,6 +43,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { SpotifyProvider } from './contexts/SpotifyContext';
@@ -106,12 +107,18 @@ const ErrorFallback = ({ error }: { error?: Error }) => {
 };
 
 // Auth gate that redirects to login if not authenticated - optimized for instant loading
-const AuthGate = ({ children }: { children: React.ReactNode }) => {
+// Guest mode: allows access without authentication
+const AuthGate = ({ children, allowGuest = false }: { children: React.ReactNode; allowGuest?: boolean }) => {
 	const { isAuthenticated, loading } = useAuth();
 	const location = useLocation();
 
 	// Quick check for cached auth to avoid unnecessary loading states
 	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
+
+	// If guest mode is allowed, always show content
+	if (allowGuest) {
+		return <>{children}</>;
+	}
 
 	// If we have cached auth, show content immediately for better UX (optimistic rendering)
 	if (hasCachedAuth) {
@@ -170,6 +177,10 @@ const router = createBrowserRouter(
 			element: <ResetPassword />
 		},
 		{
+			path: '/verify-email',
+			element: <VerifyEmail />
+		},
+		{
 			path: '/spotify-callback',
 			element: <SpotifyCallback />
 		},
@@ -195,11 +206,11 @@ const router = createBrowserRouter(
 			children: [
 				{
 					path: '/home',
-					element: <AuthGate><HomePage /></AuthGate>
+					element: <AuthGate allowGuest={true}><HomePage /></AuthGate>
 				},
 				{
 					path: '/albums/:albumId',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><AlbumPage /></Suspense></AuthGate>
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><AlbumPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/library',
@@ -215,7 +226,7 @@ const router = createBrowserRouter(
 				},
 				{
 					path: '/search',
-					element: <AuthGate><SearchPage /></AuthGate>
+					element: <AuthGate allowGuest={true}><SearchPage /></AuthGate>
 				},
 				{
 					path: '/profile',
@@ -223,27 +234,27 @@ const router = createBrowserRouter(
 				},
 				{
 					path: '/playlist/:id',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PlaylistPage /></Suspense></AuthGate>
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PlaylistPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/song/:songId',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SongPage /></Suspense></AuthGate>
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SongPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/jiosaavn/playlist/:playlistId',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnPlaylistPage /></Suspense></AuthGate>
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnPlaylistPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/jiosaavn/playlists',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnPlaylistsPage /></Suspense></AuthGate>
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnPlaylistsPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/jiosaavn/categories',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnCategoriesPage /></Suspense></AuthGate>
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnCategoriesPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/settings',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SettingsPage /></Suspense></AuthGate>
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SettingsPage /></Suspense></AuthGate>
 				},
 				{
 					path: '*',

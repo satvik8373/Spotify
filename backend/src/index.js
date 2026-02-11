@@ -32,6 +32,8 @@ import cloudinaryRoutes from "./routes/cloudinary.route.js";
 import deezerRoutes from "./routes/deezer.route.js";
 import jiosaavnRoutes from "./routes/jiosaavn.route.js";
 import facebookRoutes from "./routes/facebook.route.js";
+import otpRoutes from "./routes/otp.route.js";
+import { verifyEmailConfig } from "./services/email.service.js";
 
 const __dirname = path.resolve();
 const app = express();
@@ -171,6 +173,7 @@ app.use("/api/cloudinary", cloudinaryRoutes);
 app.use("/api/deezer", deezerRoutes);
 app.use("/api/jiosaavn", jiosaavnRoutes);
 app.use("/api/facebook", facebookRoutes);
+app.use("/api/otp", otpRoutes);
 
 // Special route to handle Spotify callback directly
 app.get('/spotify-callback', (req, res) => {
@@ -229,4 +232,13 @@ httpServer.listen(PORT, () => {
   console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Running on Vercel: ${process.env.VERCEL ? 'Yes' : 'No'}`);
+  
+  // Verify email configuration
+  verifyEmailConfig().then(isReady => {
+    if (isReady) {
+      console.log('✓ Email service configured and ready');
+    } else {
+      console.log('⚠ Email service not configured - OTP will be shown in console only');
+    }
+  });
 });

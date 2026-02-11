@@ -1,6 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { login, signInWithGoogle, register, signInWithFacebook } from '@/services/hybridAuthService';
+import { login, signInWithGoogle, register } from '@/services/hybridAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
@@ -14,20 +14,6 @@ const GoogleLogo = memo(() => (
     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-  </svg>
-));
-
-// Facebook Logo Component
-const FacebookLogo = memo(() => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2" xmlns="http://www.w3.org/2000/svg">
-    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-  </svg>
-));
-
-// Phone Icon Component
-const PhoneIcon = memo(() => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
   </svg>
 ));
 
@@ -51,7 +37,6 @@ const Login = () => {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [facebookLoading, setFacebookLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true); // Default to login mode
   const navigate = useNavigate();
@@ -122,12 +107,16 @@ const Login = () => {
       if (isLogin) {
         await login(email, password);
         toast.success('Welcome back!');
+        const redirectTo = location.state?.from || '/home';
+        navigate(redirectTo, { replace: true });
       } else {
-        await register(email, password, fullName);
-        toast.success('Account created successfully');
+        // For registration, redirect to email verification BEFORE creating account
+        toast.success('Please verify your email to complete registration');
+        navigate('/verify-email', { 
+          state: { email, password, fullName },
+          replace: true 
+        });
       }
-      const redirectTo = location.state?.from || '/home';
-      navigate(redirectTo, { replace: true });
     } catch (error: any) {
 
       if (isLogin) {
@@ -163,20 +152,6 @@ const Login = () => {
       toast.error(error.message || `Failed to ${isLogin ? 'login' : 'sign up'} with Google`);
     } finally {
       setGoogleLoading(false);
-    }
-  };
-
-  const handleFacebookAuth = async () => {
-    setFacebookLoading(true);
-    try {
-      await signInWithFacebook();
-      toast.success(isLogin ? 'Welcome back!' : 'Signed up with Facebook successfully');
-      const redirectTo = location.state?.from || '/home';
-      navigate(redirectTo, { replace: true });
-    } catch (error: any) {
-      toast.error(error.message || `Failed to ${isLogin ? 'login' : 'sign up'} with Facebook`);
-    } finally {
-      setFacebookLoading(false);
     }
   };
 
@@ -245,43 +220,17 @@ const Login = () => {
                 </Button>
                 {/* Visual cue for recommended/working method */}
                 <div className="absolute -top-2 -right-1 bg-green-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-md">
-                  Working
+                  Recommended
                 </div>
               </div>
 
-              {/* Continue with Phone */}
+              {/* Guest Login */}
               <Button
+                onClick={() => navigate('/home')}
                 variant="outline"
-                disabled={true}
-                className="w-full border-gray-600/30 bg-transparent text-white/40 font-medium py-2.5 rounded-full mb-2 flex items-center justify-center gap-3 text-sm h-auto opacity-50 cursor-not-allowed"
+                className="w-full border-gray-600/30 bg-transparent text-white font-medium py-2.5 rounded-full mb-4 flex items-center justify-center gap-3 text-sm h-auto"
               >
-                <div className="shrink-0 grayscale opacity-50"><PhoneIcon /></div>
-                <span>Phone (Coming Soon)</span>
-              </Button>
-
-              {/* Continue with Facebook */}
-              <Button
-                onClick={handleFacebookAuth}
-                disabled={facebookLoading}
-                variant="outline"
-                className="w-full border-gray-600/30 bg-transparent text-white font-medium py-2.5 rounded-full mb-2 flex items-center justify-center gap-3 text-sm h-auto"
-              >
-                <div className="shrink-0"><FacebookLogo /></div>
-                <span>{facebookLoading ? (isLogin ? 'Signing in...' : 'Signing up...') : 'Continue with Facebook'}</span>
-              </Button>
-
-              {/* Continue with Apple - Added */}
-              <Button
-                variant="outline"
-                disabled={true}
-                className="w-full border-gray-600/30 bg-transparent text-white/40 font-medium py-2.5 rounded-full mb-4 flex items-center justify-center gap-3 text-sm h-auto opacity-50 cursor-not-allowed"
-              >
-                <div className="shrink-0 opacity-50">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-                  </svg>
-                </div>
-                <span>Apple (Coming Soon)</span>
+                <span>Continue as Guest</span>
               </Button>
 
               {/* Toggle between Login/Register - Removed as requested (redundant) */}
@@ -527,29 +476,16 @@ const Login = () => {
                         {googleLoading ? (isLogin ? 'Signing in...' : 'Signing up...') : 'Continue with Google'}
                       </Button>
                       <div className="absolute -top-2 -right-2 bg-green-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md z-10">
-                        Top Choice
+                        Recommended
                       </div>
                     </div>
 
                     <Button
-                      onClick={handleFacebookAuth}
-                      disabled={facebookLoading}
+                      onClick={() => navigate('/home')}
                       variant="outline"
                       className="w-full border-gray-600 text-white hover:bg-gray-800/50 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm"
                     >
-                      <FacebookLogo />
-                      {facebookLoading ? (isLogin ? 'Signing in...' : 'Signing up...') : 'Continue with Facebook'}
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      disabled={true}
-                      className="w-full border-gray-600 text-white/40 hover:bg-gray-800/20 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm opacity-50 cursor-not-allowed"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-                      </svg>
-                      Apple (Coming Soon)
+                      Continue as Guest
                     </Button>
                   </div>
 

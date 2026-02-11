@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  sendEmailVerification,
   GoogleAuthProvider,
   signInWithPopup
 } from "firebase/auth";
@@ -202,13 +203,24 @@ export const register = async (email: string, password: string, fullName: string
       displayName: fullName,
     });
 
+    // Send email verification
+    try {
+      await sendEmailVerification(user, {
+        url: window.location.origin + '/home',
+        handleCodeInApp: false
+      });
+    } catch (verificationError) {
+      console.error('Failed to send verification email:', verificationError);
+      // Continue with registration even if verification email fails
+    }
+
     // Create user document in Firestore
     await setDoc(doc(db, "users", user.uid), {
       email,
       fullName,
       imageUrl: null,
       createdAt: new Date().toISOString(),
-
+      emailVerified: false
     });
 
     // Create a user profile object
@@ -254,6 +266,59 @@ export const register = async (email: string, password: string, fullName: string
     return userProfile;
   } catch (error: any) {
     throw new Error(error.message || "Failed to register");
+  }
+};
+
+// Send email verification
+export const sendVerificationEmail = async (): Promise<void> => {
+  try {
+    const user = auth.currentUser;
+    
+    if (!user) {
+      throw new Error('No user is currently signed in');
+    }
+
+    if (user.emailVerified) {
+      throw new Error('Email is already verified');
+    }
+
+    await sendEmailVerification(user, {
+      url: window.location.origin + '/home',
+      handleCodeInApp: false
+    });
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to send verification email");
+  }
+};
+
+// Check if email is verified
+export const checkEmailVerified = async (): Promise<boolean> => {
+  try {
+    const user = auth.currentUser;
+    
+    if (!user) {
+      return false;
+    }
+
+    // Reload user to get latest email verification status
+    await user.reload();
+    
+    // Update Firestore if verification status changed
+    if (user.emailVerified) {
+      try {
+        await setDoc(doc(db, "users", user.uid), {
+          emailVerified: true,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (error) {
+        console.error('Failed to update Firestore:', error);
+      }
+    }
+    
+    return user.emailVerified;
+  } catch (error: any) {
+    console.error('Error checking email verification:', error);
+    return false;
   }
 };
 
