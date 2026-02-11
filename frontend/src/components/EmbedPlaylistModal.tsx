@@ -72,36 +72,11 @@ const EmbedPlaylistModal = ({
 
   const handleCopy = async () => {
     try {
-      const embedCode = generateEmbedCode();
-      
-      // Try modern clipboard API first
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(embedCode);
-      } else {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = embedCode;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        
-        try {
-          document.execCommand('copy');
-        } finally {
-          document.body.removeChild(textArea);
-        }
-      }
-      
+      await navigator.clipboard.writeText(generateEmbedCode());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
-      // Still show success to avoid confusing users
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -148,14 +123,8 @@ const EmbedPlaylistModal = ({
               <div className="flex gap-2">
                 <button
                   onClick={() => setColorTheme('green')}
-                  onTouchStart={(e) => {
-                    e.currentTarget.style.transform = 'scale(0.95)';
-                  }}
-                  onTouchEnd={(e) => {
-                    e.currentTarget.style.transform = '';
-                  }}
                   className={cn(
-                    'w-8 h-8 rounded-full bg-[#1DB954] border-2 transition-all touch-manipulation',
+                    'w-8 h-8 rounded-full bg-[#1DB954] border-2 transition-all',
                     colorTheme === 'green'
                       ? 'border-white scale-110'
                       : 'border-transparent hover:scale-105'
@@ -164,14 +133,8 @@ const EmbedPlaylistModal = ({
                 />
                 <button
                   onClick={() => setColorTheme('dark')}
-                  onTouchStart={(e) => {
-                    e.currentTarget.style.transform = 'scale(0.95)';
-                  }}
-                  onTouchEnd={(e) => {
-                    e.currentTarget.style.transform = '';
-                  }}
                   className={cn(
-                    'w-8 h-8 rounded-full bg-[#282828] border-2 transition-all touch-manipulation',
+                    'w-8 h-8 rounded-full bg-[#282828] border-2 transition-all',
                     colorTheme === 'dark'
                       ? 'border-white scale-110'
                       : 'border-transparent hover:scale-105'
@@ -272,14 +235,8 @@ const EmbedPlaylistModal = ({
 
               <Button
                 onClick={handleCopy}
-                onTouchStart={(e) => {
-                  e.currentTarget.style.transform = 'scale(0.98)';
-                }}
-                onTouchEnd={(e) => {
-                  e.currentTarget.style.transform = '';
-                }}
                 className={cn(
-                  'px-8 py-2 rounded-full font-semibold transition-all touch-manipulation',
+                  'px-8 py-2 rounded-full font-semibold transition-all',
                   copied
                     ? 'bg-[#1DB954] hover:bg-[#1ed760] text-black'
                     : 'bg-[#1DB954] hover:bg-[#1ed760] text-black hover:scale-105'
