@@ -45,7 +45,6 @@ import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
-import { IOSPWARecovery } from './components/IOSPWARecovery';
 import { SpotifyProvider } from './contexts/SpotifyContext';
 
 
@@ -348,7 +347,6 @@ function AppContent() {
 			/>
 			<PWAInstallPrompt />
 			<AndroidPWAHelper />
-			<IOSPWARecovery />
 		</div>
 	);
 }

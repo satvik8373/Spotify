@@ -161,14 +161,13 @@ const handleTelegram = async (options: ShareOptions) => {
 };
 
 /**
- * Copy Link - Copy to clipboard
+ * Copy Link - Copy to clipboard with proper cleanup
  */
 const handleCopyLink = async (options: ShareOptions) => {
   const { card } = options;
   
   try {
     await navigator.clipboard.writeText(card.shareUrl);
-    // Show success toast (would use your toast system)
     console.log('Link copied to clipboard!');
   } catch (error) {
     // Fallback for older browsers
@@ -176,10 +175,18 @@ const handleCopyLink = async (options: ShareOptions) => {
     textArea.value = card.shareUrl;
     textArea.style.position = 'fixed';
     textArea.style.left = '-999999px';
+    textArea.style.top = '0';
+    textArea.setAttribute('readonly', '');
     document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textArea);
+    
+    try {
+      textArea.select();
+      textArea.setSelectionRange(0, 99999); // For mobile devices
+      document.execCommand('copy');
+    } finally {
+      document.body.removeChild(textArea);
+    }
+    
     console.log('Link copied to clipboard!');
   }
 };
@@ -220,17 +227,22 @@ const handleNativeShare = async (options: ShareOptions) => {
 };
 
 /**
- * Helper: Download image
+ * Helper: Download image with proper cleanup
  */
 const downloadImage = (blob: Blob, filename: string) => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  
+  // Cleanup after a delay to ensure download starts
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
 };
 
 /**

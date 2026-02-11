@@ -72,11 +72,30 @@ const EmbedPlaylistModal = ({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(generateEmbedCode());
+      const code = generateEmbedCode();
+      await navigator.clipboard.writeText(code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+      // Fallback for mobile/iOS
+      const textArea = document.createElement('textarea');
+      textArea.value = generateEmbedCode();
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '0';
+      textArea.setAttribute('readonly', '');
+      document.body.appendChild(textArea);
+      
+      try {
+        textArea.select();
+        textArea.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } finally {
+        document.body.removeChild(textArea);
+      }
     }
   };
 

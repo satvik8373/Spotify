@@ -60,17 +60,26 @@ export const PlaybackControls = () => {
 
 	// Handle audio element events
 	useEffect(() => {
-		audioRef.current = document.querySelector("audio");
-
+		const audioElement = document.querySelector("audio");
+		if (!audioElement) {
+			console.warn('Audio element not found');
+			return;
+		}
+		
+		audioRef.current = audioElement;
 		const audio = audioRef.current;
-		if (!audio) return;
 
 		// Set initial volume
 		audio.volume = volume / 100;
 
-		const updateTime = () => setCurrentTime(audio.currentTime);
+		const updateTime = () => {
+			if (audio && !isNaN(audio.currentTime)) {
+				setCurrentTime(audio.currentTime);
+			}
+		};
+		
 		const updateDuration = () => {
-			if (!isNaN(audio.duration)) {
+			if (audio && !isNaN(audio.duration)) {
 				setDuration(audio.duration);
 			}
 		};
@@ -78,7 +87,7 @@ export const PlaybackControls = () => {
 		const handleEnded = () => {
 			if (isRepeating && audio) {
 				audio.currentTime = 0;
-				audio.play();
+				audio.play().catch(() => {});
 			} else {
 				// Only call playNext once to avoid race conditions
 				const store = usePlayerStore.getState();
@@ -93,9 +102,11 @@ export const PlaybackControls = () => {
 		audio.addEventListener("ended", handleEnded);
 
 		return () => {
-			audio.removeEventListener("timeupdate", updateTime);
-			audio.removeEventListener("loadedmetadata", updateDuration);
-			audio.removeEventListener("ended", handleEnded);
+			if (audio) {
+				audio.removeEventListener("timeupdate", updateTime);
+				audio.removeEventListener("loadedmetadata", updateDuration);
+				audio.removeEventListener("ended", handleEnded);
+			}
 		};
 	}, [currentSong, volume, isRepeating, playNext]);
 
@@ -322,6 +333,7 @@ export const PlaybackControls = () => {
 								<div
 									className="relative w-full cursor-pointer py-1"
 									onClick={(e) => {
+										if (!audioRef.current) return;
 										const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
 										const offsetX = e.clientX - rect.left;
 										const pct = Math.max(0, Math.min(1, offsetX / rect.width));

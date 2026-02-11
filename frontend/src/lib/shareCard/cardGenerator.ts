@@ -30,17 +30,26 @@ export const generateShareCard = async (
   // Draw card based on platform
   await drawShareCard(ctx, canvas, config, theme, dimensions);
   
-  // Convert to blob
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('Failed to create blob'))),
-      'image/png',
-      1.0
-    );
-  });
+  // Convert to blob with timeout
+  const blob = await Promise.race([
+    new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('Failed to create blob'))),
+        'image/png',
+        1.0
+      );
+    }),
+    new Promise<Blob>((_, reject) => 
+      setTimeout(() => reject(new Error('Canvas operation timeout')), 5000)
+    )
+  ]);
   
   // Create object URL
   const imageUrl = URL.createObjectURL(blob);
+  
+  // Cleanup canvas
+  canvas.width = 0;
+  canvas.height = 0;
   
   return {
     imageUrl,
@@ -264,16 +273,21 @@ const drawQRCode = async (
 };
 
 /**
- * Helper: Load image
+ * Helper: Load image with timeout
  */
 const loadImage = (src: string): Promise<HTMLImageElement> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
+  return Promise.race([
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Image load failed'));
+      img.src = src;
+    }),
+    new Promise<HTMLImageElement>((_, reject) => 
+      setTimeout(() => reject(new Error('Image load timeout')), 10000)
+    )
+  ]);
 };
 
 /**

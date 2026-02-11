@@ -59,25 +59,33 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
     setSelectedPlatform(platform);
     setIsGenerating(true);
 
+    let card: any = null;
     try {
-      // Generate share card
-      const card = await generateShareCard({
-        platform,
-        content,
-        branding: {
-          logo: true,
-          watermark: true,
-          appName: 'Mavrixfy'
-        },
-        preview: {
-          audio: false,
-          duration: 15
-        },
-        deepLink: {
-          url: `${window.location.origin}/${content.type}/${content.id}?ref=${platform}`,
-          fallbackUrl: window.location.origin
-        }
-      });
+      // Generate share card with timeout
+      const result = await Promise.race([
+        generateShareCard({
+          platform,
+          content,
+          branding: {
+            logo: true,
+            watermark: true,
+            appName: 'Mavrixfy'
+          },
+          preview: {
+            audio: false,
+            duration: 15
+          },
+          deepLink: {
+            url: `${window.location.origin}/${content.type}/${content.id}?ref=${platform}`,
+            fallbackUrl: window.location.origin
+          }
+        }),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Share generation timeout')), 15000)
+        )
+      ]);
+      
+      card = result;
 
       // Show preview for a moment
       setPreviewCard(card.imageUrl);
@@ -110,6 +118,12 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
       console.error('Share error:', error);
       toast.error('Failed to share. Please try again.');
     } finally {
+      // Cleanup
+      if (card?.imageUrl) {
+        setTimeout(() => {
+          URL.revokeObjectURL(card.imageUrl);
+        }, 2000);
+      }
       setIsGenerating(false);
       setSelectedPlatform(null);
     }
