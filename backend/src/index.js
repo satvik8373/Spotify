@@ -39,6 +39,9 @@ const __dirname = path.resolve();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy - CRITICAL for Vercel to detect HTTPS correctly
+app.set('trust proxy', 1);
+
 const httpServer = createServer(app);
 initializeSocket(httpServer);
 
