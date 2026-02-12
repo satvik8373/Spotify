@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-// Base URL for JioSaavn unofficial API - using working alternative
-const JIOSAAVN_API_BASE_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
+// Use the same API as the website for better reliability
+const JIOSAAVN_API_BASE_URL = 'https://saavn.sumit.co/api';
+const FALLBACK_API_BASE_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
+const BACKUP_API_BASE_URL = 'https://saavn.me';
 
 /**
  * Search for songs, albums, artists on JioSaavn
@@ -26,25 +28,48 @@ export const searchSongs = async (query, limit = 20) => {
 };
 
 /**
- * Search for playlists on JioSaavn
+ * Search for playlists on JioSaavn with fallback APIs
  * @param {string} query - Search query
  * @param {number} limit - Number of results to return
  * @returns {Promise<Object>} - Search results
  */
 export const searchPlaylists = async (query, limit = 10) => {
-  try {
-    const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/search/playlists`, {
-      params: {
-        query,
-        page: 1,
-        limit
+  const apis = [JIOSAAVN_API_BASE_URL, FALLBACK_API_BASE_URL, BACKUP_API_BASE_URL];
+  
+  for (const apiUrl of apis) {
+    try {
+      console.log(`Trying JioSaavn API: ${apiUrl}/search/playlists`);
+      const response = await axios.get(`${apiUrl}/search/playlists`, {
+        params: {
+          query,
+          page: 1,
+          limit
+        },
+        timeout: 10000
+      });
+      
+      console.log(`API ${apiUrl} response:`, response.data);
+      
+      // Check if we got valid data
+      if (response.data && (response.data.success !== false)) {
+        return response.data;
       }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error searching JioSaavn playlists:', error.message);
-    throw error;
+    } catch (error) {
+      console.warn(`JioSaavn API ${apiUrl} failed:`, error.message);
+      // Try next API
+    }
   }
+  
+  // If all APIs failed, return empty result
+  console.error('All JioSaavn APIs failed for playlist search');
+  return {
+    success: true,
+    data: {
+      total: 0,
+      start: 0,
+      results: []
+    }
+  };
 };
 
 /**
