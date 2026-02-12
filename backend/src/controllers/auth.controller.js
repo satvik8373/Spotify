@@ -147,11 +147,44 @@ export const googleMobileAuth = async (req, res) => {
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&response_type=code` +
       `&scope=${encodeURIComponent(scope)}` +
-      `&state=${encodeURIComponent(returnUrl)}`;
+      `&state=${encodeURIComponent(returnUrl)}` +
+      `&access_type=offline` +
+      `&prompt=consent`;
 
     res.redirect(googleAuthUrl);
   } catch (error) {
     console.error("Google mobile auth error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+};
+
+// Debug endpoint to check OAuth configuration
+export const googleMobileDebug = async (req, res) => {
+  try {
+    const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google-mobile/callback`;
+    
+    res.json({
+      success: true,
+      config: {
+        clientIdConfigured: !!googleClientId,
+        clientIdPrefix: googleClientId ? googleClientId.substring(0, 20) + '...' : 'NOT SET',
+        redirectUri: redirectUri,
+        host: req.get('host'),
+        protocol: req.protocol
+      },
+      instructions: {
+        step1: 'Verify GOOGLE_CLIENT_ID is set in Vercel environment variables',
+        step2: 'Verify GOOGLE_CLIENT_SECRET is set in Vercel environment variables',
+        step3: `Add this redirect URI to Google Cloud Console: ${redirectUri}`,
+        step4: 'Add yourself as a test user in Google OAuth Consent Screen',
+        googleCloudConsole: 'https://console.cloud.google.com/apis/credentials'
+      }
+    });
+  } catch (error) {
     res.status(500).json({ 
       success: false, 
       message: error.message 
