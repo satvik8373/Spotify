@@ -37,6 +37,32 @@ router.get('/search/playlists', async (req, res) => {
   }
 });
 
+// Get categories
+router.get('/categories', async (req, res) => {
+  try {
+    const categories = [
+      { id: 'trending', name: 'Trending Now', icon: '🔥', query: 'trending now 2026', priority: 10 },
+      { id: 'bollywood', name: 'Bollywood', icon: '🎬', query: 'bollywood hits', priority: 9 },
+      { id: 'romantic', name: 'Romantic', icon: '💕', query: 'romantic songs', priority: 8 },
+      { id: 'punjabi', name: 'Punjabi', icon: '🎵', query: 'punjabi hits', priority: 7 },
+      { id: 'party', name: 'Party', icon: '🎉', query: 'party songs 2026', priority: 6 },
+      { id: 'workout', name: 'Workout', icon: '💪', query: 'workout songs 2026', priority: 5 },
+      { id: 'devotional', name: 'Devotional', icon: '🙏', query: 'devotional songs 2026', priority: 4 },
+      { id: 'retro', name: 'Retro Hits', icon: '📻', query: '90s hits', priority: 3 },
+      { id: 'regional', name: 'Regional', icon: '🌍', query: 'tamil hits 2026', priority: 2 },
+      { id: 'international', name: 'International', icon: '🌎', query: 'english songs 2026', priority: 1 },
+    ];
+    
+    res.json({
+      success: true,
+      data: categories
+    });
+  } catch (error) {
+    console.error('Get categories error:', error);
+    res.status(500).json({ error: 'Failed to get categories' });
+  }
+});
+
 // Get trending songs
 router.get('/trending', async (req, res) => {
   try {
@@ -70,6 +96,18 @@ router.get('/songs/:id', async (req, res) => {
   } catch (error) {
     console.error('Get song details error:', error);
     res.status(500).json({ error: 'Failed to get song details' });
+  }
+});
+
+// Get playlist details
+router.get('/playlists/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await jiosaavnService.getPlaylistDetails(id);
+    res.json(data);
+  } catch (error) {
+    console.error('Get playlist details error:', error);
+    res.status(500).json({ error: 'Failed to get playlist details' });
   }
 });
 

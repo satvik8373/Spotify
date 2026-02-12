@@ -205,20 +205,36 @@ export const getAlbumDetails = async (id) => {
 };
 
 /**
- * Get playlist details from JioSaavn
+ * Get playlist details from JioSaavn with fallback APIs
  * @param {string} id - Playlist ID
  * @returns {Promise<Object>} - Playlist details
  */
 export const getPlaylistDetails = async (id) => {
-  try {
-    const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/playlists`, {
-      params: { id }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching JioSaavn playlist details:', error.message);
-    throw error;
+  const apis = [JIOSAAVN_API_BASE_URL, FALLBACK_API_BASE_URL, BACKUP_API_BASE_URL];
+  
+  for (const apiUrl of apis) {
+    try {
+      console.log(`Trying JioSaavn API: ${apiUrl}/playlists`);
+      const response = await axios.get(`${apiUrl}/playlists`, {
+        params: { id },
+        timeout: 10000
+      });
+      
+      console.log(`API ${apiUrl} playlist details response:`, response.data);
+      
+      // Check if we got valid data
+      if (response.data && (response.data.success !== false)) {
+        return response.data;
+      }
+    } catch (error) {
+      console.warn(`JioSaavn API ${apiUrl} failed for playlist details:`, error.message);
+      // Try next API
+    }
   }
+  
+  // If all APIs failed, throw error
+  console.error('All JioSaavn APIs failed for playlist details');
+  throw new Error('Failed to get playlist details from all APIs');
 };
 
 /**
