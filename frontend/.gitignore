@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Environment files
+.env
+.env.*
+.env.local
+.env.production
+
+# Vercel
+.vercel/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +31,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Build and cache
+.cache/
+build/
+*.tmp
