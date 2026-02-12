@@ -165,6 +165,7 @@ export const googleMobileAuth = async (req, res) => {
 export const googleMobileDebug = async (req, res) => {
   try {
     const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google-mobile/callback`;
     
     res.json({
@@ -172,9 +173,18 @@ export const googleMobileDebug = async (req, res) => {
       config: {
         clientIdConfigured: !!googleClientId,
         clientIdPrefix: googleClientId ? googleClientId.substring(0, 20) + '...' : 'NOT SET',
+        clientSecretConfigured: !!googleClientSecret,
+        clientSecretPrefix: googleClientSecret ? 'GOCSPX-****' : 'NOT SET',
         redirectUri: redirectUri,
         host: req.get('host'),
         protocol: req.protocol
+      },
+      status: {
+        readyForOAuth: !!googleClientId && !!googleClientSecret,
+        missingConfig: [
+          ...(!googleClientId ? ['GOOGLE_CLIENT_ID'] : []),
+          ...(!googleClientSecret ? ['GOOGLE_CLIENT_SECRET'] : [])
+        ]
       },
       instructions: {
         step1: 'Verify GOOGLE_CLIENT_ID is set in Vercel environment variables',
@@ -195,7 +205,13 @@ export const googleMobileDebug = async (req, res) => {
 // Google OAuth callback for mobile
 export const googleMobileCallback = async (req, res) => {
   try {
-    const { code, state: returnUrl } = req.query;
+    const { code, state: returnUrl, error: oauthError } = req.query;
+
+    // Check if Google returned an error
+    if (oauthError) {
+      console.error("OAuth error from Google:", oauthError);
+      return res.status(400).send(`Google OAuth error: ${oauthError}`);
+    }
 
     if (!code) {
       return res.status(400).send("Authorization code not provided");
@@ -205,10 +221,20 @@ export const googleMobileCallback = async (req, res) => {
     const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
     if (!googleClientId || !googleClientSecret) {
-      return res.status(500).send("Google OAuth not properly configured");
+      console.error("OAuth config missing:", { 
+        hasClientId: !!googleClientId, 
+        hasClientSecret: !!googleClientSecret 
+      });
+      return res.status(500).send(
+        `Google OAuth not properly configured. ` +
+        `Client ID: ${googleClientId ? 'SET' : 'MISSING'}, ` +
+        `Client Secret: ${googleClientSecret ? 'SET' : 'MISSING'}`
+      );
     }
 
     const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google-mobile/callback`;
+
+    console.log("Exchanging code for token:", { redirectUri, hasCode: !!code });
 
     // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -225,13 +251,28 @@ export const googleMobileCallback = async (req, res) => {
 
     const tokenData = await tokenResponse.json();
 
+    console.log("Token response status:", tokenResponse.status);
+    console.log("Token data keys:", Object.keys(tokenData));
+
     if (!tokenData.id_token) {
-      console.error("Token exchange failed:", tokenData);
-      return res.status(500).send("Failed to get ID token from Google");
+      console.error("Token exchange failed:", {
+        status: tokenResponse.status,
+        error: tokenData.error,
+        error_description: tokenData.error_description,
+        hasAccessToken: !!tokenData.access_token,
+        hasIdToken: !!tokenData.id_token
+      });
+      
+      return res.status(500).send(
+        `Failed to get ID token from Google. ` +
+        `Error: ${tokenData.error || 'Unknown'} - ` +
+        `${tokenData.error_description || 'No description'}`
+      );
     }
 
     // Redirect back to app with the ID token
     const finalUrl = `${returnUrl}?id_token=${encodeURIComponent(tokenData.id_token)}`;
+    console.log("Redirecting to app with token");
     res.redirect(finalUrl);
   } catch (error) {
     console.error("Google callback error:", error);
