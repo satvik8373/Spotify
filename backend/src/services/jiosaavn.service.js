@@ -26,6 +26,28 @@ export const searchSongs = async (query, limit = 20) => {
 };
 
 /**
+ * Search for playlists on JioSaavn
+ * @param {string} query - Search query
+ * @param {number} limit - Number of results to return
+ * @returns {Promise<Object>} - Search results
+ */
+export const searchPlaylists = async (query, limit = 10) => {
+  try {
+    const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/search/playlists`, {
+      params: {
+        query,
+        page: 1,
+        limit
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error searching JioSaavn playlists:', error.message);
+    throw error;
+  }
+};
+
+/**
  * Get trending songs from JioSaavn with 2026 focus
  * @param {number} limit - Number of results to return
  * @returns {Promise<Object>} - Trending songs

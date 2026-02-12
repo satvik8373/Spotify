@@ -20,6 +20,23 @@ router.get('/search/songs', async (req, res) => {
   }
 });
 
+// Search playlists
+router.get('/search/playlists', async (req, res) => {
+  try {
+    const { query, limit = 10 } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameter is required' });
+    }
+
+    const data = await jiosaavnService.searchPlaylists(query, parseInt(limit));
+    res.json(data);
+  } catch (error) {
+    console.error('Search playlists error:', error);
+    res.status(500).json({ error: 'Failed to search playlists' });
+  }
+});
+
 // Get trending songs
 router.get('/trending', async (req, res) => {
   try {
