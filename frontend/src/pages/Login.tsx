@@ -236,7 +236,7 @@ const Login = () => {
 
               {/* APK Download for Android */}
               <a
-                href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/yourusername/yourrepo/releases/download/v1.0.0/mavrixfy.apk'}
+                href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
                 download
                 className="w-full border border-green-500 bg-green-500/10 text-green-400 font-medium py-2.5 rounded-full mb-4 flex items-center justify-center gap-3 text-sm h-auto hover:bg-green-500/20 transition-colors"
               >
@@ -501,7 +501,7 @@ const Login = () => {
 
                     {/* APK Download for Android */}
                     <a
-                      href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/yourusername/yourrepo/releases/download/v1.0.0/mavrixfy.apk'}
+                      href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
                       download
                       className="w-full border border-green-500 bg-green-500/10 text-green-400 hover:bg-green-500/20 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm"
                     >

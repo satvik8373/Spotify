@@ -241,23 +241,25 @@ const Header = ({ className }: HeaderProps) => {
         <div className="flex-shrink-0" style={{ width: '32px' }} />
 
         {/* Right: User Profile & Bell */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
           {!authLoading && (
             user ? (
               <>
-                {/* APK Download for Android Users */}
+                {/* APK Download for Android Users - Show on mobile too */}
                 {isAndroid && (
                   <a
-                    href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/yourusername/yourrepo/releases/download/v1.0.0/mavrixfy.apk'}
+                    href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
                     download
-                    className="hidden md:flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-medium rounded-full transition-all text-sm"
+                    className="flex items-center gap-2 px-3 md:px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-medium rounded-full transition-all text-xs md:text-sm"
                     title="Download Android APK"
                   >
                     <Download size={16} />
-                    <span>Download APK</span>
+                    <span className="hidden sm:inline">Download APK</span>
+                    <span className="sm:hidden">APK</span>
                   </a>
                 )}
 
+                {/* Bell Icon - Show on mobile too */}
                 <button
                   className="w-8 h-8 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
                   onClick={() => setShowWhatsNew(true)}

@@ -257,7 +257,7 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
               
               {/* APK Download Button for Android */}
               <a
-                href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/yourusername/yourrepo/releases/download/v1.0.0/mavrixfy.apk'}
+                href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
                 download
                 className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md w-full mt-2 text-center block"
               >
@@ -297,7 +297,7 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
               
               {/* APK Download Button */}
               <a
-                href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/yourusername/yourrepo/releases/download/v1.0.0/mavrixfy.apk'}
+                href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
                 download
                 className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md w-full text-center block"
               >

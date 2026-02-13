@@ -260,7 +260,7 @@ const PWAInstallPrompt = () => {
                 <p className="text-sm text-gray-600">Get the Mavrixfy app on your Android device:</p>
                 <div className="space-y-3">
                   <a
-                    href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/yourusername/yourrepo/releases/download/v1.0.0/mavrixfy.apk'}
+                    href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
                     download
                     className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
                     onClick={handleDismiss}
