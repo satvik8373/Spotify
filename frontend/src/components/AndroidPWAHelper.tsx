@@ -254,11 +254,21 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
                 <Share size={20} className="text-green-500" />
                 <span>Full-screen experience without browser UI</span>
               </div>
+              
+              {/* APK Download Button for Android */}
+              <a
+                href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/yourusername/yourrepo/releases/download/v1.0.0/mavrixfy.apk'}
+                download
+                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md w-full mt-2 text-center block"
+              >
+                Download APK
+              </a>
+              
               <button
                 onClick={installApp}
-                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md w-full mt-2"
+                className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium py-2 px-4 rounded-md w-full"
               >
-                Install Now
+                Install as PWA
               </button>
             </div>
           ) : (
@@ -284,9 +294,19 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
                   <p className="text-xs text-zinc-400 mt-1">You may need to scroll down to find this option</p>
                 </div>
               </div>
+              
+              {/* APK Download Button */}
+              <a
+                href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/yourusername/yourrepo/releases/download/v1.0.0/mavrixfy.apk'}
+                download
+                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md w-full text-center block"
+              >
+                Download APK
+              </a>
+              
               <button
                 onClick={dismiss}
-                className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium py-2 px-4 rounded-md w-full mt-2"
+                className="bg-zinc-700 hover:bg-zinc-600 text-white font-medium py-2 px-4 rounded-md w-full"
               >
                 Got it
               </button>

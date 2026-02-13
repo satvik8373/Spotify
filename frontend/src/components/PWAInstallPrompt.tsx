@@ -233,32 +233,70 @@ const PWAInstallPrompt = () => {
           <div className="flex flex-col gap-4">
             {platform === 'ios' ? (
               <>
-                <p>To install this app on your iPhone:</p>
-                <ol className="list-decimal pl-6 space-y-2">
-                  <li>Tap the Share button <span className="inline-block w-6">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                      <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 100-2H5z" />
-                    </svg>
-                  </span></li>
-                  <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
-                  <li>Tap <strong>Add</strong> in the top right corner</li>
-                </ol>
+                <p className="text-sm text-gray-600">To add this app to your iPhone home screen:</p>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
+                    <div className="flex-1">
+                      <p className="text-sm">Tap the <strong>Share</strong> button <Share2 className="inline w-4 h-4" /> at the bottom of Safari</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</div>
+                    <div className="flex-1">
+                      <p className="text-sm">Scroll down and tap <strong>"Add to Home Screen"</strong> <Plus className="inline w-4 h-4" /></p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
+                    <div className="flex-1">
+                      <p className="text-sm">Tap <strong>"Add"</strong> in the top right corner</p>
+                    </div>
+                  </div>
+                </div>
               </>
             ) : platform === 'android' ? (
-              <p>Tap "Install" to add this app to your home screen for quick access.</p>
+              <>
+                <p className="text-sm text-gray-600">Get the Mavrixfy app on your Android device:</p>
+                <div className="space-y-3">
+                  <a
+                    href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/yourusername/yourrepo/releases/download/v1.0.0/mavrixfy.apk'}
+                    download
+                    className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    onClick={handleDismiss}
+                  >
+                    <Download size={20} />
+                    Download APK
+                  </a>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                      <span className="bg-white px-2 text-gray-500">or</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 text-center">Install as Progressive Web App (PWA)</p>
+                </div>
+              </>
             ) : (
-              <p>Install this app on your device for a better experience.</p>
+              <>
+                <p className="text-sm text-gray-600">Install this app on your device for a better experience.</p>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Download size={16} className="text-green-500" />
+                  <span>Faster loading and offline access</span>
+                </div>
+              </>
             )}
-      </div>
-    </div>
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={handleDismiss}>
+          </div>
+        </div>
+        <div className="flex justify-between gap-2">
+          <Button variant="outline" onClick={handleDismiss} className="flex-1">
             Not Now
           </Button>
           {platform !== 'ios' && (
-            <Button onClick={handleInstall}>
-              Install
+            <Button onClick={handleInstall} className="flex-1">
+              {platform === 'android' ? 'Install PWA' : 'Install'}
             </Button>
           )}
         </div>
