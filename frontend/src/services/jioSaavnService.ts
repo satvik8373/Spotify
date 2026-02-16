@@ -150,7 +150,7 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
     icon: '💕',
     searchTerms: [
       'romantic songs', 'love songs', 'romantic hits', 'love ballads',
-      'romantic collection', 'valentine songs', 'bollywood romantic',
+      'romantic collection', 'bollywood romantic',
       'latest romantic', 'new love songs', 'romantic 2026', 'fresh romantic',
       'romantic latest', 'love latest', 'romantic trending', 'love trending',
       'romantic popular', 'love popular', 'romantic new', 'love new',
@@ -822,7 +822,7 @@ class JioSaavnService {
       case 'bollywood':
         return ['hindi', 'bollywood music', 'hindi music', 'indian songs', 'filmi songs'];
       case 'romantic':
-        return ['love', 'romantic music', 'love music', 'valentine', 'heart touching'];
+        return ['love', 'romantic music', 'love music', 'heart touching'];
       case 'punjabi':
         return ['punjabi music', 'punjabi gana', 'punjabi bhangra', 'punjabi folk'];
       default:

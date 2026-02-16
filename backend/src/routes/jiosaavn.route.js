@@ -103,7 +103,18 @@ router.get('/songs/:id', async (req, res) => {
 router.get('/playlists/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const data = await jiosaavnService.getPlaylistDetails(id);
+    const { complete = 'true', comprehensive = 'true' } = req.query;
+    
+    // Use comprehensive method by default for best results
+    let data;
+    if (comprehensive === 'true') {
+      data = await jiosaavnService.getPlaylistAllSongs(id);
+    } else if (complete === 'true') {
+      data = await jiosaavnService.getCompletePlaylistDetails(id);
+    } else {
+      data = await jiosaavnService.getPlaylistDetails(id);
+    }
+    
     res.json(data);
   } catch (error) {
     console.error('Get playlist details error:', error);
@@ -114,13 +125,22 @@ router.get('/playlists/:id', async (req, res) => {
 // Get playlist details with query parameter (for mobile app compatibility)
 router.get('/playlists', async (req, res) => {
   try {
-    const { id } = req.query;
+    const { id, complete = 'true', comprehensive = 'true' } = req.query;
     
     if (!id) {
       return res.status(400).json({ error: 'Playlist ID is required' });
     }
     
-    const data = await jiosaavnService.getPlaylistDetails(id);
+    // Use comprehensive method by default for best results
+    let data;
+    if (comprehensive === 'true') {
+      data = await jiosaavnService.getPlaylistAllSongs(id);
+    } else if (complete === 'true') {
+      data = await jiosaavnService.getCompletePlaylistDetails(id);
+    } else {
+      data = await jiosaavnService.getPlaylistDetails(id);
+    }
+    
     res.json(data);
   } catch (error) {
     console.error('Get playlist details error:', error);
