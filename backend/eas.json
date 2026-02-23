@@ -1,0 +1,36 @@
+{
+  "cli": {
+    "version": ">= 18.0.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease"
+      },
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "cache": {
+        "key": "production-cache",
+        "paths": [
+          "node_modules",
+          ".expo"
+        ]
+      },
+      "distribution": "store"
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

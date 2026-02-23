@@ -9,8 +9,8 @@ const __dirname = path.dirname(__filename);
 
 // Define icon sizes to generate
 const ICON_SIZES = [16, 32, 48, 72, 96, 128, 144, 152, 192, 384, 512];
-const SOURCE_PNG = path.join(__dirname, '../public/spotify-icons/spotify-logo-green.png');
-const OUTPUT_DIR = path.join(__dirname, '../public/spotify-icons');
+const SOURCE_PNG = path.join(__dirname, '../../frontend/public/mavrixfy.png');
+const OUTPUT_DIR = path.join(__dirname, '../assets/images');
 
 // Ensure output directory exists
 if (!fs.existsSync(OUTPUT_DIR)) {

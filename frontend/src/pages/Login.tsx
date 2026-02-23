@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { Download } from 'lucide-react';
 
 
 // Google Logo Component
@@ -232,6 +233,16 @@ const Login = () => {
               >
                 <span>Continue as Guest</span>
               </Button>
+
+              {/* APK Download for Android */}
+              <a
+                href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
+                download
+                className="w-full border border-green-500 bg-green-500/10 text-green-400 font-medium py-2.5 rounded-full mb-4 flex items-center justify-center gap-3 text-sm h-auto hover:bg-green-500/20 transition-colors"
+              >
+                <Download size={18} />
+                <span>Download Android APK</span>
+              </a>
 
               {/* Toggle between Login/Register - Removed as requested (redundant) */}
               {/* <div className="text-center mb-4">
@@ -487,6 +498,16 @@ const Login = () => {
                     >
                       Continue as Guest
                     </Button>
+
+                    {/* APK Download for Android */}
+                    <a
+                      href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
+                      download
+                      className="w-full border border-green-500 bg-green-500/10 text-green-400 hover:bg-green-500/20 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-all duration-200 text-sm"
+                    >
+                      <Download size={16} />
+                      Download Android APK
+                    </a>
                   </div>
 
                   {!isLogin && (

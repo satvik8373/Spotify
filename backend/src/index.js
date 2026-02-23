@@ -33,11 +33,16 @@ import deezerRoutes from "./routes/deezer.route.js";
 import jiosaavnRoutes from "./routes/jiosaavn.route.js";
 import facebookRoutes from "./routes/facebook.route.js";
 import otpRoutes from "./routes/otp.route.js";
+import appRoutes from "./routes/app.route.js";
+import versionRoutes from "./routes/version.route.js";
 import { verifyEmailConfig } from "./services/email.service.js";
 
 const __dirname = path.resolve();
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Trust proxy - CRITICAL for Vercel to detect HTTPS correctly
+app.set('trust proxy', 1);
 
 const httpServer = createServer(app);
 initializeSocket(httpServer);
@@ -175,6 +180,8 @@ app.use("/api/deezer", deezerRoutes);
 app.use("/api/jiosaavn", jiosaavnRoutes);
 app.use("/api/facebook", facebookRoutes);
 app.use("/api/otp", otpRoutes);
+app.use("/api/app", appRoutes);
+app.use("/api/version", versionRoutes);
 
 // Special route to handle Spotify callback directly
 app.get('/spotify-callback', (req, res) => {

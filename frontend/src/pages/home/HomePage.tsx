@@ -10,7 +10,6 @@ import { SectionWrapper } from '@/components/ui/section-wrapper';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import HomeSkeleton from '@/components/skeletons/HomeSkeleton';
 import { updateMetaTags, metaPresets } from '@/utils/metaTags';
-import { ValentineBanner } from '@/components/ValentineBanner';
 
 const HomePage = () => {
   const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
@@ -234,11 +233,6 @@ const HomePage = () => {
       />
 
       <div className="py-4 space-y-4 relative w-full z-10 pb-32 md:pb-8">
-        {/* Valentine Banner */}
-        <div className="px-4 md:px-6 w-full mb-2">
-          <ValentineBanner />
-        </div>
-
         {/* Filter pills */}
         <div className="px-4 md:px-6 hidden md:flex items-center gap-2 mb-1.5 sticky top-0 z-20 pt-2">
           <button className="px-3 py-1.5 rounded-full bg-[#1ed760] text-black text-[13px] font-bold transition-colors">
@@ -250,7 +244,7 @@ const HomePage = () => {
           <button className="px-3 py-1.5 rounded-full bg-white/10 text-white text-[13px] font-bold hover:bg-white/20 transition-colors">
             Podcasts
           </button>
-
+          
           {/* Privacy Policy Link in Pills Area */}
           <div className="ml-auto flex items-center gap-4">
             <Link
@@ -303,7 +297,6 @@ const HomePage = () => {
               })}
             </div>
           </section>
-
           {/* Public Playlists Section */}
           <SectionWrapper
             title="Made for you"
@@ -346,15 +339,6 @@ const HomePage = () => {
           </SectionWrapper>
 
           {/* JioSaavn Sections */}
-          <section>
-            <JioSaavnPlaylistsSection
-              title="Valentine Special ❤️"
-              categoryId="valentine"
-              limit={14}
-              showViewAll={true}
-            />
-          </section>
-
           <section>
             <JioSaavnPlaylistsSection
               title="Trending Now"

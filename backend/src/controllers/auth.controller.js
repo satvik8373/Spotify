@@ -116,3 +116,166 @@ export const logout = async (req, res) => {
     return res.status(200).json({ success: true });
   }
 };
+
+// Google OAuth for mobile (Expo)
+export const googleMobileAuth = async (req, res) => {
+  try {
+    const { returnUrl } = req.query;
+    
+    if (!returnUrl) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "returnUrl parameter is required" 
+      });
+    }
+
+    // For mobile, we need to redirect to Google OAuth with proper configuration
+    const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    
+    if (!googleClientId) {
+      return res.status(500).json({ 
+        success: false, 
+        message: "Google OAuth not configured. Please set GOOGLE_CLIENT_ID in environment variables." 
+      });
+    }
+
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google-mobile/callback`;
+    const scope = 'openid email profile';
+    
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${encodeURIComponent(googleClientId)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&response_type=code` +
+      `&scope=${encodeURIComponent(scope)}` +
+      `&state=${encodeURIComponent(returnUrl)}` +
+      `&access_type=offline` +
+      `&prompt=consent`;
+
+    res.redirect(googleAuthUrl);
+  } catch (error) {
+    console.error("Google mobile auth error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+};
+
+// Debug endpoint to check OAuth configuration
+export const googleMobileDebug = async (req, res) => {
+  try {
+    const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google-mobile/callback`;
+    
+    res.json({
+      success: true,
+      config: {
+        clientIdConfigured: !!googleClientId,
+        clientIdPrefix: googleClientId ? googleClientId.substring(0, 20) + '...' : 'NOT SET',
+        clientSecretConfigured: !!googleClientSecret,
+        clientSecretPrefix: googleClientSecret ? 'GOCSPX-****' : 'NOT SET',
+        redirectUri: redirectUri,
+        host: req.get('host'),
+        protocol: req.protocol
+      },
+      status: {
+        readyForOAuth: !!googleClientId && !!googleClientSecret,
+        missingConfig: [
+          ...(!googleClientId ? ['GOOGLE_CLIENT_ID'] : []),
+          ...(!googleClientSecret ? ['GOOGLE_CLIENT_SECRET'] : [])
+        ]
+      },
+      instructions: {
+        step1: 'Verify GOOGLE_CLIENT_ID is set in Vercel environment variables',
+        step2: 'Verify GOOGLE_CLIENT_SECRET is set in Vercel environment variables',
+        step3: `Add this redirect URI to Google Cloud Console: ${redirectUri}`,
+        step4: 'Add yourself as a test user in Google OAuth Consent Screen',
+        googleCloudConsole: 'https://console.cloud.google.com/apis/credentials'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+};
+
+// Google OAuth callback for mobile
+export const googleMobileCallback = async (req, res) => {
+  try {
+    const { code, state: returnUrl, error: oauthError } = req.query;
+
+    // Check if Google returned an error
+    if (oauthError) {
+      console.error("OAuth error from Google:", oauthError);
+      return res.status(400).send(`Google OAuth error: ${oauthError}`);
+    }
+
+    if (!code) {
+      return res.status(400).send("Authorization code not provided");
+    }
+
+    const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!googleClientId || !googleClientSecret) {
+      console.error("OAuth config missing:", { 
+        hasClientId: !!googleClientId, 
+        hasClientSecret: !!googleClientSecret 
+      });
+      return res.status(500).send(
+        `Google OAuth not properly configured. ` +
+        `Client ID: ${googleClientId ? 'SET' : 'MISSING'}, ` +
+        `Client Secret: ${googleClientSecret ? 'SET' : 'MISSING'}`
+      );
+    }
+
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google-mobile/callback`;
+
+    console.log("Exchanging code for token:", { redirectUri, hasCode: !!code });
+
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: googleClientId,
+        client_secret: googleClientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code'
+      })
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    console.log("Token response status:", tokenResponse.status);
+    console.log("Token data keys:", Object.keys(tokenData));
+
+    if (!tokenData.id_token) {
+      console.error("Token exchange failed:", {
+        status: tokenResponse.status,
+        error: tokenData.error,
+        error_description: tokenData.error_description,
+        hasAccessToken: !!tokenData.access_token,
+        hasIdToken: !!tokenData.id_token
+      });
+      
+      return res.status(500).send(
+        `Failed to get ID token from Google. ` +
+        `Error: ${tokenData.error || 'Unknown'} - ` +
+        `${tokenData.error_description || 'No description'}`
+      );
+    }
+
+    // Redirect back to app with the ID token
+    const finalUrl = `${returnUrl}?id_token=${encodeURIComponent(tokenData.id_token)}`;
+    console.log("Redirecting to app with token");
+    res.redirect(finalUrl);
+  } catch (error) {
+    console.error("Google callback error:", error);
+    res.status(500).send(`Authentication failed: ${error.message}`);
+  }
+};

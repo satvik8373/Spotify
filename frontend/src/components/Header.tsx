@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, XCircle, User, Home, Bell, Megaphone } from 'lucide-react';
+import { Search, XCircle, User, Home, Bell, Megaphone, Download } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,12 +34,19 @@ const Header = ({ className }: HeaderProps) => {
   const searchFormRef = useRef<HTMLFormElement>(null);
   const authProcessedRef = useRef(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
 
   // Optimized avatar loading with rate limiting
   const { avatarUrl, isLoading: avatarLoading } = useOptimizedAvatar(
     user?.picture,
     `https://ui-avatars.com/api/?background=1db954&color=fff&name=${encodeURIComponent(user?.name || 'User')}`
   );
+
+  // Detect Android device
+  useEffect(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    setIsAndroid(/android/.test(userAgent));
+  }, []);
 
   // Extract search query from URL when navigating to search page
   useEffect(() => {
@@ -234,10 +241,25 @@ const Header = ({ className }: HeaderProps) => {
         <div className="flex-shrink-0" style={{ width: '32px' }} />
 
         {/* Right: User Profile & Bell */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
           {!authLoading && (
             user ? (
               <>
+                {/* APK Download for Android Users - Show on mobile too */}
+                {isAndroid && (
+                  <a
+                    href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
+                    download
+                    className="flex items-center gap-2 px-3 md:px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-medium rounded-full transition-all text-xs md:text-sm"
+                    title="Download Android APK"
+                  >
+                    <Download size={16} />
+                    <span className="hidden sm:inline">Download APK</span>
+                    <span className="sm:hidden">APK</span>
+                  </a>
+                )}
+
+                {/* Bell Icon - Show on mobile too */}
                 <button
                   className="w-8 h-8 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
                   onClick={() => setShowWhatsNew(true)}

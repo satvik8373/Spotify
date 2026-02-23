@@ -25,9 +25,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     // Update meta theme-color for mobile browsers
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      const isDark = theme === 'dark' || theme === 'valentine' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      // For valentine, use a specific pink color for browser UI
-      const themeColor = theme === 'valentine' ? '#2f0a12' : (isDark ? '#000000' : '#ffffff');
+      const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const themeColor = isDark ? '#000000' : '#ffffff';
       metaThemeColor.setAttribute('content', themeColor);
     }
   }, [theme]);

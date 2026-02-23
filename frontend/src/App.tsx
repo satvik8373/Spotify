@@ -14,7 +14,6 @@ import HomePage from './pages/home/HomePage';
 import SearchPage from './pages/search/SearchPage';
 import LibraryPage from './pages/LibraryPage';
 import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
-import LandingPage from './pages/LandingPage';
 
 // Lazy load less critical pages only
 const SyncLikedSongsPage = lazy(() => import('./pages/liked-songs/SyncLikedSongsPage'));
@@ -140,21 +139,8 @@ const AuthGate = ({ children, allowGuest = false }: { children: React.ReactNode;
 };
 
 const LandingRedirector = () => {
-	const { isAuthenticated, loading } = useAuth();
-	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
-
-	// Show minimal loading while checking auth
-	if (loading && !hasCachedAuth) {
-		return <div className="min-h-screen bg-[#121212]" />;
-	}
-
-	// If authenticated (either from cache or real-time), redirect to home
-	if (isAuthenticated || hasCachedAuth) {
-		return <Navigate to="/home" replace />;
-	}
-
-	// Not authenticated, show public landing page
-	return <LandingPage />;
+	// Always redirect to home page (removed landing page concept)
+	return <Navigate to="/home" replace />;
 };
 
 // Configure the router with React Router v6
