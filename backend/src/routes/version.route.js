@@ -4,15 +4,16 @@ const router = Router();
 
 // Version data - update this when releasing new versions
 const versionData = {
-  "latestVersion": "1.1.0",
+  "latestVersion": "1.2.0",
   "minimumSupportedVersion": "1.0.0",
   "forceUpdate": false,
   "updateUrl": {
     "android": "https://play.google.com/store/apps/details?id=com.mavrixfy.app",
     "ios": "https://apps.apple.com/app/mavrixfy/id123456789"
   },
-  "message": "New version available with improved performance and bug fixes",
+  "message": "Version 1.2.0 is now available with exciting new features!",
   "changelog": [
+    "Added automatic update checking system",
     "Fixed JioSaavn playlist showing only 10 songs",
     "Improved music streaming performance",
     "Enhanced UI animations",
@@ -20,6 +21,10 @@ const versionData = {
   ],
   "releaseDate": "2026-02-23",
   "features": [
+    {
+      "title": "Auto Update System",
+      "description": "App now automatically checks for updates and notifies you"
+    },
     {
       "title": "Complete Playlists",
       "description": "Now see all songs in JioSaavn playlists, not just 10"
