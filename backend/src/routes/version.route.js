@@ -1,18 +1,39 @@
 import { Router } from 'express';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 const router = Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
+// Version data - update this when releasing new versions
+const versionData = {
+  "latestVersion": "1.1.0",
+  "minimumSupportedVersion": "1.0.0",
+  "forceUpdate": false,
+  "updateUrl": {
+    "android": "https://play.google.com/store/apps/details?id=com.mavrixfy.app",
+    "ios": "https://apps.apple.com/app/mavrixfy/id123456789"
+  },
+  "message": "New version available with improved performance and bug fixes",
+  "changelog": [
+    "Fixed JioSaavn playlist showing only 10 songs",
+    "Improved music streaming performance",
+    "Enhanced UI animations",
+    "Bug fixes and stability improvements"
+  ],
+  "releaseDate": "2026-02-23",
+  "features": [
+    {
+      "title": "Complete Playlists",
+      "description": "Now see all songs in JioSaavn playlists, not just 10"
+    },
+    {
+      "title": "Better Performance",
+      "description": "Faster loading and smoother playback"
+    }
+  ]
+};
 
 // Get app version info
 router.get('/check', async (req, res) => {
   try {
-    const versionFilePath = path.join(__dirname, '../../../app-version.json');
-    const versionData = JSON.parse(fs.readFileSync(versionFilePath, 'utf8'));
-    
     res.json({
       success: true,
       data: versionData
@@ -37,9 +58,6 @@ router.post('/compare', async (req, res) => {
         error: 'Current version is required' 
       });
     }
-
-    const versionFilePath = path.join(__dirname, '../../../app-version.json');
-    const versionData = JSON.parse(fs.readFileSync(versionFilePath, 'utf8'));
     
     const isUpdateAvailable = compareVersions(currentVersion, versionData.latestVersion);
     const isBelowMinimum = compareVersions(currentVersion, versionData.minimumSupportedVersion);
