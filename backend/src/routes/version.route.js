@@ -2,13 +2,16 @@ import { Router } from 'express';
 
 const router = Router();
 
+// Get APK download URL from environment variable
+const apkDownloadUrl = process.env.APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.2.0/mavrixfy.apk';
+
 // Version data - update this when releasing new versions
 const versionData = {
   "latestVersion": "1.2.0",
   "minimumSupportedVersion": "1.0.0",
   "forceUpdate": false,
   "updateUrl": {
-    "android": "https://play.google.com/store/apps/details?id=com.mavrixfy.app",
+    "android": apkDownloadUrl,
     "ios": "https://apps.apple.com/app/mavrixfy/id123456789"
   },
   "message": "Version 1.2.0 is now available with exciting new features!",

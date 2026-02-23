@@ -3,6 +3,9 @@
  * Handles app-level messages and notifications
  */
 
+// Get APK download URL from environment variable
+const apkDownloadUrl = process.env.APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.2.0/mavrixfy.apk';
+
 export const getAppMessage = async (req, res) => {
   try {
     // Return update message for version 1.0 and 1.1 users
@@ -11,7 +14,7 @@ export const getAppMessage = async (req, res) => {
       version: '1.2.0',
       title: 'Update Available',
       message: '🎉 Version 1.2.0 is now available!\n\n✅ Auto update checking system\n✅ Lock screen media controls\n✅ Album artwork on lock screen\n✅ Background playback\n✅ Complete JioSaavn playlists\n\nDownload now to enjoy these features!',
-      downloadUrl: 'https://mavrixfy.site/downloads/mavrixfy-1.2.0.apk',
+      downloadUrl: apkDownloadUrl,
       mandatory: false
     });
   } catch (error) {
