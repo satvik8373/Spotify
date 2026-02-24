@@ -1,0 +1,12 @@
+{
+  "version": "1.2.7",
+  "platform": "android",
+  "bundleHash": "1ccf02b51e74f3459451a793445566a25d63b731cc979b7fea000e8136872c1a",
+  "fileSize": 4803386,
+  "timestamp": 1771915121445,
+  "buildDate": "2026-02-24T06:38:41.445Z",
+  "minAppVersion": "1.2.0",
+  "releaseNotes": "Fixed version display in settings",
+  "environment": "production",
+  "deployedAt": "2026-02-24T06:38:53.023Z"
+}
