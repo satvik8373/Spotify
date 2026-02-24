@@ -1,0 +1,12 @@
+{
+  "version": "1.2.4",
+  "platform": "android",
+  "bundleHash": "2b3c5c8916fe5b527b9a50019fac45846497fa373ad5bb6464dfbcba4c33f841",
+  "fileSize": 4809732,
+  "timestamp": 1771912903972,
+  "buildDate": "2026-02-24T06:01:43.972Z",
+  "minAppVersion": "1.2.0",
+  "releaseNotes": "Enhanced logging for troubleshooting",
+  "environment": "production",
+  "deployedAt": "2026-02-24T06:01:55.256Z"
+}
