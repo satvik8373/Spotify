@@ -79,12 +79,8 @@ function getLatestBundle(platform) {
     return null;
   }
 
-  // Sort by version (descending) and return latest
-  platformBundles.sort((a, b) => {
-    if (isNewerVersion(a.version, b.version)) return -1;
-    if (isNewerVersion(b.version, a.version)) return 1;
-    return 0;
-  });
+  // Sort by timestamp (descending) - most recent first
+  platformBundles.sort((a, b) => b.timestamp - a.timestamp);
 
   return platformBundles[0];
 }
