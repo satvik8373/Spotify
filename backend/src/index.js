@@ -35,6 +35,7 @@ import facebookRoutes from "./routes/facebook.route.js";
 import otpRoutes from "./routes/otp.route.js";
 import appRoutes from "./routes/app.route.js";
 import versionRoutes from "./routes/version.route.js";
+import otaRoutes from "./routes/ota.route.js";
 import { verifyEmailConfig } from "./services/email.service.js";
 
 const __dirname = path.resolve();
@@ -182,6 +183,7 @@ app.use("/api/facebook", facebookRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/app", appRoutes);
 app.use("/api/version", versionRoutes);
+app.use("/api/ota", otaRoutes);
 
 // Special route to handle Spotify callback directly
 app.get('/spotify-callback', (req, res) => {
