@@ -1,0 +1,12 @@
+{
+  "version": "1.2.8",
+  "platform": "android",
+  "bundleHash": "3a82f2b7c183725ce8d959d60e0995fb94b90c0db1880e598e28d0fe72f2ed1c",
+  "fileSize": 4803731,
+  "timestamp": 1771916145950,
+  "buildDate": "2026-02-24T06:55:45.950Z",
+  "minAppVersion": "1.2.0",
+  "releaseNotes": "Fixed OTA version initialization for fresh installs",
+  "environment": "production",
+  "deployedAt": "2026-02-24T06:55:56.938Z"
+}
