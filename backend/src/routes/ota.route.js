@@ -18,7 +18,7 @@ const router = Router();
 const bundleRegistry = new Map();
 
 // Configuration
-const BUNDLE_DIR = join(__dirname, '../../../ota_bundles');
+const BUNDLE_DIR = join(__dirname, '../../ota_bundles');
 const BASE_URL = process.env.OTA_BASE_URL || process.env.FRONTEND_URL || 'https://spotify-api-drab.vercel.app';
 
 /**
