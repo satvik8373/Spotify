@@ -142,6 +142,51 @@ function initializeBundleRegistry() {
 initializeBundleRegistry();
 
 /**
+ * Debug endpoint to check initialization status
+ * GET /api/ota/debug
+ */
+router.get('/debug', async (req, res) => {
+  try {
+    const bundles = Array.from(bundleRegistry.values());
+    res.json({
+      success: true,
+      bundleDir: BUNDLE_DIR,
+      baseUrl: BASE_URL,
+      bundlesLoaded: bundleRegistry.size,
+      bundles: bundles,
+      dirExists: existsSync(BUNDLE_DIR),
+      files: existsSync(BUNDLE_DIR) ? readdirSync(BUNDLE_DIR) : [],
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Manual re-initialization endpoint
+ * POST /api/ota/reload
+ */
+router.post('/reload', async (req, res) => {
+  try {
+    bundleRegistry.clear();
+    initializeBundleRegistry();
+    res.json({
+      success: true,
+      message: 'Bundle registry reloaded',
+      bundlesLoaded: bundleRegistry.size,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
  * Check for available updates
  * POST /api/ota/check
  */
