@@ -66,31 +66,11 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
     }
   }, []);
 
-  // Disable autoplay for first 3 seconds after page load
+  // Reduce initial load block to 500ms instead of 3 seconds
   useEffect(() => {
-    const timer = setTimeout(() => setIsInitialLoad(false), 3000);
+    const timer = setTimeout(() => setIsInitialLoad(false), 500);
     return () => clearTimeout(timer);
   }, []);
-
-  // Override audio play method during initial load to prevent autoplay
-  useEffect(() => {
-    if (!audioRef.current) return;
-    
-    const audio = audioRef.current;
-    const originalPlay = audio.play.bind(audio);
-    
-    if (isInitialLoad) {
-      audio.play = () => Promise.resolve();
-    } else {
-      audio.play = originalPlay;
-    }
-    
-    return () => {
-      if (audio) {
-        audio.play = originalPlay;
-      }
-    };
-  }, [isInitialLoad]);
 
   // Clean up on unmount and save state before page unload
   useEffect(() => {
@@ -198,12 +178,6 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
     // Prevent autoplay without user interaction
     const store = usePlayerStore.getState();
     if (isPlaying && !store.hasUserInteracted) {
-      setIsPlaying(false);
-      return;
-    }
-
-    // Block autoplay during initial page load period
-    if (isInitialLoad && isPlaying) {
       setIsPlaying(false);
       return;
     }
@@ -341,7 +315,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       }
       isHandlingPlayback.current = false;
     }
-  }, [currentSong, isPlaying, setIsPlaying, onLoadingChange, isInitialLoad]);
+  }, [currentSong, isPlaying, setIsPlaying, onLoadingChange]);
 
   // Handle audio element errors
   useEffect(() => {

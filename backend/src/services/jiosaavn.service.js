@@ -178,8 +178,17 @@ export const getNewReleases = async (limit = 20) => {
 export const getSongDetails = async (id) => {
   try {
     const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/songs`, {
-      params: { id }
+      params: { ids: id }
     });
+    
+    // The API returns an array, so we need to extract the first item
+    if (response.data && response.data.success && response.data.data && response.data.data.length > 0) {
+      return {
+        success: true,
+        data: response.data.data[0]
+      };
+    }
+    
     return response.data;
   } catch (error) {
     console.error('Error fetching JioSaavn song details:', error.message);

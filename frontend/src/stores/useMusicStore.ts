@@ -74,7 +74,7 @@ function convertSaavnTrack(item: any): IndianSong {
       item.downloadUrl.find((d: any) => d.quality === '160kbps') ||
       item.downloadUrl.find((d: any) => d.quality === '96kbps') ||
       item.downloadUrl[item.downloadUrl.length - 1];
-    audioUrl = downloadUrl?.link || '';
+    audioUrl = downloadUrl?.url || downloadUrl?.link || '';
   }
 
   // Get the best quality image
@@ -83,7 +83,7 @@ function convertSaavnTrack(item: any): IndianSong {
     const image = item.image.find((i: any) => i.quality === '500x500') ||
       item.image.find((i: any) => i.quality === '150x150') ||
       item.image[item.image.length - 1];
-    imageUrl = image?.link || '';
+    imageUrl = image?.url || image?.link || '';
   } else if (typeof item.image === 'string') {
     imageUrl = item.image;
   }

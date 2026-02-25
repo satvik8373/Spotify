@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { handleCallback, isAuthenticated as isSpotifyAuthenticated } from '../services/spotifyService';
-import { Loader, AlertCircle, CheckCircle, Bug } from 'lucide-react';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { PageLoading } from '../components/ui/loading';
 
@@ -95,15 +95,6 @@ const SpotifyCallback: React.FC = () => {
             className="text-white hover:text-[#1DB954] px-4 py-2 border border-gray-600 rounded-lg hover:border-[#1DB954]"
           >
             Try Again
-          </button>
-          <button 
-            onClick={() => {
-              debugAuthenticationState();
-            }} 
-            className="text-gray-400 hover:text-[#1DB954] px-4 py-2 border border-gray-600 rounded-lg hover:border-[#1DB954] flex items-center gap-2"
-          >
-            <Bug className="h-4 w-4" />
-            Debug
           </button>
         </div>
       </div>
