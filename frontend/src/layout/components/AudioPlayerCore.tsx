@@ -409,7 +409,17 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       onTimeUpdate={updateAudioMetadata}
       onLoadedMetadata={updateAudioMetadata}
       onError={(e) => {
-        console.error('Audio playback error:', e);
+        const audio = e.target as HTMLAudioElement;
+        const error = audio.error;
+        console.error('Audio playback error:', {
+          code: error?.code,
+          message: error?.message,
+          src: audio.src,
+          networkState: audio.networkState,
+          readyState: audio.readyState,
+          currentSong: currentSong?.title
+        });
+        
         if (currentSong) {
           setTimeout(() => {
             try {

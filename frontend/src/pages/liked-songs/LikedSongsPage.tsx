@@ -410,14 +410,71 @@ const LikedSongsPage = () => {
   }, [isPlaying, currentSong]);
 
   // Memoized callbacks to prevent child re-renders
-  const handlePlaySong = useCallback((song: Song, index: number) => {
+  const handlePlaySong = useCallback(async (song: Song, index: number) => {
     // Use the same comparison logic as isSongPlaying
     if (currentSong && isSongPlaying(song)) {
       togglePlay();
       return;
     }
 
-    playAlbum(visibleSongs, index);
+    // Check if song has audioUrl, if not, try to fetch it
+    let songToPlay = song;
+    if (!song.audioUrl) {
+      console.log('⚠️ Song has no audioUrl, attempting to fetch...', { title: song.title, id: song._id });
+      
+      // Try to extract the song ID from the _id field
+      // The _id might be in format like "indian-song-..." or "liked-..."
+      const songId = song._id?.includes('indian-song-') 
+        ? song._id.split('indian-song-')[1]?.split('-')[0]
+        : song._id?.includes('liked-')
+        ? song._id.split('liked-')[1]?.split('-')[0]
+        : song._id;
+      
+      if (songId && songId.length > 5) {
+        try {
+          toast.loading('Loading song...', { id: 'loading-song' });
+          const response = await fetch(`/api/jiosaavn/songs/${songId}`);
+          const data = await response.json();
+          
+          if (data.success && data.data && data.data.downloadUrl) {
+            const downloadUrl = data.data.downloadUrl.find((d: any) => d.quality === '320kbps') ||
+              data.data.downloadUrl.find((d: any) => d.quality === '160kbps') ||
+              data.data.downloadUrl.find((d: any) => d.quality === '96kbps') ||
+              data.data.downloadUrl[data.data.downloadUrl.length - 1];
+            
+            const audioUrl = downloadUrl?.url || downloadUrl?.link || '';
+            
+            if (audioUrl) {
+              // Create updated song with audioUrl
+              songToPlay = { ...song, audioUrl };
+              console.log('✅ Fetched audioUrl:', audioUrl);
+            }
+          }
+          toast.dismiss('loading-song');
+        } catch (error) {
+          console.error('❌ Error fetching song URL:', error);
+          toast.dismiss('loading-song');
+          toast.error('Failed to load song');
+          return;
+        }
+      } else {
+        toast.error('Cannot play this song - invalid ID');
+        return;
+      }
+    }
+
+    // Verify we have a valid audioUrl
+    if (!songToPlay.audioUrl) {
+      toast.error('This song is not available for playback');
+      return;
+    }
+
+    // Update visibleSongs with the fetched URL
+    const updatedVisibleSongs = visibleSongs.map(s => 
+      s._id === songToPlay._id ? songToPlay : s
+    );
+
+    playAlbum(updatedVisibleSongs, index);
     // Remove setTimeout to prevent performance violations
     setIsPlaying(true);
     setUserInteracted();

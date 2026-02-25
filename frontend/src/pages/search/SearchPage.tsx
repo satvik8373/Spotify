@@ -42,11 +42,17 @@ const SearchPage = () => {
 
   // Play a single song - with URL fetching if needed
   const playSong = async (song: any, index: number) => {
-    console.log('🎵 PLAY SONG CALLED', { song, index });
+    console.log('🎵 PLAY SONG CALLED', { 
+      songTitle: song.title, 
+      songId: song.id, 
+      hasUrl: !!song.url,
+      url: song.url,
+      index 
+    });
     
     // If song doesn't have URL, fetch it from the API
     if (!song.url) {
-      console.log('⚠️ Song has no URL, fetching from API...');
+      console.log('⚠️ Song has no URL, fetching from API...', { songId: song.id, songTitle: song.title });
       toast.loading('Loading song...', { id: 'loading-song' });
       
       try {
@@ -66,6 +72,14 @@ const SearchPage = () => {
           song.url = downloadUrl?.url || downloadUrl?.link || '';
           console.log('✅ Got URL:', song.url);
           
+          // Verify URL was set
+          if (!song.url) {
+            console.error('❌ Failed to extract URL from downloadUrl array:', data.data.downloadUrl);
+            toast.dismiss('loading-song');
+            toast.error('Failed to get song URL');
+            return;
+          }
+          
           // Also update the image if available
           if (data.data.image && Array.isArray(data.data.image)) {
             const image = data.data.image.find((i: any) => i.quality === '500x500') ||
@@ -75,8 +89,9 @@ const SearchPage = () => {
             console.log('✅ Got Image:', song.image);
           }
           
-          // Also update the song in the results array
-          indianSearchResults[index] = { ...song };
+          // Update the song in the results array
+          const { indianSearchResults: currentResults } = useMusicStore.getState();
+          currentResults[index] = { ...song };
           
           toast.dismiss('loading-song');
         } else {
@@ -94,12 +109,12 @@ const SearchPage = () => {
     }
 
     if (!song.url) {
-      console.error('❌ Song still has no URL after fetch');
+      console.error('❌ Song still has no URL after fetch', { song });
       toast.error('This song is not available for playback');
       return;
     }
 
-    console.log('✅ Song has URL:', song.url);
+    console.log('✅ Song has URL:', song.url, 'for song:', song.title);
 
     const playerStore = usePlayerStore.getState();
     
@@ -107,24 +122,43 @@ const SearchPage = () => {
     playerStore.setUserInteracted();
     console.log('✅ User interaction set');
     
+    // Convert the current song first
+    const convertedSong = useMusicStore.getState().convertIndianSongToAppSong(song);
+    console.log('✅ Converted current song:', { 
+      title: convertedSong.title, 
+      audioUrl: convertedSong.audioUrl,
+      hasAudioUrl: !!convertedSong.audioUrl 
+    });
+    
+    // Verify the converted song has a valid audioUrl
+    if (!convertedSong.audioUrl) {
+      console.error('❌ Converted song has no audioUrl', { convertedSong });
+      toast.error('This song is not available for playback');
+      return;
+    }
+    
     // Convert all songs to app format (only songs with URLs)
     const allSongs = indianSearchResults
       .filter((s: any) => s.url)
-      .map((s: any) => useMusicStore.getState().convertIndianSongToAppSong(s));
+      .map((s: any) => useMusicStore.getState().convertIndianSongToAppSong(s))
+      .filter((s: any) => s.audioUrl); // Extra filter to ensure audioUrl exists
     
-    console.log('✅ Converted songs:', allSongs.length);
+    console.log('✅ Total converted songs with URLs:', allSongs.length);
+    console.log('✅ All song titles:', allSongs.map(s => s.title));
     
-    // If no songs have URLs yet, just play this one
-    if (allSongs.length === 0) {
-      const convertedSong = useMusicStore.getState().convertIndianSongToAppSong(song);
+    // Find the index of the current song in the converted array
+    const currentIndex = allSongs.findIndex((s: any) => s._id === convertedSong._id);
+    
+    console.log('✅ Current song index in queue:', currentIndex);
+    
+    if (currentIndex === -1) {
+      // Current song not in the list, play it alone
+      console.log('✅ Playing single song:', convertedSong.title);
       playerStore.playAlbum([convertedSong], 0);
     } else {
-      // Find the index of the current song in the filtered array
-      const filteredIndex = indianSearchResults
-        .filter((s: any) => s.url)
-        .findIndex((s: any) => s.id === song.id);
-      
-      playerStore.playAlbum(allSongs, filteredIndex >= 0 ? filteredIndex : 0);
+      // Play from the current song's position
+      console.log('✅ Playing from index:', currentIndex, 'song:', allSongs[currentIndex].title);
+      playerStore.playAlbum(allSongs, currentIndex);
     }
     
     console.log('✅ playAlbum called');

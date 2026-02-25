@@ -195,13 +195,31 @@ export const usePlayerStore = create<PlayerState>()(
       playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
 
-        const validSongs = songs.filter(song => !song.audioUrl || !song.audioUrl.startsWith('blob:'));
+        // Get the song that was requested to play
+        const requestedSong = songs[initialIndex];
+        
+        const validSongs = songs.filter(song => song.audioUrl && !song.audioUrl.startsWith('blob:'));
 
         if (validSongs.length === 0) {
+          console.warn('No valid songs with audioUrl found');
           return;
         }
 
-        const validIndex = Math.max(0, Math.min(initialIndex, validSongs.length - 1));
+        // Find the requested song in the filtered array
+        let validIndex = validSongs.findIndex(song => song._id === requestedSong?._id);
+        
+        // If not found by ID, try to find by title and artist
+        if (validIndex === -1 && requestedSong) {
+          validIndex = validSongs.findIndex(song => 
+            song.title === requestedSong.title && song.artist === requestedSong.artist
+          );
+        }
+        
+        // If still not found, use the first song
+        if (validIndex === -1) {
+          console.warn('Requested song not found in valid songs, playing first song');
+          validIndex = 0;
+        }
 
         const audio = document.querySelector('audio');
         if (audio) {

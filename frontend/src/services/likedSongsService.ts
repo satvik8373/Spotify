@@ -87,19 +87,13 @@ export const isSongAlreadyLiked = async (title: string, artist: string): Promise
   try {
     const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
     
-    // Use Firestore query to check for exact matches (more efficient)
+    // Use Firestore query to check for exact matches
     const normalizedTitle = title.toLowerCase().trim();
     const normalizedArtist = artist.toLowerCase().trim();
     
-    // Query for songs with matching title (case-insensitive search would require composite index)
-    // For now, we'll do a limited query and filter in memory for better performance
-    const recentQuery = query(
-      likedSongsRef, 
-      orderBy('likedAt', 'desc'),
-      limit(100) // Only check recent 100 songs for performance
-    );
-    
-    const snapshot = await getDocs(recentQuery);
+    // Get ALL songs to check for duplicates (not just recent 100)
+    // This ensures we catch all duplicates even in large libraries
+    const snapshot = await getDocs(likedSongsRef);
     
     // Check if any existing song matches title and artist (case-insensitive)
     const exists = snapshot.docs.some(doc => {

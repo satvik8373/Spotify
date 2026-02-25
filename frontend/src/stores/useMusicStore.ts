@@ -216,7 +216,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
       const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'bollywood hits', limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
-          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          // Don't filter out songs without downloadUrl - we can fetch it later
           .map((item: any) => convertSaavnTrack(item));
         set({ bollywoodSongs: formattedResults });
       } else {
@@ -235,7 +235,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
       const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'english top hits', limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
-          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          // Don't filter out songs without downloadUrl - we can fetch it later
           .map((item: any) => convertSaavnTrack(item));
         set({ hollywoodSongs: formattedResults });
       } else {
@@ -254,7 +254,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
       const data = await fetchMusicJson('/jiosaavn/search/songs', { query: 'hindi top songs', limit: 15 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
-          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          // Don't filter out songs without downloadUrl - we can fetch it later
           .map((item: any) => convertSaavnTrack(item));
         set({ hindiSongs: formattedResults });
       } else {
@@ -273,7 +273,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
       const data = await fetchMusicJson('/jiosaavn/new-releases', { limit: 10 });
       if (data?.data?.results) {
         const formattedResults = data.data.results
-          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          // Don't filter out songs without downloadUrl - we can fetch it later
           .map((item: any) => convertSaavnTrack(item));
         set({ indianNewReleases: formattedResults });
       } else {
@@ -294,7 +294,7 @@ export const useMusicStore = create<MusicStore>((set) => ({
       const data = await fetchMusicJson('/jiosaavn/search/songs', { query: query.trim(), limit: 20 }, 60 * 1000);
       if (data?.data?.results) {
         const formattedResults = data.data.results
-          .filter((item: any) => item.downloadUrl && item.downloadUrl.length > 0)
+          // Don't filter out songs without downloadUrl - we can fetch it later
           .map((item: any) => convertSaavnTrack(item));
         set({ indianSearchResults: formattedResults });
       } else {
