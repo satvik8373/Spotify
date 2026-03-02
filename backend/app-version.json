@@ -1,4 +1,6 @@
 {
-  "version": "1.0.0",
-  "buildNumber": 1
+  "version": "1.2.1",
+  "buildNumber": 10201,
+  "releaseDate": "2026-03-02",
+  "changelog": "Optimized build size, enhanced performance, Android 14 support"
 }
