@@ -10,6 +10,7 @@ import { SectionWrapper } from '@/components/ui/section-wrapper';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import HomeSkeleton from '@/components/skeletons/HomeSkeleton';
 import { updateMetaTags, metaPresets } from '@/utils/metaTags';
+import { AdContainer } from '@/components/AdContainer';
 
 const HomePage = () => {
   const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
@@ -337,6 +338,9 @@ const HomePage = () => {
               )}
             </HorizontalScroll>
           </SectionWrapper>
+
+          {/* Ad Container - Non-intrusive placement */}
+          <AdContainer className="px-4 md:px-6" />
 
           {/* JioSaavn Sections */}
           <section>
