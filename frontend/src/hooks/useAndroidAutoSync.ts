@@ -26,9 +26,7 @@ export const useAndroidAutoSync = () => {
     // Check if we're in Android Auto environment
     isAndroidAutoConnected.current = detectAndroidAuto();
     
-    if (isAndroidAutoConnected.current) {
-      console.debug('Android Auto environment detected');
-    }
+    // Android Auto environment detection complete
 
     const startAndroidAutoMonitoring = () => {
       if (androidAutoSyncInterval.current) {
@@ -45,20 +43,9 @@ export const useAndroidAutoSync = () => {
         if ('mediaSession' in navigator) {
           const isPlaying = !audio.paused && !audio.ended;
           
-          // Update playback state
-          navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-          
-          // Update position state more frequently for Android Auto
-          if ('setPositionState' in navigator.mediaSession && !isNaN(audio.duration)) {
-            try {
-              navigator.mediaSession.setPositionState({
-                duration: audio.duration || 0,
-                playbackRate: audio.playbackRate || 1,
-                position: Math.min(audio.currentTime || 0, audio.duration || 0)
-              });
-            } catch (e) {
-              // Ignore position state errors
-            }
+          // Update playback state only if changed
+          if (navigator.mediaSession.playbackState !== (isPlaying ? 'playing' : 'paused')) {
+            navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
           }
 
           // Ensure metadata is always up to date for Android Auto
@@ -87,24 +74,23 @@ export const useAndroidAutoSync = () => {
                 ]
               });
             } catch (e) {
-              console.debug('Android Auto metadata update failed:', e);
+              // Ignore metadata update errors
             }
           }
         }
 
-        // Android Auto specific state synchronization
+        // Android Auto specific state synchronization (but don't fight with MediaSession handlers)
         if (isAndroidAutoConnected.current) {
           const actuallyPlaying = !audio.paused && !audio.ended && audio.currentTime > 0;
           
-          if (actuallyPlaying !== store.isPlaying) {
+          // Only sync if there's a clear mismatch and no user action in progress
+          if (actuallyPlaying !== store.isPlaying && !store.wasPlayingBeforeInterruption) {
             store.setIsPlaying(actuallyPlaying);
           }
           
           // Handle stuck playback in Android Auto
           if (store.isPlaying && audio.paused && !audio.ended && store.hasUserInteracted) {
-            console.debug('Android Auto: Attempting to resume paused audio');
-            audio.play().catch((error) => {
-              console.debug('Android Auto resume failed:', error);
+            audio.play().catch(() => {
               store.setIsPlaying(false);
             });
           }
@@ -118,8 +104,6 @@ export const useAndroidAutoSync = () => {
       isAndroidAutoConnected.current = detectAndroidAuto();
       
       if (wasConnected !== isAndroidAutoConnected.current) {
-        console.debug('Android Auto connection state changed:', isAndroidAutoConnected.current);
-        
         // Restart monitoring with new state
         startAndroidAutoMonitoring();
         
@@ -176,8 +160,7 @@ export const useAndroidAutoSync = () => {
       
       const audio = document.querySelector('audio') as HTMLAudioElement;
       if (audio && audio.paused) {
-        audio.play().catch((error) => {
-          console.debug('Android Auto play failed:', error);
+        audio.play().catch(() => {
           // Retry with a delay for Android Auto
           setTimeout(() => {
             if (audio && audio.paused) {
@@ -227,8 +210,7 @@ export const useAndroidAutoSync = () => {
       setTimeout(() => {
         const audio = document.querySelector('audio') as HTMLAudioElement;
         if (audio && audio.paused && !audio.ended) {
-          audio.play().catch((error) => {
-            console.debug('Android Auto next track play failed:', error);
+          audio.play().catch(() => {
             // Additional retry for Android Auto
             setTimeout(() => {
               if (audio && audio.paused && !audio.ended) {
@@ -308,7 +290,7 @@ export const useAndroidAutoSync = () => {
         }
       });
     } catch (error) {
-      console.debug('Android Auto MediaSession setup failed:', error);
+      // MediaSession setup failed
     }
 
     return () => {
@@ -322,7 +304,7 @@ export const useAndroidAutoSync = () => {
         navigator.mediaSession.setActionHandler('seekbackward', null);
         navigator.mediaSession.setActionHandler('seekforward', null);
       } catch (error) {
-        console.debug('Android Auto MediaSession cleanup failed:', error);
+        // MediaSession cleanup failed
       }
     };
   }, []);

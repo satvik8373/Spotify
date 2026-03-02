@@ -141,7 +141,6 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
       toast.success('Direct upload successful!');
       setImagePreview(result.secure_url);
     } catch (error: any) {
-      console.error('Direct upload error:', error);
       toast.error(`Direct upload failed: ${error.message || 'Unknown error'}`);
     } finally {
       setIsUploading(false);
@@ -158,7 +157,6 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
       
       return imageUrl;
     } catch (error) {
-      console.error('Error uploading image to Cloudinary:', error);
       toast.error('Failed to upload image. Using default image instead.');
       // Return a placeholder image URL on error
       return getPlaceholderImageUrl(playlist.name);
@@ -191,7 +189,6 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
         try {
           imageUrl = await uploadImageToCloudinary(imageFile);
         } catch (uploadError) {
-          console.error('Upload failed, using previous image:', uploadError);
           // Continue with playlist update even if image upload fails
         }
       }
@@ -215,7 +212,6 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
       
       onClose();
     } catch (error) {
-      console.error('Error updating playlist:', error);
       toast.error('Could not update the playlist. Please try again.');
     } finally {
       setIsSubmitting(false);

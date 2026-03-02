@@ -77,7 +77,6 @@ const EmbedPlaylistPage = () => {
         setPlaylist(data);
         setLoading(false);
       } catch (error) {
-        console.error('Failed to fetch playlist:', error);
         setLoading(false);
       }
     };
@@ -117,7 +116,6 @@ const EmbedPlaylistPage = () => {
 
     const currentSong = playlist?.songs[currentSongIndex];
     if (!currentSong?.audioUrl) {
-      console.error('Cannot play: No audio URL');
       return;
     }
 
@@ -134,10 +132,8 @@ const EmbedPlaylistPage = () => {
       audioRef.current.play()
         .then(() => {
           setIsPlaying(true);
-          console.log('Playback started');
         })
-        .catch((error) => {
-          console.error('Play error:', error);
+        .catch(() => {
           setIsPlaying(false);
         });
     }
@@ -152,8 +148,7 @@ const EmbedPlaylistPage = () => {
       // Ensure playback continues
       setTimeout(() => {
         if (audioRef.current && isPlaying) {
-          audioRef.current.play().catch((error) => {
-            console.error('Play error on previous:', error);
+          audioRef.current.play().catch(() => {
             setIsPlaying(false);
           });
         }
@@ -170,8 +165,7 @@ const EmbedPlaylistPage = () => {
       // Ensure playback continues
       setTimeout(() => {
         if (audioRef.current && isPlaying) {
-          audioRef.current.play().catch((error) => {
-            console.error('Play error on next:', error);
+          audioRef.current.play().catch(() => {
             setIsPlaying(false);
           });
         }
@@ -183,7 +177,6 @@ const EmbedPlaylistPage = () => {
   const handleSongClick = (index: number) => {
     const song = playlist?.songs[index];
     if (!song?.audioUrl) {
-      console.error('Cannot play song: No audio URL');
       return;
     }
     
@@ -197,8 +190,7 @@ const EmbedPlaylistPage = () => {
           .then(() => {
             setIsPlaying(true);
           })
-          .catch((error) => {
-            console.error('Play error on song click:', error);
+          .catch(() => {
             setIsPlaying(false);
           });
       }
@@ -272,18 +264,9 @@ const EmbedPlaylistPage = () => {
     const currentSong = playlist.songs[currentSongIndex];
     
     if (!currentSong?.audioUrl) {
-      console.error('No audio URL for song:', currentSong?.title);
       setIsPlaying(false);
       return;
     }
-
-    // Debug logging
-    console.log('Song changed:', {
-      index: currentSongIndex,
-      title: currentSong?.title,
-      audioUrl: currentSong?.audioUrl,
-      isPlaying
-    });
 
     // Reset time when song changes
     setCurrentTime(0);
@@ -301,10 +284,9 @@ const EmbedPlaylistPage = () => {
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              console.log('Playback started successfully');
+              // Playback started
             })
-            .catch((error) => {
-              console.error('Auto-play error:', error);
+            .catch(() => {
               setIsPlaying(false);
             });
         }
@@ -346,16 +328,6 @@ const EmbedPlaylistPage = () => {
   const currentSong = playlist.songs[currentSongIndex];
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-  // Debug: Log current song info
-  console.log('Current song:', {
-    title: currentSong?.title,
-    audioUrl: currentSong?.audioUrl,
-    hasAudioUrl: !!currentSong?.audioUrl,
-    isPlaying,
-    duration,
-    currentTime
-  });
-
   return (
     <div
       className="w-full h-screen overflow-hidden"
@@ -367,26 +339,8 @@ const EmbedPlaylistPage = () => {
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
-        onError={(e) => {
-          const target = e.currentTarget;
-          console.error('Audio error:', {
-            error: target.error,
-            code: target.error?.code,
-            message: target.error?.message,
-            src: target.src,
-            networkState: target.networkState,
-            readyState: target.readyState
-          });
+        onError={() => {
           setIsPlaying(false);
-        }}
-        onCanPlay={() => {
-          console.log('Audio can play');
-        }}
-        onLoadStart={() => {
-          console.log('Audio load started');
-        }}
-        onLoadedData={() => {
-          console.log('Audio data loaded');
         }}
         preload="auto"
         crossOrigin="anonymous"

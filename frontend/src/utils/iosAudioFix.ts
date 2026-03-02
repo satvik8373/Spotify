@@ -15,31 +15,32 @@ export const isPWA = (): boolean => {
          (window.navigator as any).standalone === true;
 };
 
-// Initialize audio context for iOS (required for audio playback)
+// Initialize audio context for iOS (lazy - only when needed)
 let audioContext: AudioContext | null = null;
+let hasUserInteracted = false;
 
 export const initAudioContext = (): void => {
-  if (isIOS() && !audioContext) {
+  // Don't create AudioContext immediately - wait for user interaction
+  // This prevents autoplay warnings
+};
+
+/**
+ * Get or create audio context (lazy initialization)
+ */
+const getOrCreateAudioContext = (): AudioContext | null => {
+  if (!isIOS()) return null;
+  
+  if (!audioContext && hasUserInteracted) {
     try {
       // @ts-ignore - AudioContext might not be in types
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       audioContext = new AudioContextClass();
-      
-      // Resume audio context on user interaction
-      const resumeAudio = () => {
-        if (audioContext && audioContext.state === 'suspended') {
-          audioContext.resume();
-        }
-      };
-      
-      // Add listeners for user interaction
-      document.addEventListener('touchstart', resumeAudio, { once: true });
-      document.addEventListener('touchend', resumeAudio, { once: true });
-      document.addEventListener('click', resumeAudio, { once: true });
     } catch (error) {
-      // Failed to initialize AudioContext
+      // Silent error handling
     }
   }
+  
+  return audioContext;
 };
 
 // Configure audio element for iOS compatibility
@@ -114,9 +115,15 @@ export const playAudioForIOS = async (audio: HTMLAudioElement): Promise<void> =>
   }
   
   try {
+    // Mark user interaction
+    hasUserInteracted = true;
+    
+    // Get or create audio context
+    const context = getOrCreateAudioContext();
+    
     // Resume audio context if suspended
-    if (audioContext && audioContext.state === 'suspended') {
-      await audioContext.resume();
+    if (context && context.state === 'suspended') {
+      await context.resume();
     }
     
     // Attempt to play
@@ -137,8 +144,11 @@ export const playAudioForIOS = async (audio: HTMLAudioElement): Promise<void> =>
 export const unlockAudioOnIOS = (): void => {
   if (!isIOS()) return;
   
-  // Initialize audio context
-  initAudioContext();
+  // Mark user interaction
+  hasUserInteracted = true;
+  
+  // Get or create audio context
+  const context = getOrCreateAudioContext();
   
   // Create a silent audio element and play it
   const silentAudio = new Audio();
@@ -155,16 +165,5 @@ export const unlockAudioOnIOS = (): void => {
     });
 };
 
-// Fix for service worker interfering with audio
-export const bypassServiceWorkerForAudio = (url: string): string => {
-  if (!isIOS() || !isPWA()) return url;
-  
-  // Add cache-busting parameter to bypass service worker
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}_t=${Date.now()}`;
-};
-
-// Initialize on module load
-if (typeof window !== 'undefined') {
-  initAudioContext();
-}
+// Don't initialize on module load - wait for user interaction
+// This prevents autoplay warnings

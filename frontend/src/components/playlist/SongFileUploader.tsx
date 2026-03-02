@@ -260,7 +260,6 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
       // Single notification for successful upload
       toast.success(`Found ${songs.length} songs in the file. Ready to add to playlist.`);
     } catch (error) {
-      console.error('Error reading file:', error);
       toast.error('Failed to read the file. Please try again.');
     } finally {
       setIsUploading(false);
@@ -322,7 +321,6 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
 
       return null;
     } catch (error) {
-      console.error('Error searching for song:', error);
       return null;
     }
   };
@@ -540,7 +538,6 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
           skippedCount++;
         }
       } catch (error) {
-        console.error('Error adding song to playlist:', error);
         
         // Update status to error
         workingSongs[i] = {

@@ -19,7 +19,7 @@ const EmailVerificationBanner = () => {
       const verified = await checkEmailVerified();
       setIsVerified(verified);
     } catch (error) {
-      console.error('Error checking verification:', error);
+      // Error checking verification
     } finally {
       setChecking(false);
     }

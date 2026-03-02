@@ -74,7 +74,6 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
       
       return imageUrl;
     } catch (error) {
-      console.error('Error uploading image to Cloudinary:', error);
       toast.error('Failed to upload image');
       throw error;
     } finally {
@@ -110,7 +109,6 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
         navigate(`/playlist/${playlist._id}`);
       }
     } catch (error) {
-      console.error('Error creating playlist:', error);
       toast.error('Failed to create playlist');
     } finally {
       setIsLoading(false);

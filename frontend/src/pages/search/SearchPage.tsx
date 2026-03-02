@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { usePlayerStore } from '@/stores/usePlayerStore';
@@ -7,132 +7,157 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { resolveArtist } from '@/lib/resolveArtist';
+import { useDebounce } from '@/hooks/useDebounce';
+import { SearchSkeleton } from '@/components/SearchSkeleton';
+import { SearchSuggestions, saveRecentSearch } from '@/components/SearchSuggestions';
 
 const SearchPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const query = searchParams.get('q') || '';
+  const debouncedQuery = useDebounce(searchQuery, 400); // Debounce input
+  const searchAbortController = useRef<AbortController | null>(null);
 
   const { searchIndianSongs, indianSearchResults, isIndianMusicLoading } = useMusicStore();
   const [isSearching, setIsSearching] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const hasSearched = useRef(false);
 
-  // Perform search when query changes
+  // Perform search when query changes (from URL)
   useEffect(() => {
     if (query && query.trim()) {
+      // Cancel previous search
+      if (searchAbortController.current) {
+        searchAbortController.current.abort();
+      }
+      searchAbortController.current = new AbortController();
+
       setIsSearching(true);
+      hasSearched.current = true;
+      setShowSuggestions(false);
+      
       searchIndianSongs(query.trim())
-        .finally(() => setIsSearching(false));
+        .then(() => {
+          // Save to recent searches on successful search
+          saveRecentSearch(query.trim());
+        })
+        .finally(() => {
+          setIsSearching(false);
+        });
+    } else {
+      hasSearched.current = false;
     }
+
+    return () => {
+      if (searchAbortController.current) {
+        searchAbortController.current.abort();
+      }
+    };
   }, [query, searchIndianSongs]);
 
   // Handle search form submission
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setShowSuggestions(false);
     }
-  };
+  }, [searchQuery, navigate]);
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = useCallback((suggestion: string) => {
+    setSearchQuery(suggestion);
+    navigate(`/search?q=${encodeURIComponent(suggestion)}`);
+    setShowSuggestions(false);
+  }, [navigate]);
 
   // Clear search
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     setSearchQuery('');
     navigate('/search');
-  };
+    setShowSuggestions(false);
+  }, [navigate]);
 
-  // Play a single song - with URL fetching if needed
-  const playSong = async (song: any, index: number) => {
-    console.log('🎵 PLAY SONG CALLED', { 
-      songTitle: song.title, 
-      songId: song.id, 
-      hasUrl: !!song.url,
-      url: song.url,
-      index 
-    });
-    
+  // Show suggestions when input is focused and not searching
+  const handleInputFocus = useCallback(() => {
+    if (!query) {
+      setShowSuggestions(true);
+    }
+  }, [query]);
+
+  const handleInputBlur = useCallback(() => {
+    // Delay to allow click on suggestions
+    setTimeout(() => setShowSuggestions(false), 200);
+  }, []);
+
+  // Play a single song - with URL fetching if needed (optimized)
+  const playSong = useCallback(async (song: any, index: number) => {
     // If song doesn't have URL, fetch it from the API
     if (!song.url) {
-      console.log('⚠️ Song has no URL, fetching from API...', { songId: song.id, songTitle: song.title });
-      toast.loading('Loading song...', { id: 'loading-song' });
+      const toastId = toast.loading('Loading song...');
       
       try {
-        // Fetch song details from backend
-        const response = await fetch(`/api/jiosaavn/songs/${song.id}`);
+        // Fetch song details from backend with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch(`/api/jiosaavn/songs/${song.id}`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
         const data = await response.json();
         
-        console.log('📥 API Response:', data);
-        
         if (data.success && data.data && data.data.downloadUrl) {
-          // Update the song with the download URL
           const downloadUrl = data.data.downloadUrl.find((d: any) => d.quality === '320kbps') ||
             data.data.downloadUrl.find((d: any) => d.quality === '160kbps') ||
             data.data.downloadUrl.find((d: any) => d.quality === '96kbps') ||
             data.data.downloadUrl[data.data.downloadUrl.length - 1];
           
           song.url = downloadUrl?.url || downloadUrl?.link || '';
-          console.log('✅ Got URL:', song.url);
           
-          // Verify URL was set
           if (!song.url) {
-            console.error('❌ Failed to extract URL from downloadUrl array:', data.data.downloadUrl);
-            toast.dismiss('loading-song');
+            toast.dismiss(toastId);
             toast.error('Failed to get song URL');
             return;
           }
           
-          // Also update the image if available
+          // Update image if available
           if (data.data.image && Array.isArray(data.data.image)) {
             const image = data.data.image.find((i: any) => i.quality === '500x500') ||
               data.data.image.find((i: any) => i.quality === '150x150') ||
               data.data.image[data.data.image.length - 1];
             song.image = image?.url || image?.link || song.image;
-            console.log('✅ Got Image:', song.image);
           }
           
           // Update the song in the results array
           const { indianSearchResults: currentResults } = useMusicStore.getState();
           currentResults[index] = { ...song };
           
-          toast.dismiss('loading-song');
+          toast.dismiss(toastId);
         } else {
-          console.error('❌ No download URL in response');
-          toast.dismiss('loading-song');
+          toast.dismiss(toastId);
           toast.error('This song is not available for playback');
           return;
         }
-      } catch (error) {
-        console.error('❌ Error fetching song details:', error);
-        toast.dismiss('loading-song');
-        toast.error('Failed to load song');
+      } catch (error: any) {
+        toast.error(error.name === 'AbortError' ? 'Request timeout' : 'Failed to load song');
         return;
       }
     }
 
     if (!song.url) {
-      console.error('❌ Song still has no URL after fetch', { song });
       toast.error('This song is not available for playback');
       return;
     }
 
-    console.log('✅ Song has URL:', song.url, 'for song:', song.title);
-
     const playerStore = usePlayerStore.getState();
-    
-    // Mark user interaction FIRST
     playerStore.setUserInteracted();
-    console.log('✅ User interaction set');
     
-    // Convert the current song first
     const convertedSong = useMusicStore.getState().convertIndianSongToAppSong(song);
-    console.log('✅ Converted current song:', { 
-      title: convertedSong.title, 
-      audioUrl: convertedSong.audioUrl,
-      hasAudioUrl: !!convertedSong.audioUrl 
-    });
     
-    // Verify the converted song has a valid audioUrl
     if (!convertedSong.audioUrl) {
-      console.error('❌ Converted song has no audioUrl', { convertedSong });
       toast.error('This song is not available for playback');
       return;
     }
@@ -141,37 +166,22 @@ const SearchPage = () => {
     const allSongs = indianSearchResults
       .filter((s: any) => s.url)
       .map((s: any) => useMusicStore.getState().convertIndianSongToAppSong(s))
-      .filter((s: any) => s.audioUrl); // Extra filter to ensure audioUrl exists
+      .filter((s: any) => s.audioUrl);
     
-    console.log('✅ Total converted songs with URLs:', allSongs.length);
-    console.log('✅ All song titles:', allSongs.map(s => s.title));
-    
-    // Find the index of the current song in the converted array
     const currentIndex = allSongs.findIndex((s: any) => s._id === convertedSong._id);
     
-    console.log('✅ Current song index in queue:', currentIndex);
-    
     if (currentIndex === -1) {
-      // Current song not in the list, play it alone
-      console.log('✅ Playing single song:', convertedSong.title);
       playerStore.playAlbum([convertedSong], 0);
     } else {
-      // Play from the current song's position
-      console.log('✅ Playing from index:', currentIndex, 'song:', allSongs[currentIndex].title);
       playerStore.playAlbum(allSongs, currentIndex);
     }
     
-    console.log('✅ playAlbum called');
-    
-    // Start playback immediately
     playerStore.setIsPlaying(true);
-    console.log('✅ setIsPlaying(true) called');
-    
     toast.success(`Now playing: ${song.title}`);
-  };
+  }, [indianSearchResults]);
 
-  // Play all songs
-  const playAll = () => {
+  // Play all songs (optimized)
+  const playAll = useCallback(() => {
     if (indianSearchResults.length === 0) {
       toast.error('No songs to play');
       return;
@@ -184,11 +194,16 @@ const SearchPage = () => {
       .filter((s: any) => s.url)
       .map((s: any) => useMusicStore.getState().convertIndianSongToAppSong(s));
     
+    if (allSongs.length === 0) {
+      toast.error('No playable songs found');
+      return;
+    }
+    
     playerStore.playAlbum(allSongs, 0);
     playerStore.setIsPlaying(true);
     
     toast.success(`Playing ${allSongs.length} songs`);
-  };
+  }, [indianSearchResults]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#121212] to-black text-white p-4 md:p-8">
@@ -202,19 +217,23 @@ const SearchPage = () => {
         {/* Search Box */}
         <form onSubmit={handleSearch} className="mb-8">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none z-10" />
             <Input
               type="search"
               placeholder="What do you want to listen to?"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-14 pl-12 pr-12 bg-[#242424] border-0 text-white placeholder:text-gray-400 text-base rounded-full focus:ring-2 focus:ring-[#1db954]"
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              className="w-full h-14 pl-12 pr-12 bg-[#242424] border-0 text-white placeholder:text-gray-400 text-base rounded-full focus:ring-2 focus:ring-[#1db954] transition-all"
+              autoComplete="off"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={clearSearch}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors z-10"
+                aria-label="Clear search"
               >
                 <XCircle size={20} />
               </button>
@@ -222,11 +241,22 @@ const SearchPage = () => {
           </div>
         </form>
 
-        {/* Loading State */}
+        {/* Search Suggestions */}
+        {showSuggestions && (
+          <SearchSuggestions
+            onSelect={handleSuggestionSelect}
+            currentQuery={searchQuery}
+          />
+        )}
+
+        {/* Loading State with Skeleton */}
         {(isSearching || isIndianMusicLoading) && (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-600 border-t-[#1db954]"></div>
-            <p className="mt-4 text-gray-400">Searching...</p>
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="h-8 w-32 bg-gray-600 rounded animate-pulse"></div>
+              <div className="h-10 w-32 bg-gray-600 rounded-full animate-pulse"></div>
+            </div>
+            <SearchSkeleton />
           </div>
         )}
 
@@ -249,30 +279,39 @@ const SearchPage = () => {
                   </Button>
                 </div>
 
-                {/* Song List */}
+                {/* Song List - Optimized rendering */}
                 <div className="space-y-2">
                   {indianSearchResults.map((song: any, index: number) => (
                     <div
                       key={song.id || index}
                       onClick={() => playSong(song, index)}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#282828] transition-colors cursor-pointer group"
+                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#282828] transition-all duration-200 cursor-pointer group"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          playSong(song, index);
+                        }
+                      }}
                     >
                       {/* Index/Play Button */}
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                        <span className="text-gray-400 group-hover:hidden">
+                        <span className="text-gray-400 group-hover:hidden transition-opacity">
                           {index + 1}
                         </span>
-                        <div className="hidden group-hover:flex w-10 h-10 bg-[#1db954] rounded-full items-center justify-center">
-                          <Play className="h-5 w-5 text-black ml-0.5" />
+                        <div className="hidden group-hover:flex w-10 h-10 bg-[#1db954] rounded-full items-center justify-center shadow-lg transform group-hover:scale-105 transition-transform">
+                          <Play className="h-5 w-5 text-black ml-0.5" fill="currentColor" />
                         </div>
                       </div>
 
                       {/* Song Image */}
-                      <div className="w-14 h-14 rounded-md overflow-hidden bg-[#282828] flex-shrink-0">
+                      <div className="w-14 h-14 rounded-md overflow-hidden bg-[#282828] flex-shrink-0 shadow-md">
                         <img
                           src={song.image || '/images/default-album.png'}
                           alt={song.title}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          loading="lazy"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = '/images/default-album.png';
                           }}
@@ -281,7 +320,7 @@ const SearchPage = () => {
 
                       {/* Song Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate">
+                        <h3 className="font-semibold text-white truncate group-hover:text-[#1db954] transition-colors">
                           {song.title}
                         </h3>
                         <p className="text-sm text-gray-400 truncate">
@@ -291,7 +330,7 @@ const SearchPage = () => {
 
                       {/* Duration */}
                       {song.duration && (
-                        <div className="text-sm text-gray-400 flex-shrink-0">
+                        <div className="text-sm text-gray-400 flex-shrink-0 tabular-nums">
                           {song.duration}
                         </div>
                       )}

@@ -168,7 +168,6 @@ const handleCopyLink = async (options: ShareOptions) => {
   
   try {
     await navigator.clipboard.writeText(card.shareUrl);
-    console.log('Link copied to clipboard!');
   } catch (error) {
     // Fallback for older browsers
     const textArea = document.createElement('textarea');
@@ -186,8 +185,6 @@ const handleCopyLink = async (options: ShareOptions) => {
     } finally {
       document.body.removeChild(textArea);
     }
-    
-    console.log('Link copied to clipboard!');
   }
 };
 
@@ -222,7 +219,6 @@ const handleNativeShare = async (options: ShareOptions) => {
     }
   } catch (error) {
     // User cancelled or error
-    console.log('Share cancelled');
   }
 };
 

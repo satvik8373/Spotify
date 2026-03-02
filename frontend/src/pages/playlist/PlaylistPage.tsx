@@ -291,7 +291,7 @@ export function PlaylistPage() {
   // Debug: Log the colors to see what we're getting
   useEffect(() => {
     if (currentPlaylist?.imageUrl) {
-      console.log('Album colors:', albumColors);
+      // Album colors loaded
     }
   }, [albumColors, currentPlaylist?.imageUrl]);
 

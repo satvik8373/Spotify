@@ -19,9 +19,6 @@ export const useIOSAudio = (audioElement: HTMLAudioElement | null) => {
   useEffect(() => {
     if (!isIOSDevice) return;
 
-    // Initialize audio context
-    initAudioContext();
-
     // Unlock audio on first user interaction
     const unlockAudio = () => {
       if (!isUnlocked.current) {

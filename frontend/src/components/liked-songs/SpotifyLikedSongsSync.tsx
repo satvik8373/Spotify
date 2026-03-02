@@ -124,7 +124,6 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
       const modeText = mode === 'new' ? 'recent' : 'total';
       toast.success(`Found ${tracks.length} ${modeText} Spotify songs, ${newTracks.length} are new`);
     } catch (error) {
-      console.error('Error loading Spotify tracks:', error);
       toast.error('Failed to load Spotify liked songs');
     } finally {
       setIsLoadingTracks(false);
@@ -144,7 +143,6 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
       }
       return null;
     } catch (error) {
-      console.error('Error searching for song:', error);
       return null;
     }
   };
@@ -232,7 +230,6 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
         setAddedSongsCount(addedCount);
         setSkippedSongsCount(skippedCount);
       } catch (error) {
-        console.error('Error syncing Spotify track:', error);
 
         updatedTracks[i] = {
           ...track,

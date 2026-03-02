@@ -1,214 +1,133 @@
-import React, { useEffect, useState } from 'react';
-import { useMusicStore } from '@/stores/useMusicStore';
-import { usePlaylistStore } from '@/stores/usePlaylistStore';
-import { Playlist } from '@/types';
-import { Music, ListMusic, Clock } from 'lucide-react';
+import { Clock, TrendingUp, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface SearchSuggestionsProps {
-  isVisible: boolean;
-  query: string;
-  onSelectSong: (songName: string) => void;
-  onSelectPlaylist?: (playlistId: string) => void;
+  onSelect?: (query: string) => void;
+  currentQuery?: string;
+  // Backward compatibility props
+  query?: string;
+  isVisible?: boolean;
+  onSelectSong?: (query: string) => void;
 }
 
-// Define a simple type for search items
-type SearchItem = {
-  id?: string;
-  title: string;
-  artist?: string;
-  image?: string;
-};
-
-const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
-  isVisible,
-  query,
-  onSelectSong,
-  onSelectPlaylist,
-}) => {
-  const { indianSearchResults } = useMusicStore();
-  const { searchPlaylists, searchResults: playlistResults, isSearching } = usePlaylistStore();
+export const SearchSuggestions = ({ 
+  onSelect, 
+  currentQuery, 
+  query, 
+  isVisible, 
+  onSelectSong 
+}: SearchSuggestionsProps) => {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [trendingSearches] = useState<string[]>([
+    'Arijit Singh',
+    'Bollywood Hits',
+    'Romantic Songs',
+    'Party Songs',
+    'Punjabi Music',
+    'AR Rahman',
+    'Atif Aslam',
+    'Shreya Ghoshal'
+  ]);
+
+  // Support both prop names for backward compatibility
+  const searchQuery = currentQuery ?? query ?? '';
+  const handleSelect = onSelect ?? onSelectSong ?? (() => {});
+  
+  // If isVisible prop is provided and false, don't render
+  if (isVisible === false) {
+    return null;
+  }
 
   // Load recent searches from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('recentSearches');
+      const saved = localStorage.getItem('recent_searches');
       if (saved) {
-        setRecentSearches(JSON.parse(saved).slice(0, 5));
+        const parsed = JSON.parse(saved);
+        setRecentSearches(parsed.slice(0, 5)); // Keep only last 5
       }
     } catch (error) {
-      setRecentSearches(['Latest hits', 'Top songs', 'Popular tracks']);
+      // Failed to load recent searches
     }
   }, []);
 
-  // Search for playlists when the query changes
-  useEffect(() => {
-    if (query.trim().length >= 2) {
-      searchPlaylists(query);
-    }
-  }, [query, searchPlaylists]);
+  // Filter suggestions based on current query
+  const filteredSuggestions = searchQuery.trim()
+    ? trendingSearches.filter(s => 
+        s.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 5)
+    : [];
 
-  // Save a search term to recent searches
-  const saveSearchTerm = (term: string) => {
-    try {
-      const saved = localStorage.getItem('recentSearches');
-      let searches = saved ? JSON.parse(saved) : [];
-      
-      // Remove if it already exists to avoid duplicates
-      searches = searches.filter((s: string) => s !== term);
-      
-      // Add to beginning
-      searches.unshift(term);
-      
-      // Limit to 5 recent searches
-      searches = searches.slice(0, 5);
-      
-      localStorage.setItem('recentSearches', JSON.stringify(searches));
-      setRecentSearches(searches);
-    } catch (error) {
-      // Error saving search term
-    }
-  };
+  const showRecentSearches = !searchQuery.trim() && recentSearches.length > 0;
+  const showTrendingSearches = !searchQuery.trim() && recentSearches.length === 0;
+  const showFilteredSuggestions = searchQuery.trim() && filteredSuggestions.length > 0;
 
-  if (!isVisible) return null;
-
-  // If query is empty, show recent searches
-  if (!query.trim()) {
-    if (recentSearches.length === 0) return null;
-
-    return (
-      <div className="absolute top-full left-0 right-0 mt-2 bg-[#2a2a2a] rounded-lg shadow-2xl overflow-hidden z-[100] max-h-[400px] overflow-y-auto">
-        <div className="p-3">
-          <h3 className="text-sm font-semibold text-white mb-3 px-2">Recent searches</h3>
-          <div className="space-y-0">
-            {recentSearches.map((search: string, index: number) => (
-              <div
-                key={`${search}-${index}`}
-                className="flex items-center px-3 py-2.5 hover:bg-[#3a3a3a] rounded-md cursor-pointer transition-colors"
-                onClick={() => {
-                  onSelectSong(search);
-                  saveSearchTerm(search);
-                }}
-              >
-                <Clock className="h-4 w-4 mr-3 text-[#b3b3b3] flex-shrink-0" />
-                <span className="text-sm text-white truncate">{search}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+  if (!showRecentSearches && !showTrendingSearches && !showFilteredSuggestions) {
+    return null;
   }
 
-  // If query exists but no specific results to show yet
-  if (query.length < 2) {
-    return (
-      <div className="absolute top-full left-0 right-0 mt-2 bg-[#2a2a2a] rounded-lg shadow-2xl p-4 z-[100]">
-        <p className="text-[#b3b3b3] text-sm text-center">
-          Type at least 2 characters to search
-        </p>
-      </div>
-    );
-  }
-
-  // Loading state
-  if (isSearching && playlistResults.length === 0 && indianSearchResults.length === 0) {
-    return (
-      <div className="absolute top-full left-0 right-0 mt-2 bg-[#2a2a2a] rounded-lg shadow-2xl p-4 z-[100]">
-        <p className="text-[#b3b3b3] text-sm text-center">Searching...</p>
-      </div>
-    );
-  }
-
-  // No results state
-  if (!isSearching && playlistResults.length === 0 && indianSearchResults.length === 0) {
-    return (
-      <div className="absolute top-full left-0 right-0 mt-2 bg-[#2a2a2a] rounded-lg shadow-2xl p-4 z-[100]">
-        <p className="text-[#b3b3b3] text-sm text-center">No results found</p>
-      </div>
-    );
-  }
-
-  // Show search results with songs and playlists
   return (
-    <div className="absolute top-full left-0 right-0 mt-2 bg-[#2a2a2a] rounded-lg shadow-2xl overflow-hidden z-[100] max-h-[400px] overflow-y-auto">
-      {/* Songs section */}
-      {indianSearchResults.length > 0 && (
-        <div className="p-3">
-          <h3 className="text-sm font-semibold text-white mb-3 px-2">Songs</h3>
-          <div className="space-y-0">
-            {indianSearchResults.slice(0, 3).map((song: SearchItem, index: number) => (
-              <div
-                key={`${song.id || index}`}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#3a3a3a] rounded-md cursor-pointer transition-colors"
-                onClick={() => {
-                  onSelectSong(song.title);
-                  saveSearchTerm(song.title);
-                }}
+    <div className="bg-[#242424] rounded-lg p-4 mb-6">
+      {/* Recent Searches */}
+      {showRecentSearches && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2">
+            <Clock size={16} />
+            Recent Searches
+          </h3>
+          <div className="space-y-2">
+            {recentSearches.map((search, index) => (
+              <button
+                key={index}
+                onClick={() => handleSelect(search)}
+                className="w-full text-left px-3 py-2 rounded-md hover:bg-[#282828] transition-colors flex items-center gap-3 group"
               >
-                <div className="h-10 w-10 rounded overflow-hidden flex-shrink-0">
-                  <img
-                    src={song.image || '/images/default-album.png'}
-                    alt={song.title}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <div className="overflow-hidden flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate text-white">{song.title}</p>
-                  <p className="text-xs text-[#b3b3b3] truncate">{song.artist || 'Unknown Artist'}</p>
-                </div>
-                <Music className="h-4 w-4 text-[#b3b3b3] flex-shrink-0" />
-              </div>
+                <Search size={16} className="text-gray-400" />
+                <span className="text-white">{search}</span>
+              </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Playlists section */}
-      {playlistResults.length > 0 && onSelectPlaylist && (
-        <div className="p-3 border-t border-[#3a3a3a]">
-          <h3 className="text-sm font-semibold text-white mb-3 px-2">Playlists</h3>
-          <div className="space-y-0">
-            {playlistResults.slice(0, 3).map((playlist: Playlist, index: number) => (
-              <div
-                key={`playlist-${playlist._id || index}`}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#3a3a3a] rounded-md cursor-pointer transition-colors"
-                onClick={() => {
-                  onSelectPlaylist(playlist._id);
-                  saveSearchTerm(playlist.name);
-                }}
+      {/* Trending Searches */}
+      {showTrendingSearches && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2">
+            <TrendingUp size={16} />
+            Trending Searches
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {trendingSearches.slice(0, 8).map((search, index) => (
+              <button
+                key={index}
+                onClick={() => handleSelect(search)}
+                className="px-4 py-2 bg-[#282828] hover:bg-[#3e3e3e] rounded-full text-sm transition-colors"
               >
-                <div className="h-10 w-10 rounded overflow-hidden flex-shrink-0">
-                  <img
-                    src={playlist.imageUrl || '/images/default-playlist.jpg'}
-                    alt={playlist.name}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <div className="overflow-hidden flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate text-white">{playlist.name}</p>
-                  <p className="text-xs text-[#b3b3b3] truncate">
-                    {playlist.songs.length} songs • {playlist.createdBy?.fullName || 'Unknown User'}
-                  </p>
-                </div>
-                <ListMusic className="h-4 w-4 text-[#b3b3b3] flex-shrink-0" />
-              </div>
+                {search}
+              </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* View all results link */}
-      {(indianSearchResults.length > 3 || playlistResults.length > 3) && (
-        <div className="p-3 border-t border-[#3a3a3a]">
-          <div 
-            className="px-3 py-2.5 hover:bg-[#3a3a3a] rounded-md cursor-pointer text-center text-sm text-[#b3b3b3] hover:text-white transition-colors"
-            onClick={() => {
-              onSelectSong(query);
-              saveSearchTerm(query);
-            }}
-          >
-            See all results for "{query}"
+      {/* Filtered Suggestions */}
+      {showFilteredSuggestions && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-400 mb-3">
+            Suggestions
+          </h3>
+          <div className="space-y-2">
+            {filteredSuggestions.map((search, index) => (
+              <button
+                key={index}
+                onClick={() => handleSelect(search)}
+                className="w-full text-left px-3 py-2 rounded-md hover:bg-[#282828] transition-colors flex items-center gap-3"
+              >
+                <Search size={16} className="text-gray-400" />
+                <span className="text-white">{search}</span>
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -216,4 +135,28 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
   );
 };
 
+// Helper function to save search to recent searches
+export const saveRecentSearch = (query: string) => {
+  if (!query.trim()) return;
+
+  try {
+    const saved = localStorage.getItem('recent_searches');
+    let searches: string[] = saved ? JSON.parse(saved) : [];
+    
+    // Remove if already exists
+    searches = searches.filter(s => s.toLowerCase() !== query.toLowerCase());
+    
+    // Add to beginning
+    searches.unshift(query.trim());
+    
+    // Keep only last 10
+    searches = searches.slice(0, 10);
+    
+    localStorage.setItem('recent_searches', JSON.stringify(searches));
+  } catch (error) {
+    // Failed to save recent search
+  }
+};
+
+// Default export for backward compatibility
 export default SearchSuggestions;

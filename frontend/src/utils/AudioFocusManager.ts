@@ -32,26 +32,38 @@ class AudioFocusManager {
 
     /**
      * Initialize the audio focus manager
+     * Delays AudioContext creation until first user interaction
      */
     async initialize(callbacks: AudioFocusCallbacks): Promise<void> {
         this.callbacks = callbacks;
 
-        // Create or resume AudioContext for focus detection
+        // Don't create AudioContext immediately to avoid autoplay warnings
+        // It will be created on first requestAudioFocus() call
+        this.setupEventListeners();
+    }
+
+    /**
+     * Ensure AudioContext exists (lazy initialization)
+     */
+    private async ensureAudioContext(): Promise<void> {
+        if (this.audioContext) return;
+
         try {
-            if (!this.audioContext) {
-                // @ts-ignore - AudioContext may need webkit prefix
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                this.audioContext = new AudioContextClass();
+            // @ts-ignore - AudioContext may need webkit prefix
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            this.audioContext = new AudioContextClass();
+
+            // Set up state change listener
+            if (this.audioContextStateChangeHandler) {
+                this.audioContext.addEventListener('statechange', this.audioContextStateChangeHandler);
             }
 
             // Resume if suspended
             if (this.audioContext.state === 'suspended') {
                 await this.audioContext.resume();
             }
-
-            this.setupEventListeners();
         } catch (error) {
-            // AudioContext initialization failed
+            // Silent error handling
         }
     }
 
@@ -59,26 +71,21 @@ class AudioFocusManager {
      * Set up all event listeners for interruption detection
      */
     private setupEventListeners(): void {
-        if (!this.audioContext) return;
-
         // AudioContext state change - primary interruption detection
+        // Note: Listener will be attached when AudioContext is created
         this.audioContextStateChangeHandler = () => {
             if (!this.audioContext) return;
 
             const newState = this.audioContext.state;
 
             if (newState === 'suspended' && this.currentState === 'running') {
-                // Audio was interrupted - likely a phone call or system interruption
                 this.handleInterruption('call');
             } else if (newState === 'running' && this.currentState === 'suspended') {
-                // Audio focus regained
                 this.handleResume();
             }
 
             this.currentState = newState as AudioContextState;
         };
-
-        this.audioContext.addEventListener('statechange', this.audioContextStateChangeHandler);
 
         // Visibility change - detect app backgrounding
         this.visibilityChangeHandler = () => {
@@ -232,8 +239,12 @@ class AudioFocusManager {
 
     /**
      * Request audio focus (call before playing audio)
+     * Creates AudioContext on first call
      */
     async requestAudioFocus(): Promise<boolean> {
+        // Lazy create AudioContext on first use
+        await this.ensureAudioContext();
+        
         if (!this.audioContext) {
             return false;
         }
@@ -244,7 +255,6 @@ class AudioFocusManager {
             }
             return this.audioContext.state === 'running';
         } catch (error) {
-            // Failed to request audio focus
             return false;
         }
     }

@@ -196,7 +196,6 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
       setParsedSongs(songs);
       toast.success(`Found ${songs.length} songs in the file. Ready to add to liked songs.`);
     } catch (error) {
-      console.error('Error reading file:', error);
       toast.error('Failed to read the file. Please try again.');
     } finally {
       setIsUploading(false);
@@ -225,7 +224,6 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
       }
       return null;
     } catch (error) {
-      console.error('Error searching for song:', error);
       return null;
     }
   };
@@ -278,7 +276,6 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
 
             return { appSong, index: globalIndex, searchResult };
           } catch (error) {
-            console.error('Error processing song:', error);
             return { appSong: null, index: globalIndex, error };
           }
         });
@@ -359,7 +356,6 @@ export function LikedSongsFileUploader({ onClose }: LikedSongsFileUploaderProps)
       }
 
     } catch (error) {
-      console.error('Error in batch processing:', error);
       toast.dismiss(progressToastId);
       toast.error('Failed to process songs. Please try again.');
     } finally {

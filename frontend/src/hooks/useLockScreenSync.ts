@@ -50,8 +50,8 @@ export const useLockScreenSync = () => {
         // Coming back from lock screen/CarPlay - sync after a delay
         const timeSinceLastSync = now - lastSyncTime.current;
         
-        // Use shorter delay for recent syncs, longer for older ones
-        const syncDelay = timeSinceLastSync < 5000 ? 100 : 300;
+        // Use shorter delay for recent syncs
+        const syncDelay = timeSinceLastSync < 5000 ? 150 : 300;
         
         syncTimeoutRef.current = setTimeout(() => {
           const audio = document.querySelector('audio') as HTMLAudioElement;
@@ -59,8 +59,8 @@ export const useLockScreenSync = () => {
             const actuallyPlaying = !audio.paused && !audio.ended && audio.currentTime > 0;
             const store = usePlayerStore.getState();
             
-            // Only update if there's a clear mismatch
-            if (actuallyPlaying !== store.isPlaying) {
+            // Only update if there's a clear mismatch and no interruption in progress
+            if (actuallyPlaying !== store.isPlaying && !store.wasPlayingBeforeInterruption) {
               store.setIsPlaying(actuallyPlaying);
               
               // Update MediaSession state
@@ -70,7 +70,7 @@ export const useLockScreenSync = () => {
             }
             
             // If we should be playing but audio is paused, try to resume
-            if (store.isPlaying && audio.paused && !audio.ended && store.hasUserInteracted) {
+            if (store.isPlaying && audio.paused && !audio.ended && store.hasUserInteracted && !store.wasPlayingBeforeInterruption) {
               audio.play().catch(() => {
                 // If play fails, update state to reflect reality
                 store.setIsPlaying(false);

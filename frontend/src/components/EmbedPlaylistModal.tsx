@@ -77,7 +77,6 @@ const EmbedPlaylistModal = ({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
       // Fallback for mobile/iOS
       const textArea = document.createElement('textarea');
       textArea.value = generateEmbedCode();

@@ -65,8 +65,7 @@ export const trackShare = (
     // Silent error handling
   }
 
-  // Log for debugging
-  console.log('Share tracked:', event);
+  // Share tracked successfully
 };
 
 /**

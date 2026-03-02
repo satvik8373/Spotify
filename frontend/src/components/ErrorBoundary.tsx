@@ -40,26 +40,7 @@ class ErrorBoundary extends Component<Props, State> {
                         error.message?.toLowerCase().includes('media') ||
                         error.stack?.toLowerCase().includes('audioplayer');
     
-    // Log error details with iOS-specific info
-    console.error('React Error Boundary caught:', {
-      error: {
-        message: error.message,
-        name: error.name,
-        stack: error.stack,
-        isAudioError
-      },
-      errorInfo: {
-        componentStack: errorInfo.componentStack
-      },
-      environment: {
-        isIOSPWA,
-        isIOSSafari,
-        standalone: (window.navigator as any).standalone,
-        userAgent: navigator.userAgent,
-        url: window.location.href
-      },
-      timestamp: new Date().toISOString()
-    });
+    // Error caught by boundary - details available for debugging if needed
 
     // Try to save error to sessionStorage for recovery
     try {

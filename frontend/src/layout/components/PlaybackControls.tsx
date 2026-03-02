@@ -62,7 +62,6 @@ export const PlaybackControls = () => {
 	useEffect(() => {
 		const audioElement = document.querySelector("audio");
 		if (!audioElement) {
-			console.warn('Audio element not found');
 			return;
 		}
 

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePhoneInterruption } from '../../hooks/usePhoneInterruption';
-import { initAudioContext, unlockAudioOnIOS, isIOS } from '@/utils/iosAudioFix';
+import { unlockAudioOnIOS, isIOS } from '@/utils/iosAudioFix';
 
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
@@ -47,8 +47,6 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
   // Initialize audio context for iOS on mount
   useEffect(() => {
     if (isIOS()) {
-      initAudioContext();
-      
       // Unlock audio on first user interaction
       const handleFirstInteraction = () => {
         unlockAudioOnIOS();
@@ -116,17 +114,19 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
 
       if (state.isRepeating) {
         audio.currentTime = 0;
-        audio.play().catch(() => { });
-        isHandlingEnd = false;
+        audio.play()
+          .catch(() => {})
+          .finally(() => { isHandlingEnd = false; });
         return;
       }
 
       state.playNext();
-      state.setIsPlaying(true);
       
+      // Use requestAnimationFrame for smoother transition
       requestAnimationFrame(() => {
-        audioRef.current?.play().catch(() => { });
-        isHandlingEnd = false;
+        audioRef.current?.play()
+          .catch(() => {})
+          .finally(() => { isHandlingEnd = false; });
       });
     };
 
@@ -140,7 +140,8 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
 
       onTimeUpdate(audio.currentTime, audio.duration);
 
-      if (audio.currentTime >= audio.duration - 0.3 && !audio.paused) {
+      // Check for song end with small buffer
+      if (audio.currentTime >= audio.duration - 0.5 && !audio.paused && !isHandlingEnd) {
         handleSongEnd();
       }
     };
@@ -161,12 +162,13 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
     const backgroundPlaybackMonitor = setInterval(() => {
       const state = usePlayerStore.getState();
       const audio = audioRef.current;
-      if (!audio || audioFocusState.isInterrupted || !state.hasUserInteracted) return;
+      if (!audio || audioFocusState.isInterrupted || !state.hasUserInteracted || state.wasPlayingBeforeInterruption) return;
 
-      if (audio.paused && state.isPlaying && !audio.ended && !state.wasPlayingBeforeInterruption) {
-        audio.play().catch(() => { });
+      // Only try to resume if we're clearly in a bad state
+      if (audio.paused && state.isPlaying && !audio.ended && audio.readyState >= 2) {
+        audio.play().catch(() => {});
       }
-    }, 5000); // Only check every 5s when in background
+    }, 8000); // Increased from 5s to 8s to reduce overhead
 
     return () => clearInterval(backgroundPlaybackMonitor);
   }, [currentSong, isPlaying, audioFocusState.isInterrupted]);
@@ -299,7 +301,6 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       }
       } catch (error) {
         // Catch any errors during playback setup
-        console.error('Audio playback error:', error);
         setIsPlaying(false);
         isHandlingPlayback.current = false;
         onLoadingChange(false);
@@ -393,14 +394,30 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         controls={false}
         style={{ display: 'none' }}
         onError={(e) => {
-          console.error('Audio element error (no song):', e);
+          // Silent error handling for no song state
         }}
       />
     );
   }
 
   const audioUrl = currentSong?.audioUrl && !currentSong.audioUrl.startsWith('blob:') ? 
-    currentSong.audioUrl.replace(/^http:\/\//, 'https://') : undefined;
+    currentSong.audioUrl.replace(/^http:\/\//, 'https://') : currentSong?.audioUrl;
+
+  // Don't render audio element if no valid URL
+  if (!audioUrl || audioUrl === '') {
+    return (
+      <audio 
+        ref={audioRef} 
+        preload="none" 
+        playsInline
+        webkit-playsinline="true"
+        x-webkit-airplay="allow"
+        crossOrigin="anonymous"
+        controls={false}
+        style={{ display: 'none' }}
+      />
+    );
+  }
 
   return (
     <audio
@@ -411,21 +428,18 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       onError={(e) => {
         const audio = e.target as HTMLAudioElement;
         const error = audio.error;
-        console.error('Audio playback error:', {
-          code: error?.code,
-          message: error?.message,
-          src: audio.src,
-          networkState: audio.networkState,
-          readyState: audio.readyState,
-          currentSong: currentSong?.title
-        });
         
-        if (currentSong) {
+        // Only log meaningful errors (not empty src)
+        if (error && error.code !== 4 && process.env.NODE_ENV === 'development') {
+          // Error logging only in development
+        }
+        
+        if (currentSong && error && error.code !== 4) {
           setTimeout(() => {
             try {
               playNext();
             } catch (error) {
-              console.error('Error in playNext after audio error:', error);
+              // Silent error handling
             }
           }, 1000);
         }
@@ -445,7 +459,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
             navigator.mediaSession.playbackState = 'playing';
           }
         } catch (error) {
-          console.error('Error updating media session on play:', error);
+          // Silent error handling
         }
       }}
       onPause={() => {
@@ -455,7 +469,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
             navigator.mediaSession.playbackState = 'paused';
           }
         } catch (error) {
-          console.error('Error updating media session on pause:', error);
+          // Silent error handling
         }
       }}
       onSeeked={() => {
@@ -473,7 +487,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
             }
           }
         } catch (error) {
-          console.error('Error updating position state:', error);
+          // Silent error handling
         }
       }}
       loop={usePlayerStore.getState().isRepeating}

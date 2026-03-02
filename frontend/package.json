@@ -14,7 +14,8 @@
     "start": "vite preview --port $PORT",
     "deploy": "vercel deploy --prod",
     "deploy:mobile": "npm run build:mobile && npx cap sync",
-    "analyze": "vite-bundle-analyzer dist/assets"
+    "analyze": "vite-bundle-analyzer dist/assets",
+    "generate-ios-icon": "node scripts/generate-ios-icon.js"
   },
   "keywords": [
     "spotify",

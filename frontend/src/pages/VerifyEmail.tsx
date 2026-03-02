@@ -85,15 +85,13 @@ const VerifyEmail = () => {
 
       // In development, the OTP is returned in the response
       if (data.otp) {
-        console.log('Verification OTP:', data.otp);
-        toast.success(`Verification code sent! Check console: ${data.otp}`);
+        toast.success(`Verification code sent! Check your email or console in dev mode`);
       } else {
         toast.success(`Verification code sent to ${email}`);
       }
       
       setVerificationSent(true);
     } catch (error: any) {
-      console.error('Error sending verification code:', error);
       toast.error(error.message || 'Failed to send verification code');
     }
   };
@@ -205,8 +203,6 @@ const VerifyEmail = () => {
       toast.success('Account created successfully!');
       navigate('/home', { replace: true });
     } catch (error: any) {
-      console.error('Verification error:', error);
-      
       if (error.code === 'auth/email-already-in-use') {
         toast.error('Email already in use. Please login instead.');
         navigate('/login');
@@ -230,7 +226,6 @@ const VerifyEmail = () => {
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } catch (error: any) {
-      console.error('Resend error:', error);
       toast.error(error.message || 'Failed to resend verification code');
     } finally {
       setResendLoading(false);

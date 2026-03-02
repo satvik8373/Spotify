@@ -61,10 +61,18 @@ class ImageCache {
   }
 
   /**
-   * Fetch image with rate limiting
+   * Fetch image with rate limiting and retry logic
    */
   private async fetchWithRateLimit(url: string, fallbackUrl?: string): Promise<string> {
-    // Rate limiting
+    // Special handling for Google profile images - use direct URL without fetching
+    if (url.includes('googleusercontent.com') || url.includes('lh3.google')) {
+      // Don't fetch Google images, just return the URL directly to avoid 429 errors
+      // The browser will handle caching automatically
+      this.addToCache(url, undefined, url, false);
+      return url;
+    }
+
+    // Rate limiting for other images
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
     if (timeSinceLastRequest < this.rateLimitDelay) {
@@ -84,6 +92,10 @@ class ImageCache {
       });
 
       if (!response.ok) {
+        // For 429 errors, just return the URL directly
+        if (response.status === 429) {
+          return url;
+        }
         throw new Error(`HTTP ${response.status}`);
       }
 

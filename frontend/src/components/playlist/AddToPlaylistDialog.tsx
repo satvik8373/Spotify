@@ -36,7 +36,7 @@ export function AddToPlaylistDialog({ song, isOpen, onClose }: AddToPlaylistDial
         onClose();
       }, 1000); // Close after 1 second to show the check mark animation
     } catch (error) {
-      console.error('Failed to add song to playlist:', error);
+      // Failed to add song to playlist
     } finally {
       setIsLoading(false);
     }

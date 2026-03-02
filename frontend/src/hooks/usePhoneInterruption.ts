@@ -43,7 +43,7 @@ export function usePhoneInterruption(audioRef: React.RefObject<HTMLAudioElement>
                 // Mark user interaction to allow autoplay
                 setUserInteracted();
 
-                // Small delay to let system stabilize
+                // Longer delay for Bluetooth devices to stabilize
                 setTimeout(() => {
                     const state = usePlayerStore.getState();
 
@@ -56,14 +56,24 @@ export function usePhoneInterruption(audioRef: React.RefObject<HTMLAudioElement>
                             playPromise
                                 .then(() => {
                                     setIsPlaying(true);
+                                    // Reset interruption state on success
+                                    usePlayerStore.setState({
+                                        wasPlayingBeforeInterruption: false,
+                                        interruptionReason: null
+                                    });
                                 })
                                 .catch((error) => {
-
-                                    // Retry after another delay
+                                    // Single retry with longer delay for Bluetooth
                                     setTimeout(() => {
-                                        if (audioRef.current) {
+                                        if (audioRef.current && state.wasPlayingBeforeInterruption) {
                                             audioRef.current.play()
-                                                .then(() => setIsPlaying(true))
+                                                .then(() => {
+                                                    setIsPlaying(true);
+                                                    usePlayerStore.setState({
+                                                        wasPlayingBeforeInterruption: false,
+                                                        interruptionReason: null
+                                                    });
+                                                })
                                                 .catch(() => {
                                                     // Final failure - reset state
                                                     usePlayerStore.setState({
@@ -72,17 +82,17 @@ export function usePhoneInterruption(audioRef: React.RefObject<HTMLAudioElement>
                                                     });
                                                 });
                                         }
-                                    }, 500);
+                                    }, 800);
                                 });
+                        } else {
+                            // Reset interruption state
+                            usePlayerStore.setState({
+                                wasPlayingBeforeInterruption: false,
+                                interruptionReason: null
+                            });
                         }
-
-                        // Reset interruption state
-                        usePlayerStore.setState({
-                            wasPlayingBeforeInterruption: false,
-                            interruptionReason: null
-                        });
                     }
-                }, 300);
+                }, 500); // Increased from 300ms for Bluetooth stability
 
                 wasPlayingRef.current = false;
             }

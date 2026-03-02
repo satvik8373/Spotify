@@ -65,16 +65,7 @@ const NotFoundFallback = () => (
 // Error page for when something goes wrong
 const ErrorFallback = ({ error }: { error?: Error }) => {
 	useEffect(() => {
-		// Log error details for debugging
-		if (error) {
-			console.error('Error Boundary caught:', {
-				message: error.message,
-				stack: error.stack,
-				name: error.name,
-				userAgent: navigator.userAgent,
-				url: window.location.href
-			});
-		}
+		// Error caught by boundary - details available for debugging if needed
 	}, [error]);
 
 	return (
@@ -291,7 +282,6 @@ function AppContent() {
 				}, 200);
 
 			} catch (error) {
-				console.error("Error initializing app:", error);
 				setShowSplash(false);
 				setAppReady(true);
 			}

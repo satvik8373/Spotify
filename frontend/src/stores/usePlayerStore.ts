@@ -201,7 +201,6 @@ export const usePlayerStore = create<PlayerState>()(
         const validSongs = songs.filter(song => song.audioUrl && !song.audioUrl.startsWith('blob:'));
 
         if (validSongs.length === 0) {
-          console.warn('No valid songs with audioUrl found');
           return;
         }
 
@@ -217,7 +216,6 @@ export const usePlayerStore = create<PlayerState>()(
         
         // If still not found, use the first song
         if (validIndex === -1) {
-          console.warn('Requested song not found in valid songs, playing first song');
           validIndex = 0;
         }
 

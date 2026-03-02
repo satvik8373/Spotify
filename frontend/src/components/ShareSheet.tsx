@@ -115,7 +115,6 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
         onClose();
       }, 1000);
     } catch (error) {
-      console.error('Share error:', error);
       toast.error('Failed to share. Please try again.');
     } finally {
       // Cleanup

@@ -210,7 +210,6 @@ export const register = async (email: string, password: string, fullName: string
         handleCodeInApp: false
       });
     } catch (verificationError) {
-      console.error('Failed to send verification email:', verificationError);
       // Continue with registration even if verification email fails
     }
 
@@ -311,13 +310,12 @@ export const checkEmailVerified = async (): Promise<boolean> => {
           updatedAt: new Date().toISOString()
         }, { merge: true });
       } catch (error) {
-        console.error('Failed to update Firestore:', error);
+        // Failed to update Firestore
       }
     }
     
     return user.emailVerified;
   } catch (error: any) {
-    console.error('Error checking email verification:', error);
     return false;
   }
 };

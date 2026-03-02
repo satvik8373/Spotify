@@ -420,8 +420,6 @@ const LikedSongsPage = () => {
     // Check if song has audioUrl, if not, try to fetch it
     let songToPlay = song;
     if (!song.audioUrl) {
-      console.log('⚠️ Song has no audioUrl, attempting to fetch...', { title: song.title, id: song._id });
-      
       // Try to extract the song ID from the _id field
       // The _id might be in format like "indian-song-..." or "liked-..."
       const songId = song._id?.includes('indian-song-') 
@@ -447,12 +445,10 @@ const LikedSongsPage = () => {
             if (audioUrl) {
               // Create updated song with audioUrl
               songToPlay = { ...song, audioUrl };
-              console.log('✅ Fetched audioUrl:', audioUrl);
             }
           }
           toast.dismiss('loading-song');
         } catch (error) {
-          console.error('❌ Error fetching song URL:', error);
           toast.dismiss('loading-song');
           toast.error('Failed to load song');
           return;

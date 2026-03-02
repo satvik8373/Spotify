@@ -27,29 +27,49 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
     }
 
     mediaSessionInitialized.current = true;
+    
+    // Prevent multiple rapid calls
+    let isHandlingAction = false;
 
     // Register action handlers once
     navigator.mediaSession.setActionHandler('play', () => {
+      if (isHandlingAction) return;
+      isHandlingAction = true;
+      
       const store = usePlayerStore.getState();
       store.setUserInteracted();
-      store.setIsPlaying(true);
       
       // Get the actual audio element from DOM for reliability
       const audio = document.querySelector('audio') as HTMLAudioElement;
-      if (audio && audio.paused) {
-        audio.play().catch((error) => {
-          console.debug('MediaSession play failed:', error);
-          // Retry after a short delay for CarPlay compatibility
-          setTimeout(() => {
-            if (audio && audio.paused) {
-              audio.play().catch(() => {});
-            }
-          }, 100);
-        });
+      if (audio && audio.paused && !audio.ended) {
+        audio.play()
+          .then(() => {
+            store.setIsPlaying(true);
+            isHandlingAction = false;
+          })
+          .catch(() => {
+            // Single retry for Bluetooth devices
+            setTimeout(() => {
+              if (audio && audio.paused && !audio.ended) {
+                audio.play()
+                  .then(() => store.setIsPlaying(true))
+                  .catch(() => store.setIsPlaying(false))
+                  .finally(() => { isHandlingAction = false; });
+              } else {
+                isHandlingAction = false;
+              }
+            }, 150);
+          });
+      } else {
+        store.setIsPlaying(true);
+        isHandlingAction = false;
       }
     });
 
     navigator.mediaSession.setActionHandler('pause', () => {
+      if (isHandlingAction) return;
+      isHandlingAction = true;
+      
       const store = usePlayerStore.getState();
       store.setIsPlaying(false);
       
@@ -58,9 +78,14 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
       if (audio && !audio.paused) {
         audio.pause();
       }
+      
+      setTimeout(() => { isHandlingAction = false; }, 100);
     });
 
     navigator.mediaSession.setActionHandler('previoustrack', () => {
+      if (isHandlingAction) return;
+      isHandlingAction = true;
+      
       const store = usePlayerStore.getState();
       store.setUserInteracted();
       if (store.playPrevious) {
@@ -69,35 +94,46 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
         // Ensure playback continues after track change
         setTimeout(() => {
           const audio = document.querySelector('audio') as HTMLAudioElement;
-          if (audio && audio.paused && !audio.ended) {
-            store.setIsPlaying(true);
+          if (audio && audio.paused && !audio.ended && store.isPlaying) {
             audio.play().catch(() => {});
           }
-        }, 200);
+          isHandlingAction = false;
+        }, 250);
+      } else {
+        isHandlingAction = false;
       }
     });
 
     navigator.mediaSession.setActionHandler('nexttrack', () => {
+      if (isHandlingAction) return;
+      isHandlingAction = true;
+      
       const store = usePlayerStore.getState();
       store.setUserInteracted();
       store.playNext();
-      store.setIsPlaying(true);
 
-      // Enhanced reliability for CarPlay and background playback
+      // Enhanced reliability for Bluetooth devices
       setTimeout(() => {
         const audio = document.querySelector('audio') as HTMLAudioElement;
-        if (audio && audio.paused && !audio.ended) {
-          audio.play().catch((error) => {
-            console.debug('MediaSession next track play failed:', error);
-            // Additional retry for CarPlay
-            setTimeout(() => {
-              if (audio && audio.paused && !audio.ended) {
-                audio.play().catch(() => {});
-              }
-            }, 300);
-          });
+        if (audio && audio.paused && !audio.ended && store.isPlaying) {
+          audio.play()
+            .then(() => { isHandlingAction = false; })
+            .catch(() => {
+              // Single retry for Bluetooth devices
+              setTimeout(() => {
+                if (audio && audio.paused && !audio.ended) {
+                  audio.play()
+                    .catch(() => {})
+                    .finally(() => { isHandlingAction = false; });
+                } else {
+                  isHandlingAction = false;
+                }
+              }, 200);
+            });
+        } else {
+          isHandlingAction = false;
         }
-      }, 100);
+      }, 150);
     });
 
     // Seeking handler with improved CarPlay compatibility
@@ -123,7 +159,7 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
                 position: seekTime
               });
             } catch (e) {
-              console.debug('MediaSession position update after seek failed:', e);
+              // Ignore position state errors
             }
           }
 
@@ -163,7 +199,7 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
         }
       });
     } catch (error) {
-      console.debug('MediaSession seek handlers setup failed:', error);
+      // Seek handlers setup failed
     }
 
     return () => {
@@ -178,7 +214,7 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
           navigator.mediaSession.setActionHandler('seekbackward', null);
           navigator.mediaSession.setActionHandler('seekforward', null);
         } catch (error) {
-          console.debug('MediaSession cleanup failed:', error);
+          // MediaSession cleanup failed
         }
       }
     };
@@ -239,8 +275,7 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
             });
           }
         } catch (e) {
-          // Ignore position state errors but try to recover
-          console.debug('MediaSession position update failed:', e);
+          // Ignore position state errors
         }
       }
     };

@@ -312,7 +312,6 @@ class JioSaavnService {
           return response.data;
         }
       } catch (error) {
-        console.warn(`API endpoint ${i + 1} failed:`, error);
         if (i === instances.length - 1) {
           throw error;
         }
@@ -349,7 +348,7 @@ class JioSaavnService {
           const fallbackResults = await this.searchPlaylists('trending now', 8, forceRefresh);
           allPlaylists.push(...fallbackResults);
         } catch (error) {
-          console.warn('Fallback search failed:', error);
+          // Fallback search failed
         }
       }
 
@@ -381,7 +380,6 @@ class JioSaavnService {
       // If refreshing, shuffle the results to show different content
       return forceRefresh ? this.shuffleArray(filtered).slice(0, 12) : filtered.slice(0, 12);
     } catch (error) {
-      console.error('Error fetching 2026 trending playlists:', error);
       // Fallback to regular trending search
       return this.searchPlaylists('trending now', 12, forceRefresh);
     }
@@ -422,7 +420,7 @@ class JioSaavnService {
           allPlaylists.push(...response.data.results);
         }
       } catch (error) {
-        console.warn(`Failed to search for ${term}:`, error);
+        // Search failed
       }
     }
 
@@ -523,7 +521,7 @@ class JioSaavnService {
           results = this.filterAndSortPlaylists(response.data.results, enhancedQuery);
         }
       } catch (error) {
-        console.warn(`Primary search failed for "${enhancedQuery}":`, error);
+        // Primary search failed
       }
 
       // If we don't have enough results, try the original query
@@ -546,16 +544,14 @@ class JioSaavnService {
             results = [...results, ...newResults];
           }
         } catch (error) {
-          console.warn(`Fallback search failed for "${query}":`, error);
+          // Fallback search failed
         }
       }
 
       const finalResults = forceRefresh ? this.shuffleArray(results).slice(0, limit) : results.slice(0, limit);
-      console.log(`Search for "${query}" returned ${finalResults.length} playlists`);
       
       return finalResults;
     } catch (error) {
-      console.error('Error searching playlists:', error);
       throw error;
     }
   }
@@ -775,10 +771,8 @@ class JioSaavnService {
         try {
           const playlists = await this.searchPlaylists(term, 15, forceRefresh); // Increased limit per search
           allPlaylists.push(...playlists);
-          
-          console.log(`Found ${playlists.length} playlists for "${term}"`);
         } catch (error) {
-          console.warn(`Failed to search for ${term}:`, error);
+          // Search failed
         }
       }
 
@@ -789,25 +783,21 @@ class JioSaavnService {
           try {
             const playlists = await this.searchPlaylists(term, 10, forceRefresh);
             allPlaylists.push(...playlists);
-            console.log(`Additional search for "${term}" found ${playlists.length} playlists`);
           } catch (error) {
-            console.warn(`Additional search failed for ${term}:`, error);
+            // Additional search failed
           }
         }
       }
 
       // Remove duplicates and sort
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
-      console.log(`Total unique playlists found for ${categoryId}: ${uniquePlaylists.length}`);
       
       const sorted = this.sortPlaylistsByFreshness(uniquePlaylists, categoryId);
       
       const result = forceRefresh ? this.shuffleArray(sorted).slice(0, limit) : sorted.slice(0, limit);
-      console.log(`Returning ${result.length} playlists for ${categoryId}`);
       
       return result;
     } catch (error) {
-      console.error(`Error fetching ${categoryId} playlists:`, error);
       // Final fallback - use the most basic search term with higher limit
       const basicTerm = categoryId === 'bollywood' ? 'bollywood' : 
                        categoryId === 'romantic' ? 'romantic' : 
@@ -906,13 +896,11 @@ class JioSaavnService {
             const playlists = await this.getFreshPlaylistsByCategory(category.id, 8);
             results[category.id] = playlists;
           } catch (error) {
-            console.warn(`Failed to fetch ${category.id} playlists:`, error);
             results[category.id] = [];
           }
         })
       );
     } catch (error) {
-      console.error('Error fetching featured playlists:', error);
       // Fallback to original method
       const featuredCategories = PLAYLIST_CATEGORIES
         .filter(cat => cat.priority >= 7)
@@ -924,7 +912,6 @@ class JioSaavnService {
             const playlists = await this.getPlaylistsByCategory(category.id, 8);
             results[category.id] = playlists;
           } catch (error) {
-            console.warn(`Fallback failed for ${category.id}:`, error);
             results[category.id] = [];
           }
         })
@@ -1019,7 +1006,7 @@ class JioSaavnService {
             allPlaylists.push(...officialPlaylists);
           }
         } catch (error) {
-          console.warn(`Failed to search for chart term: ${term}`, error);
+          // Search failed
         }
       }
 
@@ -1043,7 +1030,6 @@ class JioSaavnService {
 
       return forceRefresh ? this.shuffleArray(sorted).slice(0, 10) : sorted.slice(0, 10);
     } catch (error) {
-      console.error('Error fetching latest charts:', error);
       return [];
     }
   }

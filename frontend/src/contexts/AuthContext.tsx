@@ -128,7 +128,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         } catch (firestoreError) {
-          console.error("Error fetching user data from Firestore:", firestoreError);
 
           // Still set basic user data even if Firestore fails
           const currentUser = userRef.current;
@@ -148,20 +147,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const currentUser = userRef.current;
         // Only reset if we previously had a user AND we've confirmed auth state with Firebase
         if (currentUser !== null && authStateCheckedRef.current) {
-          console.log("Logged out detected, clearing user");
           setUser(null);
           // Reset auth store
           useAuthStore.getState().reset();
         }
       }
     } catch (err) {
-      console.error("Error loading user data:", err);
       setError(err instanceof Error ? err : new Error('Failed to load user'));
 
       // CRITICAL FIX: Don't log out if we have a firebase user but just failed to load data
       const firebaseUser = auth.currentUser;
       if (firebaseUser) {
-        console.warn("Retaining session despite load error");
         // Ensure we have at least basic user data
         if (!userRef.current) {
           setUser({

@@ -144,8 +144,6 @@ export const addLikedSong = async (
           const documentId = song._id;
           const likedSongRef = doc(db, 'users', userId, 'likedSongs', documentId);
           
-          console.log('addLikedSong: Saving song with document ID:', documentId, 'title:', song.title);
-          
           // Determine the likedAt timestamp
           let likedAtTimestamp;
           if (customLikedAt) {

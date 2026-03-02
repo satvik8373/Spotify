@@ -9,6 +9,7 @@ export const useCarPlaySync = () => {
   const carPlaySyncInterval = useRef<NodeJS.Timeout | null>(null);
   const lastKnownPosition = useRef(0);
   const stuckDetectionCount = useRef(0);
+  const isRecovering = useRef(false);
 
   useEffect(() => {
     // Start CarPlay monitoring when component mounts
@@ -21,7 +22,7 @@ export const useCarPlaySync = () => {
         const audio = document.querySelector('audio') as HTMLAudioElement;
         const store = usePlayerStore.getState();
         
-        if (!audio || !store.currentSong) return;
+        if (!audio || !store.currentSong || isRecovering.current) return;
 
         // Check if audio is stuck (position not advancing)
         const currentPosition = audio.currentTime;
@@ -33,7 +34,7 @@ export const useCarPlaySync = () => {
             stuckDetectionCount.current++;
             
             if (stuckDetectionCount.current >= 3) {
-              console.debug('CarPlay: Detected stuck playback, attempting recovery');
+              isRecovering.current = true;
               
               // Try to recover stuck playback
               const currentTime = audio.currentTime;
@@ -43,15 +44,22 @@ export const useCarPlaySync = () => {
               setTimeout(() => {
                 if (audio && store.isPlaying) {
                   audio.currentTime = currentTime;
-                  audio.play().catch((error) => {
-                    console.debug('CarPlay recovery failed:', error);
-                    // If recovery fails, update state to reflect reality
-                    store.setIsPlaying(false);
-                  });
+                  audio.play()
+                    .then(() => {
+                      isRecovering.current = false;
+                      stuckDetectionCount.current = 0;
+                    })
+                    .catch((error) => {
+                      // Recovery failed, update state
+                      store.setIsPlaying(false);
+                      isRecovering.current = false;
+                    });
+                } else {
+                  isRecovering.current = false;
                 }
-              }, 100);
+              }, 150);
               
-              stuckDetectionCount.current = 0;
+              return; // Skip rest of this iteration
             }
           } else {
             // Position is advancing normally
@@ -61,22 +69,7 @@ export const useCarPlaySync = () => {
           lastKnownPosition.current = currentPosition;
         }
 
-        // Sync MediaSession position more frequently for CarPlay
-        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
-          if (!isNaN(audio.duration) && audio.duration > 0) {
-            try {
-              navigator.mediaSession.setPositionState({
-                duration: audio.duration,
-                playbackRate: audio.playbackRate || 1,
-                position: Math.min(currentPosition, audio.duration)
-              });
-            } catch (e) {
-              // Ignore position state errors
-            }
-          }
-        }
-
-        // Ensure playback state consistency
+        // Ensure playback state consistency (but don't fight with MediaSession)
         if (isPlaying !== store.isPlaying) {
           if (isPlaying && !store.isPlaying) {
             // Audio is playing but store thinks it's paused
@@ -98,7 +91,6 @@ export const useCarPlaySync = () => {
 
     // Handle CarPlay connection/disconnection events
     const handleCarPlayConnection = () => {
-      console.debug('CarPlay: Connection state changed, restarting monitoring');
       startCarPlayMonitoring();
     };
 
@@ -127,15 +119,13 @@ export const useCarPlaySync = () => {
     const store = usePlayerStore.getState();
     
     if (audio && store.isPlaying) {
-      console.debug('CarPlay: Manual recovery triggered');
       const currentTime = audio.currentTime;
       
       audio.pause();
       setTimeout(() => {
         if (audio && store.isPlaying) {
           audio.currentTime = currentTime;
-          audio.play().catch((error) => {
-            console.debug('Manual recovery failed:', error);
+          audio.play().catch(() => {
             store.setIsPlaying(false);
           });
         }
