@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { protectRoute } from "../middleware/auth.middleware.js";
-import { getAllUsers } from "../controllers/user.controller.js";
+import { firebaseAuth } from "../middleware/firebase-auth.middleware.js";
+import { getAllUsers, deleteUserAccount } from "../controllers/user.controller.js";
 const router = Router();
 
-router.get("/", protectRoute, getAllUsers);
+router.get("/", firebaseAuth, getAllUsers);
+router.delete("/account", firebaseAuth, deleteUserAccount);
 
 export default router;

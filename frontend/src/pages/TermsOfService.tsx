@@ -4,10 +4,10 @@ import Footer from '@/components/Footer';
 const TermsOfService = () => {
   return (
     <div className="min-h-screen bg-[#121212] text-white">
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-8 pb-24">
         <h1 className="text-3xl font-bold mb-8">Terms of Service</h1>
         
-        <div className="space-y-6 text-gray-300 pb-8">
+        <div className="space-y-6 text-gray-300">
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">1. Acceptance of Terms</h2>
               <p className="mb-4">

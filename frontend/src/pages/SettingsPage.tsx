@@ -215,6 +215,36 @@ const SettingsPage = () => {
                             Edit
                         </Button>
                     </div>
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm text-[#b3b3b3]">Privacy Policy</p>
+                        <Button
+                            variant="outline"
+                            className="rounded-full border-[#727272] hover:border-white text-white hover:bg-transparent bg-transparent h-8 text-sm px-4"
+                            onClick={() => navigate('/privacy')}
+                        >
+                            View
+                        </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm text-[#b3b3b3]">Terms of Service</p>
+                        <Button
+                            variant="outline"
+                            className="rounded-full border-[#727272] hover:border-white text-white hover:bg-transparent bg-transparent h-8 text-sm px-4"
+                            onClick={() => navigate('/terms')}
+                        >
+                            View
+                        </Button>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-[#2a2a2a]">
+                        <p className="text-sm text-red-400">Delete account and data</p>
+                        <Button
+                            variant="outline"
+                            className="rounded-full border-red-600 hover:border-red-500 text-red-500 hover:bg-red-500/10 bg-transparent h-8 text-sm px-4"
+                            onClick={() => navigate('/account-deletion')}
+                        >
+                            Delete
+                        </Button>
+                    </div>
                 </div>
 
 

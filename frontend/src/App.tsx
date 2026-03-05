@@ -26,6 +26,10 @@ const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const About = lazy(() => import('./pages/About'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const AccountDeletion = lazy(() => import('./pages/AccountDeletion'));
+
+// AI Mood Playlist page
+const MoodPlaylistPage = lazy(() => import('./pages/MoodPlaylistPage'));
 
 // JioSaavn pages
 const JioSaavnPlaylistPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistPage'));
@@ -163,15 +167,43 @@ const router = createBrowserRouter(
 		},
 		{
 			path: '/privacy',
-			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PrivacyPolicy /></Suspense>
+			element: (
+				<div className="h-screen overflow-y-auto bg-[#121212]">
+					<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
+						<PrivacyPolicy />
+					</Suspense>
+				</div>
+			)
 		},
 		{
 			path: '/terms',
-			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TermsOfService /></Suspense>
+			element: (
+				<div className="h-screen overflow-y-auto bg-[#121212]">
+					<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
+						<TermsOfService />
+					</Suspense>
+				</div>
+			)
 		},
 		{
 			path: '/about',
-			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><About /></Suspense>
+			element: (
+				<div className="h-screen overflow-y-auto bg-[#121212]">
+					<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
+						<About />
+					</Suspense>
+				</div>
+			)
+		},
+		{
+			path: '/account-deletion',
+			element: (
+				<div className="h-screen overflow-y-auto bg-[#121212]">
+					<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
+						<AccountDeletion />
+					</Suspense>
+				</div>
+			)
 		},
 		{
 			path: '/embed/playlist/:id',
@@ -232,6 +264,10 @@ const router = createBrowserRouter(
 				{
 					path: '/settings',
 					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SettingsPage /></Suspense></AuthGate>
+				},
+				{
+					path: '/mood-playlist',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><MoodPlaylistPage /></Suspense></AuthGate>
 				},
 				{
 					path: '*',
