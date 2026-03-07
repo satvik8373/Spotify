@@ -114,9 +114,12 @@ const LibraryPage = () => {
     navigate(`/playlist/${playlistId}`);
   };
 
-  // Separate playlists into pinned and unpinned
+  // Separate playlists into pinned and unpinned, and then into regular vs AI generated
   const pinnedItems = filteredPlaylists.filter(playlist => pinnedPlaylists.includes(playlist._id));
   const unpinnedItems = filteredPlaylists.filter(playlist => !pinnedPlaylists.includes(playlist._id));
+
+  const unpinnedRegular = unpinnedItems.filter(p => !p.moodGenerated);
+  const unpinnedMood = unpinnedItems.filter(p => p.moodGenerated);
 
   // Load library data
   useEffect(() => {
@@ -160,263 +163,343 @@ const LibraryPage = () => {
         {isLibraryLoading || loading ? (
           <div className="h-64"></div>
         ) : !isAuthenticated ? (
-              <div className="bg-card border border-border rounded-lg p-8 text-center">
-                <Library className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h2 className="text-xl font-semibold mb-2">Sign in to view your library</h2>
-                <p className="text-muted-foreground mb-6">
-                  Create an account or sign in to save and access your favorite music
-                </p>
-                <Button
-                  onClick={() => navigate('/')}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+          <div className="bg-card border border-border rounded-lg p-8 text-center">
+            <Library className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-xl font-semibold mb-2">Sign in to view your library</h2>
+            <p className="text-muted-foreground mb-6">
+              Create an account or sign in to save and access your favorite music
+            </p>
+            <Button
+              onClick={() => navigate('/')}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Sign In
+            </Button>
+          </div>
+        ) : userPlaylists.length === 0 ? (
+          <div className="bg-card border border-border rounded-xl p-8 text-center">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
+              <Music className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">Create your first playlist</h2>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              It's easy, we'll help you. Start building your collection of music you love.
+            </p>
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Create Playlist
+            </Button>
+          </div>
+        ) : (
+          <div>
+            {/* Tools - shown first, compact size */}
+            <div className="mb-3 px-2 sm:px-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setViewMode(prev => (prev === 'grid' ? 'list' : 'grid'))}
+                  className="h-7 w-7 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
+                  aria-label="Toggle grid/list"
                 >
-                  Sign In
-                </Button>
-              </div>
-            ) : userPlaylists.length === 0 ? (
-              <div className="bg-card border border-border rounded-xl p-8 text-center">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Music className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h2 className="text-xl font-semibold mb-2">Create your first playlist</h2>
-                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                  It's easy, we'll help you. Start building your collection of music you love.
-                </p>
-                <Button
+                  <LayoutGrid className="h-3.5 w-3.5 text-foreground" />
+                </button>
+                <button
+                  onClick={() => navigate('/search')}
+                  className="h-7 w-7 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
+                  aria-label="Search"
+                >
+                  <Search className="h-3.5 w-3.5 text-foreground" />
+                </button>
+                <button
                   onClick={() => setShowCreateDialog(true)}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="bg-green-500 hover:bg-green-600 text-white px-2.5 py-1 rounded-full flex items-center gap-1.5 text-xs font-medium transition-colors"
+                  aria-label="Create playlist"
                 >
-                  Create Playlist
-                </Button>
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Create</span>
+                </button>
               </div>
-            ) : (
-              <div>
-                {/* Tools - shown first, compact size */}
-                <div className="mb-3 px-2 sm:px-4">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setViewMode(prev => (prev === 'grid' ? 'list' : 'grid'))}
-                      className="h-7 w-7 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
-                      aria-label="Toggle grid/list"
-                    >
-                      <LayoutGrid className="h-3.5 w-3.5 text-foreground" />
-                    </button>
-                    <button
-                      onClick={() => navigate('/search')}
-                      className="h-7 w-7 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
-                      aria-label="Search"
-                    >
-                      <Search className="h-3.5 w-3.5 text-foreground" />
-                    </button>
-                    <button
-                      onClick={() => setShowCreateDialog(true)}
-                      className="bg-green-500 hover:bg-green-600 text-white px-2.5 py-1 rounded-full flex items-center gap-1.5 text-xs font-medium transition-colors"
-                      aria-label="Create playlist"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      <span>Create</span>
-                    </button>
-                  </div>
+            </div>
+
+            {/* Liked Songs Card - Always at top */}
+            <div className="mb-4">
+              <div
+                className={cn(
+                  "flex items-center hover:bg-accent rounded-md cursor-pointer transition-colors",
+                  compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
+                )}
+                onClick={() => navigate('/liked-songs')}
+              >
+                <div className={cn(
+                  "bg-gradient-to-br from-indigo-600 to-blue-400 rounded-md flex items-center justify-center",
+                  compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
+                )}>
+                  <Heart className={compactLibraryLayout ? "h-4 w-4 text-white" : "h-6 w-6 text-white"} fill="white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-foreground truncate">Liked Songs</h3>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Pin className="h-3 w-3" /> Playlist
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Favourite Playlists Section */}
+            <LikedPlaylistsSection />
+
+            {/* Pinned Playlists Section - Only show if there are pinned items */}
+            {pinnedItems.length > 0 && (
+              <div className="mb-4">
+                <div className="text-xs font-medium uppercase text-muted-foreground mb-2 px-2">
+                  Pinned
                 </div>
 
-                {/* Liked Songs Card - Always at top */}
-                <div className="mb-4">
-                  <div
-                    className={cn(
-                      "flex items-center hover:bg-accent rounded-md cursor-pointer transition-colors",
-                      compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
-                    )}
-                    onClick={() => navigate('/liked-songs')}
-                  >
-                    <div className={cn(
-                      "bg-gradient-to-br from-indigo-600 to-blue-400 rounded-md flex items-center justify-center",
-                      compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
-                    )}>
-                      <Heart className={compactLibraryLayout ? "h-4 w-4 text-white" : "h-6 w-6 text-white"} fill="white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground truncate">Liked Songs</h3>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Pin className="h-3 w-3" /> Playlist
-                      </p>
-                    </div>
+                {viewMode === 'list' ? (
+                  <div className="space-y-1">
+                    {pinnedItems.map(playlist => (
+                      <div
+                        key={playlist._id}
+                        className={cn(
+                          "flex items-center hover:bg-accent rounded-md cursor-pointer group transition-colors",
+                          compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
+                        )}
+                        onClick={() => navigateToPlaylist(playlist._id)}
+                      >
+                        <img
+                          src={playlist.imageUrl || '/default-playlist.jpg'}
+                          alt={playlist.name}
+                          className={cn(
+                            "object-cover rounded-md",
+                            compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
+                          )}
+                          loading="lazy"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <ListMusic className="h-3 w-3" />
+                            Playlist • <span className="flex items-center gap-1"><User className="h-3 w-3" /> {playlist.createdBy?.fullName || 'Unknown'}</span>
+                          </p>
+                        </div>
+                        <button
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-accent transition-all"
+                          onClick={(e) => togglePinned(playlist._id, e)}
+                          title="Unpin"
+                        >
+                          <PinOff className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
+                ) : (
+                  <div className={cn(
+                    "grid gap-4",
+                    compactLibraryLayout
+                      ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7"
+                      : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+                  )}>
+                    {pinnedItems.map(playlist => (
+                      <div
+                        key={playlist._id}
+                        className={cn(
+                          "bg-card border border-border rounded-lg hover:bg-accent transition-colors cursor-pointer group relative",
+                          compactLibraryLayout ? "p-3" : "p-4"
+                        )}
+                        onClick={() => navigateToPlaylist(playlist._id)}
+                      >
+                        <div className="aspect-square mb-3 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
+                          <img
+                            src={playlist.imageUrl || '/default-playlist.jpg'}
+                            alt={playlist.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <button
+                            className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 bg-background/80 text-foreground p-1.5 rounded-full hover:bg-background hover:scale-105 transition-all border border-border"
+                            onClick={(e) => togglePinned(playlist._id, e)}
+                            title="Unpin"
+                          >
+                            <PinOff className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <h3 className={cn("font-medium text-foreground truncate", compactLibraryLayout ? "text-sm" : "")}>{playlist.name}</h3>
+                        <p className={cn("text-muted-foreground truncate", compactLibraryLayout ? "text-xs mt-0.5" : "text-sm mt-1")}>
+                          Playlist • {playlist.createdBy?.fullName || 'Unknown'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* AI Generated Moods List */}
+            {unpinnedMood.length > 0 && (
+              <div className="mb-6">
+                <div className="text-xs font-medium uppercase text-[#fdba74] bg-orange-500/10 inline-block px-2 py-1 rounded-md mb-2 mx-2">
+                  ✨ AI Generated Moods
                 </div>
 
-                {/* Favourite Playlists Section */}
-                <LikedPlaylistsSection />
-
-                {/* Pinned Playlists Section - Only show if there are pinned items */}
-                {pinnedItems.length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-xs font-medium uppercase text-muted-foreground mb-2 px-2">
-                      Pinned
-                    </div>
-
-                    {viewMode === 'list' ? (
-                      <div className="space-y-1">
-                        {pinnedItems.map(playlist => (
-                          <div
-                            key={playlist._id}
-                            className={cn(
-                              "flex items-center hover:bg-accent rounded-md cursor-pointer group transition-colors",
-                              compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
-                            )}
-                            onClick={() => navigateToPlaylist(playlist._id)}
-                          >
-                            <img
-                              src={playlist.imageUrl || '/default-playlist.jpg'}
-                              alt={playlist.name}
-                              className={cn(
-                                "object-cover rounded-md",
-                                compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
-                              )}
-                              loading="lazy"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
-                              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                <ListMusic className="h-3 w-3" />
-                                Playlist • <span className="flex items-center gap-1"><User className="h-3 w-3" /> {playlist.createdBy?.fullName || 'Unknown'}</span>
-                              </p>
-                            </div>
-                            <button
-                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-accent transition-all"
-                              onClick={(e) => togglePinned(playlist._id, e)}
-                              title="Unpin"
-                            >
-                              <PinOff className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
+                {viewMode === 'list' ? (
+                  <div className="space-y-1">
+                    {unpinnedMood.map(playlist => (
+                      <div
+                        key={playlist._id}
+                        className={cn(
+                          "flex items-center hover:bg-accent rounded-md cursor-pointer group transition-colors",
+                          compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
+                        )}
+                        onClick={() => navigateToPlaylist(playlist._id)}
+                      >
+                        <img
+                          src={playlist.imageUrl || '/default-playlist.jpg'}
+                          alt={playlist.name}
+                          className={cn(
+                            "object-cover rounded-md border border-orange-500/20",
+                            compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
+                          )}
+                          loading="lazy"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <ListMusic className="h-3 w-3 text-orange-400" />
+                            AI Mood • {playlist.emotion || 'Mixed'}
+                          </p>
+                        </div>
+                        <button
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-accent transition-all"
+                          onClick={(e) => togglePinned(playlist._id, e)}
+                          title="Pin"
+                        >
+                          <Pin className="h-4 w-4" />
+                        </button>
                       </div>
-                    ) : (
-                      <div className={cn(
-                        "grid gap-4",
-                        compactLibraryLayout
-                          ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7"
-                          : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
-                      )}>
-                        {pinnedItems.map(playlist => (
-                          <div
-                            key={playlist._id}
-                            className={cn(
-                              "bg-card border border-border rounded-lg hover:bg-accent transition-colors cursor-pointer group relative",
-                              compactLibraryLayout ? "p-3" : "p-4"
-                            )}
-                            onClick={() => navigateToPlaylist(playlist._id)}
-                          >
-                            <div className="aspect-square mb-3 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
-                              <img
-                                src={playlist.imageUrl || '/default-playlist.jpg'}
-                                alt={playlist.name}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                              />
-                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              <button
-                                className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 bg-background/80 text-foreground p-1.5 rounded-full hover:bg-background hover:scale-105 transition-all border border-border"
-                                onClick={(e) => togglePinned(playlist._id, e)}
-                                title="Unpin"
-                              >
-                                <PinOff className="h-4 w-4" />
-                              </button>
-                            </div>
-                            <h3 className={cn("font-medium text-foreground truncate", compactLibraryLayout ? "text-sm" : "")}>{playlist.name}</h3>
-                            <p className={cn("text-muted-foreground truncate", compactLibraryLayout ? "text-xs mt-0.5" : "text-sm mt-1")}>
-                              Playlist • {playlist.createdBy?.fullName || 'Unknown'}
-                            </p>
-                          </div>
-                        ))}
+                    ))}
+                  </div>
+                ) : (
+                  <div className={cn(
+                    "grid gap-4",
+                    compactLibraryLayout
+                      ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7"
+                      : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+                  )}>
+                    {unpinnedMood.map(playlist => (
+                      <div
+                        key={playlist._id}
+                        className={cn(
+                          "bg-card border border-orange-500/20 rounded-lg hover:border-orange-500/50 hover:bg-accent transition-colors cursor-pointer group relative",
+                          compactLibraryLayout ? "p-3" : "p-4"
+                        )}
+                        onClick={() => navigateToPlaylist(playlist._id)}
+                      >
+                        <div className="aspect-square mb-3 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
+                          <img
+                            src={playlist.imageUrl || '/default-playlist.jpg'}
+                            alt={playlist.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <h3 className={cn("font-medium text-foreground truncate", compactLibraryLayout ? "text-sm" : "")}>{playlist.name}</h3>
+                        <p className={cn("text-muted-foreground truncate", compactLibraryLayout ? "text-xs mt-0.5" : "text-sm mt-1")}>
+                          AI Mood • {playlist.emotion || 'Mixed'}
+                        </p>
                       </div>
-                    )}
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Main Regular Playlist List */}
+            {unpinnedRegular.length > 0 && (
+              <div className="mb-4">
+                {(pinnedItems.length > 0 || unpinnedMood.length > 0) && (
+                  <div className="text-xs font-medium uppercase text-muted-foreground mb-2 px-2">
+                    Your Playlists
                   </div>
                 )}
 
-                {/* Main Playlist List */}
-                {unpinnedItems.length > 0 && (
-                  <div>
-                    {pinnedItems.length > 0 && (
-                      <div className="text-xs font-medium uppercase text-muted-foreground mb-2 px-2">
-                        Your Playlists
+                {viewMode === 'list' ? (
+                  <div className="space-y-1">
+                    {unpinnedRegular.map(playlist => (
+                      <div
+                        key={playlist._id}
+                        className={cn(
+                          "flex items-center hover:bg-accent rounded-md cursor-pointer group transition-colors",
+                          compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
+                        )}
+                        onClick={() => navigateToPlaylist(playlist._id)}
+                      >
+                        <img
+                          src={playlist.imageUrl || '/default-playlist.jpg'}
+                          alt={playlist.name}
+                          className={cn(
+                            "object-cover rounded-md",
+                            compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
+                          )}
+                          loading="lazy"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <ListMusic className="h-3 w-3" />
+                            Playlist • <span className="flex items-center gap-1"><User className="h-3 w-3" /> {playlist.createdBy?.fullName || 'Unknown'}</span>
+                          </p>
+                        </div>
+                        <button
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-accent transition-all"
+                          onClick={(e) => togglePinned(playlist._id, e)}
+                          title="Pin"
+                        >
+                          <Pin className="h-4 w-4" />
+                        </button>
                       </div>
-                    )}
-
-                    {viewMode === 'list' ? (
-                      <div className="space-y-1">
-                        {unpinnedItems.map(playlist => (
-                          <div
-                            key={playlist._id}
-                            className={cn(
-                              "flex items-center hover:bg-accent rounded-md cursor-pointer group transition-colors",
-                              compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
-                            )}
-                            onClick={() => navigateToPlaylist(playlist._id)}
-                          >
-                            <img
-                              src={playlist.imageUrl || '/default-playlist.jpg'}
-                              alt={playlist.name}
-                              className={cn(
-                                "object-cover rounded-md",
-                                compactLibraryLayout ? "w-8 h-8" : "w-12 h-12"
-                              )}
-                              loading="lazy"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
-                              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                <ListMusic className="h-3 w-3" />
-                                Playlist • <span className="flex items-center gap-1"><User className="h-3 w-3" /> {playlist.createdBy?.fullName || 'Unknown'}</span>
-                              </p>
-                            </div>
-                            <button
-                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-accent transition-all"
-                              onClick={(e) => togglePinned(playlist._id, e)}
-                              title="Pin"
-                            >
-                              <Pin className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
+                    ))}
+                  </div>
+                ) : (
+                  <div className={cn(
+                    "grid gap-4",
+                    compactLibraryLayout
+                      ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7"
+                      : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+                  )}>
+                    {unpinnedRegular.map(playlist => (
+                      <div
+                        key={playlist._id}
+                        className={cn(
+                          "bg-card border border-border rounded-lg hover:bg-accent transition-colors cursor-pointer group relative",
+                          compactLibraryLayout ? "p-3" : "p-4"
+                        )}
+                        onClick={() => navigateToPlaylist(playlist._id)}
+                      >
+                        <div className="aspect-square mb-3 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
+                          <img
+                            src={playlist.imageUrl || '/default-playlist.jpg'}
+                            alt={playlist.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <h3 className={cn("font-medium text-foreground truncate", compactLibraryLayout ? "text-sm" : "")}>{playlist.name}</h3>
+                        <p className={cn("text-muted-foreground truncate", compactLibraryLayout ? "text-xs mt-0.5" : "text-sm mt-1")}>
+                          Playlist • {playlist.createdBy?.fullName || 'Unknown'}
+                        </p>
                       </div>
-                    ) : (
-                      <div className={cn(
-                        "grid gap-4",
-                        compactLibraryLayout
-                          ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7"
-                          : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
-                      )}>
-                        {unpinnedItems.map(playlist => (
-                          <div
-                            key={playlist._id}
-                            className={cn(
-                              "bg-card border border-border rounded-lg hover:bg-accent transition-colors cursor-pointer group relative",
-                              compactLibraryLayout ? "p-3" : "p-4"
-                            )}
-                            onClick={() => navigateToPlaylist(playlist._id)}
-                          >
-                            <div className="aspect-square mb-3 rounded-md overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
-                              <img
-                                src={playlist.imageUrl || '/default-playlist.jpg'}
-                                alt={playlist.name}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                              />
-                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                            <h3 className={cn("font-medium text-foreground truncate", compactLibraryLayout ? "text-sm" : "")}>{playlist.name}</h3>
-                            <p className={cn("text-muted-foreground truncate", compactLibraryLayout ? "text-xs mt-0.5" : "text-sm mt-1")}>
-                              Playlist • {playlist.createdBy?.fullName || 'Unknown'}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
             )}
           </div>
+        )}
+      </div>
 
       {/* Scroll to top button */}
       {showScrollTop && (
@@ -437,14 +520,24 @@ const LibraryPage = () => {
 // Liked Playlists Section Component
 function LikedPlaylistsSection() {
   let likedIds: string[] = [];
+  let metadata: Record<string, any> = {};
   try {
     likedIds = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
+    metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
   } catch { }
 
   const { playlists } = usePlaylistStore();
   const { compactLibraryLayout } = useSettingsStore();
   const navigate = useNavigate();
-  const favs = playlists.filter(p => likedIds.includes(p._id)).slice(0, 6);
+
+  const allLikedPlaylists = likedIds.map(id => {
+    const dbPlaylist = playlists.find(p => p._id === id);
+    if (dbPlaylist) return dbPlaylist;
+    if (metadata[id]) return metadata[id];
+    return null;
+  }).filter(Boolean) as any[];
+
+  const favs = allLikedPlaylists.slice(0, 6);
 
   if (favs.length === 0) return null;
 

@@ -1,0 +1,15 @@
+Trying JioSaavn API: https://saavn.sumit.co/api/search/songs?query=kesariya
+[
+  {
+    "quality": "50x50",
+    "url": "https://c.saavncdn.com/871/Brahmastra-Original-Motion-Picture-Soundtrack-Hindi-2022-20221006155213-50x50.jpg"
+  },
+  {
+    "quality": "150x150",
+    "url": "https://c.saavncdn.com/871/Brahmastra-Original-Motion-Picture-Soundtrack-Hindi-2022-20221006155213-150x150.jpg"
+  },
+  {
+    "quality": "500x500",
+    "url": "https://c.saavncdn.com/871/Brahmastra-Original-Motion-Picture-Soundtrack-Hindi-2022-20221006155213-500x500.jpg"
+  }
+]

@@ -1,62 +1,87 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useMusicStore } from '@/stores/useMusicStore';
 import { usePlayerStore } from '@/stores/usePlayerStore';
-import { Play, Search, XCircle } from 'lucide-react';
+import {
+  Play, Search, XCircle, Sparkles, Music, Zap,
+  Smile, Frown, Angry, Heart, CloudRain, Skull,
+  Sunset, Flower, Flame, PartyPopper, Waves, HeartCrack,
+  Moon, Star, Coffee, BookOpen, Dumbbell, Film, Music2, Mountain, SearchX
+} from 'lucide-react';
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { resolveArtist } from '@/lib/resolveArtist';
-import { useDebounce } from '@/hooks/useDebounce';
 import { SearchSkeleton } from '@/components/SearchSkeleton';
 import { SearchSuggestions, saveRecentSearch } from '@/components/SearchSuggestions';
+import { runSmartSearch, SmartSearchResult, SmartSearchSong } from '@/services/smartSearchService';
+import { cn } from '@/lib/utils';
+
+const formatDuration = (seconds: number) => {
+  if (!seconds) return '';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
+const EMOTION_ICONS: Record<string, any> = {
+  joy: Smile, sadness: Frown, anger: Angry, love: Heart, fear: Skull,
+  surprise: Star, calm: CloudRain, nostalgic: Sunset, romantic: Flower,
+  motivated: Flame, energetic: Zap, party: PartyPopper, chill: Waves,
+  lonely: Moon, heartbreak: HeartCrack, dreamy: Sparkles, sleepy: Coffee,
+  focused: BookOpen, workout: Dumbbell, filmy: Film, sufi: Music2,
+  devotional: Heart, desi: Zap, melancholy: Waves, dark: Mountain
+};
 
 const SearchPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const query = searchParams.get('q') || '';
-  const debouncedQuery = useDebounce(searchQuery, 400); // Debounce input
-  const searchAbortController = useRef<AbortController | null>(null);
-
-  const { searchIndianSongs, indianSearchResults, isIndianMusicLoading } = useMusicStore();
-  const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [smartResult, setSmartResult] = useState<SmartSearchResult | null>(null);
   const hasSearched = useRef(false);
+  const { playAlbum, setIsPlaying, setUserInteracted } = usePlayerStore();
 
-  // Perform search when query changes (from URL)
+  const convertSong = (s: SmartSearchSong) => ({
+    _id: s.id,
+    title: s.title,
+    artist: s.artist,
+    album: s.album,
+    imageUrl: s.imageUrl,
+    audioUrl: s.audioUrl,
+    duration: s.duration,
+    albumId: null,
+    year: s.year || new Date().getFullYear(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  // Perform smart search on query change
   useEffect(() => {
-    if (query && query.trim()) {
-      // Cancel previous search
-      if (searchAbortController.current) {
-        searchAbortController.current.abort();
-      }
-      searchAbortController.current = new AbortController();
-
-      setIsSearching(true);
-      hasSearched.current = true;
-      setShowSuggestions(false);
-      
-      searchIndianSongs(query.trim())
-        .then(() => {
-          // Save to recent searches on successful search
-          saveRecentSearch(query.trim());
-        })
-        .finally(() => {
-          setIsSearching(false);
-        });
-    } else {
+    if (!query?.trim()) {
       hasSearched.current = false;
+      setSmartResult(null);
+      return;
     }
 
-    return () => {
-      if (searchAbortController.current) {
-        searchAbortController.current.abort();
-      }
-    };
-  }, [query, searchIndianSongs]);
+    setIsSearching(true);
+    hasSearched.current = true;
+    setShowSuggestions(false);
 
-  // Handle search form submission
+    runSmartSearch(query.trim())
+      .then((result) => {
+        setSmartResult(result);
+        saveRecentSearch(query.trim());
+      })
+      .catch((err) => {
+        console.error('Smart search failed:', err);
+        toast.error('Search failed, please try again.');
+      })
+      .finally(() => setIsSearching(false));
+  }, [query]);
+
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -65,299 +90,228 @@ const SearchPage = () => {
     }
   }, [searchQuery, navigate]);
 
-  // Handle suggestion selection
-  const handleSuggestionSelect = useCallback((suggestion: string) => {
-    setSearchQuery(suggestion);
-    navigate(`/search?q=${encodeURIComponent(suggestion)}`);
+  const handleSuggestionSelect = useCallback((s: string) => {
+    setSearchQuery(s);
+    navigate(`/search?q=${encodeURIComponent(s)}`);
     setShowSuggestions(false);
   }, [navigate]);
 
-  // Clear search
   const clearSearch = useCallback(() => {
     setSearchQuery('');
     navigate('/search');
     setShowSuggestions(false);
+    setSmartResult(null);
   }, [navigate]);
 
-  // Show suggestions when input is focused and not searching
-  const handleInputFocus = useCallback(() => {
-    if (!query) {
-      setShowSuggestions(true);
-    }
-  }, [query]);
-
-  const handleInputBlur = useCallback(() => {
-    // Delay to allow click on suggestions
-    setTimeout(() => setShowSuggestions(false), 200);
-  }, []);
-
-  // Play a single song - with URL fetching if needed (optimized)
-  const playSong = useCallback(async (song: any, index: number) => {
-    // If song doesn't have URL, fetch it from the API
-    if (!song.url) {
-      const toastId = toast.loading('Loading song...');
-      
-      try {
-        // Fetch song details from backend with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
-        const response = await fetch(`/api/jiosaavn/songs/${song.id}`, {
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
-        const data = await response.json();
-        
-        if (data.success && data.data && data.data.downloadUrl) {
-          const downloadUrl = data.data.downloadUrl.find((d: any) => d.quality === '320kbps') ||
-            data.data.downloadUrl.find((d: any) => d.quality === '160kbps') ||
-            data.data.downloadUrl.find((d: any) => d.quality === '96kbps') ||
-            data.data.downloadUrl[data.data.downloadUrl.length - 1];
-          
-          song.url = downloadUrl?.url || downloadUrl?.link || '';
-          
-          if (!song.url) {
-            toast.dismiss(toastId);
-            toast.error('Failed to get song URL');
-            return;
-          }
-          
-          // Update image if available
-          if (data.data.image && Array.isArray(data.data.image)) {
-            const image = data.data.image.find((i: any) => i.quality === '500x500') ||
-              data.data.image.find((i: any) => i.quality === '150x150') ||
-              data.data.image[data.data.image.length - 1];
-            song.image = image?.url || image?.link || song.image;
-          }
-          
-          // Update the song in the results array
-          const { indianSearchResults: currentResults } = useMusicStore.getState();
-          currentResults[index] = { ...song };
-          
-          toast.dismiss(toastId);
-        } else {
-          toast.dismiss(toastId);
-          toast.error('This song is not available for playback');
-          return;
-        }
-      } catch (error: any) {
-        toast.error(error.name === 'AbortError' ? 'Request timeout' : 'Failed to load song');
-        return;
-      }
-    }
-
-    if (!song.url) {
-      toast.error('This song is not available for playback');
-      return;
-    }
-
-    const playerStore = usePlayerStore.getState();
-    playerStore.setUserInteracted();
-    
-    const convertedSong = useMusicStore.getState().convertIndianSongToAppSong(song);
-    
-    if (!convertedSong.audioUrl) {
-      toast.error('This song is not available for playback');
-      return;
-    }
-    
-    // Convert all songs to app format (only songs with URLs)
-    const allSongs = indianSearchResults
-      .filter((s: any) => s.url)
-      .map((s: any) => useMusicStore.getState().convertIndianSongToAppSong(s))
-      .filter((s: any) => s.audioUrl);
-    
-    const currentIndex = allSongs.findIndex((s: any) => s._id === convertedSong._id);
-    
-    if (currentIndex === -1) {
-      playerStore.playAlbum([convertedSong], 0);
-    } else {
-      playerStore.playAlbum(allSongs, currentIndex);
-    }
-    
-    playerStore.setIsPlaying(true);
+  // Play a song from smart results
+  const playSong = useCallback((song: SmartSearchSong, allSongs: SmartSearchSong[]) => {
+    if (!song.audioUrl) { toast.error('Song not available'); return; }
+    setUserInteracted?.();
+    const converted = allSongs.map(convertSong).filter(s => s.audioUrl);
+    const idx = converted.findIndex(s => s._id === song.id);
+    playAlbum(converted, idx >= 0 ? idx : 0);
+    setIsPlaying(true);
     toast.success(`Now playing: ${song.title}`);
-  }, [indianSearchResults]);
+  }, [playAlbum, setIsPlaying]);
 
-  // Play all songs (optimized)
-  const playAll = useCallback(() => {
-    if (indianSearchResults.length === 0) {
-      toast.error('No songs to play');
-      return;
-    }
+  const playTopResult = useCallback(() => {
+    if (!smartResult?.topResult) return;
+    const allSongs = [
+      smartResult.topResult,
+      ...smartResult.results,
+      ...smartResult.similarSongs
+    ].filter(s => s.audioUrl);
+    playSong(smartResult.topResult, allSongs);
+  }, [smartResult, playSong]);
 
-    const playerStore = usePlayerStore.getState();
-    playerStore.setUserInteracted();
-    
-    const allSongs = indianSearchResults
-      .filter((s: any) => s.url)
-      .map((s: any) => useMusicStore.getState().convertIndianSongToAppSong(s));
-    
-    if (allSongs.length === 0) {
-      toast.error('No playable songs found');
-      return;
-    }
-    
-    playerStore.playAlbum(allSongs, 0);
-    playerStore.setIsPlaying(true);
-    
-    toast.success(`Playing ${allSongs.length} songs`);
-  }, [indianSearchResults]);
+  // Redirect to mood page with pre-filled prompt
+  const openVibeMode = useCallback((mood: string) => {
+    navigate(`/mood?preset=${encodeURIComponent(mood)}`);
+  }, [navigate]);
+
+  const SongRow = ({ song, index, allSongs }: { song: SmartSearchSong, index: number, allSongs: SmartSearchSong[] }) => (
+    <div
+      onClick={() => playSong(song, allSongs)}
+      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 transition-all cursor-pointer group"
+    >
+      <span className="w-6 text-center text-xs text-white/30 group-hover:hidden font-mono">{index + 1}</span>
+      <div className="w-6 h-6 hidden group-hover:flex items-center justify-center">
+        <Play className="w-3.5 h-3.5 text-green-400 fill-green-400" />
+      </div>
+      <div className="w-10 h-10 rounded-md overflow-hidden bg-white/5 flex-shrink-0">
+        {song.imageUrl
+          ? <img src={song.imageUrl} alt={song.title} className="w-full h-full object-cover" loading="lazy" />
+          : <div className="w-full h-full flex items-center justify-center"><Music className="w-4 h-4 text-white/20" /></div>
+        }
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm text-white truncate group-hover:text-green-400 transition-colors">{song.title}</p>
+        <p className="text-xs text-white/40 truncate">{song.artist}</p>
+      </div>
+      <span className="text-xs text-white/30 tabular-nums flex-shrink-0">{formatDuration(song.duration)}</span>
+    </div>
+  );
+
+  const allSimilar = smartResult ? [...(smartResult.results || []), ...(smartResult.similarSongs || [])] : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#121212] to-black text-white p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-[#0e0e0e] via-[#111] to-black text-white">
+      <div className="max-w-6xl mx-auto p-4 md:p-8">
+
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold mb-2">Search</h1>
-          <p className="text-gray-400">Find your favorite songs, artists, and albums</p>
+        <div className="mb-6">
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-1">Search</h1>
+          <p className="text-white/40 text-sm">Find songs, artists, or describe a vibe</p>
         </div>
 
         {/* Search Box */}
         <form onSubmit={handleSearch} className="mb-8">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none z-10" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/40 pointer-events-none z-10" />
             <Input
               type="search"
-              placeholder="What do you want to listen to?"
+              placeholder="Song, artist, or describe a mood..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={handleInputFocus}
-              onBlur={handleInputBlur}
-              className="w-full h-14 pl-12 pr-12 bg-[#242424] border-0 text-white placeholder:text-gray-400 text-base rounded-full focus:ring-2 focus:ring-[#1db954] transition-all"
+              onChange={e => setSearchQuery(e.target.value)}
+              onFocus={() => { if (!query) setShowSuggestions(true); }}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              className="w-full h-14 pl-12 pr-12 bg-white/5 border border-white/10 text-white placeholder:text-white/30 text-base rounded-2xl focus:ring-2 focus:ring-green-500/50 focus:border-green-500/30 transition-all backdrop-blur-xl"
               autoComplete="off"
             />
             {searchQuery && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors z-10"
-                aria-label="Clear search"
-              >
+              <button type="button" onClick={clearSearch}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors z-10">
                 <XCircle size={20} />
               </button>
             )}
           </div>
         </form>
 
-        {/* Search Suggestions */}
         {showSuggestions && (
-          <SearchSuggestions
-            onSelect={handleSuggestionSelect}
-            currentQuery={searchQuery}
-          />
+          <SearchSuggestions onSelect={handleSuggestionSelect} currentQuery={searchQuery} />
         )}
 
-        {/* Loading State with Skeleton */}
-        {(isSearching || isIndianMusicLoading) && (
+        {/* Loading */}
+        {isSearching && (
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <div className="h-8 w-32 bg-gray-600 rounded animate-pulse"></div>
-              <div className="h-10 w-32 bg-gray-600 rounded-full animate-pulse"></div>
+            <div className="flex items-center gap-3 mb-6 animate-pulse">
+              <div className="h-7 w-48 bg-white/10 rounded-lg" />
             </div>
             <SearchSkeleton />
           </div>
         )}
 
-        {/* Results */}
-        {!isSearching && !isIndianMusicLoading && query && (
-          <>
-            {indianSearchResults.length > 0 ? (
-              <div>
-                {/* Results Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">
-                    Songs ({indianSearchResults.length})
-                  </h2>
-                  <Button
-                    onClick={playAll}
-                    className="bg-[#1db954] hover:bg-[#1ed760] text-black font-semibold rounded-full px-6"
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Play all
-                  </Button>
+        {/* Smart Results */}
+        {!isSearching && smartResult && (
+          <div className="space-y-8">
+
+            {/* ── Detected Mood Badge ── */}
+            {smartResult.detectedMood && (() => {
+              const DetectedIcon = EMOTION_ICONS[smartResult.detectedMood.emotion] || Music;
+              return (
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-green-400" />
+                  <span className="text-sm text-white/50">Detected vibe:</span>
+                  <Badge className="bg-green-500/10 text-green-400 border border-green-500/20 text-xs px-2 py-0.5 rounded-full capitalize flex items-center gap-1.5">
+                    <DetectedIcon className="w-3.5 h-3.5" /> {smartResult.detectedMood.emotion}
+                    {smartResult.detectedMood.context ? ` • ${smartResult.detectedMood.context}` : ''}
+                  </Badge>
                 </div>
+              );
+            })()}
 
-                {/* Song List - Optimized rendering */}
-                <div className="space-y-2">
-                  {indianSearchResults.map((song: any, index: number) => (
-                    <div
-                      key={song.id || index}
-                      onClick={() => playSong(song, index)}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#282828] transition-all duration-200 cursor-pointer group"
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          playSong(song, index);
-                        }
-                      }}
+            {/* ── TOP RESULT ── */}
+            {smartResult.topResult && (
+              <section>
+                <h2 className="text-lg font-bold mb-3 text-white/80">Top Result</h2>
+                <div className="relative rounded-2xl bg-gradient-to-br from-white/8 to-white/3 border border-white/8 p-5 flex flex-col sm:flex-row gap-5 items-start sm:items-center hover:from-white/12 transition-all group overflow-hidden">
+                  {/* Ambient glow */}
+                  <div className="absolute -top-20 -left-20 w-56 h-56 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="relative w-28 h-28 rounded-xl overflow-hidden shadow-2xl flex-shrink-0">
+                    {smartResult.topResult.imageUrl
+                      ? <img src={smartResult.topResult.imageUrl} alt={smartResult.topResult.title} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full bg-white/5 flex items-center justify-center"><Music className="w-10 h-10 text-white/20" /></div>
+                    }
+                  </div>
+
+                  <div className="flex-1 min-w-0 relative z-10">
+                    <p className="text-xs text-green-400 font-semibold uppercase tracking-widest mb-1">{smartResult.intent}</p>
+                    <h3 className="text-2xl md:text-3xl font-black text-white truncate mb-1">{smartResult.topResult.title}</h3>
+                    <p className="text-white/50 text-sm truncate mb-4">{smartResult.topResult.artist}
+                      {smartResult.topResult.year ? ` • ${smartResult.topResult.year}` : ''}
+                    </p>
+                    <Button
+                      onClick={playTopResult}
+                      className="h-10 px-6 rounded-full bg-green-500 hover:bg-green-400 text-black font-extrabold text-sm transition-all hover:scale-105 shadow-lg shadow-green-500/20"
                     >
-                      {/* Index/Play Button */}
-                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                        <span className="text-gray-400 group-hover:hidden transition-opacity">
-                          {index + 1}
-                        </span>
-                        <div className="hidden group-hover:flex w-10 h-10 bg-[#1db954] rounded-full items-center justify-center shadow-lg transform group-hover:scale-105 transition-transform">
-                          <Play className="h-5 w-5 text-black ml-0.5" fill="currentColor" />
-                        </div>
-                      </div>
+                      <Play className="w-4 h-4 mr-1.5 fill-black" /> Play
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            )}
 
-                      {/* Song Image */}
-                      <div className="w-14 h-14 rounded-md overflow-hidden bg-[#282828] flex-shrink-0 shadow-md">
-                        <img
-                          src={song.image || '/images/default-album.png'}
-                          alt={song.title}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/images/default-album.png';
-                          }}
-                        />
-                      </div>
-
-                      {/* Song Info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate group-hover:text-[#1db954] transition-colors">
-                          {song.title}
-                        </h3>
-                        <p className="text-sm text-gray-400 truncate">
-                          {resolveArtist(song)}
-                        </p>
-                      </div>
-
-                      {/* Duration */}
-                      {song.duration && (
-                        <div className="text-sm text-gray-400 flex-shrink-0 tabular-nums">
-                          {song.duration}
-                        </div>
-                      )}
-                    </div>
+            {/* ── SIMILAR SONGS ── */}
+            {allSimilar.length > 0 && (
+              <section>
+                <h2 className="text-lg font-bold mb-3 text-white/80">
+                  {smartResult.intent === 'mood' ? 'Songs matching this vibe' : 'Similar Songs'}
+                </h2>
+                <div className="rounded-2xl bg-white/3 border border-white/6 divide-y divide-white/5">
+                  {allSimilar.slice(0, 15).map((song, i) => (
+                    <SongRow key={song.id || i} song={song} index={i} allSongs={allSimilar} />
                   ))}
                 </div>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">🔍</div>
+              </section>
+            )}
+
+            {/* ── VIBE MODE ── */}
+            {smartResult.vibeMode && smartResult.vibeMode.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="w-4 h-4 text-orange-400" />
+                  <h2 className="text-lg font-bold text-white/80">Vibe Mode</h2>
+                  <span className="text-xs text-white/30">Generate a full mood playlist</span>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {smartResult.vibeMode.map((vibe, i) => (
+                    <button
+                      key={i}
+                      onClick={() => openVibeMode(vibe.mood)}
+                      className={cn(
+                        "px-4 py-2 rounded-full text-sm font-semibold transition-all hover:scale-105 border",
+                        i === 0
+                          ? "bg-orange-500/15 border-orange-500/30 text-orange-400 hover:bg-orange-500/25"
+                          : i === 1
+                            ? "bg-purple-500/15 border-purple-500/30 text-purple-400 hover:bg-purple-500/25"
+                            : "bg-blue-500/15 border-blue-500/30 text-blue-400 hover:bg-blue-500/25"
+                      )}
+                    >
+                      {vibe.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Empty state */}
+            {!smartResult.topResult && allSimilar.length === 0 && (
+              <div className="text-center py-16">
+                <div className="mb-4"><SearchX className="w-12 h-12 mx-auto text-white/50" /></div>
                 <h3 className="text-xl font-semibold mb-2">No results found</h3>
-                <p className="text-gray-400">
-                  Try searching with different keywords
-                </p>
+                <p className="text-white/40 text-sm">Try different keywords or describe a mood</p>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* Empty State */}
         {!query && !isSearching && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎵</div>
+          <div className="text-center py-20">
+            <div className="mb-6"><Music className="w-16 h-16 mx-auto text-white/40" /></div>
             <h3 className="text-xl font-semibold mb-2">Search for music</h3>
-            <p className="text-gray-400">
-              Find your favorite songs, artists, and albums
-            </p>
+            <p className="text-white/40 text-sm">Search a song, artist, or try <span className="text-green-400">"late night sad bollywood songs"</span></p>
           </div>
         )}
       </div>

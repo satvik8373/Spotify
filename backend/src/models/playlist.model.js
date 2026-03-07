@@ -7,6 +7,26 @@ import admin from 'firebase-admin';
 const db = admin.firestore ? admin.firestore() : null;
 const playlistsRef = db ? db.collection('playlists') : null;
 
+/**
+ * Playlist Schema (Firestore)
+ * 
+ * @typedef {Object} Playlist
+ * @property {string} _id - Playlist ID
+ * @property {string} name - Playlist name
+ * @property {string} description - Playlist description
+ * @property {boolean} isPublic - Whether the playlist is public
+ * @property {string[]} songs - Array of song IDs
+ * @property {Object} createdBy - Creator information
+ * @property {string} createdBy.uid - User ID
+ * @property {string} createdBy.fullName - User's full name
+ * @property {string} createdBy.imageUrl - User's profile image URL
+ * @property {FirebaseFirestore.Timestamp} createdAt - Creation timestamp
+ * @property {boolean} [moodGenerated] - Whether this playlist was generated from mood input
+ * @property {string} [emotion] - Detected emotion (sadness|joy|anger|love|fear|surprise)
+ * @property {string} [moodText] - Original mood text input from user
+ * @property {FirebaseFirestore.Timestamp} [generatedAt] - Timestamp when mood playlist was generated
+ */
+
 // Export a placeholder model with compatible methods
 export const Playlist = {
   find: async (query = {}) => {

@@ -10,12 +10,12 @@ interface SearchSuggestionsProps {
   onSelectSong?: (query: string) => void;
 }
 
-export const SearchSuggestions = ({ 
-  onSelect, 
-  currentQuery, 
-  query, 
-  isVisible, 
-  onSelectSong 
+export const SearchSuggestions = ({
+  onSelect,
+  currentQuery,
+  query,
+  isVisible,
+  onSelectSong
 }: SearchSuggestionsProps) => {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [trendingSearches] = useState<string[]>([
@@ -31,12 +31,7 @@ export const SearchSuggestions = ({
 
   // Support both prop names for backward compatibility
   const searchQuery = currentQuery ?? query ?? '';
-  const handleSelect = onSelect ?? onSelectSong ?? (() => {});
-  
-  // If isVisible prop is provided and false, don't render
-  if (isVisible === false) {
-    return null;
-  }
+  const handleSelect = onSelect ?? onSelectSong ?? (() => { });
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -51,11 +46,17 @@ export const SearchSuggestions = ({
     }
   }, []);
 
+  // If isVisible prop is provided and false, don't render
+  // This must be after all hooks to follow the Rules of Hooks
+  if (isVisible === false) {
+    return null;
+  }
+
   // Filter suggestions based on current query
   const filteredSuggestions = searchQuery.trim()
-    ? trendingSearches.filter(s => 
-        s.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 5)
+    ? trendingSearches.filter(s =>
+      s.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 5)
     : [];
 
   const showRecentSearches = !searchQuery.trim() && recentSearches.length > 0;
@@ -142,16 +143,16 @@ export const saveRecentSearch = (query: string) => {
   try {
     const saved = localStorage.getItem('recent_searches');
     let searches: string[] = saved ? JSON.parse(saved) : [];
-    
+
     // Remove if already exists
     searches = searches.filter(s => s.toLowerCase() !== query.toLowerCase());
-    
+
     // Add to beginning
     searches.unshift(query.trim());
-    
+
     // Keep only last 10
     searches = searches.slice(0, 10);
-    
+
     localStorage.setItem('recent_searches', JSON.stringify(searches));
   } catch (error) {
     // Failed to save recent search

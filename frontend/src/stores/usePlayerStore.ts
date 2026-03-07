@@ -76,30 +76,30 @@ const shuffleArray = <T>(array: T[]): T[] => {
 // Smart shuffle algorithm - considers song similarity, artist diversity, etc.
 const smartShuffleArray = <T extends Song>(array: T[]): T[] => {
   if (array.length <= 2) return shuffleArray(array);
-  
+
   const shuffled = [...array];
   const result: T[] = [];
   const artistCounts: { [key: string]: number } = {};
-  
+
   // First pass: Fisher-Yates shuffle
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  
+
   // Second pass: Smart reordering to avoid artist clustering
   while (shuffled.length > 0) {
     let bestIndex = 0;
     let bestScore = -1;
-    
+
     for (let i = 0; i < shuffled.length; i++) {
       const song = shuffled[i];
       const artist = song.artist || 'Unknown';
       const artistCount = artistCounts[artist] || 0;
-      
+
       // Score based on artist diversity and position
       let score = 1 / (artistCount + 1);
-      
+
       // Avoid same artist back-to-back
       if (result.length > 0) {
         const lastSong = result[result.length - 1];
@@ -107,21 +107,21 @@ const smartShuffleArray = <T extends Song>(array: T[]): T[] => {
           score *= 0.1; // Heavy penalty for same artist
         }
       }
-      
+
       // Add some randomness
       score *= Math.random();
-      
+
       if (score > bestScore) {
         bestScore = score;
         bestIndex = i;
       }
     }
-    
+
     const selectedSong = shuffled.splice(bestIndex, 1)[0];
     result.push(selectedSong);
     artistCounts[selectedSong.artist || 'Unknown'] = (artistCounts[selectedSong.artist || 'Unknown'] || 0) + 1;
   }
-  
+
   return result;
 };
 
@@ -197,7 +197,7 @@ export const usePlayerStore = create<PlayerState>()(
 
         // Get the song that was requested to play
         const requestedSong = songs[initialIndex];
-        
+
         const validSongs = songs.filter(song => song.audioUrl && !song.audioUrl.startsWith('blob:'));
 
         if (validSongs.length === 0) {
@@ -206,14 +206,14 @@ export const usePlayerStore = create<PlayerState>()(
 
         // Find the requested song in the filtered array
         let validIndex = validSongs.findIndex(song => song._id === requestedSong?._id);
-        
+
         // If not found by ID, try to find by title and artist
         if (validIndex === -1 && requestedSong) {
-          validIndex = validSongs.findIndex(song => 
+          validIndex = validSongs.findIndex(song =>
             song.title === requestedSong.title && song.artist === requestedSong.artist
           );
         }
-        
+
         // If still not found, use the first song
         if (validIndex === -1) {
           validIndex = 0;
@@ -235,11 +235,11 @@ export const usePlayerStore = create<PlayerState>()(
         if (shuffleMode !== 'off' && validSongs.length > 1) {
           const selectedSong = validSongs[validIndex];
           const otherSongs = validSongs.filter((_, i) => i !== validIndex);
-          
-          const shuffledOthers = shuffleMode === 'smart' 
+
+          const shuffledOthers = shuffleMode === 'smart'
             ? smartShuffleArray(otherSongs)
             : shuffleArray(otherSongs);
-          
+
           playQueue = [selectedSong, ...shuffledOthers];
           playIndex = 0;
         }
@@ -361,67 +361,7 @@ export const usePlayerStore = create<PlayerState>()(
               });
             }
 
-            // Update MediaSession for lock screen controls if available
-            if ('mediaSession' in navigator) {
-              navigator.mediaSession.metadata = new MediaMetadata({
-                title: queue[newIndex].title || 'Unknown Title',
-                artist: queue[newIndex].artist || 'Unknown Artist',
-                album: queue[newIndex].albumId ? String(queue[newIndex].albumId) : 'Unknown Album',
-                artwork: [
-                  {
-                    src: queue[newIndex].imageUrl || 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png',
-                    sizes: '512x512',
-                    type: 'image/jpeg'
-                  }
-                ]
-              });
-
-              // Update playback state
-              navigator.mediaSession.playbackState = 'playing';
-
-              // Update position state if supported
-              if ('setPositionState' in navigator.mediaSession) {
-                try {
-                  // Initially set to 0 position for the new track
-                  navigator.mediaSession.setPositionState({
-                    duration: audio.duration || 0,
-                    playbackRate: audio.playbackRate || 1,
-                    position: 0
-                  });
-                } catch (e) {
-                  // Ignore position state errors
-                }
-              }
-
-              // Re-register media session handlers for better reliability in background
-              navigator.mediaSession.setActionHandler('nexttrack', () => {
-                // Directly access the store to avoid closure issues
-                const store = get();
-                store.setUserInteracted();
-                store.playNext();
-              });
-
-              navigator.mediaSession.setActionHandler('previoustrack', () => {
-                // Directly access the store to avoid closure issues
-                const store = get();
-                store.setUserInteracted();
-                store.playPrevious();
-              });
-
-              navigator.mediaSession.setActionHandler('play', () => {
-                set({ isPlaying: true });
-                if (audio.paused) {
-                  audio.play().catch(() => { });
-                }
-              });
-
-              navigator.mediaSession.setActionHandler('pause', () => {
-                set({ isPlaying: false });
-                if (!audio.paused) {
-                  audio.pause();
-                }
-              });
-            }
+            // Re-register is no longer necessary as it's managed entirely by AudioPlayerMediaSession.tsx
           }
         };
 
@@ -523,7 +463,7 @@ export const usePlayerStore = create<PlayerState>()(
 
       toggleShuffle: () => {
         const { shuffleMode, queue, originalQueue, currentSong } = get();
-        
+
         // Cycle through shuffle modes: off -> normal -> smart -> off
         let newShuffleMode: ShuffleMode;
         switch (shuffleMode) {
@@ -547,21 +487,21 @@ export const usePlayerStore = create<PlayerState>()(
           if (queue.length > 1 && currentSong) {
             // Store original queue if not already stored
             const queueToStore = originalQueue.length > 0 ? originalQueue : [...queue];
-            
+
             // Find current song in the queue
-            const currentSongIndex = queue.findIndex(song => 
-              song._id === currentSong._id || 
+            const currentSongIndex = queue.findIndex(song =>
+              song._id === currentSong._id ||
               (song as any).id === (currentSong as any).id
             );
-            
+
             if (currentSongIndex !== -1) {
               // Create shuffled queue with current song first
               const otherSongs = queue.filter((_, i) => i !== currentSongIndex);
-              const shuffledOthers = newShuffleMode === 'smart' 
+              const shuffledOthers = newShuffleMode === 'smart'
                 ? smartShuffleArray(otherSongs)
                 : shuffleArray(otherSongs);
               const shuffledQueue = [currentSong, ...shuffledOthers];
-              
+
               set({
                 isShuffled: newIsShuffled,
                 shuffleMode: newShuffleMode,
@@ -571,7 +511,7 @@ export const usePlayerStore = create<PlayerState>()(
               });
             } else {
               // Fallback: just shuffle the entire queue
-              const shuffledQueue = newShuffleMode === 'smart' 
+              const shuffledQueue = newShuffleMode === 'smart'
                 ? smartShuffleArray([...queue])
                 : shuffleArray([...queue]);
               set({
@@ -584,20 +524,20 @@ export const usePlayerStore = create<PlayerState>()(
             }
           } else {
             // Just toggle state if queue is too small
-            set({ 
+            set({
               isShuffled: newIsShuffled,
-              shuffleMode: newShuffleMode 
+              shuffleMode: newShuffleMode
             });
           }
         } else {
           // Turning shuffle OFF - restore original order
           if (originalQueue.length > 0 && currentSong) {
             // Find current song in original queue
-            const originalIndex = originalQueue.findIndex(song => 
-              song._id === currentSong._id || 
+            const originalIndex = originalQueue.findIndex(song =>
+              song._id === currentSong._id ||
               (song as any).id === (currentSong as any).id
             );
-            
+
             set({
               isShuffled: newIsShuffled,
               shuffleMode: newShuffleMode,
@@ -606,9 +546,9 @@ export const usePlayerStore = create<PlayerState>()(
             });
           } else {
             // Just toggle state if no original queue
-            set({ 
+            set({
               isShuffled: newIsShuffled,
-              shuffleMode: newShuffleMode 
+              shuffleMode: newShuffleMode
             });
           }
         }
@@ -621,18 +561,18 @@ export const usePlayerStore = create<PlayerState>()(
         if (newIsShuffled && queue.length > 1 && currentSong) {
           // Apply the new shuffle mode
           const queueToStore = originalQueue.length > 0 ? originalQueue : [...queue];
-          const currentSongIndex = queue.findIndex(song => 
-            song._id === currentSong._id || 
+          const currentSongIndex = queue.findIndex(song =>
+            song._id === currentSong._id ||
             (song as any).id === (currentSong as any).id
           );
-          
+
           if (currentSongIndex !== -1) {
             const otherSongs = queue.filter((_, i) => i !== currentSongIndex);
-            const shuffledOthers = mode === 'smart' 
+            const shuffledOthers = mode === 'smart'
               ? smartShuffleArray(otherSongs)
               : shuffleArray(otherSongs);
             const shuffledQueue = [currentSong, ...shuffledOthers];
-            
+
             set({
               isShuffled: newIsShuffled,
               shuffleMode: mode,
@@ -643,11 +583,11 @@ export const usePlayerStore = create<PlayerState>()(
           }
         } else if (!newIsShuffled && originalQueue.length > 0 && currentSong) {
           // Restore original order
-          const originalIndex = originalQueue.findIndex(song => 
-            song._id === currentSong._id || 
+          const originalIndex = originalQueue.findIndex(song =>
+            song._id === currentSong._id ||
             (song as any).id === (currentSong as any).id
           );
-          
+
           set({
             isShuffled: newIsShuffled,
             shuffleMode: mode,
@@ -655,9 +595,9 @@ export const usePlayerStore = create<PlayerState>()(
             currentIndex: originalIndex !== -1 ? originalIndex : 0
           });
         } else {
-          set({ 
+          set({
             isShuffled: newIsShuffled,
-            shuffleMode: mode 
+            shuffleMode: mode
           });
         }
       },
@@ -688,7 +628,7 @@ export const usePlayerStore = create<PlayerState>()(
 
         // Use the perfect shuffle logic from liked songs
         const songsToShuffle = originalQueue.length > 0 ? [...originalQueue] : [...queue];
-        
+
         // Fisher-Yates shuffle algorithm (perfect like liked songs)
         for (let i = songsToShuffle.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));

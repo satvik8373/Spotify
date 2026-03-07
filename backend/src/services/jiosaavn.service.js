@@ -12,19 +12,29 @@ const BACKUP_API_BASE_URL = 'https://saavn.me';
  * @returns {Promise<Object>} - Search results
  */
 export const searchSongs = async (query, limit = 20) => {
-  try {
-    const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/search/songs`, {
-      params: {
-        query,
-        page: 1,
-        limit
+  const apis = [JIOSAAVN_API_BASE_URL, FALLBACK_API_BASE_URL, BACKUP_API_BASE_URL];
+
+  for (const apiUrl of apis) {
+    try {
+      console.log(`Trying JioSaavn API: ${apiUrl}/search/songs?query=${query}`);
+      const response = await axios.get(`${apiUrl}/search/songs`, {
+        params: {
+          query,
+          page: 1,
+          limit
+        },
+        timeout: 8000 // Add a timeout to fail fast and move to next fallback
+      });
+
+      if (response.data && (response.data.success !== false)) {
+        return response.data;
       }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error searching JioSaavn songs:', error.message);
-    throw error;
+    } catch (error) {
+      console.warn(`JioSaavn API ${apiUrl} failed for searchSongs:`, error.message);
+    }
   }
+
+  throw new Error('All JioSaavn APIs failed for song search');
 };
 
 /**
@@ -35,7 +45,7 @@ export const searchSongs = async (query, limit = 20) => {
  */
 export const searchPlaylists = async (query, limit = 10) => {
   const apis = [JIOSAAVN_API_BASE_URL, FALLBACK_API_BASE_URL, BACKUP_API_BASE_URL];
-  
+
   for (const apiUrl of apis) {
     try {
       console.log(`Trying JioSaavn API: ${apiUrl}/search/playlists`);
@@ -47,9 +57,9 @@ export const searchPlaylists = async (query, limit = 10) => {
         },
         timeout: 10000
       });
-      
+
       console.log(`API ${apiUrl} response:`, response.data);
-      
+
       // Check if we got valid data
       if (response.data && (response.data.success !== false)) {
         return response.data;
@@ -59,7 +69,7 @@ export const searchPlaylists = async (query, limit = 10) => {
       // Try next API
     }
   }
-  
+
   // If all APIs failed, return empty result
   console.error('All JioSaavn APIs failed for playlist search');
   return {
@@ -82,8 +92,11 @@ export const getTrendingSongs = async (limit = 20) => {
     // Try 2026-specific trending terms first
     const trending2026Terms = [
       'trending songs 2026',
-      'top hits 2026', 
+      'top hits 2026',
       'latest bollywood 2026',
+      'trending punjabi 2026',
+      'trending gujarati 2026',
+      'latest telugu 2026',
       'superhits 2026',
       'viral songs 2026'
     ];
@@ -97,7 +110,7 @@ export const getTrendingSongs = async (limit = 20) => {
             limit
           }
         });
-        
+
         if (response.data && response.data.results && response.data.results.length > 0) {
           return response.data;
         }
@@ -146,7 +159,7 @@ export const getNewReleases = async (limit = 20) => {
             limit
           }
         });
-        
+
         if (response.data && response.data.results && response.data.results.length > 0) {
           return response.data;
         }
@@ -180,7 +193,7 @@ export const getSongDetails = async (id) => {
     const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/songs`, {
       params: { ids: id }
     });
-    
+
     // The API returns an array, so we need to extract the first item
     if (response.data && response.data.success && response.data.data && response.data.data.length > 0) {
       return {
@@ -188,7 +201,7 @@ export const getSongDetails = async (id) => {
         data: response.data.data[0]
       };
     }
-    
+
     return response.data;
   } catch (error) {
     console.error('Error fetching JioSaavn song details:', error.message);
@@ -223,20 +236,20 @@ export const getAlbumDetails = async (id) => {
 export const getPlaylistDetails = async (id, page = 1, limit = 50) => {
   const apis = [JIOSAAVN_API_BASE_URL, FALLBACK_API_BASE_URL, BACKUP_API_BASE_URL];
   const playlistUrl = `https://www.jiosaavn.com/featured/playlist/${id}`;
-  
+
   console.log(`\n=== Fetching JioSaavn Playlist: ${id} ===`);
-  
+
   for (const apiUrl of apis) {
     try {
       console.log(`Trying API: ${apiUrl}`);
-      
+
       // Method 1: Try with link parameter (might return all songs)
       try {
         const response = await axios.get(`${apiUrl}/playlists`, {
           params: { link: playlistUrl },
           timeout: 15000
         });
-        
+
         if (response.data && response.data.success !== false && response.data.songs) {
           console.log(`✓ Success with link parameter: ${response.data.songs.length} songs`);
           return response.data;
@@ -244,14 +257,14 @@ export const getPlaylistDetails = async (id, page = 1, limit = 50) => {
       } catch (err) {
         console.log(`  link parameter failed: ${err.message}`);
       }
-      
+
       // Method 2: Try with id parameter
       try {
         const response = await axios.get(`${apiUrl}/playlists`, {
           params: { id, page, limit },
           timeout: 15000
         });
-        
+
         if (response.data && response.data.success !== false && response.data.songs) {
           console.log(`✓ Success with id parameter: ${response.data.songs.length} songs`);
           return response.data;
@@ -259,14 +272,14 @@ export const getPlaylistDetails = async (id, page = 1, limit = 50) => {
       } catch (err) {
         console.log(`  id parameter failed: ${err.message}`);
       }
-      
+
       // Method 3: Try old /playlist/ endpoint with query
       try {
         const response = await axios.get(`${apiUrl}/playlist/`, {
           params: { query: playlistUrl },
           timeout: 15000
         });
-        
+
         if (response.data && response.data.success !== false) {
           const songs = response.data.data?.songs || response.data.songs || [];
           console.log(`✓ Success with query parameter: ${songs.length} songs`);
@@ -275,12 +288,12 @@ export const getPlaylistDetails = async (id, page = 1, limit = 50) => {
       } catch (err) {
         console.log(`  query parameter failed: ${err.message}`);
       }
-      
+
     } catch (error) {
       console.warn(`API ${apiUrl} completely failed:`, error.message);
     }
   }
-  
+
   console.error('=== All JioSaavn APIs failed for playlist details ===\n');
   throw new Error('Failed to get playlist details from all APIs');
 };
@@ -294,10 +307,10 @@ export const getPlaylistDetails = async (id, page = 1, limit = 50) => {
 export const getCompletePlaylistDetails = async (id) => {
   try {
     console.log(`\n=== Fetching Complete Playlist: ${id} ===`);
-    
+
     // First try to get the playlist with link parameter (might return all songs)
     const playlistData = await getPlaylistDetails(id);
-    
+
     if (!playlistData || !playlistData.data) {
       throw new Error('Invalid playlist response');
     }
@@ -305,53 +318,53 @@ export const getCompletePlaylistDetails = async (id) => {
     const data = playlistData.data || playlistData;
     let allSongs = data.songs || [];
     const totalSongs = data.songCount || data.list_count || data.song_count || allSongs.length;
-    
+
     console.log(`Playlist: ${data.name || 'Unknown'}`);
     console.log(`  Total songs expected: ${totalSongs}`);
     console.log(`  First fetch returned: ${allSongs.length} songs`);
-    
+
     // If we got all songs or close to it, return as is
     if (allSongs.length >= totalSongs || allSongs.length >= totalSongs * 0.9) {
       console.log(`✓ Got all songs (${allSongs.length}/${totalSongs})`);
       console.log(`=== End Playlist Fetch ===\n`);
       return playlistData;
     }
-    
+
     // If we only got 10 songs but there are more, try pagination
     if (allSongs.length < totalSongs) {
       console.log(`⚠ Only got ${allSongs.length} songs, attempting pagination...`);
-      
+
       const songsPerPage = 50; // Try to fetch 50 songs per page
       const totalPages = Math.ceil(totalSongs / songsPerPage);
-      
+
       // Try fetching additional pages
       for (let page = 2; page <= Math.min(totalPages, 10); page++) {
         try {
           console.log(`  Fetching page ${page}...`);
           const pageData = await getPlaylistDetails(id, page, songsPerPage);
-          
+
           if (pageData && pageData.data && pageData.data.songs) {
             const newSongs = pageData.data.songs;
             console.log(`  Page ${page} returned: ${newSongs.length} songs`);
-            
+
             if (newSongs.length === 0) {
               console.log(`  No more songs, stopping pagination`);
               break;
             }
-            
+
             // Add new songs (avoid duplicates by checking song IDs)
             const existingIds = new Set(allSongs.map(s => s.id));
             const uniqueNewSongs = newSongs.filter(s => !existingIds.has(s.id));
             allSongs = [...allSongs, ...uniqueNewSongs];
-            
+
             console.log(`  Total songs now: ${allSongs.length}/${totalSongs}`);
-            
+
             // If we have all songs, stop
             if (allSongs.length >= totalSongs) {
               console.log(`✓ Got all songs!`);
               break;
             }
-            
+
             // Small delay to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 500));
           } else {
@@ -363,21 +376,21 @@ export const getCompletePlaylistDetails = async (id) => {
           break;
         }
       }
-      
+
       // Update the data with all collected songs
       data.songs = allSongs;
       playlistData.data = data;
-      
+
       console.log(`\n✓ Final result: ${allSongs.length}/${totalSongs} songs`);
       if (allSongs.length < totalSongs) {
         console.warn(`⚠ Could only fetch ${allSongs.length} of ${totalSongs} songs`);
         console.warn(`  This is a limitation of the JioSaavn unofficial APIs`);
       }
     }
-    
+
     console.log(`=== End Playlist Fetch ===\n`);
     return playlistData;
-    
+
   } catch (error) {
     console.error('Error fetching complete playlist:', error.message);
     throw error;
@@ -420,7 +433,7 @@ export const formatSongData = (song) => {
     url: song.downloadUrl && song.downloadUrl.length > 4 ? song.downloadUrl[4].url : '',
     source: 'jiosaavn'
   };
-}; 
+};
 
 
 /**
@@ -433,12 +446,12 @@ export const getPlaylistViaAlbum = async (id) => {
   try {
     console.log(`Trying album method for playlist: ${id}`);
     const albumData = await getAlbumDetails(id);
-    
+
     if (albumData && albumData.data && albumData.data.songs) {
       console.log(`✓ Album method returned ${albumData.data.songs.length} songs`);
       return albumData;
     }
-    
+
     return null;
   } catch (error) {
     console.log(`Album method failed: ${error.message}`);
@@ -453,16 +466,16 @@ export const getPlaylistViaAlbum = async (id) => {
  */
 export const getPlaylistAllSongs = async (id) => {
   console.log(`\n=== Comprehensive Playlist Fetch: ${id} ===`);
-  
+
   let bestResult = null;
   let maxSongs = 0;
-  
+
   // Strategy 1: Try standard playlist fetch with pagination
   try {
     console.log('Strategy 1: Standard playlist fetch with pagination');
     const result = await getCompletePlaylistDetails(id);
     const songCount = result?.data?.songs?.length || 0;
-    
+
     if (songCount > maxSongs) {
       maxSongs = songCount;
       bestResult = result;
@@ -471,13 +484,13 @@ export const getPlaylistAllSongs = async (id) => {
   } catch (error) {
     console.log(`Strategy 1 failed: ${error.message}`);
   }
-  
+
   // Strategy 2: Try as album
   try {
     console.log('Strategy 2: Trying album method');
     const result = await getPlaylistViaAlbum(id);
     const songCount = result?.data?.songs?.length || 0;
-    
+
     if (songCount > maxSongs) {
       maxSongs = songCount;
       bestResult = result;
@@ -486,7 +499,7 @@ export const getPlaylistAllSongs = async (id) => {
   } catch (error) {
     console.log(`Strategy 2 failed: ${error.message}`);
   }
-  
+
   // Strategy 3: Try different API endpoints
   const apis = [FALLBACK_API_BASE_URL, BACKUP_API_BASE_URL];
   for (const apiUrl of apis) {
@@ -496,9 +509,9 @@ export const getPlaylistAllSongs = async (id) => {
         params: { id, limit: 100 },
         timeout: 15000
       });
-      
+
       const songCount = response.data?.data?.songs?.length || response.data?.songs?.length || 0;
-      
+
       if (songCount > maxSongs) {
         maxSongs = songCount;
         bestResult = response.data;
@@ -508,13 +521,13 @@ export const getPlaylistAllSongs = async (id) => {
       console.log(`Strategy 3 (${apiUrl}) failed: ${error.message}`);
     }
   }
-  
+
   console.log(`\n=== Best Result: ${maxSongs} songs ===\n`);
-  
+
   if (!bestResult) {
     throw new Error('All strategies failed to fetch playlist');
   }
-  
+
   return bestResult;
 };
 
@@ -528,41 +541,41 @@ export const getPlaylistAllSongs = async (id) => {
 export const getPlaylistSongsBySearch = async (playlistId, playlistName) => {
   try {
     console.log(`\n=== Fetching songs via search for: ${playlistName} ===`);
-    
+
     // First get the basic playlist info to know total song count
     const basicPlaylist = await getPlaylistDetails(playlistId);
     const totalSongs = basicPlaylist?.data?.songCount || basicPlaylist?.data?.list_count || 0;
     const initialSongs = basicPlaylist?.data?.songs || [];
-    
+
     console.log(`Initial fetch: ${initialSongs.length}/${totalSongs} songs`);
-    
+
     if (initialSongs.length >= totalSongs || totalSongs <= 10) {
       return initialSongs;
     }
-    
+
     // If we have less than total, try searching for the playlist name
     // and get more songs from search results
     const searchResults = await searchSongs(playlistName, Math.min(totalSongs, 100));
     const searchSongs = searchResults?.data?.results || [];
-    
+
     console.log(`Search returned: ${searchSongs.length} songs`);
-    
+
     // Combine initial songs with search results, removing duplicates
     const allSongs = [...initialSongs];
     const existingIds = new Set(initialSongs.map(s => s.id));
-    
+
     for (const song of searchSongs) {
       if (!existingIds.has(song.id) && allSongs.length < totalSongs) {
         allSongs.push(song);
         existingIds.add(song.id);
       }
     }
-    
+
     console.log(`Final count: ${allSongs.length}/${totalSongs} songs`);
     console.log(`=== End Search Method ===\n`);
-    
+
     return allSongs;
-    
+
   } catch (error) {
     console.error('Search method failed:', error.message);
     throw error;

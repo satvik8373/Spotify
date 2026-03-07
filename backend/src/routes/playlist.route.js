@@ -17,6 +17,7 @@ import {
   searchJioSaavnPlaylists
 } from "../controllers/playlist.controller.js";
 import { firebaseAuth, optionalFirebaseAuth } from "../middleware/firebase-auth.middleware.js";
+import { createShareLink, getSharedPlaylist } from "../services/moodPlaylist/shareHandler.js";
 
 const router = Router();
 
@@ -67,5 +68,93 @@ router.delete('/:id/songs', firebaseAuth, removeSongFromPlaylist);
 
 // Toggle featured status (admin only)
 router.patch('/:id/featured', firebaseAuth, toggleFeatured);
+
+// Share playlist - Create shareable link (authenticated)
+// POST /api/playlists/:id/share
+// Requirements: 10.1, 10.3, 10.4, 10.5
+router.post('/:id/share', firebaseAuth, async (req, res) => {
+  try {
+    const playlistId = req.params.id;
+    const userId = req.auth.uid;
+    
+    // Call share handler service
+    const result = await createShareLink(playlistId, userId);
+    
+    if (!result.success) {
+      // Determine appropriate status code based on error type
+      let statusCode = 500;
+      if (result.error === 'Playlist not found') {
+        statusCode = 404;
+      } else if (result.error === 'Permission denied') {
+        statusCode = 403;
+      }
+      
+      return res.status(statusCode).json({
+        success: false,
+        error: result.error,
+        message: result.message,
+      });
+    }
+    
+    // Return success response with share URL and ID
+    return res.status(200).json({
+      success: true,
+      shareUrl: result.shareUrl,
+      shareId: result.shareId,
+      message: result.message,
+    });
+  } catch (error) {
+    console.error('Error in share playlist endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: 'Something went wrong. Please try again.',
+    });
+  }
+});
+
+// Access shared playlist - Public endpoint (no authentication required)
+// GET /api/playlists/share/:shareId
+// Requirements: 10.4, 10.5
+router.get('/share/:shareId', async (req, res) => {
+  try {
+    const shareId = req.params.shareId;
+    
+    // Call share handler service
+    const result = await getSharedPlaylist(shareId);
+    
+    if (!result.success) {
+      // Determine appropriate status code based on error type
+      let statusCode = 500;
+      if (result.error === 'Share not found') {
+        statusCode = 404;
+      } else if (result.error === 'Playlist not found') {
+        statusCode = 404;
+      } else if (result.error === 'Playlist not public') {
+        statusCode = 403;
+      }
+      
+      return res.status(statusCode).json({
+        success: false,
+        error: result.error,
+        message: result.message,
+      });
+    }
+    
+    // Return success response with playlist data
+    return res.status(200).json({
+      success: true,
+      playlist: result.playlist,
+      shareInfo: result.shareInfo,
+    });
+  } catch (error) {
+    console.error('Error in get shared playlist endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: 'Unable to load the shared playlist. Please try again.',
+    });
+  }
+});
 
 export default router; 

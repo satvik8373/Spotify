@@ -15,7 +15,7 @@ export const AdContainer = ({ className = '' }: AdContainerProps) => {
     script.async = true;
     script.setAttribute('data-cfasync', 'false');
     script.src = 'https://pl28828967.effectivegatecpm.com/4473542c95a69467ff6331ad52d1452e/invoke.js';
-    
+
     document.body.appendChild(script);
     scriptLoaded.current = true;
 
@@ -28,22 +28,22 @@ export const AdContainer = ({ className = '' }: AdContainerProps) => {
   }, []);
 
   return (
-    <div className={`w-full flex flex-col items-center gap-6 my-6 ${className}`}>
+    <div className={`w-full flex flex-row flex-wrap justify-center items-center gap-6 my-6 ${className}`}>
       {/* Primary Ad Container */}
-      <div 
+      <div
         id="container-4473542c95a69467ff6331ad52d1452e"
         className="max-w-full overflow-hidden"
       />
-      
+
       {/* Adsterra Banner */}
       <div className="flex justify-center">
-        <a 
-          href="" 
+        <a
+          href=""
           rel="nofollow"
           className="block transition-opacity hover:opacity-80"
         >
-          <img 
-            alt="banner" 
+          <img
+            alt="banner"
             src="https://landings-cdn.adsterratech.com/referralBanners/gif/250x250_adsterra_reff.gif"
             className="max-w-full h-auto"
             loading="lazy"

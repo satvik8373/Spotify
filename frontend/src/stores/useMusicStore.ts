@@ -64,6 +64,17 @@ async function fetchMusicJson(endpoint: string, params: Record<string, any> = {}
   });
 }
 
+function decodeHtml(html: string | undefined): string {
+  if (!html) return '';
+  return String(html)
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
 // Convert JioSaavn track to IndianSong format
 function convertSaavnTrack(item: any): IndianSong {
   // Get the best quality download URL (prefer 320kbps, then 160kbps, then 96kbps)
@@ -88,11 +99,13 @@ function convertSaavnTrack(item: any): IndianSong {
     imageUrl = item.image;
   }
 
+  const rawArtist = item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item);
+
   return {
     id: item.id,
-    title: item.name || item.title,
-    artist: item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item),
-    album: item.album?.name || item.album,
+    title: decodeHtml(item.name || item.title),
+    artist: decodeHtml(rawArtist),
+    album: decodeHtml(item.album?.name || item.album),
     year: item.year,
     duration: item.duration,
     image: imageUrl,

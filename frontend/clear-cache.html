@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clear Mavrixfy Cache</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+    
+    .status {
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+    
+    .status.info {
+      background: #e3f2fd;
+      color: #1976d2;
+      border: 2px solid #1976d2;
+    }
+    
+    .status.success {
+      background: #e8f5e9;
+      color: #388e3c;
+      border: 2px solid #388e3c;
+    }
+    
+    .status.warning {
+      background: #fff3e0;
+      color: #f57c00;
+      border: 2px solid #f57c00;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 15px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button.secondary {
+      background: #f5f5f5;
+      color: #333;
+    }
+    
+    .cache-list {
+      background: #f9f9f9;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 20px 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .cache-item {
+      padding: 8px;
+      margin: 5px 0;
+      background: white;
+      border-radius: 5px;
+      font-size: 14px;
+      color: #666;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .instructions {
+      background: #f5f5f5;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    
+    .instructions h3 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+    
+    .instructions ol {
+      margin-left: 20px;
+      color: #666;
+      line-height: 1.8;
+    }
+    
+    .emoji {
+      font-size: 48px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="emoji">🔥</div>
+    <h1>Clear Mavrixfy Cache</h1>
+    <p class="subtitle">Clear cached JioSaavn playlists to see the new trending playlist</p>
+    
+    <div id="status" class="status info">
+      Checking cache...
+    </div>
+    
+    <div id="cacheList" class="cache-list" style="display: none;">
+      <!-- Cache items will be listed here -->
+    </div>
+    
+    <button id="clearBtn" onclick="clearCache()">
+      🗑️ Clear JioSaavn Cache
+    </button>
+    
+    <button class="secondary" onclick="clearAllCache()">
+      🧹 Clear All Cache (Nuclear Option)
+    </button>
+    
+    <button class="secondary" onclick="reloadApp()">
+      🔄 Reload App
+    </button>
+    
+    <div class="instructions">
+      <h3>📝 What This Does</h3>
+      <ol>
+        <li>Finds all cached JioSaavn playlists in localStorage</li>
+        <li>Removes them so fresh data can be fetched</li>
+        <li>Reloads the app to show the new trending playlist</li>
+      </ol>
+    </div>
+    
+    <div class="instructions" style="margin-top: 15px;">
+      <h3>✅ After Clearing Cache</h3>
+      <ol>
+        <li>Make sure backend is running on port 5000</li>
+        <li>Make sure frontend is running</li>
+        <li>Go to the home page</li>
+        <li>Look for "🔥 Trending Now - Mavrixfy" as the FIRST playlist!</li>
+      </ol>
+    </div>
+  </div>
+  
+  <script>
+    function checkCache() {
+      const cacheKeys = Object.keys(localStorage).filter(key => key.startsWith('jiosaavn-'));
+      const statusDiv = document.getElementById('status');
+      const cacheListDiv = document.getElementById('cacheList');
+      
+      if (cacheKeys.length === 0) {
+        statusDiv.className = 'status success';
+        statusDiv.textContent = '✅ No JioSaavn cache found. You\'re all set!';
+        cacheListDiv.style.display = 'none';
+      } else {
+        statusDiv.className = 'status warning';
+        statusDiv.textContent = `⚠️ Found ${cacheKeys.length} cached items. Click "Clear Cache" to remove them.`;
+        
+        cacheListDiv.style.display = 'block';
+        cacheListDiv.innerHTML = '<strong>Cached items:</strong><br>' + 
+          cacheKeys.map(key => `<div class="cache-item">${key}</div>`).join('');
+      }
+    }
+    
+    function clearCache() {
+      const cacheKeys = Object.keys(localStorage).filter(key => key.startsWith('jiosaavn-'));
+      
+      if (cacheKeys.length === 0) {
+        alert('No cache to clear!');
+        return;
+      }
+      
+      cacheKeys.forEach(key => {
+        localStorage.removeItem(key);
+      });
+      
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = 'status success';
+      statusDiv.textContent = `✅ Cleared ${cacheKeys.length} cached items! Reload the app to see changes.`;
+      
+      document.getElementById('cacheList').style.display = 'none';
+      
+      // Auto reload after 2 seconds
+      setTimeout(() => {
+        if (confirm('Cache cleared! Reload the app now?')) {
+          reloadApp();
+        }
+      }, 1000);
+    }
+    
+    function clearAllCache() {
+      if (!confirm('This will clear ALL localStorage data. Are you sure?')) {
+        return;
+      }
+      
+      const count = localStorage.length;
+      localStorage.clear();
+      
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = 'status success';
+      statusDiv.textContent = `✅ Cleared all ${count} items from localStorage!`;
+      
+      document.getElementById('cacheList').style.display = 'none';
+      
+      setTimeout(() => {
+        if (confirm('All cache cleared! Reload the app now?')) {
+          reloadApp();
+        }
+      }, 1000);
+    }
+    
+    function reloadApp() {
+      // Try to reload the main app
+      if (window.opener) {
+        window.opener.location.reload();
+        alert('App reloaded! You can close this window.');
+      } else {
+        // If opened directly, try to navigate to the app
+        const appUrl = window.location.origin;
+        window.location.href = appUrl;
+      }
+    }
+    
+    // Check cache on load
+    checkCache();
+    
+    // Refresh cache status every 2 seconds
+    setInterval(checkCache, 2000);
+  </script>
+</body>
+</html>

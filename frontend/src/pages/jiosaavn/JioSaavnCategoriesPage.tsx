@@ -4,7 +4,7 @@ import { ArrowLeft, Music, TrendingUp, Sparkles } from 'lucide-react';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 import { Button } from '@/components/ui/button';
 import { JioSaavnPlaylistsSection } from '@/components/jiosaavn/JioSaavnPlaylistsSection';
-import { jioSaavnService, PLAYLIST_CATEGORIES } from '@/services/jioSaavnService';
+import { jioSaavnService, PLAYLIST_CATEGORIES, CATEGORY_ICON_MAP } from '@/services/jioSaavnService';
 import { cn } from '@/lib/utils';
 
 const JioSaavnCategoriesPage: React.FC = () => {
@@ -32,7 +32,7 @@ const JioSaavnCategoriesPage: React.FC = () => {
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              
+
               <div className="flex-1">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <Music className="w-6 h-6 text-orange-500" />
@@ -59,28 +59,33 @@ const JioSaavnCategoriesPage: React.FC = () => {
                   key={category.id}
                   onClick={() => handleCategoryClick(category.id)}
                   className="group relative p-6 rounded-lg transition-all duration-200 hover:scale-105 overflow-hidden"
-                  style={{ 
+                  style={{
                     backgroundColor: category.color + '20',
                     borderColor: category.color + '40'
                   }}
                 >
                   {/* Background gradient */}
-                  <div 
+                  <div
                     className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity"
                     style={{
                       background: `linear-gradient(135deg, ${category.color}40 0%, ${category.color}20 100%)`
                     }}
                   />
-                  
+
                   <div className="relative z-10 text-center">
-                    <div className="text-4xl mb-3">{category.icon}</div>
+                    <div className="flex justify-center mb-3">
+                      {(() => {
+                        const IconComp = CATEGORY_ICON_MAP[category.id] || Music;
+                        return <IconComp className="w-8 h-8" style={{ color: category.color }} />;
+                      })()}
+                    </div>
                     <h3 className="font-bold text-lg mb-2" style={{ color: category.color }}>
                       {category.name}
                     </h3>
                     <p className="text-white/60 text-sm leading-tight">
                       {category.description}
                     </p>
-                    
+
                     {/* Priority indicator */}
                     {category.priority >= 8 && (
                       <div className="absolute top-2 right-2">
@@ -88,10 +93,10 @@ const JioSaavnCategoriesPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Hover effect */}
-                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-current rounded-lg transition-colors" 
-                       style={{ borderColor: category.color + '60' }} />
+                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-current rounded-lg transition-colors"
+                    style={{ borderColor: category.color + '60' }} />
                 </button>
               ))}
             </div>

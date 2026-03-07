@@ -9,6 +9,7 @@ import {
     Plus,
     ChevronRight,
     ChevronLeft,
+    Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,6 +31,9 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
     const { userPlaylists, fetchUserPlaylists, fetchPublicPlaylists } = usePlaylistStore();
     const location = useLocation();
     const navigate = useNavigate();
+
+    // Check if we're on the mood playlist page
+    const isMoodPlaylistPage = location.pathname === '/mood-playlist';
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -70,7 +74,12 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
     };
 
     return (
-        <div className="hidden md:flex flex-col h-full bg-transparent w-full overflow-hidden">
+        <div className={cn(
+            "hidden md:flex flex-col h-full w-full overflow-hidden transition-colors duration-500",
+            isMoodPlaylistPage
+                ? "bg-gradient-to-b from-green-950/40 via-[#121212] to-cyan-950/40"
+                : "bg-transparent"
+        )}>
             {/* Header */}
             <div className={cn("px-3 py-3 flex items-center gap-2", isCollapsed ? "justify-center" : "justify-between")}>
                 {/* Collapse button on the left */}
@@ -158,6 +167,29 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                         )}
                     </Link>
 
+                    {/* AI Mood Generator */}
+                    <Link
+                        to="/mood-playlist"
+                        className={cn(
+                            'flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/10 transition-colors',
+                            isActive('/mood-playlist') ? 'bg-white/10' : '',
+                            isCollapsed && 'justify-center'
+                        )}
+                        title={isCollapsed ? "AI Mood Generator" : undefined}
+                    >
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-cyan-500 rounded flex items-center justify-center flex-shrink-0">
+                            <Sparkles size={16} className="text-white" fill="white" />
+                        </div>
+                        {!isCollapsed && (
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-foreground truncate">AI Mood Generator</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                    Create playlists from your mood
+                                </p>
+                            </div>
+                        )}
+                    </Link>
+
 
                     {/* Favourite Playlists (from local likes) */}
                     {!isCollapsed && <FavouritePlaylists />}
@@ -221,14 +253,25 @@ export default LeftSidebar;
 
 function FavouritePlaylists() {
     let likedIds: string[] = [];
+    let metadata: Record<string, any> = {};
     try {
         likedIds = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
+        metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
     } catch { }
 
     const { playlists } = usePlaylistStore();
     const location = useLocation();
     const isActive = (path: string) => location.pathname.startsWith(path);
-    const favs = playlists.filter(p => likedIds.includes(p._id)).slice(0, 6);
+
+    // Combine db playlists and external playlists metadata
+    const allLikedPlaylists = likedIds.map(id => {
+        const dbPlaylist = playlists.find(p => p._id === id);
+        if (dbPlaylist) return dbPlaylist;
+        if (metadata[id]) return metadata[id];
+        return null;
+    }).filter(Boolean) as any[];
+
+    const favs = allLikedPlaylists.slice(0, 6);
     if (favs.length === 0) return null;
 
     return (

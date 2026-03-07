@@ -16,3 +16,7 @@ build/
 # Temporary files
 *.tmp
 .cache/
+
+# Firebase Service Account (sensitive credentials)
+firebase-service-account.json
+*-firebase-adminsdk-*.json

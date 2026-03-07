@@ -42,8 +42,8 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
         const parsed = JSON.parse(cachedData);
         const cacheAge = Date.now() - parseInt(cachedTimeStr);
         
-        // Use cache if it's less than 6 hours old (shorter cache for fresher content)
-        if (cacheAge < 6 * 60 * 60 * 1000 && parsed.length > 0) {
+        // Use cache if it's less than 15 minutes old for fresher "live" content
+        if (cacheAge < 15 * 60 * 1000 && parsed.length > 0) {
           setPlaylists(parsed);
           return; // Don't fetch if we have valid cache
         }
@@ -52,8 +52,8 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       }
     }
     
-    // Only fetch if no valid cache exists
-    fetchPlaylists();
+    // Only fetch if no valid cache exists, force refresh for varied content
+    fetchPlaylists(true);
   }, [categoryId, limit]);
 
   const fetchPlaylists = async (forceRefresh: boolean = false) => {
@@ -92,12 +92,10 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       
       setPlaylists(data);
       
-      // Cache the data for 6 hours (shorter for fresher content) - but not when force refreshing
-      if (!forceRefresh) {
-        const now = Date.now();
-        localStorage.setItem(`jiosaavn-${categoryId}`, JSON.stringify(data));
-        localStorage.setItem(`jiosaavn-${categoryId}-time`, now.toString());
-      }
+      // Always cache the data for 15 minutes to prevent spamming API, even when force refreshing
+      const now = Date.now();
+      localStorage.setItem(`jiosaavn-${categoryId}`, JSON.stringify(data));
+      localStorage.setItem(`jiosaavn-${categoryId}-time`, now.toString());
     } catch (err) {
       setError('Failed to load playlists');
       toast.error('Failed to load JioSaavn playlists');

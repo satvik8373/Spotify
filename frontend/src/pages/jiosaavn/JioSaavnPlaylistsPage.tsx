@@ -5,7 +5,7 @@ import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { JioSaavnPlaylistCard } from '@/components/jiosaavn/JioSaavnPlaylistCard';
-import { JioSaavnPlaylist, jioSaavnService, PLAYLIST_CATEGORIES, PlaylistCategory } from '@/services/jioSaavnService';
+import { JioSaavnPlaylist, jioSaavnService, PLAYLIST_CATEGORIES, PlaylistCategory, CATEGORY_ICON_MAP } from '@/services/jioSaavnService';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
@@ -21,7 +21,7 @@ import {
 const JioSaavnPlaylistsPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const [playlists, setPlaylists] = useState<JioSaavnPlaylist[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +66,8 @@ const JioSaavnPlaylistsPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      const data = await jioSaavnService.getPlaylistsByCategory(selectedCategory.id, 50);
+
+      const data = await jioSaavnService.getPlaylistsByCategory(selectedCategory.id, 50, true);
       setPlaylists(data);
     } catch (err) {
       // Error fetching JioSaavn playlists
@@ -84,12 +84,12 @@ const JioSaavnPlaylistsPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const result = await jioSaavnService.smartSearch(searchQuery, 50);
       setPlaylists(result.playlists);
       setDetectedCategory(result.detectedCategory || null);
       setSearchSuggestions(result.suggestions);
-      
+
       if (result.detectedCategory) {
         toast.success(`Found ${result.playlists.length} ${result.detectedCategory.name} playlists`);
       }
@@ -105,7 +105,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
   const handlePlaylistClick = (playlist: JioSaavnPlaylist) => {
     // Add to recently played
     recentlyPlayedService.addJioSaavnPlaylist(playlist);
-    
+
     navigate(`/jiosaavn/playlist/${playlist.id}`, {
       state: { playlist }
     });
@@ -114,12 +114,12 @@ const JioSaavnPlaylistsPage: React.FC = () => {
   const handlePlayPlaylist = async (playlist: JioSaavnPlaylist) => {
     try {
       toast.loading('Loading playlist...', { id: 'jiosaavn-play' });
-      
+
       const playlistDetails = await jioSaavnService.getPlaylistDetails(playlist.id);
-      
+
       if (playlistDetails.songs && playlistDetails.songs.length > 0) {
         toast.success(`Playing "${playlist.name}"`, { id: 'jiosaavn-play' });
-        
+
         navigate(`/jiosaavn/playlist/${playlist.id}`, {
           state: { playlist, autoPlay: true }
         });
@@ -178,7 +178,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              
+
               <div className="flex-1">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <Music className="w-6 h-6 text-orange-500" />
@@ -203,8 +203,8 @@ const JioSaavnPlaylistsPage: React.FC = () => {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="bg-white/10 border-white/20 text-white hover:bg-white/15 flex items-center gap-2"
                       style={{ borderColor: selectedCategory.color + '40', color: selectedCategory.color }}
                     >
@@ -219,7 +219,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
                       Browse Categories
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    
+
                     {/* High Priority Categories */}
                     <DropdownMenuLabel className="text-xs text-muted-foreground">
                       TRENDING
@@ -240,9 +240,9 @@ const JioSaavnPlaylistsPage: React.FC = () => {
                         </div>
                       </DropdownMenuItem>
                     ))}
-                    
+
                     <DropdownMenuSeparator />
-                    
+
                     {/* Other Categories */}
                     <DropdownMenuLabel className="text-xs text-muted-foreground">
                       MORE CATEGORIES
@@ -285,7 +285,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
 
               {/* Category Detection Banner */}
               {detectedCategory && (
-                <div 
+                <div
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm"
                   style={{ backgroundColor: detectedCategory.color + '20', borderColor: detectedCategory.color + '40' }}
                 >
@@ -302,17 +302,17 @@ const JioSaavnPlaylistsPage: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div key={i} className="space-y-3">
-                    <div 
-                      className="w-full aspect-square rounded skeleton-pulse" 
-                      style={{animationDelay: `${i * 0.1}s`}}
+                    <div
+                      className="w-full aspect-square rounded skeleton-pulse"
+                      style={{ animationDelay: `${i * 0.1}s` }}
                     ></div>
-                    <div 
-                      className="h-4 rounded skeleton-pulse" 
-                      style={{animationDelay: `${i * 0.1 + 0.1}s`}}
+                    <div
+                      className="h-4 rounded skeleton-pulse"
+                      style={{ animationDelay: `${i * 0.1 + 0.1}s` }}
                     ></div>
-                    <div 
-                      className="h-3 rounded skeleton-pulse w-3/4" 
-                      style={{animationDelay: `${i * 0.1 + 0.2}s`}}
+                    <div
+                      className="h-3 rounded skeleton-pulse w-3/4"
+                      style={{ animationDelay: `${i * 0.1 + 0.2}s` }}
                     ></div>
                   </div>
                 ))}
@@ -338,7 +338,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
                     </Button>
                   )}
                 </div>
-                
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {playlists.map((playlist) => (
                     <JioSaavnPlaylistCard
@@ -354,10 +354,15 @@ const JioSaavnPlaylistsPage: React.FC = () => {
               </>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="text-6xl mb-4">{selectedCategory.icon}</div>
+                <div className="mb-4">
+                  {(() => {
+                    const EmptyIcon = CATEGORY_ICON_MAP[selectedCategory.id] || Music;
+                    return <EmptyIcon className="w-16 h-16 text-white/30" style={{ color: selectedCategory.color + '60' }} />;
+                  })()}
+                </div>
                 <h3 className="text-xl font-semibold mb-2">No playlists found</h3>
                 <p className="text-white/60 mb-4">
-                  {searchQuery 
+                  {searchQuery
                     ? `No results for "${searchQuery}"`
                     : `No ${selectedCategory.name.toLowerCase()} playlists available`
                   }

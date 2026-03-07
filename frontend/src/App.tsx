@@ -28,6 +28,10 @@ const About = lazy(() => import('./pages/About'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const AccountDeletion = lazy(() => import('./pages/AccountDeletion'));
 
+// AI Mood Playlist page
+const MoodPlaylistPage = lazy(() => import('./pages/MoodPlaylistPage'));
+const MoodHistoryPage = lazy(() => import('./pages/mood-history/MoodHistoryPage'));
+
 // JioSaavn pages
 const JioSaavnPlaylistPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistPage'));
 const JioSaavnPlaylistsPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistsPage'));
@@ -261,6 +265,14 @@ const router = createBrowserRouter(
 				{
 					path: '/settings',
 					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SettingsPage /></Suspense></AuthGate>
+				},
+				{
+					path: '/mood-playlist',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><MoodPlaylistPage /></Suspense></AuthGate>
+				},
+				{
+					path: '/mood-history',
+					element: <AuthGate allowGuest={false}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><MoodHistoryPage /></Suspense></AuthGate>
 				},
 				{
 					path: '*',

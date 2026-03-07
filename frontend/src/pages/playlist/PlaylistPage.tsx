@@ -78,10 +78,10 @@ function AddSongsDialog({
   const handleSearch = () => {
     if (searchQuery.trim()) {
       setIsSearching(true);
-      
+
       // Store the query for potential fallback use
       const query = searchQuery;
-      
+
       searchIndianSongs(query)
         .then(() => {
           // Check if we got any results
@@ -110,9 +110,9 @@ function AddSongsDialog({
         duration: '180'
       }
     ];
-    
+
     // Update the search results with fallback data
-    useMusicStore.setState({ 
+    useMusicStore.setState({
       indianSearchResults: fallbackResults,
       isIndianMusicLoading: false
     });
@@ -127,7 +127,7 @@ function AddSongsDialog({
   const handleAddSong = async (song: Song) => {
     try {
       await usePlaylistStore.getState().addSongToPlaylist(playlistId, song._id);
-      
+
       // Force refresh the playlist to show the new song immediately
       setTimeout(async () => {
         await usePlaylistStore.getState().forceRefreshPlaylistById(playlistId);
@@ -141,10 +141,10 @@ function AddSongsDialog({
     try {
       // Convert Indian song to app song format directly
       const convertedSong = useMusicStore.getState().convertIndianSongToAppSong(song);
-      
+
       // Add converted song directly to playlist without validation notification
       await usePlaylistStore.getState().addSongToPlaylist(playlistId, convertedSong);
-      
+
       // Force refresh the playlist to show the new song immediately
       setTimeout(async () => {
         await usePlaylistStore.getState().forceRefreshPlaylistById(playlistId);
@@ -191,9 +191,9 @@ function AddSongsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs 
-          defaultValue="search" 
-          value={activeTab} 
+        <Tabs
+          defaultValue="search"
+          value={activeTab}
           onValueChange={(value: string) => setActiveTab(value as 'search' | 'upload')}
         >
           <TabsList className="grid w-full grid-cols-2">
@@ -206,46 +206,46 @@ function AddSongsDialog({
               <span>Upload File</span>
             </TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="search" className="mt-4">
-        <div className="relative">
-          <Input
-            placeholder="Search for songs..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="pr-10"
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-0 top-0 h-full"
-            onClick={handleSearch}
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-        </div>
 
-        <ScrollArea className="h-[400px] pr-4 mt-4 thin-scroll">
-          {isIndianMusicLoading ? (
-            <div className="p-4"></div>
-          ) : (
-            <>
-              {isSearching && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Search Results</h3>
-                  {indianSearchResults.length > 0 ? (
-                    indianSearchResults.map(song => renderSongItem(song, true))
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-2">No results found</p>
+          <TabsContent value="search" className="mt-4">
+            <div className="relative">
+              <Input
+                placeholder="Search for songs..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="pr-10"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full"
+                onClick={handleSearch}
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <ScrollArea className="h-[400px] pr-4 mt-4 thin-scroll">
+              {isIndianMusicLoading ? (
+                <div className="p-4"></div>
+              ) : (
+                <>
+                  {isSearching && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-medium">Search Results</h3>
+                      {indianSearchResults.length > 0 ? (
+                        indianSearchResults.map(song => renderSongItem(song, true))
+                      ) : (
+                        <p className="text-sm text-muted-foreground py-2">No results found</p>
+                      )}
+                    </div>
                   )}
-                </div>
+                </>
               )}
-            </>
-          )}
-        </ScrollArea>
+            </ScrollArea>
           </TabsContent>
-          
+
           <TabsContent value="upload" className="mt-4">
             <SongFileUploader playlistId={playlistId} onClose={onClose} />
           </TabsContent>
@@ -284,7 +284,7 @@ export function PlaylistPage() {
 
   // Removed scroll position tracking for toolbar behavior
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // Get colors from album cover
   const albumColors = useAlbumColors(currentPlaylist?.imageUrl);
 
@@ -302,37 +302,37 @@ export function PlaylistPage() {
       // Use a vibrant purple-blue gradient that will definitely be visible
       return `rgba(138, 43, 226, ${opacity})`;
     }
-    
+
     const match = rgbColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
     if (match) {
       const [, r, g, b] = match;
       return `rgba(${r}, ${g}, ${b}, ${opacity})`;
     }
-    
+
     // Fallback to vibrant purple
     return `rgba(138, 43, 226, ${opacity})`;
   };
 
   // Check if the current playlist is playing
-  const isCurrentPlaylistPlaying = playerIsPlaying && 
+  const isCurrentPlaylistPlaying = playerIsPlaying &&
     currentPlaylist?.songs.some(song => song._id === currentSong?._id);
 
   // Track shuffle state
   const [isShuffleOn, setIsShuffleOn] = useState(false);
-  
+
   // Determine if we've scrolled enough to hide other buttons
   // Removed scroll-based UI changes for toolbar; keep state for potential future use
-  
+
   // Keep shuffle state in sync with player store
   useEffect(() => {
     // Initial state
     setIsShuffleOn(usePlayerStore.getState().shuffleMode !== 'off');
-    
+
     // Subscribe to changes
     const unsubscribe = usePlayerStore.subscribe((state) => {
       setIsShuffleOn(state.shuffleMode !== 'off');
     });
-    
+
     return () => unsubscribe();
   }, []);
 
@@ -353,7 +353,7 @@ export function PlaylistPage() {
   useEffect(() => {
     // Add class to hide mobile nav
     document.body.classList.add('hide-mobile-nav');
-    
+
     // Cleanup function to remove class when leaving page
     return () => {
       document.body.classList.remove('hide-mobile-nav');
@@ -437,7 +437,7 @@ export function PlaylistPage() {
       e.preventDefault();
     }
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !id) {
       return;
     }
 
@@ -448,8 +448,16 @@ export function PlaylistPage() {
         // Unlike - don't decrease the counter, just remove from liked list
         const updatedLikes = likedPlaylists.filter((playlistId: string) => playlistId !== id);
         localStorage.setItem('liked_playlists', JSON.stringify(updatedLikes));
+
+        // Remove metadata
+        try {
+          const metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
+          delete metadata[id];
+          localStorage.setItem('liked_playlists_metadata', JSON.stringify(metadata));
+        } catch (e) { }
+
         setIsLiked(false);
-        try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch {}
+        try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch { }
       } else {
         // Like - only increment if not previously liked
         if (!likedPlaylists.includes(id)) {
@@ -457,7 +465,7 @@ export function PlaylistPage() {
           localStorage.setItem('liked_playlists', JSON.stringify(likedPlaylists));
           setIsLiked(true);
           updateMetrics('likes');
-          try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch {}
+          try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch { }
         }
       }
     } catch (error) {
@@ -472,7 +480,7 @@ export function PlaylistPage() {
   // Add pause playlist functionality
   const handlePausePlaylist = () => {
     if (isPlaying) return;
-    
+
     // Access the player store directly to toggle play state
     const playerStore = usePlayerStore.getState();
     if (playerStore.isPlaying) {
@@ -503,19 +511,19 @@ export function PlaylistPage() {
         updateMetrics('plays');
       }
 
-        // Make sure shuffle is off before playing in order
-        const playerStore = usePlayerStore.getState();
-        if (playerStore.shuffleMode !== 'off') {
-          playerStore.setShuffleMode('off');
-        }
-        
-        // Play the playlist from the beginning
-        playAlbum(currentPlaylist.songs, 0);
-        
-        // Force playback to start
-          usePlayerStore.getState().setUserInteracted();
-          usePlayerStore.getState().setIsPlaying(true);
-        
+      // Make sure shuffle is off before playing in order
+      const playerStore = usePlayerStore.getState();
+      if (playerStore.shuffleMode !== 'off') {
+        playerStore.setShuffleMode('off');
+      }
+
+      // Play the playlist from the beginning
+      playAlbum(currentPlaylist.songs, 0);
+
+      // Force playback to start
+      usePlayerStore.getState().setUserInteracted();
+      usePlayerStore.getState().setIsPlaying(true);
+
       // Reset isPlaying state after a delay
       setTimeout(() => {
         setIsPlaying(false);
@@ -544,7 +552,7 @@ export function PlaylistPage() {
     const currentSongId = playerStore.currentSong?._id || (playerStore.currentSong as any)?.id;
     const songId = song._id || (song as any).id;
     const isThisSongPlaying = currentSongId && songId && currentSongId === songId && playerStore.isPlaying;
-    
+
     // If this song is already playing, pause it instead of replaying
     if (isThisSongPlaying) {
       playerStore.setIsPlaying(false);
@@ -561,7 +569,7 @@ export function PlaylistPage() {
         try {
           const searchQuery = `${song.title} ${song.artist}`.trim();
           await useMusicStore.getState().searchIndianSongs(searchQuery);
-          
+
           const results = useMusicStore.getState().indianSearchResults;
           if (results && results.length > 0) {
             // Found a match, update the song with the audio URL
@@ -571,20 +579,20 @@ export function PlaylistPage() {
               audioUrl: foundSong.url || '',
               imageUrl: song.imageUrl || foundSong.image
             };
-            
+
             // Update the song in the playlist
-            const updatedSongs = currentPlaylist.songs.map((s, idx) => 
+            const updatedSongs = currentPlaylist.songs.map((s, idx) =>
               idx === index ? updatedSong : s
             );
-            
+
             // Play the updated song
             playAlbum(updatedSongs, index);
             toast.dismiss();
-            
+
             // Force playback to start
             usePlayerStore.getState().setUserInteracted();
             usePlayerStore.getState().setIsPlaying(true);
-            
+
             // Reset states
             setIsPlaying(false);
             return;
@@ -603,17 +611,17 @@ export function PlaylistPage() {
       }
 
       // Disable shuffle to ensure we play the selected song
-        if (playerStore.shuffleMode !== 'off') {
-          playerStore.setShuffleMode('off');
-        }
-        
+      if (playerStore.shuffleMode !== 'off') {
+        playerStore.setShuffleMode('off');
+      }
+
       // Play the selected song
-        playAlbum(currentPlaylist.songs, index);
-        
+      playAlbum(currentPlaylist.songs, index);
+
       // Start playback
-          usePlayerStore.getState().setUserInteracted();
-          usePlayerStore.getState().setIsPlaying(true);
-      
+      usePlayerStore.getState().setUserInteracted();
+      usePlayerStore.getState().setIsPlaying(true);
+
       // Vibrate on mobile devices for tactile feedback (if supported)
       if (navigator.vibrate) {
         navigator.vibrate(50);
@@ -638,9 +646,9 @@ export function PlaylistPage() {
     if (e) {
       e.stopPropagation();
       e.preventDefault();
-  }
+    }
 
-  if (!currentPlaylist) {
+    if (!currentPlaylist) {
       return;
     }
 
@@ -648,7 +656,7 @@ export function PlaylistPage() {
       // Search for the song to get its audio URL
       const searchQuery = `${song.title} ${song.artist}`.trim();
       await useMusicStore.getState().searchIndianSongs(searchQuery);
-      
+
       const results = useMusicStore.getState().indianSearchResults;
       if (results && results.length > 0) {
         // Found a match, update the song with the audio URL
@@ -658,12 +666,12 @@ export function PlaylistPage() {
           audioUrl: foundSong.url || '',
           imageUrl: song.imageUrl || foundSong.image
         };
-        
+
         // Update the song in the playlist
-        const updatedSongs = currentPlaylist.songs.map((s, idx) => 
+        const updatedSongs = currentPlaylist.songs.map((s, idx) =>
           idx === index ? updatedSong : s
         );
-        
+
         // Update the playlist with the new songs array
         // This is a simplified approach - in a real app, you would want to
         // persist this change to your backend storage
@@ -686,7 +694,7 @@ export function PlaylistPage() {
     if (confirm('Are you sure you want to delete this playlist?')) {
       try {
         await deletePlaylist(currentPlaylist!._id);
-      navigate('/library');
+        navigate('/library');
       } catch (error) {
         // Silent error handling
       }
@@ -709,21 +717,21 @@ export function PlaylistPage() {
   // Add a state for the regenerate cover dialog
   const [showRegenerateCoverDialog, setShowRegenerateCoverDialog] = useState(false);
   const [isRegeneratingCover, setIsRegeneratingCover] = useState(false);
-  
+
   // Add a function to handle regenerating the cover
   const handleRegenerateCover = async () => {
     if (!currentPlaylist || !currentPlaylist.songs || currentPlaylist.songs.length === 0) {
       toast.error('Playlist needs songs to generate a cover');
       return;
     }
-    
+
     setIsRegeneratingCover(true);
     try {
       const updatedPlaylist = await updatePlaylistCoverFromSongs(
-        currentPlaylist._id, 
+        currentPlaylist._id,
         currentPlaylist.songs
       );
-      
+
       // Update the playlist in the local state
       if (updatedPlaylist) {
         // Update the playlist in our store
@@ -731,12 +739,12 @@ export function PlaylistPage() {
           currentPlaylist._id,
           { imageUrl: updatedPlaylist.imageUrl }
         );
-        
+
         // Fetch the updated playlist to refresh our local state
         if (id) {
           await usePlaylistStore.getState().forceRefreshPlaylistById(id);
         }
-        
+
         toast.success('Playlist cover updated');
       }
     } catch (error) {
@@ -749,7 +757,7 @@ export function PlaylistPage() {
   };
 
   if (isLoading) {
-  return <div className="min-h-screen bg-[#121212]"></div>;
+    return <div className="min-h-screen bg-[#121212]"></div>;
   }
 
   if (!currentPlaylist) {
@@ -757,17 +765,17 @@ export function PlaylistPage() {
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <h1 className="text-2xl font-bold">Playlist not found</h1>
         <Button onClick={() => navigate('/library')}>Go to Library</Button>
-        </div>
+      </div>
     );
   }
 
-          const isOwner = userId === currentPlaylist.createdBy.uid;
+  const isOwner = userId === currentPlaylist.createdBy.uid;
   const totalDuration = currentPlaylist.songs.reduce((acc, song) => acc + song.duration, 0);
   const formattedTotalDuration = formatTime(totalDuration);
   const totalSongs = currentPlaylist.songs.length;
-  
+
   // Removed unused headerOpacity
-  
+
   // Removed unused headerBgColor
 
   // Handle back button click
@@ -778,11 +786,11 @@ export function PlaylistPage() {
   return (
     <div ref={containerRef} className="flex flex-col min-h-full bg-background text-foreground playlist-fullscreen">
       {/* Sticky header - shows when scrolling */}
-      <div 
+      <div
         className={cn(
           "fixed top-0 left-0 right-0 z-50 transition-all duration-300 backdrop-blur-md",
-          showStickyHeader 
-            ? "translate-y-0 opacity-100" 
+          showStickyHeader
+            ? "translate-y-0 opacity-100"
             : "-translate-y-full opacity-0"
         )}
         style={{
@@ -840,7 +848,7 @@ export function PlaylistPage() {
             <ChevronLeft className="h-5 w-5" />
           </Button>
         </div>
-        
+
         {/* Extended Spotify-style gradient background */}
         <div
           className="relative"
@@ -866,21 +874,21 @@ export function PlaylistPage() {
                   alt={currentPlaylist.name}
                   className="w-full h-full object-cover relative z-10 rounded"
                 />
-                
+
                 {/* Regenerate cover overlay - only for playlist owners */}
                 {isOwner && (
                   <div className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 rounded">
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       className="text-white hover:bg-white/20"
                       onClick={() => setShowRegenerateCoverDialog(true)}
                     >
                       <ImageIcon className="mr-2 h-4 w-4" />
                       Update Cover
                     </Button>
-              </div>
+                  </div>
                 )}
-                </div>
+              </div>
 
               {/* Playlist info with Spotify-like sizing */}
               <div className="flex flex-col justify-end text-foreground text-center md:text-left w-full">
@@ -888,12 +896,12 @@ export function PlaylistPage() {
                 <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2 tracking-tight playlist-text-shadow leading-tight">
                   {currentPlaylist.name}
                 </h1>
-                
+
                 {/* Description - more compact */}
                 {currentPlaylist.description && (
                   <p className="text-sm text-muted-foreground mb-2 max-w-xl mx-auto md:mx-0 truncate playlist-text-shadow">{currentPlaylist.description}</p>
                 )}
-                
+
                 {/* Metadata without profile avatar */}
                 <div className="flex items-center gap-1 text-sm text-muted-foreground justify-center md:justify-start flex-wrap playlist-text-shadow">
                   <span className="font-medium text-foreground">{currentPlaylist.createdBy.fullName}</span>
@@ -948,8 +956,8 @@ export function PlaylistPage() {
               </Button>
 
               {/* Share button - normal size */}
-              <SharePlaylist 
-                playlist={currentPlaylist} 
+              <SharePlaylist
+                playlist={currentPlaylist}
                 trigger={
                   <Button
                     variant="ghost"
@@ -973,7 +981,7 @@ export function PlaylistPage() {
                     title="More options"
                   >
                     <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+                      <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
                     </svg>
                   </Button>
                 </DropdownMenuTrigger>
@@ -985,7 +993,7 @@ export function PlaylistPage() {
                     <Plus className="h-4 w-4 mr-2" />
                     Add Songs
                   </DropdownMenuItem>
-                  
+
                   <DropdownMenuItem
                     onClick={() => openAddSongsDialog('upload')}
                     className="hover:bg-accent"
@@ -993,7 +1001,7 @@ export function PlaylistPage() {
                     <FileText className="h-4 w-4 mr-2" />
                     Upload File
                   </DropdownMenuItem>
-                  
+
                   {isOwner && (
                     <>
                       <DropdownMenuItem
@@ -1003,7 +1011,7 @@ export function PlaylistPage() {
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit Playlist
                       </DropdownMenuItem>
-                      
+
                       <DropdownMenuItem
                         onClick={() => setIsEditMode(!isEditMode)}
                         className="hover:bg-accent"
@@ -1011,7 +1019,7 @@ export function PlaylistPage() {
                         <Pencil className="h-4 w-4 mr-2" />
                         {isEditMode ? 'Exit Edit Mode' : 'Edit Songs'}
                       </DropdownMenuItem>
-                      
+
                       <DropdownMenuItem
                         onClick={handleDeletePlaylist}
                         className="hover:bg-accent text-red-500 hover:text-red-600"
@@ -1056,7 +1064,7 @@ export function PlaylistPage() {
         <div className="px-4 sm:px-6 pb-32 md:pb-24 relative">
           {/* Add a subtle overlay to help with text readability over the gradient */}
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/10 to-background pointer-events-none"></div>
-          
+
           {currentPlaylist.songs.length > 0 ? (
             <div className="relative z-10">
               {/* Header row with better spacing */}
@@ -1076,199 +1084,199 @@ export function PlaylistPage() {
                 const songId = song._id || (song as any).id;
                 const isCurrentSong = currentSongId && songId && currentSongId === songId;
                 const isThisSongPlaying = isCurrentSong && playerIsPlaying;
-                
+
                 return (
-                <div
-                  key={song._id}
-                  className="mx-[-16px]"
-                >
                   <div
-                    className={cn(
-                      'grid grid-cols-[40px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)_48px] items-center py-2 px-4 rounded group playlist-song-row',
-                      'md:transition-colors md:duration-200 active:bg-white/5',
-                      isCurrentSong && 'bg-white/10',
-                      !song.audioUrl && 'opacity-60'
-                    )}
-                    onClick={() => handlePlaySong(song, index)}
+                    key={song._id}
+                    className="mx-[-16px]"
                   >
-                    {/* Track number/play button - normal size */}
-                    <div className="flex items-center justify-center">
-                      {isThisSongPlaying ? (
-                        <div className="w-8 h-8 flex items-center justify-center">
-                          <div className="w-3 h-3 bg-green-500 rounded-sm animate-pulse"></div>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="text-gray-400 md:group-hover:hidden flex items-center justify-center w-8">{index + 1}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-white p-0 hidden md:group-hover:flex"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlaySong(song, index);
-                          }}
-                        >
-                            <Play className="h-4 w-4 ml-0.5" />
-                        </Button>
-                        </>
-                    )}
-                  </div>
-                    
-                    {/* Song info with proper spacing */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={cn(
-                        "h-10 w-10 flex-shrink-0 overflow-hidden rounded",
-                        isCurrentSong && "shadow-md"
-                      )}>
-                        <img
-                          src={song.imageUrl || '/default-song.jpg'}
-                        alt={song.title}
-                          className="h-full w-full object-cover"
-                      />
-                        </div>
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className={cn(
-                          "font-medium truncate text-base",
-                          isCurrentSong && "text-green-500"
-                        )}>
-                          {song.title}
-                        </span>
-                        <span className="text-sm text-muted-foreground truncate whitespace-nowrap overflow-hidden">
-                          {song.artist}
-                        </span>
-                      </div>
-                  </div>
-                    
-                    {/* Album name (desktop only) */}
-                    <div className="text-muted-foreground text-sm truncate hidden md:block">
-                      {song.title}
-                    </div>
-                    
-                    {/* Date added (desktop only) */}
-                    <div className="text-muted-foreground text-sm truncate hidden md:block">
-                      {song.createdAt
-                        ? new Date(song.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-                        : '3 days ago'}
-                    </div>
-                    
-                    {/* Actions column with normal sizes */}
-                    <div className="flex items-center justify-end gap-2">
-                      {/* Like button - normal size */}
-                      <div className="hidden md:block md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Add to liked songs logic here
-                          }}
-                          title="Save to your Liked Songs"
-                        >
-                          <Heart className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      {/* Duration */}
-                      <span className="text-sm text-muted-foreground w-12 text-right">{formatTime(song.duration)}</span>
-
-                      {/* More options - normal size */}
-                      <div className="hidden md:block md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                    <div
+                      className={cn(
+                        'grid grid-cols-[40px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[40px_4fr_2fr_minmax(120px,1fr)_48px] items-center py-2 px-4 rounded group playlist-song-row',
+                        'md:transition-colors md:duration-200 active:bg-white/5',
+                        isCurrentSong && 'bg-white/10',
+                        !song.audioUrl && 'opacity-60'
+                      )}
+                      onClick={() => handlePlaySong(song, index)}
+                    >
+                      {/* Track number/play button - normal size */}
+                      <div className="flex items-center justify-center">
+                        {isThisSongPlaying ? (
+                          <div className="w-8 h-8 flex items-center justify-center">
+                            <div className="w-3 h-3 bg-green-500 rounded-sm animate-pulse"></div>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="text-gray-400 md:group-hover:hidden flex items-center justify-center w-8">{index + 1}</span>
                             <Button
                               variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
+                              size="sm"
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-white p-0 hidden md:group-hover:flex"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                handlePlaySong(song, index);
                               }}
-                              title="More options"
                             >
-                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
-                              </svg>
+                              <Play className="h-4 w-4 ml-0.5" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-popover text-popover-foreground border-border">
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Add to queue functionality
-                                const { addToQueue } = usePlayerStore.getState();
-                                addToQueue(song);
-                                toast.success(`Added "${song.title}" to queue`);
-                              }}
-                              className="hover:bg-accent"
-                            >
-                              <ListPlus className="h-4 w-4 mr-2" />
-                              Add to Queue
-                            </DropdownMenuItem>
-                            
-                            {!song.audioUrl && (
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleFindAudio(song, index, e);
-                                }}
-                                className="hover:bg-accent"
-                              >
-                                <Search className="h-4 w-4 mr-2" />
-                                Find Audio
-                              </DropdownMenuItem>
-                            )}
-                            
-                            {isOwner && (
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveSong(song._id, e);
-                                }}
-                                className="hover:bg-accent text-red-500 hover:text-red-600"
-                              >
-                                <Trash className="h-4 w-4 mr-2" />
-                                Remove from Playlist
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          </>
+                        )}
                       </div>
 
-                      {/* Owner edit actions */}
-                      {isOwner && isEditMode && (
-                        <div className="transition-opacity">
+                      {/* Song info with proper spacing */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn(
+                          "h-10 w-10 flex-shrink-0 overflow-hidden rounded",
+                          isCurrentSong && "shadow-md"
+                        )}>
+                          <img
+                            src={song.imageUrl || '/default-song.jpg'}
+                            alt={song.title}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className={cn(
+                            "font-medium truncate text-base",
+                            isCurrentSong && "text-green-500"
+                          )}>
+                            {song.title}
+                          </span>
+                          <span className="text-sm text-muted-foreground truncate whitespace-nowrap overflow-hidden">
+                            {song.artist}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Album name (desktop only) */}
+                      <div className="text-muted-foreground text-sm truncate hidden md:block">
+                        {song.title}
+                      </div>
+
+                      {/* Date added (desktop only) */}
+                      <div className="text-muted-foreground text-sm truncate hidden md:block">
+                        {song.createdAt
+                          ? new Date(song.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                          : '3 days ago'}
+                      </div>
+
+                      {/* Actions column with normal sizes */}
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Like button - normal size */}
+                        <div className="hidden md:block md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10 p-0"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleRemoveSong(song._id, e);
+                              // Add to liked songs logic here
                             }}
-                            title="Remove song"
+                            title="Save to your Liked Songs"
                           >
-                            <Trash className="h-4 w-4" />
+                            <Heart className="h-4 w-4" />
                           </Button>
                         </div>
-                      )}
-                      
-                      {!song.audioUrl && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity text-muted-foreground hover:text-foreground p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFindAudio(song, index, e);
-                          }}
-                        >
-                          <Search className="h-4 w-4" />
-                        </Button>
-                      )}
+
+                        {/* Duration */}
+                        <span className="text-sm text-muted-foreground w-12 text-right">{formatTime(song.duration)}</span>
+
+                        {/* More options - normal size */}
+                        <div className="hidden md:block md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                                title="More options"
+                              >
+                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 16 16">
+                                  <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
+                                </svg>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-popover text-popover-foreground border-border">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Add to queue functionality
+                                  const { addToQueue } = usePlayerStore.getState();
+                                  addToQueue(song);
+                                  toast.success(`Added "${song.title}" to queue`);
+                                }}
+                                className="hover:bg-accent"
+                              >
+                                <ListPlus className="h-4 w-4 mr-2" />
+                                Add to Queue
+                              </DropdownMenuItem>
+
+                              {!song.audioUrl && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleFindAudio(song, index, e);
+                                  }}
+                                  className="hover:bg-accent"
+                                >
+                                  <Search className="h-4 w-4 mr-2" />
+                                  Find Audio
+                                </DropdownMenuItem>
+                              )}
+
+                              {isOwner && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveSong(song._id, e);
+                                  }}
+                                  className="hover:bg-accent text-red-500 hover:text-red-600"
+                                >
+                                  <Trash className="h-4 w-4 mr-2" />
+                                  Remove from Playlist
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        {/* Owner edit actions */}
+                        {isOwner && isEditMode && (
+                          <div className="transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveSong(song._id, e);
+                              }}
+                              title="Remove song"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+
+                        {!song.audioUrl && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity text-muted-foreground hover:text-foreground p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFindAudio(song, index, e);
+                            }}
+                          >
+                            <Search className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
                 );
               })}
             </div>
@@ -1296,7 +1304,7 @@ export function PlaylistPage() {
               <p className="mt-3 text-muted-foreground max-w-md">
                 Add some songs to your playlist by clicking the "Add songs" button.
               </p>
-              <Button 
+              <Button
                 onClick={() => openAddSongsDialog('search')}
                 className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
               >
@@ -1347,7 +1355,7 @@ export function PlaylistPage() {
               Create a new cover art from your playlist's songs
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-col gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               {/* Preview of existing songs for the collage */}
@@ -1360,35 +1368,35 @@ export function PlaylistPage() {
                   />
                 </div>
               ))}
-              
+
               {/* Fill empty slots with placeholder if needed */}
               {Array.from({ length: Math.max(0, 4 - currentPlaylist.songs.length) }).map((_, index) => (
-                <div 
-                  key={`empty-${index}`} 
+                <div
+                  key={`empty-${index}`}
                   className="aspect-square bg-zinc-800 rounded flex items-center justify-center"
                 >
                   <Music2 className="h-8 w-8 text-zinc-600" />
                 </div>
               ))}
             </div>
-            
+
             <p className="text-sm text-zinc-400">
               {currentPlaylist.songs.length > 0
                 ? 'This will create a 4-grid collage using your playlist songs as cover art.'
                 : 'Add songs to your playlist first to generate a cover.'}
             </p>
           </div>
-          
+
           <div className="flex justify-end gap-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowRegenerateCoverDialog(false)}
               className="bg-transparent border-zinc-700 text-white hover:bg-zinc-800"
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleRegenerateCover} 
+            <Button
+              onClick={handleRegenerateCover}
               disabled={isRegeneratingCover || currentPlaylist.songs.length === 0}
               className="bg-green-500 text-black hover:bg-green-600"
             >

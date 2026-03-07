@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mavrixfy AI - Your Vibe is Waiting</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d7ff2",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Spline Sans', sans-serif;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .neon-glow {
+            box-shadow: 0 0 20px rgba(13, 127, 242, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex h-screen overflow-hidden">
+<!-- Side Navigation -->
+<aside class="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-white dark:bg-background-dark/50">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-cyan-400 flex items-center justify-center text-white shadow-lg neon-glow">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-lg font-bold leading-tight tracking-tight">Mavrixfy</h1>
+<p class="text-xs text-slate-500 dark:text-slate-400">Premium Account</p>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-2 mt-4">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-sm font-medium">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">library_music</span>
+<span class="text-sm font-medium">Library</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 text-primary border border-primary/20" href="#">
+<span class="material-symbols-outlined">temp_preferences_custom</span>
+<span class="text-sm font-medium">AI Mood Generator</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="text-sm font-medium">Trending</span>
+</a>
+</nav>
+<div class="p-4 mt-auto border-t border-slate-200 dark:border-slate-800">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col relative overflow-hidden">
+<!-- Top Header -->
+<header class="h-16 flex items-center justify-between px-8 border-b border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-background-dark/50 backdrop-blur-md z-10">
+<div class="flex items-center gap-8">
+<nav class="flex items-center gap-6">
+<a class="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary transition-colors" href="#">Discover</a>
+<a class="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary transition-colors" href="#">Playlists</a>
+<a class="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary transition-colors" href="#">Radios</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-full text-sm w-64 focus:ring-2 focus:ring-primary/50 transition-all" placeholder="Search music..." type="text"/>
+</div>
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden border border-slate-300 dark:border-slate-600">
+<img class="w-full h-full object-cover" data-alt="User profile avatar placeholder" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtN83QkQ6mnFYoVk_mYw0c7y4zTEIlaUZXi9L8lDoeysIPPo8ciT76h058Rf4LqaPUVsD_BJLquYh25qh_govU9dMvdtaBVmYAGEdhvqaZDIUxck1lwmv6umnhenDFxO74TgNcxvPHBtHB6dkfwG7H3Qr5kIvRTZyGXqxV_4-c3LbJ1OJHKwbD3ylkf3XKmLUzzD9DvVIYCxpnMKAKe6RRTMY5Y2lLdFFGrLiYJ-xmS5IYWTvMzSkAe9bUpmW3s19gvwAJyus5DE2L"/>
+</div>
+</div>
+</header>
+<!-- Content -->
+<div class="flex-1 flex flex-col items-center justify-center p-8 relative">
+<!-- Futuristic Background Elements (Abstract Glowing Orbs) -->
+<div class="absolute inset-0 overflow-hidden pointer-events-none">
+<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[150px]"></div>
+</div>
+<!-- Empty State Illustration/Container -->
+<div class="max-w-2xl w-full flex flex-col items-center text-center space-y-8 relative z-10">
+<!-- Glassmorphism Visual -->
+<div class="relative w-72 h-72 flex items-center justify-center">
+<!-- Abstract Glass Rings -->
+<div class="absolute inset-0 rounded-full border border-white/10 glass-card animate-pulse"></div>
+<div class="absolute inset-8 rounded-full border border-white/5 glass-card" style="animation-delay: 1s"></div>
+<!-- Center Glowing Orb -->
+<div class="w-32 h-32 rounded-full bg-gradient-to-tr from-primary via-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_60px_rgba(13,127,242,0.6)] relative overflow-hidden">
+<span class="material-symbols-outlined text-white text-5xl">auto_awesome</span>
+<!-- Animated reflection shine -->
+<div class="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12"></div>
+</div>
+<!-- Floaties -->
+<div class="absolute top-0 right-4 w-12 h-12 rounded-xl glass-card flex items-center justify-center rotate-12">
+<span class="material-symbols-outlined text-primary text-xl">music_note</span>
+</div>
+<div class="absolute bottom-4 left-0 w-14 h-14 rounded-full glass-card flex items-center justify-center -rotate-12">
+<span class="material-symbols-outlined text-cyan-400 text-2xl">bubble_chart</span>
+</div>
+</div>
+<!-- Typography -->
+<div class="space-y-4">
+<h2 class="text-4xl md:text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+                            Your vibe is waiting.
+                        </h2>
+<p class="text-lg text-slate-600 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                            Describe your mood to generate your first custom AI playlist. Whether you're feeling <span class="text-primary italic">midnight neon</span> or <span class="text-cyan-500 italic">quiet morning</span>.
+                        </p>
+</div>
+<!-- CTA Button -->
+<div class="pt-4">
+<button class="px-10 py-4 bg-gradient-to-r from-primary to-cyan-500 text-white font-bold rounded-full shadow-lg hover:shadow-primary/40 transition-all hover:scale-105 active:scale-95 flex items-center gap-3 group">
+<span class="material-symbols-outlined">bolt</span>
+<span class="text-lg tracking-wide">Start Generating</span>
+<span class="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+</div>
+<!-- Footer Info -->
+<div class="pt-12 flex flex-col items-center gap-2 opacity-50">
+<p class="text-xs uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-slate-400">Powered by Mavrixfy AI Engine</p>
+<div class="h-1 w-12 rounded-full bg-gradient-to-r from-primary to-cyan-500"></div>
+</div>
+</div>
+</div>
+<!-- Bottom Player Bar (Mockup Placeholder) -->
+<footer class="h-20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 flex items-center px-8 z-20">
+<div class="flex items-center gap-4 w-1/3">
+<div class="w-12 h-12 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">music_note</span>
+</div>
+<div>
+<div class="text-sm font-bold">Not playing</div>
+<div class="text-xs text-slate-500">Select a vibe to start</div>
+</div>
+</div>
+<div class="flex-1 flex flex-col items-center gap-1">
+<div class="flex items-center gap-6">
+<span class="material-symbols-outlined text-slate-400 cursor-not-allowed">shuffle</span>
+<span class="material-symbols-outlined text-slate-400 cursor-not-allowed">skip_previous</span>
+<button class="w-10 h-10 rounded-full bg-slate-900 dark:bg-white text-white dark:text-background-dark flex items-center justify-center">
+<span class="material-symbols-outlined fill-[1]">play_arrow</span>
+</button>
+<span class="material-symbols-outlined text-slate-400 cursor-not-allowed">skip_next</span>
+<span class="material-symbols-outlined text-slate-400 cursor-not-allowed">repeat</span>
+</div>
+<div class="w-full max-w-md h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-0"></div>
+</div>
+</div>
+<div class="w-1/3 flex justify-end items-center gap-4">
+<span class="material-symbols-outlined text-slate-400">lyrics</span>
+<span class="material-symbols-outlined text-slate-400">queue_music</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400">volume_up</span>
+<div class="w-24 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-slate-400 dark:bg-slate-500 w-1/2"></div>
+</div>
+</div>
+</div>
+</footer>
+</main>
+</div>
+</body></html>

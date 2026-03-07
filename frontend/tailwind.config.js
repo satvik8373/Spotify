@@ -82,6 +82,10 @@ export default {
           from: { opacity: 0, transform: "scale(0.95)" },
           to: { opacity: 1, transform: "scale(1)" },
         },
+        shine: {
+          "0%": { transform: "translateX(-100%) skewX(-12deg)" },
+          "100%": { transform: "translateX(200%) skewX(-12deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -89,6 +93,7 @@ export default {
         shimmer: "shimmer 2s infinite",
         fadeIn: "fadeIn 0.3s ease-out",
         scaleIn: "scaleIn 0.3s ease-out",
+        shine: "shine 3s ease-in-out infinite",
       },
     },
   },

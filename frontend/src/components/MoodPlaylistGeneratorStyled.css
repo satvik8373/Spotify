@@ -1,0 +1,22 @@
+/* Styled wrapper for MoodPlaylistGenerator */
+.mood-generator-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.mood-generator-styled {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .mood-generator-wrapper {
+    width: 100%;
+    height: 100%;
+  }
+}

@@ -25,6 +25,7 @@ import statRoutes from "./routes/stat.route.js";
 import spotifyRoutes from "./routes/spotify.route.js";
 import musicRoutes from "./routes/music.route.js";
 import playlistRoutes from "./routes/playlist.route.js";
+import moodPlaylistRoutes from "./routes/moodPlaylist.route.js";
 import uploadRoutes from "./routes/upload.route.js";
 
 import likedSongRoutes from "./routes/likedSong.route.js";
@@ -35,6 +36,7 @@ import facebookRoutes from "./routes/facebook.route.js";
 import otpRoutes from "./routes/otp.route.js";
 import appRoutes from "./routes/app.route.js";
 import versionRoutes from "./routes/version.route.js";
+import smartSearchRoutes from "./routes/smartSearch.route.js";
 import { verifyEmailConfig } from "./services/email.service.js";
 
 const __dirname = path.resolve();
@@ -172,6 +174,7 @@ app.use("/api/albums", albumRoutes);
 app.use("/api/stats", statRoutes);
 app.use("/api/spotify", spotifyRoutes);
 app.use("/api/music", musicRoutes);
+app.use("/api/playlists", moodPlaylistRoutes);
 app.use("/api/playlists", playlistRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/liked-songs", likedSongRoutes);
@@ -182,6 +185,7 @@ app.use("/api/facebook", facebookRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/app", appRoutes);
 app.use("/api/version", versionRoutes);
+app.use("/api/search", smartSearchRoutes);
 
 // Special route to handle Spotify callback directly
 app.get('/spotify-callback', (req, res) => {

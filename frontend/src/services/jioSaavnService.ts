@@ -1,4 +1,8 @@
 import axios from 'axios';
+import {
+  TrendingUp, Clapperboard, Heart, Music, PartyPopper, Dumbbell,
+  BookMarked, Radio, Globe, Globe2
+} from 'lucide-react';
 
 // Updated to use more reliable JioSaavn API endpoints with fallbacks
 const BASE_URL = 'https://saavn.sumit.co/api';
@@ -101,11 +105,25 @@ export interface JioSaavnPlaylistDetails {
   };
 }
 
+// Map of category id → Lucide React icon component
+export const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  trending: TrendingUp,
+  bollywood: Clapperboard,
+  romantic: Heart,
+  punjabi: Music,
+  party: PartyPopper,
+  workout: Dumbbell,
+  devotional: BookMarked,
+  retro: Radio,
+  regional: Globe,
+  international: Globe2
+};
+
 // Enhanced category system with 2026-focused search terms and better trending logic
 export interface PlaylistCategory {
   id: string;
   name: string;
-  icon: string;
+  icon: string; // lucide icon name key (maps to CATEGORY_ICON_MAP)
   searchTerms: string[];
   description: string;
   priority: number; // Higher priority categories show first
@@ -116,11 +134,11 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
   {
     id: 'trending',
     name: 'Trending Now',
-    icon: '🔥',
+    icon: 'trending',
     searchTerms: [
-      'trending now 2026', 'top 50 2026', 'superhits 2026', 'chartbusters 2026', 
-      'viral hits 2026', 'most played 2026', 'popular songs 2026', 'hit songs 2026', 
-      'latest hits 2026', 'trending songs 2026', 'new hits 2026', 'fresh hits 2026', 
+      'trending now 2026', 'top 50 2026', 'superhits 2026', 'chartbusters 2026',
+      'viral hits 2026', 'most played 2026', 'popular songs 2026', 'hit songs 2026',
+      'latest hits 2026', 'trending songs 2026', 'new hits 2026', 'fresh hits 2026',
       'latest trending', 'trending hindi', 'trending bollywood', 'top charts 2026',
       'weekly top 50', 'monthly hits', 'current hits', 'now playing'
     ],
@@ -131,9 +149,9 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
   {
     id: 'bollywood',
     name: 'Bollywood',
-    icon: '🎬',
+    icon: 'bollywood',
     searchTerms: [
-      'bollywood hits', 'hindi songs', 'bollywood superhits', 'hindi hit songs', 
+      'bollywood hits', 'hindi songs', 'bollywood superhits', 'hindi hit songs',
       'bollywood chartbusters', 'bollywood collection', 'best of bollywood',
       'latest bollywood', 'new bollywood', 'bollywood 2026', 'fresh bollywood',
       'bollywood top', 'hindi latest', 'bollywood new releases', 'hindi new releases',
@@ -147,7 +165,7 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
   {
     id: 'romantic',
     name: 'Romantic',
-    icon: '💕',
+    icon: 'romantic',
     searchTerms: [
       'romantic songs', 'love songs', 'romantic hits', 'love ballads',
       'romantic collection', 'bollywood romantic',
@@ -163,7 +181,7 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
   {
     id: 'punjabi',
     name: 'Punjabi',
-    icon: '🎵',
+    icon: 'punjabi',
     searchTerms: [
       'punjabi hits', 'punjabi songs', 'punjabi superhits', 'punjabi collection',
       'best of punjabi', 'punjabi chartbusters', 'punjabi top',
@@ -178,7 +196,7 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
   {
     id: 'party',
     name: 'Party',
-    icon: '🎉',
+    icon: 'party',
     searchTerms: [
       'latest party 2026', 'new party songs 2026', 'party 2026', 'fresh party 2026',
       'party songs 2026', 'dance hits 2026', 'party music 2026', 'club songs 2026',
@@ -192,7 +210,7 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
   {
     id: 'workout',
     name: 'Workout',
-    icon: '💪',
+    icon: 'workout',
     searchTerms: [
       'latest workout 2026', 'new gym songs 2026', 'workout 2026', 'fresh fitness 2026',
       'workout songs 2026', 'gym music 2026', 'fitness songs 2026', 'motivation songs 2026',
@@ -205,7 +223,7 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
   {
     id: 'devotional',
     name: 'Devotional',
-    icon: '🙏',
+    icon: 'devotional',
     searchTerms: [
       'latest devotional 2026', 'new bhakti 2026', 'devotional 2026', 'fresh spiritual 2026',
       'devotional songs 2026', 'bhakti songs 2026', 'spiritual music 2026', 'religious songs 2026',
@@ -218,7 +236,7 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
   {
     id: 'retro',
     name: 'Retro Hits',
-    icon: '📻',
+    icon: 'retro',
     searchTerms: [
       '90s hits', '2000s hits', '80s songs', 'old hits', 'retro bollywood',
       'classic songs', 'golden hits', 'evergreen songs', 'vintage hits',
@@ -231,7 +249,7 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
   {
     id: 'regional',
     name: 'Regional',
-    icon: '🌍',
+    icon: 'regional',
     searchTerms: [
       'latest tamil 2026', 'new telugu 2026', 'fresh kannada 2026', 'latest malayalam 2026',
       'tamil hits 2026', 'telugu songs 2026', 'kannada songs 2026', 'malayalam songs 2026',
@@ -245,7 +263,7 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
   {
     id: 'international',
     name: 'International',
-    icon: '🌎',
+    icon: 'international',
     searchTerms: [
       'latest english 2026', 'new international 2026', 'english 2026', 'fresh pop 2026',
       'english songs 2026', 'international hits 2026', 'pop songs 2026', 'western music 2026',
@@ -293,12 +311,12 @@ class JioSaavnService {
 
   // Try multiple API endpoints with fallbacks for better reliability
   private async tryMultipleEndpoints<T>(
-    endpoint: string, 
-    params: any = {}, 
+    endpoint: string,
+    params: any = {},
     method: 'GET' | 'POST' = 'GET'
   ): Promise<T> {
     const instances = [this.axiosInstance, this.fallbackInstance, this.backupInstance];
-    
+
     for (let i = 0; i < instances.length; i++) {
       try {
         const response = await instances[i].request({
@@ -307,7 +325,7 @@ class JioSaavnService {
           params: method === 'GET' ? params : undefined,
           data: method === 'POST' ? params : undefined,
         });
-        
+
         if (response.data && (response.data.success !== false)) {
           return response.data;
         }
@@ -317,7 +335,7 @@ class JioSaavnService {
         }
       }
     }
-    
+
     throw new Error('All API endpoints failed');
   }
 
@@ -331,12 +349,12 @@ class JioSaavnService {
       ]);
 
       const allPlaylists: JioSaavnPlaylist[] = [];
-      
+
       // Add 2026-specific trending results
       if (trending2026.status === 'fulfilled') {
         allPlaylists.push(...trending2026.value);
       }
-      
+
       // Add latest charts results
       if (latestCharts.status === 'fulfilled') {
         allPlaylists.push(...latestCharts.value);
@@ -354,25 +372,25 @@ class JioSaavnService {
 
       // Remove duplicates and prioritize 2026 content
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
-      
+
       const filtered = uniquePlaylists
         .filter(playlist => playlist.songCount >= 8)
         .sort((a, b) => {
           // Prioritize 2026 content
           const a2026 = a.name.toLowerCase().includes('2026') ? 200 : 0;
           const b2026 = b.name.toLowerCase().includes('2026') ? 200 : 0;
-          
+
           if (a2026 !== b2026) return b2026 - a2026;
-          
+
           // Then prioritize trending keywords
           const trendingKeywords = ['trending', 'top', 'hit', 'superhit', 'latest', 'viral', 'chart'];
-          const aTrending = trendingKeywords.some(keyword => 
+          const aTrending = trendingKeywords.some(keyword =>
             a.name.toLowerCase().includes(keyword)) ? 100 : 0;
-          const bTrending = trendingKeywords.some(keyword => 
+          const bTrending = trendingKeywords.some(keyword =>
             b.name.toLowerCase().includes(keyword)) ? 100 : 0;
-          
+
           if (aTrending !== bTrending) return bTrending - aTrending;
-          
+
           // Finally sort by song count
           return b.songCount - a.songCount;
         });
@@ -389,7 +407,7 @@ class JioSaavnService {
   private async get2026SpecificTrending(forceRefresh: boolean = false): Promise<JioSaavnPlaylist[]> {
     let trending2026Terms = [
       'trending now 2026',
-      'top 50 2026', 
+      'top 50 2026',
       'superhits 2026',
       'latest hits 2026',
       'viral hits 2026',
@@ -403,19 +421,19 @@ class JioSaavnService {
     }
 
     const allPlaylists: JioSaavnPlaylist[] = [];
-    
+
     // Search with 2026-specific terms
     for (const term of trending2026Terms.slice(0, 4)) {
       try {
         const response = await this.tryMultipleEndpoints<JioSaavnPlaylistResponse>(
           '/search/playlists',
-          { 
-            query: term, 
+          {
+            query: term,
             limit: 6,
             page: forceRefresh ? Math.floor(Math.random() * 3) + 1 : 1
           }
         );
-        
+
         if (response.success && response.data?.results) {
           allPlaylists.push(...response.data.results);
         }
@@ -439,7 +457,7 @@ class JioSaavnService {
       ];
 
       const allPlaylists: JioSaavnPlaylist[] = [];
-      
+
       // Search with fewer terms but get more results per term for speed
       const searchPromises = trendingTerms.slice(0, 2).map(async (term) => {
         try {
@@ -455,20 +473,20 @@ class JioSaavnService {
 
       // Remove duplicates and prioritize trending content
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
-      
+
       // Sort by trending criteria (simplified for speed)
       return uniquePlaylists
         .sort((a, b) => {
           // Quick trending keyword check
           const trendingKeywords = ['trending', 'top', 'hit', 'superhit'];
-          const aHasTrending = trendingKeywords.some(keyword => 
+          const aHasTrending = trendingKeywords.some(keyword =>
             a.name.toLowerCase().includes(keyword));
-          const bHasTrending = trendingKeywords.some(keyword => 
+          const bHasTrending = trendingKeywords.some(keyword =>
             b.name.toLowerCase().includes(keyword));
-          
+
           if (aHasTrending && !bHasTrending) return -1;
           if (!aHasTrending && bHasTrending) return 1;
-          
+
           // Then sort by song count (more songs = more popular)
           return b.songCount - a.songCount;
         })
@@ -484,10 +502,10 @@ class JioSaavnService {
     try {
       // Add 2026 to query if it's trending-related and doesn't already have a year
       let enhancedQuery = query.toLowerCase();
-      if ((enhancedQuery.includes('trending') || enhancedQuery.includes('latest') || 
-           enhancedQuery.includes('new') || enhancedQuery.includes('hit')) && 
-          !enhancedQuery.includes('2026') && !enhancedQuery.includes('2025') && 
-          !enhancedQuery.includes('2024')) {
+      if ((enhancedQuery.includes('trending') || enhancedQuery.includes('latest') ||
+        enhancedQuery.includes('new') || enhancedQuery.includes('hit')) &&
+        !enhancedQuery.includes('2026') && !enhancedQuery.includes('2025') &&
+        !enhancedQuery.includes('2024')) {
         enhancedQuery = `${query} 2026`;
       }
 
@@ -510,8 +528,8 @@ class JioSaavnService {
       try {
         const response = await this.tryMultipleEndpoints<JioSaavnPlaylistResponse>(
           '/search/playlists',
-          { 
-            query: enhancedQuery, 
+          {
+            query: enhancedQuery,
             limit: forceRefresh ? limit + 10 : limit, // Get more results when refreshing
             page: forceRefresh ? Math.floor(Math.random() * 3) + 1 : 1 // Random page for refresh
           }
@@ -529,8 +547,8 @@ class JioSaavnService {
         try {
           const fallbackResponse = await this.tryMultipleEndpoints<JioSaavnPlaylistResponse>(
             '/search/playlists',
-            { 
-              query: query, 
+            {
+              query: query,
               limit: limit,
               page: 1
             }
@@ -549,7 +567,7 @@ class JioSaavnService {
       }
 
       const finalResults = forceRefresh ? this.shuffleArray(results).slice(0, limit) : results.slice(0, limit);
-      
+
       return finalResults;
     } catch (error) {
       throw error;
@@ -571,50 +589,50 @@ class JioSaavnService {
     return playlists
       .filter(playlist => {
         // Be much more lenient for popular categories
-        const isPopularCategory = ['bollywood', 'romantic', 'punjabi', 'hindi', 'love'].some(term => 
+        const isPopularCategory = ['bollywood', 'romantic', 'punjabi', 'hindi', 'love'].some(term =>
           query.toLowerCase().includes(term)
         );
-        
+
         // Much lower minimum song requirements
         const minSongs = isPopularCategory ? 3 : // Very lenient for popular categories
-                         query.toLowerCase().includes('trending') ? 5 : 
-                         query.toLowerCase().includes('latest') || query.toLowerCase().includes('new') ? 3 : 5;
-        
+          query.toLowerCase().includes('trending') ? 5 :
+            query.toLowerCase().includes('latest') || query.toLowerCase().includes('new') ? 3 : 5;
+
         if (playlist.songCount < minSongs) return false;
-        
+
         // Filter out obviously bad playlists
         const name = playlist.name.toLowerCase();
         if (name.includes('test') || name.includes('temp') || name.length < 3) {
           return false;
         }
-        
+
         return true;
       })
       .sort((a, b) => {
         // Priority 1: 2026 content gets highest priority
         const a2026 = a.name.toLowerCase().includes('2026') ? 200 : 0;
         const b2026 = b.name.toLowerCase().includes('2026') ? 200 : 0;
-        
+
         if (a2026 !== b2026) return b2026 - a2026;
 
         // Priority 2: Latest/Fresh content gets high priority
         const freshKeywords = ['latest', 'new', '2025', 'fresh', 'updated', 'recent'];
-        const aHasFresh = freshKeywords.some(keyword => 
+        const aHasFresh = freshKeywords.some(keyword =>
           a.name.toLowerCase().includes(keyword)) ? 150 : 0;
-        const bHasFresh = freshKeywords.some(keyword => 
+        const bHasFresh = freshKeywords.some(keyword =>
           b.name.toLowerCase().includes(keyword)) ? 150 : 0;
-        
+
         if (aHasFresh !== bHasFresh) return bHasFresh - aHasFresh;
 
         // Priority 3: For trending queries, prioritize differently
         if (query.toLowerCase().includes('trending') || query.toLowerCase().includes('top') || query.toLowerCase().includes('hit')) {
           // Prioritize official trending playlists
           const trendingKeywords = ['trending', 'top', 'hit', 'superhit', 'chartbuster', 'viral', 'popular', 'most played'];
-          const aHasTrending = trendingKeywords.some(keyword => 
+          const aHasTrending = trendingKeywords.some(keyword =>
             a.name.toLowerCase().includes(keyword)) ? 100 : 0;
-          const bHasTrending = trendingKeywords.some(keyword => 
+          const bHasTrending = trendingKeywords.some(keyword =>
             b.name.toLowerCase().includes(keyword)) ? 100 : 0;
-          
+
           if (aHasTrending !== bHasTrending) return bHasTrending - aHasTrending;
         }
 
@@ -622,16 +640,16 @@ class JioSaavnService {
         const queryWords = query.toLowerCase().split(' ');
         const aMatches = queryWords.filter(word => word.length > 2 && a.name.toLowerCase().includes(word)).length;
         const bMatches = queryWords.filter(word => word.length > 2 && b.name.toLowerCase().includes(word)).length;
-        
+
         if (aMatches !== bMatches) return bMatches - aMatches;
-        
+
         // Priority 5: Official/Curated playlists
         const officialKeywords = ['hit songs', 'top', 'best of', 'superhits', 'chartbusters', 'collection', 'hits'];
-        const aHasOfficial = officialKeywords.some(keyword => 
+        const aHasOfficial = officialKeywords.some(keyword =>
           a.name.toLowerCase().includes(keyword)) ? 50 : 0;
-        const bHasOfficial = officialKeywords.some(keyword => 
+        const bHasOfficial = officialKeywords.some(keyword =>
           b.name.toLowerCase().includes(keyword)) ? 50 : 0;
-        
+
         if (aHasOfficial !== bHasOfficial) return bHasOfficial - aHasOfficial;
 
         // Priority 6: Song count (more songs = more comprehensive) - but don't over-prioritize
@@ -657,26 +675,26 @@ class JioSaavnService {
       }
 
       // Prioritize "latest" and "new" search terms for fresh content
-      let searchTerms = category.searchTerms.filter(term => 
+      let searchTerms = category.searchTerms.filter(term =>
         term.includes('latest') || term.includes('new') || term.includes('2026') || term.includes('fresh')
       );
-      
-      const regularTerms = category.searchTerms.filter(term => 
+
+      const regularTerms = category.searchTerms.filter(term =>
         !term.includes('latest') && !term.includes('new') && !term.includes('2026') && !term.includes('fresh')
       );
 
       // Combine fresh terms first, then regular terms
       searchTerms = [...searchTerms, ...regularTerms];
-      
+
       // If refreshing, randomize the search terms
       if (forceRefresh) {
         searchTerms = this.shuffleArray(searchTerms);
       }
-      
+
       searchTerms = searchTerms.slice(0, 5);
 
       const allPlaylists: JioSaavnPlaylist[] = [];
-      
+
       // Search with fresh terms first
       for (const term of searchTerms) {
         try {
@@ -690,7 +708,7 @@ class JioSaavnService {
       // Remove duplicates and sort by freshness
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
       const sorted = this.sortPlaylistsByFreshness(uniquePlaylists, categoryId);
-      
+
       return forceRefresh ? this.shuffleArray(sorted).slice(0, limit) : sorted.slice(0, limit);
     } catch (error) {
       // Fallback to regular category search
@@ -713,12 +731,12 @@ class JioSaavnService {
 
       // Use multiple search terms for better and fresher results
       let searchTerms = category.searchTerms.slice(0, 4);
-      
+
       // If refreshing, randomize and use different terms
       if (forceRefresh) {
         searchTerms = this.shuffleArray(category.searchTerms).slice(0, 4);
       }
-      
+
       const allPlaylists: JioSaavnPlaylist[] = [];
       const searchPromises = searchTerms.map(async (term) => {
         try {
@@ -735,7 +753,7 @@ class JioSaavnService {
       // Remove duplicates and sort by freshness and relevance
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
       const sorted = this.sortPlaylistsByFreshness(uniquePlaylists, categoryId);
-      
+
       return forceRefresh ? this.shuffleArray(sorted).slice(0, limit) : sorted.slice(0, limit);
     } catch (error) {
       // Fallback to first search term
@@ -750,16 +768,16 @@ class JioSaavnService {
 
     try {
       // Use more search terms and be more aggressive
-      const primaryTerms = category.searchTerms.filter(term => 
+      const primaryTerms = category.searchTerms.filter(term =>
         !term.includes('2026') && !term.includes('latest') && !term.includes('new')
       );
 
-      const secondaryTerms = category.searchTerms.filter(term => 
+      const secondaryTerms = category.searchTerms.filter(term =>
         term.includes('latest') || term.includes('new') || term.includes('2026')
       );
 
       let searchTerms = [...primaryTerms, ...secondaryTerms];
-      
+
       if (forceRefresh) {
         searchTerms = this.shuffleArray(searchTerms);
       }
@@ -791,17 +809,17 @@ class JioSaavnService {
 
       // Remove duplicates and sort
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
-      
+
       const sorted = this.sortPlaylistsByFreshness(uniquePlaylists, categoryId);
-      
+
       const result = forceRefresh ? this.shuffleArray(sorted).slice(0, limit) : sorted.slice(0, limit);
-      
+
       return result;
     } catch (error) {
       // Final fallback - use the most basic search term with higher limit
-      const basicTerm = categoryId === 'bollywood' ? 'bollywood' : 
-                       categoryId === 'romantic' ? 'romantic' : 
-                       'punjabi';
+      const basicTerm = categoryId === 'bollywood' ? 'bollywood' :
+        categoryId === 'romantic' ? 'romantic' :
+          'punjabi';
       return this.searchPlaylists(basicTerm, limit, forceRefresh);
     }
   }
@@ -826,32 +844,32 @@ class JioSaavnService {
       // Priority 1: Playlists with category-specific keywords
       const category = PLAYLIST_CATEGORIES.find(cat => cat.id === categoryId);
       if (category) {
-        const aHasCategoryKeyword = category.searchTerms.some(term => 
+        const aHasCategoryKeyword = category.searchTerms.some(term =>
           a.name.toLowerCase().includes(term.toLowerCase()));
-        const bHasCategoryKeyword = category.searchTerms.some(term => 
+        const bHasCategoryKeyword = category.searchTerms.some(term =>
           b.name.toLowerCase().includes(term.toLowerCase()));
-        
+
         if (aHasCategoryKeyword && !bHasCategoryKeyword) return -1;
         if (!aHasCategoryKeyword && bHasCategoryKeyword) return 1;
       }
 
       // Priority 2: Fresh/Latest content indicators
       const freshKeywords = ['latest', 'new', '2024', '2023', 'fresh', 'updated', 'recent'];
-      const aHasFresh = freshKeywords.some(keyword => 
+      const aHasFresh = freshKeywords.some(keyword =>
         a.name.toLowerCase().includes(keyword));
-      const bHasFresh = freshKeywords.some(keyword => 
+      const bHasFresh = freshKeywords.some(keyword =>
         b.name.toLowerCase().includes(keyword));
-      
+
       if (aHasFresh && !bHasFresh) return -1;
       if (!aHasFresh && bHasFresh) return 1;
 
       // Priority 3: Official/Curated playlists
       const officialKeywords = ['top', 'best', 'hit', 'superhit', 'collection', 'chartbuster'];
-      const aHasOfficial = officialKeywords.some(keyword => 
+      const aHasOfficial = officialKeywords.some(keyword =>
         a.name.toLowerCase().includes(keyword));
-      const bHasOfficial = officialKeywords.some(keyword => 
+      const bHasOfficial = officialKeywords.some(keyword =>
         b.name.toLowerCase().includes(keyword));
-      
+
       if (aHasOfficial && !bHasOfficial) return -1;
       if (!aHasOfficial && bHasOfficial) return 1;
 
@@ -921,21 +939,65 @@ class JioSaavnService {
     return results;
   }
 
-  // Get playlist details with songs
+  // Get playlist details with songs, overcoming the 10-count API limit
   async getPlaylistDetails(playlistId: string): Promise<JioSaavnPlaylistDetails['data']> {
     try {
-      const response = await this.axiosInstance.get<JioSaavnPlaylistDetails>(`/playlists`, {
-        params: {
-          id: playlistId,
-        },
-      });
+      const limit = 50;
+      let page = 1;
 
-      if (response.data.success) {
-        return response.data.data;
+      // First try to fetch the playlist
+      const response = await this.tryMultipleEndpoints<{ success: boolean, data: JioSaavnPlaylistDetails['data'] }>(
+        `/playlists`,
+        { id: playlistId, limit, page }
+      );
+
+      if (!response.success || !response.data) {
+        throw new Error('Failed to fetch playlist details');
       }
-      
-      throw new Error('Failed to fetch playlist details');
+
+      const playlistData = response.data;
+      let allSongs = playlistData.songs || [];
+      const totalSongs = playlistData.songCount || allSongs.length;
+
+      // If we got all songs, return as is
+      if (allSongs.length >= totalSongs) {
+        return playlistData;
+      }
+
+      // If there are more songs, try pagination (up to 500 songs max to be safe)
+      const maxPages = Math.min(Math.ceil(totalSongs / limit), 10);
+
+      for (page = 2; page <= maxPages; page++) {
+        try {
+          const pageResponse = await this.tryMultipleEndpoints<{ success: boolean, data: JioSaavnPlaylistDetails['data'] }>(
+            `/playlists`,
+            { id: playlistId, limit, page }
+          );
+
+          if (pageResponse.success && pageResponse.data?.songs) {
+            const newSongs = pageResponse.data.songs;
+            if (newSongs.length === 0) break;
+
+            // Add unique songs only
+            const existingIds = new Set(allSongs.map(s => s.id));
+            const uniqueNewSongs = newSongs.filter(s => !existingIds.has(s.id));
+            allSongs = [...allSongs, ...uniqueNewSongs];
+
+            if (allSongs.length >= totalSongs) break;
+          } else {
+            break;
+          }
+        } catch (pageError) {
+          console.warn(`Failed to fetch page ${page} of playlist ${playlistId}`, pageError);
+          break; // Stop paginating on error, return what we have
+        }
+      }
+
+      playlistData.songs = allSongs;
+      return playlistData;
+
     } catch (error) {
+      console.error('Error fetching comprehensive playlist:', error);
       throw error;
     }
   }
@@ -963,7 +1025,7 @@ class JioSaavnService {
       // Use specific chart and trending terms that JioSaavn uses
       let chartTerms = [
         'Top 50 This Week',
-        'Trending This Week', 
+        'Trending This Week',
         'Weekly Top Songs',
         'Hindi Top 50',
         'Bollywood Top Charts',
@@ -978,31 +1040,31 @@ class JioSaavnService {
       }
 
       const allPlaylists: JioSaavnPlaylist[] = [];
-      
+
       // Search for official chart playlists
       for (const term of chartTerms.slice(0, 5)) {
         try {
           const response = await this.tryMultipleEndpoints<JioSaavnPlaylistResponse>(
             '/search/playlists',
-            { 
-              query: term, 
+            {
+              query: term,
               limit: 4,
               page: forceRefresh ? Math.floor(Math.random() * 2) + 1 : 1
             }
           );
-          
+
           if (response.success && response.data?.results) {
             // Filter for official-looking playlists
             const officialPlaylists = response.data.results.filter(playlist => {
               const name = playlist.name.toLowerCase();
               return (
                 playlist.songCount >= 15 && // Must have decent number of songs
-                (name.includes('top') || name.includes('chart') || 
-                 name.includes('trending') || name.includes('hit') ||
-                 name.includes('popular') || name.includes('viral'))
+                (name.includes('top') || name.includes('chart') ||
+                  name.includes('trending') || name.includes('hit') ||
+                  name.includes('popular') || name.includes('viral'))
               );
             });
-            
+
             allPlaylists.push(...officialPlaylists);
           }
         } catch (error) {
@@ -1012,18 +1074,18 @@ class JioSaavnService {
 
       // Remove duplicates and sort by relevance
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
-      
+
       const sorted = uniquePlaylists
         .sort((a, b) => {
           // Prioritize official chart keywords
           const chartKeywords = ['top 50', 'top', 'chart', 'trending', 'weekly', 'popular'];
-          const aHasChart = chartKeywords.some(keyword => 
+          const aHasChart = chartKeywords.some(keyword =>
             a.name.toLowerCase().includes(keyword)) ? 100 : 0;
-          const bHasChart = chartKeywords.some(keyword => 
+          const bHasChart = chartKeywords.some(keyword =>
             b.name.toLowerCase().includes(keyword)) ? 100 : 0;
-          
+
           if (aHasChart !== bHasChart) return bHasChart - aHasChart;
-          
+
           // Then by song count
           return b.songCount - a.songCount;
         });
@@ -1042,8 +1104,8 @@ class JioSaavnService {
 
     // Prefer 500x500, then 150x150, then 50x50
     const preferred = images.find(img => img.quality === '500x500') ||
-                     images.find(img => img.quality === '150x150') ||
-                     images[0];
+      images.find(img => img.quality === '150x150') ||
+      images[0];
 
     return preferred?.url || '/placeholder-playlist.jpg';
   }
@@ -1053,8 +1115,8 @@ class JioSaavnService {
     const primaryArtist = jioSong.artists.primary[0];
     const bestImageUrl = this.getBestImageUrl(jioSong.image);
     const bestDownloadUrl = jioSong.downloadUrl.find(url => url.quality === '320kbps') ||
-                           jioSong.downloadUrl.find(url => url.quality === '160kbps') ||
-                           jioSong.downloadUrl[0];
+      jioSong.downloadUrl.find(url => url.quality === '160kbps') ||
+      jioSong.downloadUrl[0];
 
     return {
       _id: `jiosaavn_${jioSong.id}`,
@@ -1091,7 +1153,7 @@ class JioSaavnService {
     suggestions: string[];
   }> {
     const lowerQuery = query.toLowerCase();
-    
+
     // Try to detect category from query
     const detectedCategory = PLAYLIST_CATEGORIES.find(category =>
       category.searchTerms.some(term => lowerQuery.includes(term.toLowerCase())) ||
@@ -1099,7 +1161,7 @@ class JioSaavnService {
     );
 
     let playlists: JioSaavnPlaylist[] = [];
-    
+
     if (detectedCategory) {
       // Use category-specific search for better results
       playlists = await this.getPlaylistsByCategory(detectedCategory.id, limit);
@@ -1127,8 +1189,8 @@ class JioSaavnService {
     ];
 
     return popularTerms
-      .filter(term => term.toLowerCase().includes(query.toLowerCase()) || 
-                     query.toLowerCase().includes(term.toLowerCase()))
+      .filter(term => term.toLowerCase().includes(query.toLowerCase()) ||
+        query.toLowerCase().includes(term.toLowerCase()))
       .slice(0, 5);
   }
 }

@@ -7,6 +7,23 @@ import admin from 'firebase-admin';
 const db = admin.firestore ? admin.firestore() : null;
 const songsRef = db ? db.collection('songs') : null;
 
+/**
+ * Song Schema (Firestore)
+ * 
+ * @typedef {Object} Song
+ * @property {string} _id - Song ID
+ * @property {string} title - Song title
+ * @property {string} artist - Artist name
+ * @property {string} album - Album name
+ * @property {string} genre - Music genre
+ * @property {string[]} moodTags - Array of mood-related tags for mood-based filtering
+ * @property {number} duration - Song duration in seconds
+ * @property {string} imageUrl - Album/song artwork URL
+ * @property {string} streamUrl - Audio stream URL
+ * @property {number} year - Release year
+ * @property {string} source - Source platform (e.g., "spotify", "deezer")
+ */
+
 // Export a placeholder model with compatible methods
 export const Song = {
   find: async (query = {}) => {

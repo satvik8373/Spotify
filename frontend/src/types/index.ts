@@ -30,6 +30,9 @@ export interface Playlist {
 	imageUrl: string;
 	isPublic: boolean;
 	featured: boolean;
+	moodGenerated?: boolean;
+	emotion?: string;
+	moodText?: string;
 	createdAt: string;
 	updatedAt: string;
 }

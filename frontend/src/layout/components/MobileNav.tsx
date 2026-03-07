@@ -80,21 +80,25 @@ const MobileNav = () => {
       label: 'Home',
       icon: Home,
       path: '/home',
+      position: 'left'
     },
     {
       label: 'Search',
       icon: Search,
       path: '/search',
+      position: 'left'
     },
     {
-      label: 'Your Library',
+      label: 'Library',
       icon: Library,
       path: '/library',
+      position: 'right'
     },
     {
-      label: 'Liked Songs',
+      label: 'Liked',
       icon: Heart,
       path: '/liked-songs',
+      position: 'right'
     },
   ];
 
@@ -209,6 +213,94 @@ const MobileNav = () => {
         .mobile-nav-gradient-container {
           background: transparent !important;
           background-color: transparent !important;
+        }
+
+        /* Floating Nav Custom CSS from Stitch */
+        .nav-container {
+          position: relative;
+          width: 92%;
+          max-width: 400px;
+          height: 54px;
+          margin: 0 auto;
+        }
+
+        .nav-background {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(30, 30, 30, 0.95);
+          backdrop-filter: blur(10px);
+          border-radius: 27px;
+          /* CSS Mask for the circular notch - tighter fit for 44px button */
+          mask: radial-gradient(circle 27px at 50% 0%, transparent 100%, black 100%);
+          -webkit-mask: radial-gradient(circle 27px at 50% 0, transparent 28px, black 29px);
+          z-index: 10;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-content {
+          position: relative;
+          z-index: 20;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          height: 100%;
+          padding: 0 24px;
+        }
+
+        .ai-button-container {
+          position: absolute;
+          top: -22px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 30;
+        }
+
+        @keyframes aiGradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        .ai-button {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          /* Vibrant AI Gradient */
+          background: linear-gradient(135deg, #ff3366 0%, #8b5cf6 50%, #3b82f6 100%);
+          background-size: 200% 200%;
+          animation: aiGradient 3s ease infinite;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid #232526;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+          position: relative;
+          overflow: hidden;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .ai-button:active {
+          transform: translateX(-50%) scale(0.95);
+        }
+
+        .ai-logo {
+          font-weight: 800;
+          font-size: 1.1rem;
+          color: white;
+          text-shadow: 0 0 10px rgba(255,255,255,0.4);
+          letter-spacing: -0.5px;
+        }
+
+        .ai-button::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          pointer-events: none;
         }
       `}</style>
 
@@ -362,33 +454,27 @@ const MobileNav = () => {
         </div>
       )}
 
-      {/* Bottom Navigation - Spotify Style with Gradient Background */}
+      {/* Bottom Navigation Wrapper - Pointer Events None so clicks pass through empty space */}
       <div
-        className="mobile-nav-gradient-container fixed bottom-0 left-0 right-0 md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-transparent flex flex-col justify-end pointer-events-none md:hidden"
         style={{
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
-          paddingTop: hasActiveSong ? '44px' : '32px',
-          '--album-primary': albumColors.primary || '#1db954',
-          '--album-secondary': albumColors.secondary || '#191414',
-          background: 'transparent',
-          backgroundColor: 'transparent',
-          zIndex: 30,
         } as React.CSSProperties}
       >
-        {/* Spotify Mobile Player - Floating Design */}
+        {/* Mobile Player container - Spaced to avoid the AI button */}
         {hasActiveSong && location.pathname !== '/liked-songs/sync' && (
-          <div className="px-2 pb-1">
-            <div className="mobile-player-container relative rounded-lg overflow-hidden shadow-2xl mx-1">
-              {/* Main Player Container - Compact */}
+          <div className="px-2 mb-4 pointer-events-auto">
+            <div className="relative rounded-lg overflow-hidden shadow-2xl mx-1 bg-[#1a1a1a]">
+              {/* Main Player Container - Compact Height */}
               <div
-                className="relative px-2 py-1"
+                className="relative px-2 py-1 h-[42px] flex items-center"
                 style={{
                   backgroundColor: albumColors.primary || '#1a1a1a',
                   transition: 'background-color 300ms ease, color 300ms ease',
                 }}
               >
                 {/* Player Content - Compact Layout */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between w-full h-full">
                   {/* Left: Album Art + Song Info */}
                   <div
                     className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
@@ -479,46 +565,66 @@ const MobileNav = () => {
           </div>
         )}
 
-        {/* Navigation Items - Positioned at bottom with proper contrast */}
-        <div
-          className="relative grid grid-cols-4 h-14 px-2 pt-0 pb-2"
-          style={{
-            background: 'linear-gradient(0deg, #121212 0%, #121212 30%, rgba(18, 18, 18, 0.98) 45%, rgba(18, 18, 18, 0.92) 55%, rgba(18, 18, 18, 0.8) 65%, rgba(18, 18, 18, 0.6) 75%, rgba(18, 18, 18, 0.35) 85%, rgba(18, 18, 18, 0.15) 93%, transparent 100%)',
-            border: 'none',
-            boxShadow: 'none',
-          }}
-        >
-          {navItems.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                'flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all duration-300 bg-transparent',
-                isActive(item.path)
-                  ? 'text-white scale-105'
-                  : 'text-white/70 hover:text-white hover:bg-white/5'
-              )}
-            >
-              <div className={cn(
-                'flex items-center justify-center h-7 w-7 mb-1 transition-all duration-300',
-                isActive(item.path) && 'scale-110'
-              )}>
-                <item.icon
-                  className={cn(
-                    'h-5 w-5 transition-all duration-300',
-                    isActive(item.path) ? 'text-white' : 'text-current'
-                  )}
-                  strokeWidth={isActive(item.path) ? 2.5 : 2}
-                />
+        {/* Floating Navigation Pill */}
+        <div className="pb-3 w-full flex justify-center mt-1 pointer-events-auto">
+          <div className="nav-container">
+            {/* Central AI Button */}
+            <div className="ai-button-container">
+              <Link to="/mood-playlist" className="ai-button block group">
+                <span className="ai-logo transition-transform group-hover:scale-110">AI</span>
+              </Link>
+            </div>
+
+            {/* Background Layer with Cutout Match */}
+            <div className="nav-background"></div>
+
+            {/* Nav Items */}
+            <nav className="nav-content">
+              {/* Left Side */}
+              <div className="flex gap-4 sm:gap-8">
+                {navItems.filter(i => i.position === 'left').map(item => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      'flex flex-col items-center justify-center gap-1 w-12 transition-all duration-300',
+                      isActive(item.path) ? 'text-white' : 'text-[#888] hover:text-white'
+                    )}
+                  >
+                    <item.icon
+                      className={cn('h-[18px] w-[18px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
+                      strokeWidth={isActive(item.path) ? 2.5 : 2}
+                    />
+                    <span className="text-[10px] font-medium tracking-tight">
+                      {item.label}
+                    </span>
+                  </Link>
+                ))}
               </div>
-              <span className={cn(
-                "text-[10px] font-medium tracking-tight transition-all duration-300",
-                isActive(item.path) ? "text-white" : "text-white/70"
-              )}>
-                {item.label}
-              </span>
-            </Link>
-          ))}
+
+              {/* Right Side */}
+              <div className="flex gap-4 sm:gap-8">
+                {navItems.filter(i => i.position === 'right').map(item => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      'flex flex-col items-center justify-center gap-1 w-12 transition-all duration-300',
+                      isActive(item.path) ? 'text-white' : 'text-[#888] hover:text-white'
+                    )}
+                  >
+                    <item.icon
+                      className={cn('h-[18px] w-[18px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
+                      strokeWidth={isActive(item.path) ? 2.5 : 2}
+                    />
+                    <span className="text-[10px] font-medium tracking-tight">
+                      {item.label}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </nav>
+          </div>
         </div>
       </div>
     </>
