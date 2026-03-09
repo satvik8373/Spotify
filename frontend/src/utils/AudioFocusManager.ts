@@ -29,6 +29,8 @@ class AudioFocusManager {
     private beforeUnloadHandler: (() => void) | null = null;
     private audioContextStateChangeHandler: (() => void) | null = null;
     private deviceCheckInterval: NodeJS.Timeout | null = null;
+    private mediaDeviceChangeHandler: (() => void) | null = null;
+    private previousAudioOutputs: MediaDeviceInfo[] = [];
 
     /**
      * Initialize the audio focus manager
@@ -128,17 +130,18 @@ class AudioFocusManager {
             return;
         }
 
-        let previousDevices: MediaDeviceInfo[] = [];
-        let deviceCheckInterval: NodeJS.Timeout | null = null;
-
         const checkDeviceChanges = async () => {
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+                if (this.previousAudioOutputs.length === 0) {
+                    this.previousAudioOutputs = audioOutputs;
+                    return;
+                }
 
                 // Check if audio output device was removed (Bluetooth disconnect)
-                if (previousDevices.length > audioOutputs.length) {
-                    const removedDevice = previousDevices.find(
+                if (this.previousAudioOutputs.length > audioOutputs.length) {
+                    const removedDevice = this.previousAudioOutputs.find(
                         prev => !audioOutputs.some(curr => curr.deviceId === prev.deviceId)
                     );
 
@@ -149,9 +152,9 @@ class AudioFocusManager {
                 }
 
                 // Check if new device was added (Bluetooth connect)
-                if (audioOutputs.length > previousDevices.length) {
+                if (audioOutputs.length > this.previousAudioOutputs.length) {
                     const addedDevice = audioOutputs.find(
-                        curr => !previousDevices.some(prev => prev.deviceId === curr.deviceId)
+                        curr => !this.previousAudioOutputs.some(prev => prev.deviceId === curr.deviceId)
                     );
 
                     if (addedDevice && this.callbacks?.onAudioOutputChange) {
@@ -159,7 +162,7 @@ class AudioFocusManager {
                     }
                 }
 
-                previousDevices = audioOutputs;
+                this.previousAudioOutputs = audioOutputs;
             } catch (error) {
                 // Silent error handling
             }
@@ -167,14 +170,15 @@ class AudioFocusManager {
 
         // Use event listener primarily, with fallback polling
         if (navigator.mediaDevices.addEventListener) {
-            navigator.mediaDevices.addEventListener('devicechange', checkDeviceChanges);
+            this.mediaDeviceChangeHandler = checkDeviceChanges;
+            navigator.mediaDevices.addEventListener('devicechange', this.mediaDeviceChangeHandler);
+            // Prime previous output list once so first change is meaningful
+            void checkDeviceChanges();
         } else {
             // Fallback: Check periodically only if event listener not supported
-            deviceCheckInterval = setInterval(checkDeviceChanges, 5000);
+            this.deviceCheckInterval = setInterval(checkDeviceChanges, 5000);
+            void checkDeviceChanges();
         }
-
-        // Store interval reference for cleanup
-        this.deviceCheckInterval = deviceCheckInterval;
     }
 
     /**
@@ -182,7 +186,8 @@ class AudioFocusManager {
      */
     private handleInterruption(reason: InterruptionReason): void {
         this.interruptionReason = reason;
-        this.wasPlayingBeforeInterruption = true;
+        const audio = document.querySelector('audio') as HTMLAudioElement | null;
+        this.wasPlayingBeforeInterruption = !!audio && !audio.paused && !audio.ended;
 
         if (this.callbacks?.onAudioFocusLoss) {
             this.callbacks.onAudioFocusLoss(reason);
@@ -193,7 +198,7 @@ class AudioFocusManager {
      * Handle audio resume after interruption
      */
     private handleResume(): void {
-        if (this.wasPlayingBeforeInterruption && this.callbacks?.onAudioFocusGain) {
+        if (this.callbacks?.onAudioFocusGain) {
             this.callbacks.onAudioFocusGain();
         }
 
@@ -308,12 +313,12 @@ class AudioFocusManager {
             this.deviceCheckInterval = null;
         }
 
-        // Clean up device change listener
-        if (navigator.mediaDevices && navigator.mediaDevices.removeEventListener) {
-            // Note: We can't remove the specific handler since we don't store it
-            // This is a limitation of the current implementation
+        if (navigator.mediaDevices && navigator.mediaDevices.removeEventListener && this.mediaDeviceChangeHandler) {
+            navigator.mediaDevices.removeEventListener('devicechange', this.mediaDeviceChangeHandler);
+            this.mediaDeviceChangeHandler = null;
         }
 
+        this.previousAudioOutputs = [];
         this.callbacks = null;
     }
 }

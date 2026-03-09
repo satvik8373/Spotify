@@ -23,6 +23,7 @@ export const useCarPlaySync = () => {
         const store = usePlayerStore.getState();
         
         if (!audio || !store.currentSong || isRecovering.current) return;
+        if (store.wasPlayingBeforeInterruption) return;
 
         // Check if audio is stuck (position not advancing)
         const currentPosition = audio.currentTime;

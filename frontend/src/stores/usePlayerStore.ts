@@ -277,24 +277,21 @@ export const usePlayerStore = create<PlayerState>()(
           return;
         }
 
-        // Immediately stop current audio and reset time
-        const audio = document.querySelector('audio');
-        if (audio) {
-          audio.pause();
-          audio.currentTime = 0;
-          // Clear the src to completely stop the previous song
-          audio.src = '';
-          audio.load();
-        }
-
         // First check if we should repeat the current song
         if (isRepeating) {
-          // Just restart the current song
+          const audio = document.querySelector('audio');
           if (audio) {
             audio.currentTime = 0;
-            audio.dataset.ending = 'false'; // Reset ending flag
+            audio.dataset.ending = 'false';
             audio.play().catch(() => { });
           }
+          set({
+            currentTime: 0,
+            hasUserInteracted: true,
+            isPlaying: true,
+            lastPlayNextTime: now,
+            skipRestoreUntilTs: now + 5000
+          });
           return;
         }
 
@@ -326,61 +323,6 @@ export const usePlayerStore = create<PlayerState>()(
           skipRestoreUntilTs: now + 5000 // prevent time restore for 5s on track change
         });
 
-        // More reliable method to ensure the audio element updates
-        // especially important for background/lock screen playback
-        const playNextAudio = () => {
-          const audio = document.querySelector('audio');
-          if (audio) {
-            // Reset ending flag to prevent conflicts
-            audio.dataset.ending = 'false';
-
-            // CRITICAL: Reset currentTime to 0 immediately
-            audio.currentTime = 0;
-
-            // Ensure the audio element has the latest src and is playing
-            const newAudioUrl = queue[newIndex].audioUrl || (queue[newIndex] as any).url;
-            if (audio.src !== newAudioUrl && newAudioUrl) {
-              audio.src = newAudioUrl;
-              audio.load(); // Important for mobile browsers
-              // Reset currentTime again after load
-              audio.currentTime = 0;
-            }
-
-            // Use a more forceful approach to ensure playback
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-              playPromise.catch(() => {
-                // Retry playing after a short delay
-                setTimeout(() => {
-                  audio.play().catch(() => {
-                    // If it still fails, try with user activation flag
-                    set({ hasUserInteracted: true });
-                    setTimeout(() => audio.play().catch(() => { }), 100);
-                  });
-                }, 200);
-              });
-            }
-
-            // Re-register is no longer necessary as it's managed entirely by AudioPlayerMediaSession.tsx
-          }
-        };
-
-        // Try playing immediately
-        playNextAudio();
-
-        // And also after a small delay to ensure it works in lock screen
-        setTimeout(playNextAudio, 50);
-
-        // Additional attempts with increasing delays for better reliability
-        [200, 500, 1000].forEach(delay => {
-          setTimeout(() => {
-            const audio = document.querySelector('audio');
-            if (audio && audio.paused && !audio.ended) {
-              audio.play().catch(() => { });
-            }
-          }, delay);
-        });
-
         // Save to localStorage as a backup
         try {
           const playerState = {
@@ -401,26 +343,23 @@ export const usePlayerStore = create<PlayerState>()(
 
         if (queue.length === 0) return;
 
-        // Immediately stop current audio and reset time
         const audio = document.querySelector('audio');
-        if (audio) {
-          audio.pause();
-          audio.currentTime = 0;
-          // Clear the src to completely stop the previous song
-          audio.src = '';
-          audio.load();
-        }
+        const elapsedSeconds = audio?.currentTime || 0;
 
         // Check if current song has played less than 3 seconds
         // If so, go to previous song, otherwise restart current song
-        const currentTime = audio?.currentTime || 0;
-
-        if (currentTime > 3 && !isRepeating) {
+        if (elapsedSeconds > 3 && !isRepeating) {
           // If we're more than 3 seconds in, just restart the current song
           if (audio) {
             audio.currentTime = 0;
             audio.play().catch(() => { });
           }
+          set({
+            currentTime: 0,
+            hasUserInteracted: true,
+            isPlaying: true,
+            skipRestoreUntilTs: Date.now() + 5000
+          });
           return;
         }
 
@@ -434,18 +373,6 @@ export const usePlayerStore = create<PlayerState>()(
           isPlaying: true, // Always ensure playback continues
           skipRestoreUntilTs: Date.now() + 5000
         });
-
-        // CRITICAL: Reset audio currentTime immediately
-        if (audio) {
-          audio.currentTime = 0;
-          const newAudioUrl = queue[newIndex].audioUrl || (queue[newIndex] as any).url;
-          if (audio.src !== newAudioUrl && newAudioUrl) {
-            audio.src = newAudioUrl;
-            audio.load();
-            audio.currentTime = 0;
-          }
-          audio.play().catch(() => { });
-        }
 
         // Save to localStorage as a backup
         try {

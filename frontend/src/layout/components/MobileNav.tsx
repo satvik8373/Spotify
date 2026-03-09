@@ -273,8 +273,8 @@ const MobileNav = () => {
           display: flex;
           justify-content: space-evenly;
           align-items: center;
-          height: 54px;
-          padding: 0 6px;
+          height: calc(54px + env(safe-area-inset-bottom, 0px));
+          padding: 0 6px env(safe-area-inset-bottom, 0px);
         }
       `}</style>
 
@@ -429,14 +429,9 @@ const MobileNav = () => {
       )}
 
       {/* Bottom Navigation Wrapper - Pointer Events None so clicks pass through empty space */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-40 bg-transparent flex flex-col justify-end pointer-events-none md:hidden"
-        style={{
-          paddingBottom: `env(safe-area-inset-bottom, 0px)`,
-        } as React.CSSProperties}
-      >
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-transparent flex flex-col justify-end pointer-events-none md:hidden">
         {/* Floating Navigation Pill */}
-        <div className="pb-1.5 w-full flex justify-center mt-1 pointer-events-auto">
+        <div className="w-full flex justify-center pointer-events-auto">
           <div className="nav-container">
             {/* Background Layer */}
             <div className="nav-background"></div>

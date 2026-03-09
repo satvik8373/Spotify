@@ -64,37 +64,37 @@
     html {
         height: 100vh;
         height: -webkit-fill-available;
-        background-color: var(--background, #000000);
+        background-color: var(--app-theme-color, #121212);
     }
 
     body {
         min-height: 100vh;
         min-height: -webkit-fill-available;
-        background-color: var(--background, #000000);
+        background-color: var(--app-theme-color, #121212);
     }
 
     #root {
         min-height: 100vh;
         min-height: -webkit-fill-available;
-        background-color: var(--background, #000000);
+        background-color: var(--app-theme-color, #121212);
     }
 
     /* Main content area fixes */
     main[data-main-content] {
         min-height: 100vh;
         min-height: -webkit-fill-available;
-        background-color: var(--background, #000000);
+        background-color: var(--app-theme-color, #121212);
     }
 
     /* ScrollArea viewport fixes */
     [data-radix-scroll-area-viewport] {
-        background-color: var(--background, #000000);
+        background-color: var(--app-theme-color, #121212);
         min-height: 100vh;
     }
 
     /* Scroll content fixes */
     .scroll-content {
-        background-color: var(--background, #000000);
+        background-color: var(--app-theme-color, #121212);
         min-height: calc(100vh + 200px);
         padding-bottom: calc(140px + env(safe-area-inset-bottom, 20px));
     }
@@ -106,19 +106,19 @@
     .dark html,
     .dark body,
     .dark #root {
-        background-color: #191414 !important;
+        background-color: var(--app-theme-color, #191414) !important;
     }
 
     .dark main[data-main-content] {
-        background-color: #191414 !important;
+        background-color: var(--app-theme-color, #191414) !important;
     }
 
     .dark [data-radix-scroll-area-viewport] {
-        background-color: #191414 !important;
+        background-color: var(--app-theme-color, #191414) !important;
     }
 
     .dark .scroll-content {
-        background-color: #191414 !important;
+        background-color: var(--app-theme-color, #191414) !important;
     }
 
     /* Keep mobile nav transparent in dark mode too */

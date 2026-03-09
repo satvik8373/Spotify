@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 type Theme = 'light' | 'dark' | 'system';
+type ResolvedTheme = 'light' | 'dark';
+
+const THEME_COLORS: Record<ResolvedTheme, string> = {
+  light: '#f8fafc',
+  dark: '#121212',
+};
 
 interface ThemeState {
   theme: Theme;
@@ -30,26 +36,39 @@ export const useThemeStore = create<ThemeState>()(
   )
 );
 
+const resolveTheme = (theme: Theme): ResolvedTheme => {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return theme;
+};
+
+const syncThemeColor = (resolvedTheme: ResolvedTheme) => {
+  const themeColor = THEME_COLORS[resolvedTheme];
+
+  // PWA safe-area color used by notch/top inset styling.
+  document.documentElement.style.setProperty('--app-theme-color', themeColor);
+
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute('content', themeColor);
+  }
+
+  const msTileColor = document.querySelector('meta[name="msapplication-TileColor"]');
+  if (msTileColor) {
+    msTileColor.setAttribute('content', themeColor);
+  }
+};
+
 // Function to apply theme to document
-const applyTheme = (theme: Theme) => {
+export const applyTheme = (theme: Theme) => {
   const root = document.documentElement;
+  const resolvedTheme = resolveTheme(theme);
 
   // Remove existing theme classes
   root.classList.remove('light', 'dark');
-
-  if (theme === 'system') {
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    root.classList.add(systemTheme);
-  } else {
-    root.classList.add(theme);
-  }
-
-  // Update meta theme-color for mobile browsers
-  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-  if (metaThemeColor) {
-    // Keep a single chrome/notch color on mobile PWAs for consistent iOS/Android display.
-    metaThemeColor.setAttribute('content', '#121212');
-  }
+  root.classList.add(resolvedTheme);
+  syncThemeColor(resolvedTheme);
 };
 
 // Initialize theme on app start

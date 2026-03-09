@@ -26,6 +26,8 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
   const audioRef = useRef<HTMLAudioElement>(null);
   const prevSongRef = useRef<string | null>(null);
   const isHandlingPlayback = useRef(false);
+  const isHandlingEndRef = useRef(false);
+  const isTrackTransitionPauseRef = useRef(false);
   const loadStarted = useRef<boolean>(false);
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -103,11 +105,10 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
     if (!audio) return;
 
     let lastTimeUpdate = 0;
-    let isHandlingEnd = false;
 
     const handleSongEnd = () => {
-      if (isHandlingEnd) return;
-      isHandlingEnd = true;
+      if (isHandlingEndRef.current) return;
+      isHandlingEndRef.current = true;
 
       const state = usePlayerStore.getState();
       state.setUserInteracted();
@@ -116,7 +117,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         audio.currentTime = 0;
         audio.play()
           .catch(() => { })
-          .finally(() => { isHandlingEnd = false; });
+          .finally(() => { isHandlingEndRef.current = false; });
         return;
       }
 
@@ -126,7 +127,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       setTimeout(() => {
         audioRef.current?.play()
           .catch(() => { })
-          .finally(() => { isHandlingEnd = false; });
+          .finally(() => { isHandlingEndRef.current = false; });
       }, 50);
     };
 
@@ -141,7 +142,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       onTimeUpdate(audio.currentTime, audio.duration);
 
       // Check for song end with small buffer
-      if (audio.currentTime >= audio.duration - 0.5 && !audio.paused && !isHandlingEnd) {
+      if (audio.currentTime >= audio.duration - 0.5 && !audio.paused && !isHandlingEndRef.current) {
         handleSongEnd();
       }
     };
@@ -154,6 +155,29 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       audio.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, [isPlaying, onTimeUpdate]);
+
+  // Fallback for lock-screen/background cases where ended event can be delayed or missed.
+  useEffect(() => {
+    if (!currentSong) return;
+
+    const interval = setInterval(() => {
+      const audio = audioRef.current;
+      const state = usePlayerStore.getState();
+      if (!audio || !state.isPlaying || state.isRepeating || isHandlingEndRef.current) return;
+
+      if (audio.ended || (audio.duration > 0 && audio.currentTime >= audio.duration - 0.15)) {
+        isHandlingEndRef.current = true;
+        state.setUserInteracted();
+        state.playNext();
+        setTimeout(() => {
+          audioRef.current?.play().catch(() => { });
+          isHandlingEndRef.current = false;
+        }, 120);
+      }
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [currentSong]);
 
   // Minimal background playback monitor - only when needed
   useEffect(() => {
@@ -194,6 +218,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       if (!songUrl || !isValidUrl(songUrl)) {
         setIsPlaying(false);
         isHandlingPlayback.current = false;
+        isTrackTransitionPauseRef.current = false;
         onLoadingChange(false);
         return;
       }
@@ -210,6 +235,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
           }
 
           // Pause current playback before changing source
+          isTrackTransitionPauseRef.current = true;
           audio.pause();
           audio.currentTime = 0;
           audio.src = '';
@@ -225,6 +251,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
 
             onLoadingChange(false);
             prevSongRef.current = songUrl;
+            isTrackTransitionPauseRef.current = false;
 
             if (isPlaying) {
               playTimeoutRef.current = setTimeout(() => {
@@ -303,6 +330,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         // Catch any errors during playback setup
         setIsPlaying(false);
         isHandlingPlayback.current = false;
+        isTrackTransitionPauseRef.current = false;
         onLoadingChange(false);
       }
     } else {
@@ -327,6 +355,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       onLoadingChange(false);
       setIsPlaying(false);
       isHandlingPlayback.current = false;
+      isTrackTransitionPauseRef.current = false;
     };
 
     audio.addEventListener('error', handleError);
@@ -459,6 +488,11 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
           if (!store.isPlaying) {
             store.setIsPlaying(true);
           }
+          // Clear interruption markers after real playback resumes.
+          usePlayerStore.setState({
+            wasPlayingBeforeInterruption: false,
+            interruptionReason: null
+          });
           // Update MediaSession when audio actually starts playing
           if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'playing';
@@ -469,6 +503,10 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       }}
       onPause={() => {
         try {
+          // Ignore pause events caused by internal track source transitions.
+          if (isTrackTransitionPauseRef.current) {
+            return;
+          }
           // Sync state if OS violently pauses playback (e.g. phone call comes in)
           const store = usePlayerStore.getState();
           if (store.isPlaying) {

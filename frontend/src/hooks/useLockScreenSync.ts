@@ -88,6 +88,7 @@ export const useLockScreenSync = () => {
       setTimeout(() => {
         const audio = document.querySelector('audio') as HTMLAudioElement;
         const store = usePlayerStore.getState();
+        if (store.wasPlayingBeforeInterruption) return;
         
         if (audio) {
           const actuallyPlaying = !audio.paused && !audio.ended && audio.currentTime > 0;
