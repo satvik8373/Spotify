@@ -29,7 +29,16 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const AccountDeletion = lazy(() => import('./pages/AccountDeletion'));
 
 // AI Mood Playlist page
-const MoodPlaylistPage = lazy(() => import('./pages/MoodPlaylistPage'));
+const MoodPlaylistPage = lazy(async () => {
+	try {
+		return await import('./pages/MoodPlaylistPage');
+	} catch (error) {
+		console.warn('[App] Failed to load MoodPlaylistPage chunk:', error);
+		return {
+			default: () => <div className="min-h-screen bg-[#121212]" />
+		};
+	}
+});
 const MoodHistoryPage = lazy(() => import('./pages/mood-history/MoodHistoryPage'));
 
 // JioSaavn pages

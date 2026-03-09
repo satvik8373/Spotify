@@ -4,3 +4,10 @@
   position: relative;
   overflow: hidden;
 }
+
+.floating-lines-fallback {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(233, 71, 245, 0.22), transparent 60%),
+    radial-gradient(110% 90% at 20% 100%, rgba(99, 102, 241, 0.24), transparent 62%),
+    linear-gradient(145deg, #0a0a1f 0%, #1a0a2e 45%, #2d1b4e 100%);
+}

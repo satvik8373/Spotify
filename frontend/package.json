@@ -9,7 +9,7 @@
     "build": "tsc && vite build",
     "build:mobile": "tsc && vite build && node scripts/add-cache-busting.js",
     "build:optimized": "node scripts/build-optimized.js",
-    "vercel-build": "vite build",
+    "vercel-build": "node -e \"console.log('Frontend already built by root Vercel buildCommand')\"",
     "preview": "vite preview",
     "start": "vite preview --port $PORT",
     "deploy": "vercel deploy --prod",

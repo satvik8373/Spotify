@@ -4,7 +4,18 @@ import { MoodPlaylistGenerator } from '../components/MoodPlaylistGenerator';
 import './MoodPlaylistPage.css';
 
 // Lazy load FloatingLines to avoid blocking the page
-const FloatingLines = lazy(() => import('../components/ui/FloatingLines'));
+const FloatingLines = lazy(async () => {
+  try {
+    return await import('../components/ui/FloatingLines');
+  } catch (error) {
+    console.warn('[MoodPlaylistPage] Failed to load FloatingLines:', error);
+    return {
+      default: () => (
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a1f] via-[#1a0a2e] to-[#2d1b4e]" />
+      )
+    };
+  }
+});
 
 export default function MoodPlaylistPage() {
   const navigate = useNavigate();

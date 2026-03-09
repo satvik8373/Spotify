@@ -39,7 +39,7 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [viewState, setViewState] = useState<ViewState>('input');
   const [playlist, setPlaylist] = useState<MoodPlaylist | null>(null);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
 
   const { playAlbum, setIsPlaying } = usePlayerStore();
   const currentSong = usePlayerStore((state) => state.currentSong);

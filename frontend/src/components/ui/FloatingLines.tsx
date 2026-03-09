@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Scene,
   OrthographicCamera,
@@ -183,6 +183,19 @@ void main() {
 
 const MAX_GRADIENT_STOPS = 8;
 
+function supportsWebGL(): boolean {
+  try {
+    const canvas = document.createElement('canvas');
+    return Boolean(
+      canvas.getContext('webgl2') ||
+      canvas.getContext('webgl') ||
+      canvas.getContext('experimental-webgl')
+    );
+  } catch {
+    return false;
+  }
+}
+
 function hexToVec3(hex: string): Vector3 {
   let value = hex.trim();
   if (value.startsWith('#')) {
@@ -242,6 +255,7 @@ export default function FloatingLines({
   mixBlendMode = 'screen'
 }: FloatingLinesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [renderFallback, setRenderFallback] = useState(false);
   const targetMouseRef = useRef(new Vector2(-1000, -1000));
   const currentMouseRef = useRef(new Vector2(-1000, -1000));
   const targetInfluenceRef = useRef(0);
@@ -272,13 +286,25 @@ export default function FloatingLines({
   const bottomLineDistance = enabledWaves.includes('bottom') ? getLineDistance('bottom') * 0.01 : 0.01;
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || renderFallback) return;
+    if (!supportsWebGL()) {
+      setRenderFallback(true);
+      return;
+    }
 
     const scene = new Scene();
     const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
     camera.position.z = 1;
 
-    const renderer = new WebGLRenderer({ antialias: true, alpha: false });
+    let renderer: WebGLRenderer;
+    try {
+      renderer = new WebGLRenderer({ antialias: true, alpha: false });
+    } catch (error) {
+      console.warn('[FloatingLines] WebGL initialization failed:', error);
+      setRenderFallback(true);
+      return;
+    }
+
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
@@ -358,7 +384,13 @@ export default function FloatingLines({
       if (!el) return;
       const width = el.clientWidth || 1;
       const height = el.clientHeight || 1;
-      renderer.setSize(width, height, false);
+      try {
+        renderer.setSize(width, height, false);
+      } catch (error) {
+        console.warn('[FloatingLines] Resize failed, switching to fallback:', error);
+        setRenderFallback(true);
+        return;
+      }
       const canvasWidth = renderer.domElement.width;
       const canvasHeight = renderer.domElement.height;
       uniforms.iResolution.value.set(canvasWidth, canvasHeight, 1);
@@ -398,7 +430,9 @@ export default function FloatingLines({
     }
 
     let raf = 0;
+    let disposed = false;
     const renderLoop = () => {
+      if (disposed) return;
       uniforms.iTime.value = clock.getElapsedTime();
 
       if (interactive) {
@@ -413,13 +447,20 @@ export default function FloatingLines({
         uniforms.parallaxOffset.value.copy(currentParallaxRef.current);
       }
 
-      renderer.render(scene, camera);
+      try {
+        renderer.render(scene, camera);
+      } catch (error) {
+        console.warn('[FloatingLines] Render failed, switching to fallback:', error);
+        setRenderFallback(true);
+        return;
+      }
       raf = requestAnimationFrame(renderLoop);
     };
 
     renderLoop();
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       if (ro && containerRef.current) {
         ro.disconnect();
@@ -455,8 +496,20 @@ export default function FloatingLines({
     bottomLineCount,
     topLineDistance,
     middleLineDistance,
-    bottomLineDistance
+    bottomLineDistance,
+    renderFallback
   ]);
+
+  if (renderFallback) {
+    return (
+      <div
+        className="floating-lines-container floating-lines-fallback"
+        style={{
+          mixBlendMode: mixBlendMode as any
+        }}
+      />
+    );
+  }
 
   return (
     <div
