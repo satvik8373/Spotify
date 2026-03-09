@@ -273,8 +273,8 @@ const MobileNav = () => {
           display: flex;
           justify-content: space-evenly;
           align-items: center;
-          height: calc(54px + env(safe-area-inset-bottom, 0px));
-          padding: 0 6px env(safe-area-inset-bottom, 0px);
+          height: 54px;
+          padding: 0 6px;
         }
       `}</style>
 
