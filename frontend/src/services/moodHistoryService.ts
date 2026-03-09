@@ -29,9 +29,32 @@ export interface MoodHistoryResponse {
     hasMore: boolean;
 }
 
+const HISTORY_TIMEOUT_MS = 20000;
+
+const isTransientNetworkError = (error: any): boolean => {
+    if (!error) return false;
+    if (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') return true;
+    const message = String(error.message || '').toLowerCase();
+    return message.includes('network error') || message.includes('timeout');
+};
+
 export const fetchMoodHistory = async (page: number = 1, limit: number = 10): Promise<MoodHistoryResponse> => {
-    const res = await axiosInstance.get(`/playlists/mood-history?page=${page}&limit=${limit}`);
-    return res.data;
+    const request = () =>
+        axiosInstance.get(`/playlists/mood-history?page=${page}&limit=${limit}`, {
+            timeout: HISTORY_TIMEOUT_MS
+        });
+
+    try {
+        const res = await request();
+        return res.data;
+    } catch (error: any) {
+        if (isTransientNetworkError(error)) {
+            await new Promise((resolve) => setTimeout(resolve, 800));
+            const retryRes = await request();
+            return retryRes.data;
+        }
+        throw error;
+    }
 };
 
 export const finalizePlaylist = async (playlistId: string): Promise<{ message: string; playlist: MoodHistoryPlaylist }> => {

@@ -11,6 +11,56 @@ import { logPlaylistSaved } from './analytics.js';
 
 const db = admin.firestore();
 const PLAYLISTS_COLLECTION = 'playlists';
+const MOOD_HISTORY_MAX_RECORDS = 20;
+const MOOD_HISTORY_SCAN_LIMIT = 250;
+
+const extractTimestampSeconds = (value) => {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const ms = Date.parse(value);
+    return Number.isFinite(ms) ? Math.floor(ms / 1000) : 0;
+  }
+  if (typeof value?._seconds === 'number') return value._seconds;
+  if (typeof value?.seconds === 'number') return value.seconds;
+  if (typeof value?.toDate === 'function') {
+    const dt = value.toDate();
+    return dt instanceof Date ? Math.floor(dt.getTime() / 1000) : 0;
+  }
+  return 0;
+};
+
+const enforceMoodHistoryRetention = async (userId) => {
+  const snapshot = await db.collection(PLAYLISTS_COLLECTION)
+    .where('createdBy.uid', '==', userId)
+    .limit(MOOD_HISTORY_SCAN_LIMIT)
+    .get();
+
+  const moodDocs = [];
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    if (data?.moodGenerated === true) {
+      moodDocs.push({ id: doc.id, ...data });
+    }
+  });
+
+  if (moodDocs.length <= MOOD_HISTORY_MAX_RECORDS) return;
+
+  moodDocs.sort((a, b) => {
+    const aTs = extractTimestampSeconds(a.createdAt) || extractTimestampSeconds(a.generatedAt);
+    const bTs = extractTimestampSeconds(b.createdAt) || extractTimestampSeconds(b.generatedAt);
+    return bTs - aTs;
+  });
+
+  const docsToDelete = moodDocs.slice(MOOD_HISTORY_MAX_RECORDS);
+  if (docsToDelete.length === 0) return;
+
+  const batch = db.batch();
+  docsToDelete.forEach((record) => {
+    batch.delete(db.collection(PLAYLISTS_COLLECTION).doc(record.id));
+  });
+  await batch.commit();
+};
 
 /**
  * Save a generated mood playlist to user's library
@@ -64,6 +114,15 @@ export const savePlaylist = async (userId, playlistData, userInfo = {}) => {
 
     // Save to Firestore (Requirement 9.1)
     const docRef = await db.collection(PLAYLISTS_COLLECTION).add(playlist);
+    try {
+      // Keep only latest N mood records per user for better load/database management.
+      await enforceMoodHistoryRetention(userId);
+    } catch (retentionError) {
+      console.warn('[SaveHandler] Mood history retention cleanup failed (non-critical):', {
+        userId,
+        error: retentionError.message
+      });
+    }
 
     // Log analytics event
     logPlaylistSaved(userId, docRef.id, playlistData.emotion);
@@ -140,6 +199,8 @@ export const getUserPlaylists = async (userId, limit = 10, page = 1) => {
     if (!userId) {
       throw new Error('User ID is required');
     }
+    const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), MOOD_HISTORY_MAX_RECORDS);
+    const safePage = Math.max(Number(page) || 1, 1);
 
     // Simple query — only filter by userId to avoid needing a composite Firestore index
     const snapshot = await db.collection(PLAYLISTS_COLLECTION)
@@ -163,14 +224,15 @@ export const getUserPlaylists = async (userId, limit = 10, page = 1) => {
       return tb - ta;
     });
 
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
+    const startIndex = (safePage - 1) * safeLimit;
+    const endIndex = startIndex + safeLimit;
+    const totalPages = Math.ceil(playlists.length / safeLimit);
 
     return {
       playlists: playlists.slice(startIndex, endIndex),
       total: playlists.length,
-      page,
-      totalPages: Math.ceil(playlists.length / limit),
+      page: safePage,
+      totalPages,
       hasMore: endIndex < playlists.length
     };
   } catch (error) {

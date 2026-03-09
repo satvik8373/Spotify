@@ -7,18 +7,27 @@ import axios from "axios";
 // Get API URL from environment variables or fallback to default
 const RAW_API_URL = import.meta.env.VITE_API_URL || "";
 
-// Determine if we're in production
-const isProduction = window.location.hostname === 'mavrixfy.site' || 
-                     window.location.hostname === 'www.mavrixfy.site';
+const hostname = window.location.hostname;
+const isLocalhost =
+	hostname === "localhost" ||
+	hostname === "127.0.0.1" ||
+	hostname === "::1";
+const isProductionHost =
+	hostname === "mavrixfy.site" ||
+	hostname === "www.mavrixfy.site";
+const isHostedDeployment = !isLocalhost;
 
 // Force correct API URL for production
 let FINAL_API_URL = RAW_API_URL;
 
-// If no explicit API URL is set, or if we're in production, ensure correct URL
-if (!RAW_API_URL || isProduction) {
-  FINAL_API_URL = isProduction 
-    ? 'https://spotify-api-drab.vercel.app/api' 
-    : 'http://localhost:5000/api';
+// Resolve API URL robustly for local dev + hosted previews/PWA installs.
+if (!RAW_API_URL) {
+	FINAL_API_URL = isHostedDeployment
+		? "https://spotify-api-drab.vercel.app/api"
+		: "http://localhost:5000/api";
+} else if (isProductionHost && RAW_API_URL.includes("localhost")) {
+	// Safety guard: never use localhost API on production domain.
+	FINAL_API_URL = "https://spotify-api-drab.vercel.app/api";
 }
 
 // Ensure API URL has /api suffix
@@ -37,7 +46,7 @@ const cleanApiUrl = FINAL_API_URL.replace(/\/+$/, '');
 // Create and configure axios instance
 const axiosInstance = axios.create({
 	baseURL: cleanApiUrl,
-	timeout: 10000,
+	timeout: 20000,
 	headers: {
 		"Content-Type": "application/json",
 	},
@@ -60,7 +69,7 @@ axiosInstance.interceptors.request.use(
 		try {
 			const { auth } = await import('./firebase');
 			if (auth.currentUser) {
-				const token = await auth.currentUser.getIdToken(true);
+				const token = await auth.currentUser.getIdToken();
 				config.headers.Authorization = `Bearer ${token}`;
 			}
 		} catch (error) {

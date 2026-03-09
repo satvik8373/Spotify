@@ -4,6 +4,7 @@
  * 
  * Endpoints:
  * - POST /api/playlists/mood-generate - Generate mood-based playlist
+ * - GET /api/playlists/mood-credit-status - Get remaining daily mood credits
  * - POST /api/playlists/mood-save - Save generated playlist to user library
  * - POST /api/playlists/:id/share - Create shareable link for playlist
  * - GET /api/playlists/share/:shareId - Access shared playlist (public, no auth)
@@ -13,7 +14,7 @@
 
 import express from 'express';
 import { validateMoodInput } from '../services/moodPlaylist/validator.js';
-import { checkRateLimit } from '../services/moodPlaylist/rateLimiter.js';
+import { checkRateLimit, consumeRateLimit, getRateLimitStatus, FREE_USER_DAILY_LIMIT } from '../services/moodPlaylist/rateLimiter.js';
 import { getCachedPlaylist, setCachedPlaylist } from '../services/moodPlaylist/cacheManager.js';
 import { analyzeEmotion } from '../services/moodPlaylist/emotionAnalyzer.js';
 import { mapEmotionToGenres } from '../services/moodPlaylist/genreMapper.js';
@@ -32,12 +33,53 @@ import metricsCollector from '../services/moodPlaylist/metricsCollector.js';
 
 const router = express.Router();
 
+const resolveUserTierContext = (req) => {
+  const isPremium = req.auth.isPremium || req.auth.firebase?.isPremium || req.auth.firebase?.premium || false;
+  const userContext = {
+    userEmail: req.auth.email,
+    authClaims: req.auth.firebase || {}
+  };
+  return { isPremium, userContext };
+};
+
+/**
+ * GET /api/playlists/mood-credit-status
+ * Returns remaining credits for current authenticated user.
+ */
+router.get('/mood-credit-status', protectRoute, async (req, res) => {
+  try {
+    const userId = req.auth.uid;
+    const { isPremium, userContext } = resolveUserTierContext(req);
+    const status = await getRateLimitStatus(userId, isPremium, userContext);
+
+    return res.status(200).json({
+      success: true,
+      remaining: status.remaining,
+      resetAt: status.resetAt ? status.resetAt.toISOString() : null,
+      dailyLimit: FREE_USER_DAILY_LIMIT,
+      unlimited: status.remaining === -1
+    });
+  } catch (error) {
+    console.error('[MoodPlaylistAPI] Error fetching mood credit status:', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.auth?.uid,
+      timestamp: new Date().toISOString()
+    });
+
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch mood credit status'
+    });
+  }
+});
+
 /**
  * POST /api/playlists/mood-generate
  * Generate a mood-based playlist from natural language input
  * 
  * Authentication: Required
- * Rate Limiting: 3/day for free users, unlimited for premium
+ * Rate Limiting: 5/day for all users, unless users.{credit:"unlimited"}
  * 
  * Requirements: 1.5, 2.6, 6.4, 8.5, 13.1, 13.2, 13.3, 13.5, 14.1, 14.2
  */
@@ -53,7 +95,7 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
   try {
     const { moodText } = req.body;
     const userId = req.auth.uid;
-    const isPremium = req.auth.isPremium || false;
+    const { isPremium, userContext } = resolveUserTierContext(req);
 
     // Step 1: Validate mood text input (Requirement 1.1, 1.2, 1.3, 1.4)
     const validation = validateMoodInput(moodText);
@@ -92,7 +134,7 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
     logMoodInputSubmitted(userId, sanitizedMoodText);
 
     // Step 2: Check rate limit (Requirement 6.1, 6.2, 6.3, 7.1, 7.2)
-    const rateLimitResult = await checkRateLimit(userId, isPremium);
+    const rateLimitResult = await checkRateLimit(userId, isPremium, userContext);
 
     if (!rateLimitResult.allowed) {
       // Log rate limit hit (Requirement 12.6)
@@ -114,7 +156,7 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
       // Return rate limit error with upgrade prompt (Requirement 6.4, 13.3)
       return res.status(429).json({
         error: 'Rate limit exceeded',
-        message: rateLimitResult.error || "You've reached your daily limit of 3 mood playlists. Upgrade to premium for unlimited generations!",
+        message: rateLimitResult.error || "You've reached your daily mood generation limit. Please try again after reset.",
         upgradeUrl: '/premium',
         resetAt: rateLimitResult.resetAt?.toISOString()
       });
@@ -128,6 +170,17 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
 
     if (cachedPlaylist && !bypassCache) {
       console.log('[MoodPlaylistAPI] Cache hit for mood text');
+      const consumeResult = await consumeRateLimit(userId, isPremium, userContext);
+
+      if (!consumeResult.allowed) {
+        logRateLimitHit(userId, isPremium);
+        return res.status(429).json({
+          error: 'Rate limit exceeded',
+          message: consumeResult.error,
+          upgradeUrl: '/premium',
+          resetAt: consumeResult.resetAt?.toISOString()
+        });
+      }
 
       cached = true;
       success = true;
@@ -151,8 +204,8 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
           cached: true
         },
         rateLimitInfo: {
-          remaining: rateLimitResult.remaining,
-          resetAt: rateLimitResult.resetAt?.toISOString()
+          remaining: consumeResult.remaining,
+          resetAt: consumeResult.resetAt?.toISOString()
         }
       });
     }
@@ -226,7 +279,20 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
       console.warn('[MoodPlaylistAPI] Auto-save to history failed (non-critical):', saveErr.message);
     }
 
-    // Step 9: Return playlist response (Requirement 1.5, 14.1, 14.2)
+    // Step 9: Consume rate-limit credit only after successful generation.
+    const consumeResult = await consumeRateLimit(userId, isPremium, userContext);
+
+    if (!consumeResult.allowed) {
+      logRateLimitHit(userId, isPremium);
+      return res.status(429).json({
+        error: 'Rate limit exceeded',
+        message: consumeResult.error,
+        upgradeUrl: '/premium',
+        resetAt: consumeResult.resetAt?.toISOString()
+      });
+    }
+
+    // Step 10: Return playlist response (Requirement 1.5, 14.1, 14.2)
     return res.status(200).json({
       playlist: {
         ...playlist,
@@ -234,8 +300,8 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
         cached: false
       },
       rateLimitInfo: {
-        remaining: rateLimitResult.remaining,
-        resetAt: rateLimitResult.resetAt?.toISOString()
+        remaining: consumeResult.remaining,
+        resetAt: consumeResult.resetAt?.toISOString()
       }
     });
 
@@ -546,8 +612,9 @@ router.delete('/share/:shareId', protectRoute, async (req, res) => {
 router.get('/mood-history', firebaseAuth, async (req, res) => {
   try {
     const userId = req.auth.uid;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const requestedLimit = parseInt(req.query.limit) || 20;
+    const limit = Math.min(Math.max(requestedLimit, 1), 20);
 
     const result = await getUserPlaylists(userId, limit, page);
 

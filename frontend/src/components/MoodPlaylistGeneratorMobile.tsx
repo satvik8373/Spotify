@@ -8,7 +8,10 @@ interface MoodPlaylistGeneratorMobileProps {
     moodText: string;
     charCount: number;
     isValid: boolean;
+    isRateLimitReached?: boolean;
     error: string | null;
+    rateLimitMessage?: string | null;
+    creditLabel?: string | null;
     MIN_LENGTH: number;
     MAX_LENGTH: number;
     bottomInsetPx: number;
@@ -30,7 +33,10 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
     moodText,
     charCount,
     isValid,
+    isRateLimitReached = false,
     error,
+    rateLimitMessage,
+    creditLabel,
     MIN_LENGTH,
     MAX_LENGTH,
     bottomInsetPx,
@@ -125,7 +131,11 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
                                     key={label}
                                     type="button"
                                     onClick={() => onQuickMood(text)}
-                                    className="flex-shrink-0 snap-start flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white/12 border border-white/20 text-white/90 text-sm font-semibold hover:bg-purple-500/25 hover:text-white hover:border-purple-300/45 active:scale-95 transition-all duration-150"
+                                    disabled={isRateLimitReached}
+                                    className={cn(
+                                        "flex-shrink-0 snap-start flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white/12 border border-white/20 text-white/90 text-sm font-semibold hover:bg-purple-500/25 hover:text-white hover:border-purple-300/45 active:scale-95 transition-all duration-150",
+                                        isRateLimitReached && "opacity-45 cursor-not-allowed hover:bg-white/12 hover:text-white/90 hover:border-white/20 active:scale-100"
+                                    )}
                                 >
                                     <span className="text-lg leading-none">{emoji}</span>
                                     <span>{label}</span>
@@ -141,9 +151,21 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
                             <AlertDescription className="text-sm">{error}</AlertDescription>
                         </Alert>
                     )}
+                    {(rateLimitMessage || isRateLimitReached) && (
+                        <div className="rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 mb-3 text-sm font-semibold text-white/85 text-center">
+                            {rateLimitMessage || 'Limit reached. Try again tomorrow.'}
+                        </div>
+                    )}
 
                     <form onSubmit={onSubmit}>
-                        <div className="bg-black/30 backdrop-blur-xl rounded-2xl border border-white/15 shadow-2xl overflow-hidden transition-all focus-within:border-white/25 focus-within:bg-black/40">
+                        <div
+                            className={cn(
+                                "backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden transition-all",
+                                isRateLimitReached
+                                    ? "bg-black/20 border-white/10"
+                                    : "bg-black/30 border-white/15 focus-within:border-white/25 focus-within:bg-black/40"
+                            )}
+                        >
                             {/* Textarea */}
                             <Textarea
                                 value={moodText}
@@ -151,24 +173,32 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
                                     if (e.target.value.length <= MAX_LENGTH) onMoodChange(e.target.value);
                                 }}
                                 placeholder="How are you feeling right now?"
+                                disabled={isRateLimitReached}
                                 className="min-h-[64px] max-h-[110px] resize-none border-0 !ring-0 !ring-offset-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none text-[15px] px-4 pt-3 pb-1 bg-transparent text-white placeholder:text-white/40 leading-relaxed"
                                 aria-label="Mood description"
                             />
 
                             {/* Bottom bar: char count + button */}
                             <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/10">
-                                <span className={cn(
-                                    'text-xs font-semibold',
-                                    charCount === 0 && 'text-white/30',
-                                    charCount > 0 && charCount < MIN_LENGTH && 'text-yellow-400',
-                                    charCount >= MIN_LENGTH && charCount <= MAX_LENGTH && 'text-green-400',
-                                    charCount > MAX_LENGTH && 'text-red-400'
-                                )}>
-                                    {charCount}/{MAX_LENGTH}
-                                </span>
+                                <div className="flex min-w-0 items-center gap-2 pr-2">
+                                    <span className={cn(
+                                        'shrink-0 text-xs font-semibold',
+                                        charCount === 0 && 'text-white/30',
+                                        charCount > 0 && charCount < MIN_LENGTH && 'text-yellow-400',
+                                        charCount >= MIN_LENGTH && charCount <= MAX_LENGTH && 'text-green-400',
+                                        charCount > MAX_LENGTH && 'text-red-400'
+                                    )}>
+                                        {charCount}/{MAX_LENGTH}
+                                    </span>
+                                    {creditLabel && (
+                                        <span className="min-w-0 truncate text-[10px] text-white/50 leading-tight">
+                                            {creditLabel}
+                                        </span>
+                                    )}
+                                </div>
                                 <button
                                     type="submit"
-                                    disabled={!isValid}
+                                    disabled={!isValid || isRateLimitReached}
                                     className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 disabled:opacity-40 text-white text-sm font-bold shadow-lg active:scale-95 transition-all"
                                 >
                                     <Sparkles className="w-4 h-4" />

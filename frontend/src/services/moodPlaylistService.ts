@@ -21,6 +21,13 @@ export interface GeneratePlaylistResponse {
   rateLimitInfo?: RateLimitInfo;
 }
 
+export interface MoodCreditStatus {
+  remaining: number;
+  resetAt: string | null;
+  dailyLimit: number;
+  unlimited: boolean;
+}
+
 export interface RateLimitError {
   error: string;
   message: string;
@@ -29,19 +36,41 @@ export interface RateLimitError {
 }
 
 const MOOD_GENERATE_TIMEOUT_MS = 60000;
+const RETRY_DELAY_MS = 1200;
+
+const isTransientNetworkError = (error: any): boolean => {
+  if (!error) return false;
+  if (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') return true;
+  const message = String(error.message || '').toLowerCase();
+  return message.includes('network error') || message.includes('timeout');
+};
 
 /**
  * Generate a mood-based playlist from natural language input
  */
 export const generateMoodPlaylist = async (moodText: string): Promise<GeneratePlaylistResponse> => {
-  try {
-    const response = await axiosInstance.post<GeneratePlaylistResponse>(
+  const request = () =>
+    axiosInstance.post<GeneratePlaylistResponse>(
       '/playlists/mood-generate',
       { moodText },
       { timeout: MOOD_GENERATE_TIMEOUT_MS }
     );
+
+  try {
+    const response = await request();
     return response.data;
   } catch (error: any) {
+    // One retry for flaky mobile/PWA network transitions.
+    if (isTransientNetworkError(error)) {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        const retryResponse = await request();
+        return retryResponse.data;
+      } catch {
+        // Fall through to existing error mapping.
+      }
+    }
+
     if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '')) {
       throw new Error('Server is busy right now. Please wait a moment and try again.');
     }
@@ -73,6 +102,16 @@ export const generateMoodPlaylist = async (moodText: string): Promise<GeneratePl
     // Generic error
     throw new Error(error.message || 'Failed to generate playlist');
   }
+};
+
+/**
+ * Get current user's mood credit status.
+ */
+export const getMoodCreditStatus = async (): Promise<MoodCreditStatus> => {
+  const response = await axiosInstance.get<MoodCreditStatus>('/playlists/mood-credit-status', {
+    timeout: 10000
+  });
+  return response.data;
 };
 
 /**

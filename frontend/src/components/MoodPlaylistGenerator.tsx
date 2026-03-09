@@ -9,11 +9,14 @@ import { MoodPlaylistDisplayMobile } from './MoodPlaylistDisplayMobile';
 import { MoodPlaylistGeneratorMobile } from './MoodPlaylistGeneratorMobile';
 import {
   generateMoodPlaylist,
+  getMoodCreditStatus,
   saveMoodPlaylist,
   shareMoodPlaylist,
-  MoodPlaylist
+  MoodPlaylist,
+  MoodCreditStatus
 } from '@/services/moodPlaylistService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import {
   Sparkles,
@@ -38,11 +41,15 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
 }) => {
   const [moodText, setMoodText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null);
   const [viewState, setViewState] = useState<ViewState>('input');
   const [playlist, setPlaylist] = useState<MoodPlaylist | null>(null);
   const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
+  const [creditStatus, setCreditStatus] = useState<MoodCreditStatus | null>(null);
+  const [isCreditStatusLoading, setIsCreditStatusLoading] = useState(false);
 
   const { playAlbum, setIsPlaying } = usePlayerStore();
+  const { isAuthenticated } = useAuth();
   const currentSong = usePlayerStore((state) => state.currentSong);
   const mobileBottomInsetPx = currentSong ? 108 : 64;
 
@@ -57,10 +64,96 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
   const MAX_LENGTH = 200;
   const charCount = moodText.length;
   const isValid = charCount >= MIN_LENGTH && charCount <= MAX_LENGTH;
+  const isRateLimitReached = Boolean(
+    creditStatus && !creditStatus.unlimited && Math.max(0, creditStatus.remaining) <= 0
+  );
+
+  const formatResetTime = (resetAt: string | null) => {
+    if (!resetAt) return null;
+    const dt = new Date(resetAt);
+    if (Number.isNaN(dt.getTime())) return null;
+    return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const buildRateLimitReachedMessage = (resetAt: string | null) => {
+    const resetTime = formatResetTime(resetAt);
+    return resetTime
+      ? `Limit reached. Try tomorrow at ${resetTime}.`
+      : 'Limit reached. Try again tomorrow.';
+  };
+
+  const buildCreditLabel = () => {
+    if (!isAuthenticated) return null;
+    if (isCreditStatusLoading) return 'Checking credits...';
+    if (!creditStatus) return null;
+    if (creditStatus.unlimited) return 'Credits left today: Unlimited';
+
+    const remaining = Math.max(0, creditStatus.remaining);
+    if (remaining > 0) {
+      return `Credits left today: ${remaining}/${creditStatus.dailyLimit}`;
+    }
+
+    return `Credits left today: 0/${creditStatus.dailyLimit}`;
+  };
+
+  const creditLabel = buildCreditLabel();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCreditStatus = async () => {
+      if (!isAuthenticated) {
+        setCreditStatus(null);
+        return;
+      }
+
+      try {
+        setIsCreditStatusLoading(true);
+        const status = await getMoodCreditStatus();
+        if (!cancelled) {
+          setCreditStatus(status);
+        }
+      } catch (_error) {
+        if (!cancelled) {
+          setCreditStatus(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsCreditStatusLoading(false);
+        }
+      }
+    };
+
+    loadCreditStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !creditStatus || creditStatus.unlimited) {
+      setRateLimitMessage(null);
+      return;
+    }
+
+    const remaining = Math.max(0, creditStatus.remaining);
+    if (remaining <= 0) {
+      setRateLimitMessage((prev) => prev || buildRateLimitReachedMessage(creditStatus.resetAt));
+    } else {
+      setRateLimitMessage(null);
+    }
+  }, [isAuthenticated, creditStatus]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setRateLimitMessage(null);
+
+    if (isRateLimitReached) {
+      setRateLimitMessage(buildRateLimitReachedMessage(creditStatus?.resetAt || null));
+      return;
+    }
 
     if (!isValid) {
       if (charCount === 0) {
@@ -89,6 +182,14 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
       await ensureMinimumLoadingDuration();
       setPlaylist(response.playlist);
       setViewState('display');
+      if (response.rateLimitInfo) {
+        setCreditStatus((prev) => ({
+          remaining: response.rateLimitInfo?.remaining ?? prev?.remaining ?? 0,
+          resetAt: response.rateLimitInfo?.resetAt ?? prev?.resetAt ?? null,
+          dailyLimit: prev?.dailyLimit ?? 5,
+          unlimited: response.rateLimitInfo?.remaining === -1 || prev?.unlimited === true
+        }));
+      }
 
       // Track analytics event
       logAnalyticsEvent('playlist_generated', {
@@ -102,7 +203,14 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
 
       // Handle rate limit errors
       if (err.isRateLimitError) {
-        setError(err.message);
+        setError(null);
+        setRateLimitMessage(buildRateLimitReachedMessage(err.resetAt || creditStatus?.resetAt || null));
+        setCreditStatus((prev) => ({
+          remaining: 0,
+          resetAt: err.resetAt || prev?.resetAt || null,
+          dailyLimit: prev?.dailyLimit ?? 5,
+          unlimited: false
+        }));
 
         // Track rate limit event
         logAnalyticsEvent('rate_limit_hit', {
@@ -119,6 +227,9 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
     if (value.length <= MAX_LENGTH) {
       setMoodText(value);
       setError(null);
+      if (!isRateLimitReached) {
+        setRateLimitMessage(null);
+      }
     }
   };
 
@@ -258,13 +369,28 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
           moodText={moodText}
           charCount={charCount}
           isValid={isValid}
+          isRateLimitReached={isRateLimitReached}
           error={error}
+          rateLimitMessage={rateLimitMessage}
+          creditLabel={creditLabel}
           MIN_LENGTH={MIN_LENGTH}
           MAX_LENGTH={MAX_LENGTH}
           bottomInsetPx={mobileBottomInsetPx}
-          onMoodChange={(text) => { setMoodText(text); setError(null); }}
+          onMoodChange={(text) => {
+            setMoodText(text);
+            setError(null);
+            if (!isRateLimitReached) {
+              setRateLimitMessage(null);
+            }
+          }}
           onSubmit={handleSubmit}
-          onQuickMood={(text) => { setMoodText(text); setError(null); }}
+          onQuickMood={(text) => {
+            if (!isRateLimitReached) {
+              setMoodText(text);
+              setError(null);
+              setRateLimitMessage(null);
+            }
+          }}
         />
       </div>
     );
@@ -304,29 +430,51 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
         </div>
 
         {/* iOS-style Glassmorphism Input Container */}
-        <div className="bg-white/10 backdrop-blur-3xl rounded-2xl sm:rounded-3xl border border-white/20 p-3 sm:p-3.5 shadow-2xl shrink-0 transition-all focus-within:bg-white/[0.15] focus-within:border-white/30">
+        <div
+          className={cn(
+            "backdrop-blur-3xl rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 shadow-2xl shrink-0 transition-all",
+            isRateLimitReached
+              ? "bg-white/5 border border-white/10"
+              : "bg-white/10 border border-white/20 focus-within:bg-white/[0.15] focus-within:border-white/30"
+          )}
+        >
           <Textarea
             value={moodText}
             onChange={handleChange}
             placeholder="How are you feeling right now?"
+            disabled={isRateLimitReached}
             className="min-h-[60px] sm:min-h-[75px] max-h-[80px] sm:max-h-[95px] resize-none border-0 !ring-0 !ring-offset-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 focus-visible:border-transparent text-sm sm:text-base p-0 bg-transparent text-white placeholder:text-white/40 leading-relaxed custom-scrollbar"
             aria-label="Mood description"
           />
+          {isRateLimitReached && (
+            <div className="mt-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-center">
+              <p className="text-sm sm:text-base font-semibold text-white/85">
+                {rateLimitMessage || buildRateLimitReachedMessage(creditStatus?.resetAt || null)}
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-between mt-2 sm:mt-2.5 pt-2 sm:pt-2.5 border-t border-white/10">
-            <span className={cn(
-              'text-xs sm:text-sm font-medium',
-              charCount === 0 && 'text-white/40',
-              charCount > 0 && charCount < MIN_LENGTH && 'text-yellow-400',
-              charCount >= MIN_LENGTH && charCount <= MAX_LENGTH && 'text-green-400',
-              charCount > MAX_LENGTH && 'text-red-400'
-            )}>
-              {charCount}/{MAX_LENGTH}
-            </span>
+            <div className="flex min-w-0 items-center gap-2 pr-2">
+              <span className={cn(
+                'shrink-0 text-xs sm:text-sm font-medium',
+                charCount === 0 && 'text-white/40',
+                charCount > 0 && charCount < MIN_LENGTH && 'text-yellow-400',
+                charCount >= MIN_LENGTH && charCount <= MAX_LENGTH && 'text-green-400',
+                charCount > MAX_LENGTH && 'text-red-400'
+              )}>
+                {charCount}/{MAX_LENGTH}
+              </span>
+              {creditLabel && (
+                <span className="min-w-0 truncate text-[10px] sm:text-xs text-white/55">
+                  {creditLabel}
+                </span>
+              )}
+            </div>
 
             <Button
               type="submit"
-              disabled={!isValid}
+              disabled={!isValid || isRateLimitReached}
               className="rounded-full px-6 sm:px-8 h-10 sm:h-11 text-sm sm:text-base font-semibold bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 shadow-lg transition-transform active:scale-95"
             >
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
@@ -355,14 +503,19 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
                 key={label}
                 type="button"
                 onClick={() => {
-                  setMoodText(text);
-                  setError(null);
+                  if (!isRateLimitReached) {
+                    setMoodText(text);
+                    setError(null);
+                    setRateLimitMessage(null);
+                  }
                 }}
+                disabled={isRateLimitReached}
                 className={cn(
                   "group flex flex-col items-center justify-center gap-1 sm:gap-1.5 py-2 sm:py-2.5 px-1 rounded-xl sm:rounded-2xl border transition-all duration-300",
                   "hover:scale-[1.02] active:scale-95",
                   "bg-white/5 border-white/5",
-                  "hover:bg-white/10 hover:border-white/10 shadow-sm"
+                  "hover:bg-white/10 hover:border-white/10 shadow-sm",
+                  isRateLimitReached && "opacity-45 cursor-not-allowed hover:scale-100 active:scale-100 hover:bg-white/5 hover:border-white/5"
                 )}
               >
                 <div className="p-1.5 sm:p-2 rounded-full bg-white/5 text-white/60 group-hover:text-white transition-colors">
@@ -379,6 +532,11 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-sm">{error}</AlertDescription>
           </Alert>
+        )}
+        {rateLimitMessage && !isRateLimitReached && (
+          <div className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/70">
+            {rateLimitMessage}
+          </div>
         )}
       </form>
     </div>
