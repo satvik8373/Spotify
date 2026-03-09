@@ -28,6 +28,8 @@ export interface RateLimitError {
   resetAt: string;
 }
 
+const MOOD_GENERATE_TIMEOUT_MS = 60000;
+
 /**
  * Generate a mood-based playlist from natural language input
  */
@@ -35,10 +37,15 @@ export const generateMoodPlaylist = async (moodText: string): Promise<GeneratePl
   try {
     const response = await axiosInstance.post<GeneratePlaylistResponse>(
       '/playlists/mood-generate',
-      { moodText }
+      { moodText },
+      { timeout: MOOD_GENERATE_TIMEOUT_MS }
     );
     return response.data;
   } catch (error: any) {
+    if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '')) {
+      throw new Error('Server is busy right now. Please wait a moment and try again.');
+    }
+
     // Handle rate limit errors
     if (error.response?.status === 429) {
       const rateLimitError: RateLimitError = error.response.data;

@@ -223,7 +223,7 @@ const MobileNav = () => {
           margin: 0 auto;
           display: flex;
           flex-direction: column;
-          border-radius: 14px 14px 26px 26px;
+          border-radius: 14px 14px 34px 34px;
           overflow: hidden;
           box-shadow: 0 10px 30px rgba(0,0,0,0.6);
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -523,13 +523,27 @@ const MobileNav = () => {
                 ))}
               </div>
 
-              {/* Central AI Button (Inline) - No Background, Big White Icon */}
-              <Link to="/mood-playlist" className="flex items-center justify-center group flex-shrink-0 transition-transform duration-300 active:scale-95 px-1.5">
-                <img
-                  src="https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg"
-                  alt="AI Mood"
-                  className="w-[28px] h-[28px] sm:w-[30px] sm:h-[30px] object-contain transition-transform group-hover:scale-105 drop-shadow-[0_0_5px_rgba(255,255,255,0.22)] brightness-0 invert opacity-65 group-hover:opacity-90"
-                />
+              {/* Central AI Button - Icon-only gradient glow (no surrounding gradient circle) */}
+              <Link
+                to="/mood-playlist"
+                aria-label="AI Mood"
+                className="flex items-center justify-center group flex-shrink-0 transition-transform duration-300 active:scale-95 px-1.5"
+              >
+                <span className="relative flex items-center justify-center w-[44px] h-[44px] sm:w-[48px] sm:h-[48px]">
+                  <span
+                    className="relative z-10 w-[34px] h-[34px] sm:w-[36px] sm:h-[36px] bg-gradient-to-br from-[#ff7de8] via-[#b792ff] to-[#72c8ff] transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(255,132,232,0.52)]"
+                    style={{
+                      WebkitMaskImage: "url('https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg')",
+                      WebkitMaskRepeat: 'no-repeat',
+                      WebkitMaskPosition: 'center',
+                      WebkitMaskSize: 'contain',
+                      maskImage: "url('https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg')",
+                      maskRepeat: 'no-repeat',
+                      maskPosition: 'center',
+                      maskSize: 'contain',
+                    }}
+                  />
+                </span>
               </Link>
 
               {/* Right Side */}
