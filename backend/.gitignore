@@ -25,3 +25,5 @@ firebase-service-account.json
 
 # Vercel environment values (contains secrets)
 vercel-env-values.txt
+
+.vercel
