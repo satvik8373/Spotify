@@ -52,11 +52,29 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
         };
 
         updateHeight();
+        const onViewportChange = () => updateHeight();
 
-        const observer = new ResizeObserver(updateHeight);
-        observer.observe(node);
+        if (typeof ResizeObserver !== 'undefined') {
+            const observer = new ResizeObserver(updateHeight);
+            observer.observe(node);
+            window.addEventListener('resize', onViewportChange, { passive: true });
+            window.addEventListener('orientationchange', onViewportChange, { passive: true });
 
-        return () => observer.disconnect();
+            return () => {
+                observer.disconnect();
+                window.removeEventListener('resize', onViewportChange);
+                window.removeEventListener('orientationchange', onViewportChange);
+            };
+        }
+
+        // Fallback for older browsers/WebViews without ResizeObserver.
+        window.addEventListener('resize', onViewportChange, { passive: true });
+        window.addEventListener('orientationchange', onViewportChange, { passive: true });
+
+        return () => {
+            window.removeEventListener('resize', onViewportChange);
+            window.removeEventListener('orientationchange', onViewportChange);
+        };
     }, []);
 
     return (
