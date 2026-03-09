@@ -8,17 +8,33 @@ let serviceAccount;
 try {
   // Try to load service account from environment variable (JSON string)
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    console.log('[Firebase] Loading credentials from FIREBASE_SERVICE_ACCOUNT env var');
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   } 
-  // Or from a path on disk
-  else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
-    serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+  // Try individual environment variables (Vercel-friendly)
+  else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+    console.log('[Firebase] Loading credentials from individual env vars');
+    serviceAccount = {
+      type: 'service_account',
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    };
+  }
+  // Or from a path on disk (local development)
+  else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.log('[Firebase] Loading credentials from file path');
+    const fs = await import('fs');
+    const path = await import('path');
+    const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    const fullPath = credPath.startsWith('.') ? path.resolve(process.cwd(), credPath) : credPath;
+    serviceAccount = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
   }
   else {
-    console.warn("No Firebase service account provided in environment variables. Using Application Default Credentials.");
+    console.warn('[Firebase] No service account provided. Using Application Default Credentials.');
   }
 } catch (error) {
-  console.error("Error loading Firebase credentials:", error);
+  console.error('[Firebase] Error loading credentials:', error.message);
 }
 
 // Initialize Firebase Admin SDK
@@ -27,24 +43,27 @@ if (!admin.apps.length) {
     if (serviceAccount) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        // Optional database URL
-        databaseURL: process.env.FIREBASE_DATABASE_URL,
-        // Optional storage bucket
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+        projectId: process.env.FIREBASE_PROJECT_ID || 'spotify-8fefc',
+        databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://spotify-8fefc-default-rtdb.firebaseio.com',
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'spotify-8fefc.firebasestorage.app',
       });
+      console.log('[Firebase] Admin SDK initialized successfully with service account');
+      console.log('[Firebase] Project ID:', serviceAccount.project_id);
     } else {
-      // Use application default credentials with explicit project ID
+      // Fallback: Use application default credentials with explicit project ID
       admin.initializeApp({
         projectId: process.env.FIREBASE_PROJECT_ID || 'spotify-8fefc',
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'spotify-8fefc.firebasestorage.app',
         databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://spotify-8fefc-default-rtdb.firebaseio.com'
       });
+      console.log('[Firebase] Admin SDK initialized with default credentials');
     }
-    
-    console.log("Firebase Admin SDK initialized successfully");
   } catch (error) {
-    console.error("Error initializing Firebase Admin SDK:", error);
+    console.error('[Firebase] Error initializing Admin SDK:', error.message);
+    throw error;
   }
+} else {
+  console.log('[Firebase] Admin SDK already initialized');
 }
 
 export default admin; 
