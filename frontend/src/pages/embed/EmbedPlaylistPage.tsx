@@ -57,9 +57,9 @@ const EmbedPlaylistPage = () => {
     const fetchPlaylist = async () => {
       try {
         // Use fetch instead of axiosInstance to avoid auth headers
-        const apiUrl = import.meta.env.VITE_API_URL || 
-          (window.location.hostname.includes('mavrixfy.site') 
-            ? 'https://spotify-api-drab.vercel.app/api' 
+        const apiUrl = import.meta.env.VITE_API_URL ||
+          (window.location.hostname.includes('mavrixfy.site')
+            ? '/api'
             : 'http://localhost:5000/api');
         
         const response = await fetch(`${apiUrl}/playlists/${id}`, {

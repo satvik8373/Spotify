@@ -5,7 +5,7 @@ import axios from "axios";
 // We'll lazy-import inside the interceptor
 
 // Get API URL from environment variables or fallback to default
-const RAW_API_URL = import.meta.env.VITE_API_URL || "";
+const RAW_API_URL = (import.meta.env.VITE_API_URL || "").trim();
 
 const hostname = window.location.hostname;
 const isLocalhost =
@@ -17,31 +17,32 @@ const isProductionHost =
 	hostname === "www.mavrixfy.site";
 const isHostedDeployment = !isLocalhost;
 
+const normalizeApiUrl = (value: string) => {
+	if (!value) return value;
+	if (value === "/api") return value;
+	return value.endsWith("/api") ? value : value.replace(/\/+$/, "") + "/api";
+};
+
 // Force correct API URL for production
 let FINAL_API_URL = RAW_API_URL;
 
 // Resolve API URL robustly for local dev + hosted previews/PWA installs.
 if (!RAW_API_URL) {
-	FINAL_API_URL = isHostedDeployment
-		? "https://spotify-api-drab.vercel.app/api"
-		: "http://localhost:5000/api";
-} else if (isProductionHost && RAW_API_URL.includes("localhost")) {
-	// Safety guard: never use localhost API on production domain.
-	FINAL_API_URL = "https://spotify-api-drab.vercel.app/api";
+	FINAL_API_URL = isHostedDeployment ? "/api" : "http://localhost:5000/api";
+} else if (isProductionHost) {
+	if (RAW_API_URL.includes("localhost")) {
+		// Safety guard: never use localhost API on production domain.
+		FINAL_API_URL = "/api";
+	} else if (/^https?:\/\/spotify-api-drab\.vercel\.app\/?api?$/i.test(RAW_API_URL)) {
+		// Route production traffic through same-origin proxy to avoid browser CORS failures.
+		FINAL_API_URL = "/api";
+	}
 }
 
-// Ensure API URL has /api suffix
-if (!FINAL_API_URL.endsWith('/api')) {
-  // If it's the production backend URL without /api, add it
-  if (FINAL_API_URL.includes('spotify-api-drab.vercel.app') || FINAL_API_URL.includes('vercel.app')) {
-    FINAL_API_URL = FINAL_API_URL.replace(/\/?$/, '/api');
-  } else if (!FINAL_API_URL.includes('/api')) {
-    FINAL_API_URL = FINAL_API_URL.replace(/\/?$/, '/api');
-  }
-}
+FINAL_API_URL = normalizeApiUrl(FINAL_API_URL);
 
 // Remove trailing slash and ensure proper formatting
-const cleanApiUrl = FINAL_API_URL.replace(/\/+$/, '');
+const cleanApiUrl = FINAL_API_URL === "/api" ? FINAL_API_URL : FINAL_API_URL.replace(/\/+$/, '');
 
 // Create and configure axios instance
 const axiosInstance = axios.create({
