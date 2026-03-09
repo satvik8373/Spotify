@@ -10,7 +10,7 @@ const isIOS = /iPad|iPhone|iPod/.test(self.navigator.userAgent);
 const STATIC_FILES = [
   '/',
   '/index.html',
-  '/manifest.json',
+  '/manifest.webmanifest',
   '/mavrixfy.png'
 ];
 

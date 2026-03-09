@@ -162,7 +162,7 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
         // Add manifest link if missing
         const link = document.createElement('link');
         link.rel = 'manifest';
-        link.href = '/manifest.json';
+        link.href = '/manifest.webmanifest';
         document.head.appendChild(link);
       }
 
