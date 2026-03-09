@@ -52,6 +52,36 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AndroidPWAHelper from './components/AndroidPWAHelper';
 import { SpotifyProvider } from './contexts/SpotifyContext';
 
+const CHUNK_RECOVERY_KEY = 'mavrixfy_chunk_recovery_done';
+
+const isChunkLoadLikeError = (error?: Error) => {
+	const message = `${error?.message ?? ''}`;
+	return /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(message);
+};
+
+const performHardRefresh = async () => {
+	try {
+		if ('serviceWorker' in navigator) {
+			const registrations = await navigator.serviceWorker.getRegistrations();
+			await Promise.all(registrations.map((registration) => registration.unregister().catch(() => undefined)));
+		}
+	} catch {
+		// Ignore cleanup errors and continue with refresh.
+	}
+
+	try {
+		if ('caches' in window) {
+			const cacheKeys = await caches.keys();
+			await Promise.all(cacheKeys.map((key) => caches.delete(key).catch(() => false)));
+		}
+	} catch {
+		// Ignore cleanup errors and continue with refresh.
+	}
+
+	const separator = window.location.href.includes('?') ? '&' : '?';
+	window.location.replace(`${window.location.href}${separator}refresh=${Date.now()}`);
+};
+
 
 
 // Simple fallback pages for routes with import issues
@@ -73,6 +103,20 @@ const ErrorFallback = ({ error }: { error?: Error }) => {
 		// Error caught by boundary - details available for debugging if needed
 	}, [error]);
 
+	useEffect(() => {
+		if (!isChunkLoadLikeError(error)) return;
+		if (sessionStorage.getItem(CHUNK_RECOVERY_KEY)) return;
+
+		sessionStorage.setItem(CHUNK_RECOVERY_KEY, '1');
+		void performHardRefresh();
+	}, [error]);
+
+	useEffect(() => {
+		if (!isChunkLoadLikeError(error)) {
+			sessionStorage.removeItem(CHUNK_RECOVERY_KEY);
+		}
+	}, [error]);
+
 	return (
 		<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
 			<div className="text-center max-w-md">
@@ -91,10 +135,10 @@ const ErrorFallback = ({ error }: { error?: Error }) => {
 					</details>
 				)}
 				<button
-					onClick={() => window.location.reload()}
+					onClick={() => { void performHardRefresh(); }}
 					className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
 				>
-					Refresh Page
+					Refresh App
 				</button>
 			</div>
 		</div>
