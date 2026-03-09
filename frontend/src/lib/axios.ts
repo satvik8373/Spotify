@@ -67,7 +67,8 @@ axiosInstance.interceptors.request.use(
 	async (config) => {
 		// Get token from Firebase for each request (lazy import to avoid eager Firebase load)
 		try {
-			const { auth } = await import('./firebase');
+			const { auth, waitForAuthReady } = await import('./firebase');
+			await waitForAuthReady();
 			if (auth.currentUser) {
 				const token = await auth.currentUser.getIdToken();
 				config.headers.Authorization = `Bearer ${token}`;

@@ -221,7 +221,7 @@ export default function MoodHistoryPage() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [totalCount, setTotalCount] = useState(0);
 
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const { ref, inView } = useInView({ threshold: 0.1 });
 
@@ -249,9 +249,10 @@ export default function MoodHistoryPage() {
     }, []);
 
     useEffect(() => {
+        if (authLoading) return;
         if (!isAuthenticated) return navigate('/login');
         loadSessions(1);
-    }, [isAuthenticated, navigate, loadSessions]);
+    }, [authLoading, isAuthenticated, navigate, loadSessions]);
 
     useEffect(() => {
         if (inView && hasMore && !loading && !loadingMore) {
@@ -328,7 +329,7 @@ export default function MoodHistoryPage() {
                 </div>
 
                 {/* Content */}
-                {loading ? (
+                {loading || authLoading ? (
                     <div className="flex flex-col items-center justify-center py-24 sm:py-32 gap-4">
                         <div className="w-10 h-10 border-[3px] border-white/10 border-t-[#1ed760] rounded-full animate-spin" />
                     </div>

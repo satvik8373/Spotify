@@ -49,7 +49,7 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
   const [isCreditStatusLoading, setIsCreditStatusLoading] = useState(false);
 
   const { playAlbum, setIsPlaying } = usePlayerStore();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const currentSong = usePlayerStore((state) => state.currentSong);
   const mobileBottomInsetPx = currentSong ? 108 : 64;
 
@@ -83,6 +83,7 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
   };
 
   const buildCreditLabel = () => {
+    if (authLoading) return 'Checking account...';
     if (!isAuthenticated) return null;
     if (isCreditStatusLoading) return 'Checking credits...';
     if (!creditStatus) return null;
@@ -102,6 +103,10 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
     let cancelled = false;
 
     const loadCreditStatus = async () => {
+      if (authLoading) {
+        return;
+      }
+
       if (!isAuthenticated) {
         setCreditStatus(null);
         return;
@@ -129,7 +134,7 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated]);
+  }, [authLoading, isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated || !creditStatus || creditStatus.unlimited) {
@@ -149,6 +154,16 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
     e.preventDefault();
     setError(null);
     setRateLimitMessage(null);
+
+    if (authLoading) {
+      setError('Checking your account. Try again in a moment.');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setError('Please log in to generate mood playlists.');
+      return;
+    }
 
     if (isRateLimitReached) {
       setRateLimitMessage(buildRateLimitReachedMessage(creditStatus?.resetAt || null));

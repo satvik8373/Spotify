@@ -19,6 +19,7 @@ const firebaseConfig = {
 // Initialize Firebase services
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+let authReadyPromise: Promise<User | null> | null = null;
 
 // Initialize persistence for auth - do this asynchronously
 const initializeAuth = async () => {
@@ -74,6 +75,28 @@ export { analytics };
 // Auth state observer helper
 export const onAuthStateChangedHelper = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
+};
+
+export const waitForAuthReady = (timeoutMs: number = 5000): Promise<User | null> => {
+  if (auth.currentUser) {
+    return Promise.resolve(auth.currentUser);
+  }
+
+  if (!authReadyPromise) {
+    authReadyPromise = new Promise((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        unsubscribe();
+        resolve(user);
+      });
+    });
+  }
+
+  return Promise.race([
+    authReadyPromise,
+    new Promise<User | null>((resolve) => {
+      window.setTimeout(() => resolve(auth.currentUser), timeoutMs);
+    })
+  ]);
 };
 
 export default app; 
