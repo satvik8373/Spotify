@@ -35,11 +35,11 @@ window.addEventListener('error', (event) => {
     isIOSSafari,
     timestamp: new Date().toISOString()
   });
-  
+
   // For iOS PWA, try to recover from certain errors
   if (isIOSPWA && event.error) {
     const errorMessage = event.error.message || '';
-    
+
     // Handle localStorage quota errors
     if (errorMessage.includes('QuotaExceededError') || errorMessage.includes('quota')) {
       try {
@@ -55,7 +55,7 @@ window.addEventListener('error', (event) => {
       }
     }
   }
-  
+
   // Prevent default error handling
   event.preventDefault();
 });
@@ -71,18 +71,18 @@ window.addEventListener('unhandledrejection', (event) => {
     isIOSSafari,
     timestamp: new Date().toISOString()
   });
-  
+
   // For iOS PWA, handle specific promise rejection types
   if (isIOSPWA && event.reason) {
     const reason = String(event.reason);
-    
+
     // Handle network errors gracefully
     if (reason.includes('NetworkError') || reason.includes('Failed to fetch')) {
       console.warn('Network error in iOS PWA - continuing execution');
       event.preventDefault();
       return;
     }
-    
+
     // Handle storage errors
     if (reason.includes('QuotaExceededError') || reason.includes('storage')) {
       console.warn('Storage error in iOS PWA - attempting recovery');
@@ -95,7 +95,7 @@ window.addEventListener('unhandledrejection', (event) => {
       return;
     }
   }
-  
+
   // Prevent default handling
   event.preventDefault();
 });
@@ -106,7 +106,7 @@ if ('serviceWorker' in navigator && !isIOSPWA) {
     navigator.serviceWorker.register('/service-worker.js')
       .then((registration) => {
         // SW registered
-        
+
         // Handle updates
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
@@ -129,9 +129,9 @@ if ('serviceWorker' in navigator && !isIOSPWA) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
       registrations.forEach(registration => {
-        registration.unregister().catch(() => {});
+        registration.unregister().catch(() => { });
       });
-    }).catch(() => {});
+    }).catch(() => { });
   }
 }
 

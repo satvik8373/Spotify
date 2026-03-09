@@ -1,103 +1,52 @@
-/* Mood Playlist Page - Responsive within Main Layout */
+/* Mood Playlist Page */
 .mood-playlist-page {
   position: relative;
-  width: 100%;
   height: 100%;
-  /* Force it to fill exactly 100% to enable inner scrolling */
-  background: linear-gradient(135deg, #0f0f23 0%, #1a0f2e 50%, #2a1a3e 100%);
+  min-height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  border-radius: 12px;
+  flex-direction: column;
   overflow: hidden;
-  /* Prevent scrolling at the page level */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-/* Hide the DesktopFooter globally when on this page to prevent layout cutoff and double-scrolling */
-.mood-playlist-page+div {
+/* Hide the DesktopFooter on this page */
+.mood-playlist-page~div {
   display: none !important;
 }
 
 .mood-playlist-background {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  width: 100%;
-  height: 100%;
   z-index: 0;
   pointer-events: none;
-  overflow: hidden;
-  border-radius: inherit;
 }
 
-.mood-playlist-content {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 900px;
-  height: 100%;
-  /* Fill the fixed parent container */
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+/*
+ * Desktop display container height
+ * Header (~40px) + PlaybackControls (~80px) + padding (~32px) = 152px
+ */
+.mood-display-height {
+  height: calc(100svh - 152px);
 }
 
-.mood-playlist-header {
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.mood-playlist-title {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: white;
-  margin-bottom: 0;
-  line-height: 1.2;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-}
-
-.mood-compact-container {
+/*
+ * Mobile full-page container
+ * Height is already calculated by MainLayout on mobile.
+ * Keep this wrapper at 100% to avoid double-subtracting viewport space.
+ */
+.mood-mobile-page {
   flex: 1;
-  width: 100%;
-  min-height: 0;
-  /* Important for flex child internal scrolling */
+  min-height: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* Mobile */
-@media (max-width: 640px) {
-  .mood-playlist-page {
-    padding: 1rem 0.5rem;
-    height: 100%;
-    border-radius: 8px;
-    align-items: flex-start;
-  }
-
-  .mood-playlist-content {
-    gap: 1rem;
-    height: 100%;
-  }
-
-  .mood-playlist-title {
-    font-size: 1.75rem;
-  }
-}
-
-/* Tablet */
-@media (min-width: 641px) and (max-width: 1024px) {
-  .mood-playlist-page {
-    padding: 1.5rem 1rem;
-    border-radius: 10px;
-  }
-
-  .mood-playlist-content {
-    gap: 1.25rem;
-  }
-
-  .mood-playlist-title {
-    font-size: 2.2rem;
+@media (min-width: 768px) {
+  .mood-mobile-page {
+    min-height: unset;
+    height: auto;
+    display: block;
+    overflow: visible;
   }
 }

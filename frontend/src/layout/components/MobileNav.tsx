@@ -215,13 +215,18 @@ const MobileNav = () => {
           background-color: transparent !important;
         }
 
-        /* Floating Nav Custom CSS from Stitch */
+        /* Floating Nav & Player Custom CSS */
         .nav-container {
           position: relative;
-          width: 92%;
-          max-width: 400px;
-          height: 54px;
+          width: 96%;
+          max-width: 480px;
           margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+          border-radius: 18px;
+          overflow: hidden;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .nav-background {
@@ -230,77 +235,18 @@ const MobileNav = () => {
           left: 0;
           right: 0;
           bottom: 0;
-          background-color: rgba(30, 30, 30, 0.95);
-          backdrop-filter: blur(10px);
-          border-radius: 27px;
-          /* CSS Mask for the circular notch - tighter fit for 44px button */
-          mask: radial-gradient(circle 27px at 50% 0%, transparent 100%, black 100%);
-          -webkit-mask: radial-gradient(circle 27px at 50% 0, transparent 28px, black 29px);
+          background-color: #121212;
           z-index: 10;
-          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .nav-content {
           position: relative;
           z-index: 20;
           display: flex;
-          justify-content: space-between;
+          justify-content: space-evenly;
           align-items: center;
-          height: 100%;
-          padding: 0 24px;
-        }
-
-        .ai-button-container {
-          position: absolute;
-          top: -22px;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 30;
-        }
-
-        @keyframes aiGradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-
-        .ai-button {
-          width: 44px;
-          height: 44px;
-          border-radius: 50%;
-          /* Vibrant AI Gradient */
-          background: linear-gradient(135deg, #ff3366 0%, #8b5cf6 50%, #3b82f6 100%);
-          background-size: 200% 200%;
-          animation: aiGradient 3s ease infinite;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 2px solid #232526;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-          position: relative;
-          overflow: hidden;
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        
-        .ai-button:active {
-          transform: translateX(-50%) scale(0.95);
-        }
-
-        .ai-logo {
-          font-weight: 800;
-          font-size: 1.1rem;
-          color: white;
-          text-shadow: 0 0 10px rgba(255,255,255,0.4);
-          letter-spacing: -0.5px;
-        }
-
-        .ai-button::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 50%;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          pointer-events: none;
+          height: 54px;
+          padding: 0 6px;
         }
       `}</style>
 
@@ -461,133 +407,108 @@ const MobileNav = () => {
           paddingBottom: `env(safe-area-inset-bottom, 0px)`,
         } as React.CSSProperties}
       >
-        {/* Mobile Player container - Spaced to avoid the AI button */}
-        {hasActiveSong && location.pathname !== '/liked-songs/sync' && (
-          <div className="px-2 mb-4 pointer-events-auto">
-            <div className="relative rounded-lg overflow-hidden shadow-2xl mx-1 bg-[#1a1a1a]">
-              {/* Main Player Container - Compact Height */}
-              <div
-                className="relative px-2 py-1 h-[42px] flex items-center"
-                style={{
-                  backgroundColor: albumColors.primary || '#1a1a1a',
-                  transition: 'background-color 300ms ease, color 300ms ease',
-                }}
-              >
-                {/* Player Content - Compact Layout */}
-                <div className="flex items-center justify-between w-full h-full">
+        {/* Floating Navigation Pill */}
+        <div className="pb-1.5 w-full flex justify-center mt-1 pointer-events-auto">
+          <div className="nav-container">
+            {/* Background Layer */}
+            <div className="nav-background"></div>
+
+            {/* Combined Mobile Player Segment */}
+            {hasActiveSong && location.pathname !== '/liked-songs/sync' && (
+              <div className="relative z-20 w-full border-b border-white/5 bg-[#1a1a1a]/40">
+                {/* Album Color Tint */}
+                <div
+                  className="absolute inset-0 opacity-30 mix-blend-screen"
+                  style={{
+                    backgroundColor: albumColors.primary || 'transparent',
+                    transition: 'background-color 300ms ease',
+                  }}
+                />
+
+                {/* Player Content */}
+                <div className="relative px-3 flex items-center justify-between w-full h-[46px]">
                   {/* Left: Album Art + Song Info */}
                   <div
                     className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
                     onClick={handleSongTap}
                   >
-                    {/* Album Artwork - Smaller */}
-                    <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-md shadow-md">
+                    <div className="h-full w-[46px] -ml-3 flex-shrink-0 overflow-hidden rounded-none shadow-none">
                       <img
                         src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')}
                         alt={currentSong.title}
                         className="w-full h-full object-cover"
                         loading="eager"
                         decoding="async"
-                        width="32"
-                        height="32"
+                        width="46"
+                        height="46"
                       />
                     </div>
-
-                    {/* Song Info - Smart Marquee */}
                     <div className="flex-1 min-w-0 overflow-hidden mr-2">
-                      <div className="w-full overflow-hidden mb-0.5" style={{ color: albumColors.text || '#ffffff' }}>
+                      <div className="w-full overflow-hidden mb-0" style={{ color: albumColors.text || '#ffffff' }}>
                         <PingPongScroll
                           text={currentSong.title}
-                          className="text-sm font-medium leading-tight py-0.5"
+                          className="text-[12px] font-bold leading-tight py-0.5"
                           velocity={15}
                         />
                       </div>
-
-                      {/* Artist - PingPong Scroll */}
-                      <div className="mt-0.5" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 30%)' }}>
+                      <div className="mt-0" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 35%)' }}>
                         <PingPongScroll
                           text={currentSong.artist}
-                          className="text-xs leading-tight"
+                          className="text-[10px] font-medium leading-tight"
                           velocity={12}
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Right: Controls - Spotify Authentic */}
-                  <div className="flex items-center gap-1" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
-                    {/* Play/Pause Button - White Filled Icons */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        usePlayerStore.getState().togglePlay();
-                      }}
-                      className="p-2 transition-transform duration-200 active:scale-90"
-                    >
-                      {isPlaying ? (
-                        <Pause
-                          className="h-5 w-5"
-                          fill="currentColor"
-                        />
-                      ) : (
-                        <Play
-                          className="h-5 w-5 ml-px"
-                          fill="currentColor"
-                        />
-                      )}
-                    </button>
-
-                    {/* Queue Button */}
-                    <button
+                  {/* Right: Controls */}
+                    <div className="flex items-center gap-1.5" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          usePlayerStore.getState().togglePlay();
+                        }}
+                        className="p-1.5 transition-transform duration-200 active:scale-90"
+                      >
+                        {isPlaying ? (
+                          <Pause className="h-4 w-4" fill="currentColor" />
+                        ) : (
+                          <Play className="h-4 w-4 ml-0.5" fill="currentColor" />
+                        )}
+                      </button>
+                      <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowQueue(true);
                       }}
-                      className="p-1.5 transition-transform duration-200 active:scale-90"
-                      aria-label="Open queue"
-                    >
-                      <ListMusic className="h-4 w-4" />
-                    </button>
-                  </div>
+                        className="p-1.5 transition-transform duration-200 active:scale-90 opacity-80"
+                        aria-label="Open queue"
+                      >
+                        <ListMusic className="h-4 w-4" />
+                      </button>
+                    </div>
                 </div>
-              </div>
 
-              {/* Ultra-thin Progress Bar - Floating Width */}
-              <div className="absolute bottom-[1px] left-2 right-2">
-                <div className="h-0.5 bg-white/20 relative rounded-full overflow-hidden">
+                {/* Progress Bar Divider */}
+                <div className="relative h-[2px] bg-white/5 w-full overflow-hidden">
                   <div
-                    className="h-full bg-white absolute top-0 left-0 transition-all duration-100 ease-linear rounded-full"
+                    className="h-full bg-white absolute top-0 left-0 transition-all duration-100 ease-linear rounded-r-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"
                     style={{ width: `${progress || 0}%` }}
                   />
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Floating Navigation Pill */}
-        <div className="pb-3 w-full flex justify-center mt-1 pointer-events-auto">
-          <div className="nav-container">
-            {/* Central AI Button */}
-            <div className="ai-button-container">
-              <Link to="/mood-playlist" className="ai-button block group">
-                <span className="ai-logo transition-transform group-hover:scale-110">AI</span>
-              </Link>
-            </div>
-
-            {/* Background Layer with Cutout Match */}
-            <div className="nav-background"></div>
-
-            {/* Nav Items */}
-            <nav className="nav-content">
+            {/* Nav Items Inline */}
+            <nav className="nav-content w-full flex justify-between">
               {/* Left Side */}
-              <div className="flex gap-4 sm:gap-8">
+              <div className="flex flex-1 justify-evenly items-center">
                 {navItems.filter(i => i.position === 'left').map(item => (
                   <Link
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      'flex flex-col items-center justify-center gap-1 w-12 transition-all duration-300',
+                      'flex flex-col items-center justify-center gap-0.5 transition-all duration-300 flex-1',
                       isActive(item.path) ? 'text-white' : 'text-[#888] hover:text-white'
                     )}
                   >
@@ -595,21 +516,30 @@ const MobileNav = () => {
                       className={cn('h-[18px] w-[18px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
                       strokeWidth={isActive(item.path) ? 2.5 : 2}
                     />
-                    <span className="text-[10px] font-medium tracking-tight">
+                    <span className="text-[8px] font-medium tracking-wide">
                       {item.label}
                     </span>
                   </Link>
                 ))}
               </div>
 
+              {/* Central AI Button (Inline) - No Background, Big White Icon */}
+              <Link to="/mood-playlist" className="flex items-center justify-center group flex-shrink-0 transition-transform duration-300 active:scale-95 px-1.5">
+                <img
+                  src="https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg"
+                  alt="AI Mood"
+                  className="w-[28px] h-[28px] sm:w-[30px] sm:h-[30px] object-contain transition-transform group-hover:scale-105 drop-shadow-[0_0_5px_rgba(255,255,255,0.22)] brightness-0 invert opacity-65 group-hover:opacity-90"
+                />
+              </Link>
+
               {/* Right Side */}
-              <div className="flex gap-4 sm:gap-8">
+              <div className="flex flex-1 justify-evenly items-center">
                 {navItems.filter(i => i.position === 'right').map(item => (
                   <Link
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      'flex flex-col items-center justify-center gap-1 w-12 transition-all duration-300',
+                      'flex flex-col items-center justify-center gap-0.5 transition-all duration-300 flex-1',
                       isActive(item.path) ? 'text-white' : 'text-[#888] hover:text-white'
                     )}
                   >
@@ -617,7 +547,7 @@ const MobileNav = () => {
                       className={cn('h-[18px] w-[18px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
                       strokeWidth={isActive(item.path) ? 2.5 : 2}
                     />
-                    <span className="text-[10px] font-medium tracking-tight">
+                    <span className="text-[8px] font-medium tracking-wide">
                       {item.label}
                     </span>
                   </Link>
@@ -626,7 +556,7 @@ const MobileNav = () => {
             </nav>
           </div>
         </div>
-      </div>
+      </div >
     </>
   );
 };

@@ -9,7 +9,6 @@ import {
     Plus,
     ChevronRight,
     ChevronLeft,
-    Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
@@ -178,7 +177,11 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                         title={isCollapsed ? "AI Mood Generator" : undefined}
                     >
                         <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-cyan-500 rounded flex items-center justify-center flex-shrink-0">
-                            <Sparkles size={16} className="text-white" fill="white" />
+                            <img
+                                src="https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg"
+                                alt="AI Mood"
+                                className="w-6 h-6 object-contain drop-shadow"
+                            />
                         </div>
                         {!isCollapsed && (
                             <div className="min-w-0 flex-1">

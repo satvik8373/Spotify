@@ -1,19 +1,25 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoodPlaylistGeneratorStyled } from '../components/MoodPlaylistGeneratorStyled';
+import { MoodPlaylistGenerator } from '../components/MoodPlaylistGenerator';
 import './MoodPlaylistPage.css';
-import { History } from 'lucide-react';
 
 // Lazy load FloatingLines to avoid blocking the page
 const FloatingLines = lazy(() => import('../components/ui/FloatingLines'));
 
 export default function MoodPlaylistPage() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleNavigate = () => navigate('/mood-history');
+    window.addEventListener('navigate-mood-history', handleNavigate);
+    return () => window.removeEventListener('navigate-mood-history', handleNavigate);
+  }, [navigate]);
+
   return (
-    <div className="mood-playlist-page">
-      {/* Animated Background - Relative Content Handled by CSS */}
+    <div className="mood-playlist-page relative h-full min-h-0 flex flex-col bg-gradient-to-br from-[#0f0f23] via-[#1a0f2e] to-[#2a1a3e]">
+      {/* Animated Background - Fixed to viewport behind content */}
       <div className="mood-playlist-background">
-        <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #0a0a1f 0%, #1a0a2e 50%, #2d1b4e 100%)' }} />}>
+        <Suspense fallback={<div className="absolute inset-0 bg-gradient-to-br from-[#0a0a1f] via-[#1a0a2e] to-[#2d1b4e]" />}>
           <FloatingLines
             enabledWaves={['top', 'middle', 'bottom']}
             lineCount={6}
@@ -29,31 +35,10 @@ export default function MoodPlaylistPage() {
         </Suspense>
       </div>
 
-      {/* Content */}
-      <div className="mood-playlist-content">
-        {/* History Button */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: '1.5rem', paddingTop: '1rem' }}>
-          <button
-            onClick={() => navigate('/mood-history')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.5rem',
-              padding: '0.5rem 1rem', borderRadius: '12px',
-              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-              color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600,
-              cursor: 'pointer', backdropFilter: 'blur(8px)', transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(167,139,250,0.2)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-          >
-            <History size={14} />
-            View History
-          </button>
-        </div>
-
-        {/* Compact Generator */}
-        <div className="mood-compact-container">
-          <MoodPlaylistGeneratorStyled />
-        </div>
+      {/* Content wrapper */}
+      <div className="mood-mobile-page relative z-10 max-w-4xl mx-auto w-full">
+        {/* Generator - Direct render without wrapper */}
+        <MoodPlaylistGenerator />
       </div>
     </div>
   );

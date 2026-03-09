@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { MoodPlaylistLoading } from './MoodPlaylistLoading';
 import { MoodPlaylistDisplay } from './MoodPlaylistDisplay';
+import { MoodPlaylistDisplayMobile } from './MoodPlaylistDisplayMobile';
+import { MoodPlaylistGeneratorMobile } from './MoodPlaylistGeneratorMobile';
 import {
   generateMoodPlaylist,
   saveMoodPlaylist,
@@ -13,7 +15,7 @@ import {
 } from '@/services/moodPlaylistService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import toast from 'react-hot-toast';
-import { AlertCircle, Sparkles } from 'lucide-react';
+import { Sparkles, AlertCircle } from 'lucide-react';
 import {
   SentimentSatisfiedOutlined,
   SentimentDissatisfiedOutlined,
@@ -28,6 +30,7 @@ interface MoodPlaylistGeneratorProps {
 }
 
 type ViewState = 'input' | 'loading' | 'display';
+const MIN_LOADING_DURATION_MS = 10000;
 
 export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
   className,
@@ -36,8 +39,18 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [viewState, setViewState] = useState<ViewState>('input');
   const [playlist, setPlaylist] = useState<MoodPlaylist | null>(null);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
   const { playAlbum, setIsPlaying } = usePlayerStore();
+  const currentSong = usePlayerStore((state) => state.currentSong);
+  const mobileBottomInsetPx = currentSong ? 108 : 64;
+
+  // Detect mobile on resize
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', check, { passive: true });
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const MIN_LENGTH = 3;
   const MAX_LENGTH = 200;
@@ -60,9 +73,19 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
     }
 
     setViewState('loading');
+    const loadingStartedAt = Date.now();
+
+    const ensureMinimumLoadingDuration = async () => {
+      const elapsed = Date.now() - loadingStartedAt;
+      const remaining = MIN_LOADING_DURATION_MS - elapsed;
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
+    };
 
     try {
       const response = await generateMoodPlaylist(moodText);
+      await ensureMinimumLoadingDuration();
       setPlaylist(response.playlist);
       setViewState('display');
 
@@ -73,6 +96,7 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
         cached: response.playlist.cached,
       });
     } catch (err: any) {
+      await ensureMinimumLoadingDuration();
       setViewState('input');
 
       // Handle rate limit errors
@@ -159,50 +183,138 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
 
   // Show loading state
   if (viewState === 'loading') {
+    if (isMobile) {
+      return (
+        <div className="h-full min-h-0 flex flex-col">
+          <MoodPlaylistLoading className="h-full" />
+        </div>
+      );
+    }
     return <MoodPlaylistLoading className={className} />;
   }
 
   // Show playlist display
   if (viewState === 'display' && playlist) {
+    // Mobile display
+    if (isMobile) {
+      return (
+        <div className="h-full min-h-0 flex flex-col">
+          {/* History button — fixed top-right */}
+          <div className="fixed top-4 right-4 z-50">
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('navigate-mood-history'))}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/8 border border-white/15 text-white/70 text-xs font-semibold backdrop-blur-md hover:bg-purple-500/25 hover:text-white transition-all shadow-lg"
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>History</span>
+            </button>
+          </div>
+          <MoodPlaylistDisplayMobile
+            playlist={playlist}
+            bottomInsetPx={mobileBottomInsetPx}
+            onPlay={handlePlay}
+            onSave={handleSave}
+            onShare={handleShare}
+            onTryAgain={handleTryAgain}
+          />
+        </div>
+      );
+    }
+    // Desktop display
     return (
-      <div className="flex flex-col h-full min-h-0">
-        <MoodPlaylistDisplay
-          playlist={playlist}
-          onPlay={handlePlay}
-          onSave={handleSave}
-          onShare={handleShare}
-          onTryAgain={handleTryAgain}
+      <MoodPlaylistDisplay
+        playlist={playlist}
+        onPlay={handlePlay}
+        onSave={handleSave}
+        onShare={handleShare}
+        onTryAgain={handleTryAgain}
+      />
+    );
+  }
+
+  // Show input form
+  // Mobile input view
+  if (isMobile) {
+    return (
+      <div className="h-full min-h-0 flex flex-col">
+        {/* History button — fixed top-right */}
+        <div className="fixed top-4 right-4 z-50">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('navigate-mood-history'))}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/8 border border-white/15 text-white/70 text-xs font-semibold backdrop-blur-md hover:bg-purple-500/25 hover:text-white transition-all shadow-lg"
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>History</span>
+          </button>
+        </div>
+        <MoodPlaylistGeneratorMobile
+          moodText={moodText}
+          charCount={charCount}
+          isValid={isValid}
+          error={error}
+          MIN_LENGTH={MIN_LENGTH}
+          MAX_LENGTH={MAX_LENGTH}
+          bottomInsetPx={mobileBottomInsetPx}
+          onMoodChange={(text) => { setMoodText(text); setError(null); }}
+          onSubmit={handleSubmit}
+          onQuickMood={(text) => { setMoodText(text); setError(null); }}
         />
       </div>
     );
   }
 
-  // Show input form
+  // Desktop input form
   return (
-    <div className="flex flex-col h-full w-full items-center justify-center px-1 sm:px-0">
-      <form onSubmit={handleSubmit} className="w-full max-w-2xl flex flex-col justify-center min-h-0 py-0 sm:py-1 px-1 sm:px-2">
+    <div className="relative w-full max-w-3xl mx-auto px-4 sm:px-6">
+      {/* History Button — fixed at top-right of viewport */}
+      <div className="fixed top-4 right-4 z-50">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-mood-history'))}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/8 border border-white/15 text-white/70 text-xs font-semibold backdrop-blur-md hover:bg-purple-500/25 hover:text-white hover:border-purple-500/30 transition-all duration-200 shadow-lg"
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>View History</span>
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
         {/* Title Section */}
-        <div className="mb-1.5 sm:mb-3 text-center shrink-0 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <h2 className="text-xl sm:text-[26px] font-black text-white tracking-tight leading-none mb-1 flex items-center justify-center gap-1.5 drop-shadow-lg">
-            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+        <div className="flex flex-col items-center shrink-0 pt-9 sm:pt-10">
+          <img
+            src="https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg"
+            alt="AI Mood"
+            className="w-12 h-12 sm:w-14 sm:h-14 mb-1 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] animate-pulse shrink-0"
+          />
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight leading-none mb-0.5 text-center drop-shadow-lg shrink-0">
             AI Mood Generator
           </h2>
-          <p className="text-[10px] sm:text-[11px] text-white/50 font-medium tracking-wide uppercase">Describe your vibe. We'll curate the music.</p>
+          <p className="text-[10px] sm:text-xs text-white/50 font-medium tracking-wide uppercase text-center">
+            Describe your vibe. We'll curate the music.
+          </p>
         </div>
 
         {/* iOS-style Glassmorphism Input Container */}
-        <div className="bg-white/10 backdrop-blur-3xl rounded-[20px] sm:rounded-3xl border border-white/20 p-2.5 sm:p-4 shadow-2xl shrink-0">
+        <div className="bg-white/10 backdrop-blur-3xl rounded-2xl sm:rounded-3xl border border-white/20 p-3 sm:p-3.5 shadow-2xl shrink-0 transition-all focus-within:bg-white/[0.15] focus-within:border-white/30">
           <Textarea
             value={moodText}
             onChange={handleChange}
             placeholder="How are you feeling right now?"
-            className="min-h-[44px] sm:min-h-[60px] resize-none border-0 !ring-0 !ring-offset-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 focus-visible:border-transparent text-[13px] sm:text-[15px] p-0 bg-transparent text-white placeholder:text-white/40 leading-relaxed custom-scrollbar"
+            className="min-h-[60px] sm:min-h-[75px] max-h-[80px] sm:max-h-[95px] resize-none border-0 !ring-0 !ring-offset-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 focus-visible:border-transparent text-sm sm:text-base p-0 bg-transparent text-white placeholder:text-white/40 leading-relaxed custom-scrollbar"
             aria-label="Mood description"
           />
 
-          <div className="flex items-center justify-between mt-1 sm:mt-3 pt-1 sm:pt-3 border-t border-white/10">
+          <div className="flex items-center justify-between mt-2 sm:mt-2.5 pt-2 sm:pt-2.5 border-t border-white/10">
             <span className={cn(
-              'text-xs font-medium',
+              'text-xs sm:text-sm font-medium',
               charCount === 0 && 'text-white/40',
               charCount > 0 && charCount < MIN_LENGTH && 'text-yellow-400',
               charCount >= MIN_LENGTH && charCount <= MAX_LENGTH && 'text-green-400',
@@ -214,22 +326,22 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
             <Button
               type="submit"
               disabled={!isValid}
-              className="rounded-full px-6 h-9 sm:h-10 text-[13px] sm:text-sm font-semibold bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 shadow-lg"
+              className="rounded-full px-6 sm:px-8 h-10 sm:h-11 text-sm sm:text-base font-semibold bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 shadow-lg transition-transform active:scale-95"
             >
-              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5" />
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
               Generate
             </Button>
           </div>
         </div>
 
         {/* Quick Emotion Buttons (Separate Container) */}
-        <div className="mt-1.5 sm:mt-3 bg-white/10 backdrop-blur-3xl rounded-[20px] sm:rounded-3xl border border-white/20 p-2 sm:p-3 shadow-2xl shrink-0">
-          <div className="flex items-center justify-center gap-1.5 mb-1.5 sm:mb-2">
-            <div className="h-px bg-white/10 flex-1 rounded-full"></div>
-            <p className="text-[8px] sm:text-[9px] font-semibold text-white/40 uppercase tracking-widest px-1.5">Quick Moods</p>
-            <div className="h-px bg-white/10 flex-1 rounded-full"></div>
+        <div className="bg-white/10 backdrop-blur-3xl rounded-2xl sm:rounded-3xl border border-white/20 p-2.5 sm:p-3 shadow-2xl shrink-0">
+          <div className="flex items-center justify-center gap-2 mb-1.5">
+            <div className="h-px bg-white/10 flex-1 rounded-full shrink-0"></div>
+            <p className="text-[10px] sm:text-xs font-semibold text-white/40 uppercase tracking-widest shrink-0">Quick Moods</p>
+            <div className="h-px bg-white/10 flex-1 rounded-full shrink-0"></div>
           </div>
-          <div className="grid grid-cols-3 gap-1.5 lg:gap-2">
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5 shrink-0">
             {[
               { label: 'Happy', text: 'I want a playlist that sounds happy, upbeat, and full of positive energy.', icon: SentimentSatisfiedOutlined },
               { label: 'Sad', text: 'I need a sad, melancholic, and emotional playlist for deep reflection.', icon: SentimentDissatisfiedOutlined },
@@ -246,23 +358,23 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
                   setError(null);
                 }}
                 className={cn(
-                  "group flex flex-col items-center justify-center gap-0.5 sm:gap-1 py-1 sm:py-1.5 px-0.5 rounded-lg sm:rounded-xl border transition-all duration-300",
+                  "group flex flex-col items-center justify-center gap-1 sm:gap-1.5 py-2 sm:py-2.5 px-1 rounded-xl sm:rounded-2xl border transition-all duration-300",
                   "hover:scale-[1.02] active:scale-95",
                   "bg-white/5 border-white/5",
                   "hover:bg-white/10 hover:border-white/10 shadow-sm"
                 )}
               >
-                <div className="p-1 sm:p-1.5 rounded-full bg-white/5 text-white/60 group-hover:text-white transition-colors">
-                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-300 group-hover:scale-110" />
+                <div className="p-1.5 sm:p-2 rounded-full bg-white/5 text-white/60 group-hover:text-white transition-colors">
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:scale-110" />
                 </div>
-                <span className="text-[9px] sm:text-[10px] font-medium text-white/60 group-hover:text-white transition-colors">{label}</span>
+                <span className="text-[10px] sm:text-xs font-medium text-white/60 group-hover:text-white transition-colors line-clamp-1">{label}</span>
               </button>
             ))}
           </div>
         </div>
 
         {error && (
-          <Alert variant="destructive" className="mt-4 rounded-2xl bg-red-500/10 border-red-500/20 backdrop-blur-sm">
+          <Alert variant="destructive" className="rounded-2xl bg-red-500/10 border-red-500/20 backdrop-blur-sm">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-sm">{error}</AlertDescription>
           </Alert>
