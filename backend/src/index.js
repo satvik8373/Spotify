@@ -205,6 +205,35 @@ app.get('/', (req, res) => {
   });
 });
 
+// Health check endpoint to verify Firebase initialization
+app.get('/api/test/health', (req, res) => {
+  try {
+    const firebaseInitialized = admin.apps.length > 0;
+    const hasFirestore = firebaseInitialized ? !!admin.firestore : false;
+    
+    res.json({
+      status: 'ok',
+      firebase: {
+        initialized: firebaseInitialized,
+        firestoreAvailable: hasFirestore,
+        projectId: process.env.FIREBASE_PROJECT_ID || 'not set',
+        hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+        hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+      },
+      environment: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      firebase: {
+        initialized: false
+      }
+    });
+  }
+});
+
 if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
   app.get("*", (req, res) => {

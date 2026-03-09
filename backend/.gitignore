@@ -20,3 +20,8 @@ build/
 # Firebase Service Account (sensitive credentials)
 firebase-service-account.json
 *-firebase-adminsdk-*.json
+
+.vercel
+
+# Vercel environment values (contains secrets)
+vercel-env-values.txt
