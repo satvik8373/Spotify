@@ -1,0 +1,4 @@
+# Ignore parent directory files
+../vercel.json
+../frontend
+../.git
