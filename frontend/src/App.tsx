@@ -14,6 +14,7 @@ import HomePage from './pages/home/HomePage';
 import SearchPage from './pages/search/SearchPage';
 import LibraryPage from './pages/LibraryPage';
 import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
+import MoodPlaylistPage from './pages/MoodPlaylistPage';
 
 // Lazy load less critical pages only
 const SyncLikedSongsPage = lazy(() => import('./pages/liked-songs/SyncLikedSongsPage'));
@@ -29,31 +30,6 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const AccountDeletion = lazy(() => import('./pages/AccountDeletion'));
 
 // AI Mood Playlist page
-const MOOD_PLAYLIST_RELOAD_KEY = 'mood-playlist-chunk-reload';
-const MoodPlaylistPage = lazy(async () => {
-	try {
-		const module = await import('./pages/MoodPlaylistPage');
-		if (typeof window !== 'undefined') {
-			sessionStorage.removeItem(MOOD_PLAYLIST_RELOAD_KEY);
-		}
-		return module;
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		const isChunkLoadError = /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk|ChunkLoadError/i.test(message);
-
-		if (isChunkLoadError && typeof window !== 'undefined') {
-			const alreadyReloaded = sessionStorage.getItem(MOOD_PLAYLIST_RELOAD_KEY);
-			if (!alreadyReloaded) {
-				sessionStorage.setItem(MOOD_PLAYLIST_RELOAD_KEY, '1');
-				window.location.reload();
-				await new Promise<never>(() => { });
-			}
-			sessionStorage.removeItem(MOOD_PLAYLIST_RELOAD_KEY);
-		}
-
-		throw error;
-	}
-});
 const MoodHistoryPage = lazy(() => import('./pages/mood-history/MoodHistoryPage'));
 
 // JioSaavn pages
