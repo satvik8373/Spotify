@@ -18,25 +18,25 @@
   },
   "icons": [
     {
-      "src": "/mavrixfy.png",
+      "src": "/spotify-icons/spotify-icon-maskable-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/mavrixfy.png",
+      "src": "/spotify-icons/spotify-icon-maskable-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/mavrixfy.png",
+      "src": "/spotify-icons/spotify-icon-maskable-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "/mavrixfy.png",
+      "src": "/spotify-icons/spotify-icon-maskable-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
@@ -50,8 +50,9 @@
       "url": "/search",
       "icons": [
         {
-          "src": "/mavrixfy.png",
-          "sizes": "192x192"
+          "src": "/shortcut-search-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
         }
       ]
     },
@@ -62,8 +63,9 @@
       "url": "/liked-songs",
       "icons": [
         {
-          "src": "/mavrixfy.png",
-          "sizes": "192x192"
+          "src": "/shortcut-liked-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
         }
       ]
     }

@@ -234,14 +234,6 @@
 		
 		<!-- Mobile-specific scripts -->
 		<script>
-			// Mobile performance monitoring
-			if ('serviceWorker' in navigator) {
-				window.addEventListener('load', () => {
-					navigator.serviceWorker.register('/service-worker.js')
-						.catch(() => {});
-				});
-			}
-			
 			// Mobile-specific performance metrics
 			if (window.performance && window.performance.mark) {
 				window.performance.mark('mobile-app-start');

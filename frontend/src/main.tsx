@@ -100,39 +100,35 @@ window.addEventListener('unhandledrejection', (event) => {
   event.preventDefault();
 });
 
-// Register service worker (skip in iOS PWA standalone mode if causing issues)
-if ('serviceWorker' in navigator && !isIOSPWA) {
+// Cleanup legacy custom service worker registrations.
+// Vite PWA handles registration via registerSW.js.
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then((registration) => {
-        // SW registered
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => {
+        registrations.forEach((registration) => {
+          const scriptUrl =
+            registration.active?.scriptURL ||
+            registration.waiting?.scriptURL ||
+            registration.installing?.scriptURL ||
+            '';
 
-        // Handle updates
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New service worker available, reload to activate
-                console.log('New service worker available');
-              }
-            });
+          if (scriptUrl.includes('/service-worker.js')) {
+            registration.unregister().catch(() => { });
           }
         });
       })
-      .catch((registrationError) => {
-        console.error('SW registration failed:', registrationError);
-      });
+      .catch(() => { });
   });
-} else if (isIOSPWA) {
+}
+
+if (isIOSPWA && 'serviceWorker' in navigator) {
   // For iOS PWA, unregister any existing service workers to prevent issues
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      registrations.forEach(registration => {
-        registration.unregister().catch(() => { });
-      });
-    }).catch(() => { });
-  }
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(registration => {
+      registration.unregister().catch(() => { });
+    });
+  }).catch(() => { });
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
