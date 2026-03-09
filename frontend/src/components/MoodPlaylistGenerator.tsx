@@ -15,15 +15,16 @@ import {
 } from '@/services/moodPlaylistService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import toast from 'react-hot-toast';
-import { Sparkles, AlertCircle } from 'lucide-react';
 import {
-  SentimentSatisfiedOutlined,
-  SentimentDissatisfiedOutlined,
-  AcUnitOutlined,
-  FlashOnOutlined,
-  FavoriteBorderOutlined,
-  HeadphonesOutlined
-} from '@mui/icons-material';
+  Sparkles,
+  AlertCircle,
+  Smile,
+  Frown,
+  Snowflake,
+  Zap,
+  Heart,
+  Headphones
+} from 'lucide-react';
 
 interface MoodPlaylistGeneratorProps {
   className?: string;
@@ -343,12 +344,12 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
           </div>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5 shrink-0">
             {[
-              { label: 'Happy', text: 'I want a playlist that sounds happy, upbeat, and full of positive energy.', icon: SentimentSatisfiedOutlined },
-              { label: 'Sad', text: 'I need a sad, melancholic, and emotional playlist for deep reflection.', icon: SentimentDissatisfiedOutlined },
-              { label: 'Calm', text: 'Looking for a very calm, peaceful, and relaxing playlist to unwind.', icon: AcUnitOutlined },
-              { label: 'Energetic', text: 'Create an extremely energetic and motivating playlist for an intense workout.', icon: FlashOnOutlined },
-              { label: 'Romantic', text: 'I want a romantic, slow, and intimate playlist perfect for a date night.', icon: FavoriteBorderOutlined },
-              { label: 'Focus', text: 'I need a quiet, focused, deep-work playlist with minimal distractions to concentrate.', icon: HeadphonesOutlined }
+              { label: 'Happy', text: 'I want a playlist that sounds happy, upbeat, and full of positive energy.', icon: Smile },
+              { label: 'Sad', text: 'I need a sad, melancholic, and emotional playlist for deep reflection.', icon: Frown },
+              { label: 'Calm', text: 'Looking for a very calm, peaceful, and relaxing playlist to unwind.', icon: Snowflake },
+              { label: 'Energetic', text: 'Create an extremely energetic and motivating playlist for an intense workout.', icon: Zap },
+              { label: 'Romantic', text: 'I want a romantic, slow, and intimate playlist perfect for a date night.', icon: Heart },
+              { label: 'Focus', text: 'I need a quiet, focused, deep-work playlist with minimal distractions to concentrate.', icon: Headphones }
             ].map(({ label, text, icon: Icon }) => (
               <button
                 key={label}
