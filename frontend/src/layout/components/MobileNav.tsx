@@ -251,7 +251,7 @@ const MobileNav = () => {
           margin: 0 auto;
           display: flex;
           flex-direction: column;
-          border-radius: 14px 14px 34px 34px;
+          border-radius: 14px 14px 38px 38px;
           overflow: hidden;
           box-shadow: 0 10px 30px rgba(0,0,0,0.6);
           border: 1px solid rgba(255, 255, 255, 0.1);
