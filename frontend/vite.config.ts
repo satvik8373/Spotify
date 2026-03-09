@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => {
 					name: 'Mavrixfy',
 					short_name: 'Mavrixfy',
 					description: 'Discover, listen to, and organize music you love',
-					theme_color: '#1db954',
+					theme_color: '#121212',
 					background_color: '#121212',
 					display: 'standalone',
 					orientation: 'portrait',

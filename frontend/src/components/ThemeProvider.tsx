@@ -25,9 +25,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     // Update meta theme-color for mobile browsers
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      const themeColor = isDark ? '#000000' : '#ffffff';
-      metaThemeColor.setAttribute('content', themeColor);
+      metaThemeColor.setAttribute('content', '#121212');
     }
   }, [theme]);
 
@@ -46,7 +44,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         // Update meta theme-color
         const metaThemeColor = document.querySelector('meta[name="theme-color"]');
         if (metaThemeColor) {
-          metaThemeColor.setAttribute('content', systemTheme === 'dark' ? '#000000' : '#ffffff');
+          metaThemeColor.setAttribute('content', '#121212');
         }
       }
     };

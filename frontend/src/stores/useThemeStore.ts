@@ -47,8 +47,8 @@ const applyTheme = (theme: Theme) => {
   // Update meta theme-color for mobile browsers
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (metaThemeColor) {
-    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    metaThemeColor.setAttribute('content', isDark ? '#000000' : '#ffffff');
+    // Keep a single chrome/notch color on mobile PWAs for consistent iOS/Android display.
+    metaThemeColor.setAttribute('content', '#121212');
   }
 };
 

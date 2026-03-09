@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, Heart, LogIn, User, Play, Pause, ListMusic, Bell } from 'lucide-react';
+import { Home, Search, Library, Heart, LogIn, User, Play, Pause, ListMusic, Bell, Bluetooth, Smartphone, Car, Tv, Headphones, Speaker, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,11 +9,14 @@ import { usePlayerSync } from '@/hooks/usePlayerSync';
 
 import SongDetailsView from '@/components/SongDetailsView';
 import QueueDrawer from '@/components/QueueDrawer';
+import AudioOutputPicker from '@/components/AudioOutputPicker';
 import { signOut } from '@/services/hybridAuthService';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { WhatsNewDialog } from '@/components/WhatsNewDialog';
 import ProfileDropdown from '@/components/ProfileDropdown';
 import { PingPongScroll } from '@/components/PingPongScroll';
+import { useAudioOutputDevice } from '@/hooks/useAudioOutputDevice';
+import type { AudioOutputDeviceType } from '@/lib/audioOutputDevice';
 
 
 /**
@@ -39,9 +42,30 @@ const MobileNav = () => {
   const [showSongDetails, setShowSongDetails] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
+  const [showOutputPicker, setShowOutputPicker] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
+  const { deviceLabel, deviceType } = useAudioOutputDevice(!!currentSong && isPlaying);
+
+  const renderOutputIcon = (type: AudioOutputDeviceType) => {
+    switch (type) {
+      case 'car':
+        return <Car className="h-4 w-4" />;
+      case 'tv':
+        return <Tv className="h-4 w-4" />;
+      case 'headphones':
+        return <Headphones className="h-4 w-4" />;
+      case 'speaker':
+        return <Speaker className="h-4 w-4" />;
+      case 'bluetooth':
+        return <Bluetooth className="h-4 w-4" />;
+      case 'browser':
+        return <Monitor className="h-4 w-4" />;
+      default:
+        return <Smartphone className="h-4 w-4" />;
+    }
+  };
 
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
@@ -207,6 +231,10 @@ const MobileNav = () => {
       <QueueDrawer
         isOpen={showQueue}
         onClose={() => setShowQueue(false)}
+      />
+      <AudioOutputPicker
+        isOpen={showOutputPicker}
+        onClose={() => setShowOutputPicker(false)}
       />
 
       <style>{`
@@ -426,7 +454,7 @@ const MobileNav = () => {
                 />
 
                 {/* Player Content */}
-                <div className="relative px-3 flex items-center justify-between w-full h-[46px]">
+                <div className="relative px-3 flex items-center justify-between w-full h-[52px]">
                   {/* Left: Album Art + Song Info */}
                   <div
                     className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
@@ -468,23 +496,36 @@ const MobileNav = () => {
                           e.stopPropagation();
                           usePlayerStore.getState().togglePlay();
                         }}
-                        className="p-1.5 transition-transform duration-200 active:scale-90"
+                        className="p-2.5 transition-transform duration-200 active:scale-90"
+                        aria-label={isPlaying ? 'Pause' : 'Play'}
                       >
                         {isPlaying ? (
-                          <Pause className="h-4 w-4" fill="currentColor" />
+                          <Pause className="h-5 w-5" fill="currentColor" />
                         ) : (
-                          <Play className="h-4 w-4 ml-0.5" fill="currentColor" />
+                          <Play className="h-5 w-5 ml-0.5" fill="currentColor" />
                         )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowOutputPicker(true);
+                        }}
+                        className="p-1.5 transition-transform duration-200 active:scale-90 opacity-90"
+                        aria-label={`Open output devices. Current output: ${deviceLabel}`}
+                        title={deviceLabel}
+                      >
+                        {renderOutputIcon(deviceType)}
                       </button>
                       <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowQueue(true);
                       }}
-                        className="p-1.5 transition-transform duration-200 active:scale-90 opacity-80"
+                        className="p-2.5 transition-transform duration-200 active:scale-90 opacity-90"
                         aria-label="Open queue"
                       >
-                        <ListMusic className="h-4 w-4" />
+                        <ListMusic className="h-5 w-5" />
                       </button>
                     </div>
                 </div>

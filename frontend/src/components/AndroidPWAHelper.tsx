@@ -171,7 +171,7 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
       if (!themeColorMeta) {
         const meta = document.createElement('meta');
         meta.name = 'theme-color';
-        meta.content = '#1DB954'; // Spotify green
+        meta.content = '#121212';
         document.head.appendChild(meta);
       }
 

@@ -1,258 +1,250 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePlayerStore } from '@/stores/usePlayerStore';
-import { X, Trash2, ListMusic } from 'lucide-react';
+import { X, Trash2, ListMusic, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface QueueDrawerProps {
-    isOpen: boolean;
-    onClose: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
+const MOBILE_MIN_HEIGHT = 42;
+const MOBILE_MID_HEIGHT = 62;
+const MOBILE_MAX_HEIGHT = 88;
+
 const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
-    const { queue, currentSong, currentIndex, removeFromQueue, playAlbum } = usePlayerStore();
-    const [isMobile, setIsMobile] = React.useState(false);
-    const [drawerHeight, setDrawerHeight] = React.useState(50); // Start at 50%
-    const [isDragging, setIsDragging] = React.useState(false);
-    const [startY, setStartY] = React.useState(0);
-    const [startHeight, setStartHeight] = React.useState(50);
+  const { queue, currentSong, currentIndex, removeFromQueue, playAlbum } = usePlayerStore();
+  const [isMobile, setIsMobile] = React.useState(false);
+  const [drawerHeight, setDrawerHeight] = React.useState(MOBILE_MID_HEIGHT);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [startY, setStartY] = React.useState(0);
+  const [startHeight, setStartHeight] = React.useState(MOBILE_MID_HEIGHT);
 
-    // Detect mobile/desktop
-    React.useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
-
-    // Reset height when opening
-    React.useEffect(() => {
-        if (isOpen) {
-            setDrawerHeight(50); // Reset to 50% when opening
-        }
-    }, [isOpen]);
-
-    // Handle drag start
-    const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
-        setIsDragging(true);
-        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-        setStartY(clientY);
-        setStartHeight(drawerHeight);
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
     };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-    // Handle drag move
-    const handleDragMove = React.useCallback((e: TouchEvent | MouseEvent) => {
-        if (!isDragging) return;
+  React.useEffect(() => {
+    if (isOpen) {
+      setDrawerHeight(MOBILE_MID_HEIGHT);
+      setIsDragging(false);
+    }
+  }, [isOpen]);
 
-        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-        const deltaY = startY - clientY;
-        const windowHeight = window.innerHeight;
-        const deltaPercent = (deltaY / windowHeight) * 100;
-        
-        let newHeight = startHeight + deltaPercent;
-        // Constrain between 30% and 90%
-        newHeight = Math.max(30, Math.min(90, newHeight));
-        
-        setDrawerHeight(newHeight);
-    }, [isDragging, startY, startHeight]);
+  const getClientY = (e: React.TouchEvent | React.MouseEvent | TouchEvent | MouseEvent) => {
+    if ('touches' in e && e.touches.length > 0) return e.touches[0].clientY;
+    if ('changedTouches' in e && e.changedTouches.length > 0) return e.changedTouches[0].clientY;
+    return (e as MouseEvent).clientY;
+  };
 
-    // Handle drag end
-    const handleDragEnd = React.useCallback(() => {
-        if (!isDragging) return;
-        
-        setIsDragging(false);
-        
-        // Snap to nearest position
-        if (drawerHeight < 40) {
-            onClose(); // Close if dragged down too much
-        } else if (drawerHeight < 65) {
-            setDrawerHeight(50); // Snap to 50%
-        } else {
-            setDrawerHeight(85); // Snap to 85%
-        }
-    }, [isDragging, drawerHeight, onClose]);
+  const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!isMobile) return;
+    setIsDragging(true);
+    setStartY(getClientY(e));
+    setStartHeight(drawerHeight);
+  };
 
-    // Add event listeners for drag
-    React.useEffect(() => {
-        if (isDragging) {
-            window.addEventListener('touchmove', handleDragMove);
-            window.addEventListener('mousemove', handleDragMove);
-            window.addEventListener('touchend', handleDragEnd);
-            window.addEventListener('mouseup', handleDragEnd);
-        }
+  const handleDragMove = React.useCallback((e: TouchEvent | MouseEvent) => {
+    if (!isDragging) return;
 
-        return () => {
-            window.removeEventListener('touchmove', handleDragMove);
-            window.removeEventListener('mousemove', handleDragMove);
-            window.removeEventListener('touchend', handleDragEnd);
-            window.removeEventListener('mouseup', handleDragEnd);
-        };
-    }, [isDragging, handleDragMove, handleDragEnd]);
+    const clientY = getClientY(e);
+    const deltaY = startY - clientY;
+    const windowHeight = window.innerHeight;
+    const deltaPercent = (deltaY / windowHeight) * 100;
+    const next = Math.max(MOBILE_MIN_HEIGHT, Math.min(MOBILE_MAX_HEIGHT, startHeight + deltaPercent));
 
-    // Filter out songs that have already played (optional, but standard queue behavior usually shows upcoming)
-    // For now, let's show the whole queue but highlight current
+    setDrawerHeight(next);
+  }, [isDragging, startY, startHeight]);
 
-    const upcomingSongs = queue.slice(currentIndex + 1);
+  const handleDragEnd = React.useCallback(() => {
+    if (!isDragging) return;
 
-    const handleClearQueue = () => {
-        // We can't easily "clear" the queue in the store without a specific action, 
-        // but we can play just the current song to reset it.
-        if (currentSong) {
-            playAlbum([currentSong], 0);
-        }
-    };
+    setIsDragging(false);
 
-    return (
-        <AnimatePresence>
-            {isOpen && (
-                <>
-                    {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 0.5 }}
-                        exit={{ opacity: 0 }}
-                        onClick={onClose}
-                        className="fixed inset-0 bg-black/80 z-50 backdrop-blur-sm"
-                    />
+    if (drawerHeight < 47) {
+      onClose();
+      return;
+    }
 
-                    {/* Drawer */}
-                    <motion.div
-                        initial={isMobile ? { y: '100%' } : { x: '100%' }}
-                        animate={isMobile ? { y: 0 } : { x: 0 }}
-                        exit={isMobile ? { y: '100%' } : { x: '100%' }}
-                        transition={{ 
-                            type: 'tween',
-                            duration: 0.25,
-                            ease: 'easeOut'
-                        }}
-                        className={
-                            isMobile
-                                ? "fixed bottom-0 left-0 right-0 bg-background border-t border-border rounded-t-[20px] z-50 flex flex-col shadow-2xl"
-                                : "fixed top-0 right-0 bottom-0 w-[400px] bg-background border-l border-border z-50 flex flex-col shadow-2xl"
-                        }
-                        style={isMobile ? { 
-                            height: `${drawerHeight}vh`,
-                            transition: isDragging ? 'none' : 'height 0.2s ease-out'
-                        } : undefined}
-                    >
-                        {/* Handle bar for visual cue - only on mobile */}
-                        {isMobile && (
-                            <div 
-                                className="w-full flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing"
-                                onTouchStart={handleDragStart}
-                                onMouseDown={handleDragStart}
-                            >
-                                <div className="w-12 h-1.5 bg-muted rounded-full" />
-                            </div>
-                        )}
-
-                        {/* Header */}
-                        <div className="px-6 py-4 flex items-center justify-between border-b border-border/50">
-                            <div className="flex items-center gap-2">
-                                <ListMusic className="w-5 h-5 text-primary" />
-                                <h2 className="text-xl font-bold">Queue</h2>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {upcomingSongs.length > 0 && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={handleClearQueue}
-                                        className="text-muted-foreground hover:text-red-500"
-                                    >
-                                        Clear
-                                    </Button>
-                                )}
-                                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
-                                    <X className="w-5 h-5" />
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* Content */}
-                        <ScrollArea className="flex-1 px-6">
-                            <div className="py-4 space-y-6">
-                                {/* Now Playing */}
-                                {currentSong && (
-                                    <div className="space-y-3">
-                                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Now Playing</h3>
-                                        <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg border border-primary/20">
-                                            <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0 relative">
-                                                {/* playing animation overlay */}
-                                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                                                    <div className="flex gap-1 items-end h-4">
-                                                        <div className="w-1 bg-primary animate-[music-bar_1s_ease-in-out_infinite] h-2"></div>
-                                                        <div className="w-1 bg-primary animate-[music-bar_1.2s_ease-in-out_infinite_0.1s] h-4"></div>
-                                                        <div className="w-1 bg-primary animate-[music-bar_0.8s_ease-in-out_infinite_0.2s] h-3"></div>
-                                                    </div>
-                                                </div>
-                                                <img
-                                                    src={currentSong.imageUrl}
-                                                    alt={currentSong.title}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-medium truncate text-primary">{currentSong.title}</h4>
-                                                <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Next In Queue */}
-                                <div className="space-y-3 pb-20">
-                                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Next In Queue</h3>
-
-                                    {upcomingSongs.length === 0 ? (
-                                        <div className="text-center py-10 text-muted-foreground">
-                                            <p>No songs in queue</p>
-                                            <p className="text-sm mt-1">Add songs by swiping right on them</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-1">
-                                            {upcomingSongs.map((song, idx) => (
-                                                <div
-                                                    key={`${song._id}-${idx}`}
-                                                    className="flex items-center gap-3 p-2 hover:bg-accent/50 rounded-lg group transition-colors"
-                                                >
-                                                    <div className="w-8 text-center text-sm text-muted-foreground">
-                                                        {idx + 1}
-                                                    </div>
-                                                    <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
-                                                        <img
-                                                            src={song.imageUrl}
-                                                            alt={song.title}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="font-medium truncate text-sm">{song.title}</h4>
-                                                        <p className="text-xs text-muted-foreground truncate">{song.artist}</p>
-                                                    </div>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => removeFromQueue(currentIndex + 1 + idx)}
-                                                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </ScrollArea>
-                    </motion.div>
-                </>
-            )}
-        </AnimatePresence>
+    const snapPoints = [MOBILE_MIN_HEIGHT, MOBILE_MID_HEIGHT, MOBILE_MAX_HEIGHT];
+    const closest = snapPoints.reduce((prev, curr) =>
+      Math.abs(curr - drawerHeight) < Math.abs(prev - drawerHeight) ? curr : prev
     );
+    setDrawerHeight(closest);
+  }, [isDragging, drawerHeight, onClose]);
+
+  React.useEffect(() => {
+    if (!isDragging) return;
+
+    window.addEventListener('touchmove', handleDragMove, { passive: true });
+    window.addEventListener('mousemove', handleDragMove);
+    window.addEventListener('touchend', handleDragEnd);
+    window.addEventListener('mouseup', handleDragEnd);
+
+    return () => {
+      window.removeEventListener('touchmove', handleDragMove);
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('touchend', handleDragEnd);
+      window.removeEventListener('mouseup', handleDragEnd);
+    };
+  }, [isDragging, handleDragMove, handleDragEnd]);
+
+  const upcomingSongs = queue.slice(currentIndex + 1);
+
+  const handleClearQueue = () => {
+    if (currentSong) {
+      playAlbum([currentSong], 0);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.44 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black z-50"
+          />
+
+          <motion.div
+            initial={isMobile ? { y: '100%' } : { x: '100%' }}
+            animate={isMobile ? { y: 0 } : { x: 0 }}
+            exit={isMobile ? { y: '100%' } : { x: '100%' }}
+            transition={
+              isMobile
+                ? { type: 'spring', stiffness: 320, damping: 34, mass: 0.52 }
+                : { type: 'tween', duration: 0.25, ease: 'easeOut' }
+            }
+            className={
+              isMobile
+                ? 'fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[28px] border border-white/15 bg-[linear-gradient(180deg,rgba(32,32,40,0.98)_0%,rgba(18,18,25,0.98)_100%)] shadow-[0_-18px_50px_rgba(0,0,0,0.65)] backdrop-blur-2xl'
+                : 'fixed top-0 right-0 bottom-0 w-[420px] z-50 flex flex-col border-l border-white/10 bg-[#141414] shadow-2xl'
+            }
+            style={
+              isMobile
+                ? {
+                    height: `${drawerHeight}vh`,
+                    transition: isDragging ? 'none' : 'height 200ms ease-out',
+                    paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                  }
+                : undefined
+            }
+          >
+            {isMobile && (
+              <div
+                className="w-full flex items-center justify-center pt-2 pb-1 cursor-grab active:cursor-grabbing"
+                onTouchStart={handleDragStart}
+                onMouseDown={handleDragStart}
+              >
+                <div className="px-2 py-1 rounded-full bg-white/5 border border-white/10">
+                  <GripHorizontal className="w-5 h-5 text-white/55" />
+                </div>
+              </div>
+            )}
+
+            <div className="px-4 md:px-6 py-3 flex items-center justify-between border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                  <ListMusic className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-white font-semibold leading-tight">Queue</h2>
+                  <p className="text-[11px] text-white/60 leading-tight">{queue.length} songs</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {upcomingSongs.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearQueue}
+                    className="text-white/70 hover:text-white hover:bg-white/10 rounded-full h-8 px-3"
+                  >
+                    Clear
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="rounded-full w-8 h-8 text-white/75 hover:text-white hover:bg-white/10"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            <ScrollArea className="flex-1 px-4 md:px-5">
+              <div className="py-4 space-y-5">
+                {currentSong && (
+                  <section className="space-y-2">
+                    <h3 className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/55">Now Playing</h3>
+                    <div className="flex items-center gap-3 p-3 rounded-2xl border border-white/12 bg-white/5">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
+                        <img src={currentSong.imageUrl} alt={currentSong.title} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-white truncate">{currentSong.title}</p>
+                        <p className="text-xs text-white/65 truncate">{currentSong.artist}</p>
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+                <section className="space-y-2 pb-6">
+                  <h3 className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/55">Up Next</h3>
+                  {upcomingSongs.length === 0 ? (
+                    <div className="text-center rounded-2xl border border-white/10 bg-white/5 py-8 px-4 text-white/60">
+                      <p className="text-sm">No songs in queue</p>
+                      <p className="text-xs mt-1">Add songs to keep playback going</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {upcomingSongs.map((song, idx) => (
+                        <div
+                          key={`${song._id}-${idx}`}
+                          className="group flex items-center gap-3 p-2.5 rounded-2xl border border-transparent hover:border-white/10 bg-white/[0.03] hover:bg-white/[0.07] transition-colors"
+                        >
+                          <div className="w-6 text-center text-[11px] text-white/45">{idx + 1}</div>
+                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+                            <img src={song.imageUrl} alt={song.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-white truncate">{song.title}</p>
+                            <p className="text-xs text-white/65 truncate">{song.artist}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeFromQueue(currentIndex + 1 + idx)}
+                            className="w-8 h-8 rounded-full text-white/45 hover:text-red-300 hover:bg-red-500/15 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                            aria-label="Remove from queue"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+            </ScrollArea>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
 };
 
 export default QueueDrawer;
