@@ -29,14 +29,29 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const AccountDeletion = lazy(() => import('./pages/AccountDeletion'));
 
 // AI Mood Playlist page
+const MOOD_PLAYLIST_RELOAD_KEY = 'mood-playlist-chunk-reload';
 const MoodPlaylistPage = lazy(async () => {
 	try {
-		return await import('./pages/MoodPlaylistPage');
+		const module = await import('./pages/MoodPlaylistPage');
+		if (typeof window !== 'undefined') {
+			sessionStorage.removeItem(MOOD_PLAYLIST_RELOAD_KEY);
+		}
+		return module;
 	} catch (error) {
-		console.warn('[App] Failed to load MoodPlaylistPage chunk:', error);
-		return {
-			default: () => <div className="min-h-screen bg-[#121212]" />
-		};
+		const message = error instanceof Error ? error.message : String(error);
+		const isChunkLoadError = /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk|ChunkLoadError/i.test(message);
+
+		if (isChunkLoadError && typeof window !== 'undefined') {
+			const alreadyReloaded = sessionStorage.getItem(MOOD_PLAYLIST_RELOAD_KEY);
+			if (!alreadyReloaded) {
+				sessionStorage.setItem(MOOD_PLAYLIST_RELOAD_KEY, '1');
+				window.location.reload();
+				await new Promise<never>(() => { });
+			}
+			sessionStorage.removeItem(MOOD_PLAYLIST_RELOAD_KEY);
+		}
+
+		throw error;
 	}
 });
 const MoodHistoryPage = lazy(() => import('./pages/mood-history/MoodHistoryPage'));
