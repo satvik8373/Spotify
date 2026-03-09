@@ -1,5 +1,7 @@
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
@@ -24,8 +26,6 @@ try {
   // Or from a path on disk (local development)
   else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     console.log('[Firebase] Loading credentials from file path');
-    const fs = await import('fs');
-    const path = await import('path');
     const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
     const fullPath = credPath.startsWith('.') ? path.resolve(process.cwd(), credPath) : credPath;
     serviceAccount = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
