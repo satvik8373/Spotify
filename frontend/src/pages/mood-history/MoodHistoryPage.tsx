@@ -169,7 +169,7 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
                         <span className="text-xs text-[#b3b3b3]">{session.songs.length} tracks</span>
                     </div>
 
-                    {/* Table Header like Spotify */}
+                    {/* Table Header like Mavrixfy */}
                     <div className="hidden sm:grid grid-cols-[auto_1fr_auto] gap-4 px-6 py-2 border-b border-white/5 text-xs text-[#b3b3b3] font-medium tracking-wider uppercase mt-2">
                         <div className="w-8 text-center">#</div>
                         <div>Title</div>
@@ -373,3 +373,4 @@ export default function MoodHistoryPage() {
         </div>
     );
 }
+

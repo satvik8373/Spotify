@@ -278,7 +278,7 @@ export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
           <ul className="space-y-1 list-disc list-inside">
             <li>Checks for songs liked on Spotify in the last 7 days</li>
             <li>Automatically searches for high-quality audio versions</li>
-            <li>Adds new songs to your Mavrixfy liked songs</li>
+            <li>Adds new songs to your Spotify liked songs</li>
             <li>Skips songs already in your library</li>
           </ul>
         </div>
@@ -286,3 +286,5 @@ export function SpotifyAutoSync({ className }: SpotifyAutoSyncProps) {
     </Card>
   );
 }
+
+

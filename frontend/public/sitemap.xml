@@ -80,7 +80,7 @@
     <priority>0.8</priority>
   </url>
   
-  <!-- Spotify Integration -->
+  <!-- Mavrixfy Integration -->
   <url>
     <loc>https://mavrixfy.site/spotify/playlists</loc>
     <lastmod>2026-02-10</lastmod>
@@ -160,3 +160,4 @@
     <priority>0.9</priority>
   </url>
 </urlset>
+

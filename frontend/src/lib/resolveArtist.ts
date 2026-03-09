@@ -11,7 +11,7 @@ export const resolveArtist = (input: any): string => {
     (input as any).createdBy?.fullName,
   ];
 
-  // If artists array exists (Spotify or others)
+  // If artists array exists (Mavrixfy or others)
   const artistsField: unknown = (input as any).artists || (input as any).track?.artists;
   if (Array.isArray(artistsField)) {
     const names = (artistsField as any[])
@@ -39,5 +39,6 @@ export const resolveArtist = (input: any): string => {
 };
 
 export default resolveArtist;
+
 
 

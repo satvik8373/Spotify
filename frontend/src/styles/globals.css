@@ -29,7 +29,7 @@
   }
 
   .dark {
-    /* Spotify exact colors */
+    /* Mavrixfy exact colors */
     /* Main background: #121212 */
     --background: 0 0% 7.1%;
     --foreground: 0 0% 100%;
@@ -40,7 +40,7 @@
     --popover: 0 0% 9.4%;
     --popover-foreground: 0 0% 100%;
 
-    /* Spotify Green #1DB954 ~ hsl(141 73% 42%) */
+    /* Mavrixfy Green #1DB954 ~ hsl(141 73% 42%) */
     --primary: 141 73% 42%;
     --primary-foreground: 0 0% 100%;
 
@@ -51,7 +51,7 @@
     /* Secondary text: #B3B3B3 */
     --muted-foreground: 0 0% 70%;
 
-    /* Accent uses Spotify Green */
+    /* Accent uses Mavrixfy Green */
     --accent: 141 73% 42%;
     --accent-foreground: 0 0% 100%;
 
@@ -113,7 +113,7 @@
   /* Add some space after text */
 }
 
-/* Improved scrolling animation like Spotify */
+/* Improved scrolling animation like Mavrixfy */
 .text-auto-scroll-inner.scrolling {
   animation: enhanced-spotify-scroll 12s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
   animation-delay: 1s;
@@ -127,7 +127,7 @@
   }
 }
 
-/* New Spotify-like scrolling animation with pause at beginning and end */
+/* New Mavrixfy-like scrolling animation with pause at beginning and end */
 @keyframes spotify-scroll {
 
   0%,
@@ -232,7 +232,7 @@
   width: 100%;
 }
 
-/* Spotify-like font rendering for audio player */
+/* Mavrixfy-like font rendering for audio player */
 .playback-controls-text {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -283,7 +283,7 @@
   display: inline-block;
 }
 
-/* Theme-specific styles for Spotify app */
+/* Theme-specific styles for Mavrixfy app */
 .dark .playback-controls-glass {
   background: rgba(24, 24, 27, 0.85) !important;
   backdrop-filter: blur(20px);
@@ -384,7 +384,7 @@ html, body {
   overscroll-behavior-y: contain;
 }
 
-/* Spotify-style gradient flow */
+/* Mavrixfy-style gradient flow */
 .spotify-gradient-flow {
   background: linear-gradient(180deg, 
     var(--gradient-color, #1ed760) 0%, 
@@ -418,7 +418,7 @@ html, body {
   transform: translateY(-1px);
 }
 
-/* Spotify-style gradient with subtle noise texture */
+/* Mavrixfy-style gradient with subtle noise texture */
 .spotify-gradient-bg {
   position: relative;
 }

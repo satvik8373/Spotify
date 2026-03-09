@@ -7,6 +7,14 @@ const isMediaSessionSupported = () => {
   return 'mediaSession' in navigator;
 };
 
+const safeSetActionHandler = (action: MediaSessionAction, handler: any) => {
+  try {
+    navigator.mediaSession.setActionHandler(action, handler);
+  } catch (_error) {
+    // Ignore unsupported action handlers on some browsers/iOS versions.
+  }
+};
+
 interface AudioPlayerMediaSessionProps {
   currentSong: any;
   isPlaying: boolean;
@@ -30,17 +38,52 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
     
     // Prevent multiple rapid calls
     let isHandlingAction = false;
+    const getAudioElement = (): HTMLAudioElement | null => {
+      return audioRef.current ?? (document.querySelector('audio') as HTMLAudioElement | null);
+    };
+
+    const ensurePlaybackContinues = (onDone: () => void) => {
+      const retryDelays = [180, 350, 700, 1200];
+      let retryIndex = 0;
+
+      const attemptPlay = () => {
+        const store = usePlayerStore.getState();
+        const audio = getAudioElement();
+
+        if (!audio || !store.isPlaying || audio.ended) {
+          onDone();
+          return;
+        }
+
+        if (!audio.paused) {
+          onDone();
+          return;
+        }
+
+        audio.play()
+          .then(() => onDone())
+          .catch(() => {
+            retryIndex += 1;
+            if (retryIndex >= retryDelays.length) {
+              onDone();
+              return;
+            }
+            setTimeout(attemptPlay, retryDelays[retryIndex]);
+          });
+      };
+
+      setTimeout(attemptPlay, retryDelays[0]);
+    };
 
     // Register action handlers once
-    navigator.mediaSession.setActionHandler('play', () => {
+    safeSetActionHandler('play', () => {
       if (isHandlingAction) return;
       isHandlingAction = true;
       
       const store = usePlayerStore.getState();
       store.setUserInteracted();
       
-      // Get the actual audio element from DOM for reliability
-      const audio = document.querySelector('audio') as HTMLAudioElement;
+      const audio = getAudioElement();
       if (audio && audio.paused && !audio.ended) {
         audio.play()
           .then(() => {
@@ -66,15 +109,14 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
       }
     });
 
-    navigator.mediaSession.setActionHandler('pause', () => {
+    safeSetActionHandler('pause', () => {
       if (isHandlingAction) return;
       isHandlingAction = true;
       
       const store = usePlayerStore.getState();
       store.setIsPlaying(false);
       
-      // Get the actual audio element from DOM for reliability
-      const audio = document.querySelector('audio') as HTMLAudioElement;
+      const audio = getAudioElement();
       if (audio && !audio.paused) {
         audio.pause();
       }
@@ -82,7 +124,7 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
       setTimeout(() => { isHandlingAction = false; }, 100);
     });
 
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
+    safeSetActionHandler('previoustrack', () => {
       if (isHandlingAction) return;
       isHandlingAction = true;
       
@@ -90,57 +132,26 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
       store.setUserInteracted();
       if (store.playPrevious) {
         store.playPrevious();
-        
-        // Ensure playback continues after track change
-        setTimeout(() => {
-          const audio = document.querySelector('audio') as HTMLAudioElement;
-          if (audio && audio.paused && !audio.ended && store.isPlaying) {
-            audio.play().catch(() => {});
-          }
-          isHandlingAction = false;
-        }, 250);
+        ensurePlaybackContinues(() => { isHandlingAction = false; });
       } else {
         isHandlingAction = false;
       }
     });
 
-    navigator.mediaSession.setActionHandler('nexttrack', () => {
+    safeSetActionHandler('nexttrack', () => {
       if (isHandlingAction) return;
       isHandlingAction = true;
       
       const store = usePlayerStore.getState();
       store.setUserInteracted();
       store.playNext();
-
-      // Enhanced reliability for Bluetooth devices
-      setTimeout(() => {
-        const audio = document.querySelector('audio') as HTMLAudioElement;
-        if (audio && audio.paused && !audio.ended && store.isPlaying) {
-          audio.play()
-            .then(() => { isHandlingAction = false; })
-            .catch(() => {
-              // Single retry for Bluetooth devices
-              setTimeout(() => {
-                if (audio && audio.paused && !audio.ended) {
-                  audio.play()
-                    .catch(() => {})
-                    .finally(() => { isHandlingAction = false; });
-                } else {
-                  isHandlingAction = false;
-                }
-              }, 200);
-            });
-        } else {
-          isHandlingAction = false;
-        }
-      }, 150);
+      ensurePlaybackContinues(() => { isHandlingAction = false; });
     });
 
     // Seeking handler with improved CarPlay compatibility
     try {
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        // Get the actual audio element from DOM for reliability
-        const audio = document.querySelector('audio') as HTMLAudioElement;
+      safeSetActionHandler('seekto', (details: MediaSessionActionDetails) => {
+        const audio = getAudioElement();
         if (audio && details.seekTime !== undefined) {
           const seekTime = Math.max(0, Math.min(details.seekTime, audio.duration || 0));
           audio.currentTime = seekTime;
@@ -171,8 +182,8 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
       });
 
       // Add support for seeking backward/forward (CarPlay specific)
-      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-        const audio = document.querySelector('audio') as HTMLAudioElement;
+      safeSetActionHandler('seekbackward', (details: MediaSessionActionDetails) => {
+        const audio = getAudioElement();
         if (audio) {
           const seekOffset = details.seekOffset || 10; // Default 10 seconds
           const newTime = Math.max(0, audio.currentTime - seekOffset);
@@ -185,8 +196,8 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
         }
       });
 
-      navigator.mediaSession.setActionHandler('seekforward', (details) => {
-        const audio = document.querySelector('audio') as HTMLAudioElement;
+      safeSetActionHandler('seekforward', (details: MediaSessionActionDetails) => {
+        const audio = getAudioElement();
         if (audio) {
           const seekOffset = details.seekOffset || 10; // Default 10 seconds
           const newTime = Math.min(audio.duration || 0, audio.currentTime + seekOffset);
@@ -205,17 +216,13 @@ const AudioPlayerMediaSession: React.FC<AudioPlayerMediaSessionProps> = ({
     return () => {
       // Cleanup handlers on unmount
       if (isMediaSessionSupported()) {
-        try {
-          navigator.mediaSession.setActionHandler('play', null);
-          navigator.mediaSession.setActionHandler('pause', null);
-          navigator.mediaSession.setActionHandler('previoustrack', null);
-          navigator.mediaSession.setActionHandler('nexttrack', null);
-          navigator.mediaSession.setActionHandler('seekto', null);
-          navigator.mediaSession.setActionHandler('seekbackward', null);
-          navigator.mediaSession.setActionHandler('seekforward', null);
-        } catch (error) {
-          // MediaSession cleanup failed
-        }
+        safeSetActionHandler('play', null);
+        safeSetActionHandler('pause', null);
+        safeSetActionHandler('previoustrack', null);
+        safeSetActionHandler('nexttrack', null);
+        safeSetActionHandler('seekto', null);
+        safeSetActionHandler('seekbackward', null);
+        safeSetActionHandler('seekforward', null);
       }
     };
   }, [audioRef]);

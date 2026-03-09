@@ -177,7 +177,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Update Firestore if user is authenticated - don't await to prevent UI blocking
           const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
-            // Pass the song's likedAt date if it exists (for Spotify imports)
+            // Pass the song's likedAt date if it exists (for Mavrixfy imports)
             likedSongsFirestoreService.addLikedSong(
               songToSave, 
               'mavrixfy', 
@@ -350,3 +350,4 @@ queueMicrotask(() => {
     // Error handling without logging
   });
 });
+

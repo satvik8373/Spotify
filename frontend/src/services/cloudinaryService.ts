@@ -178,7 +178,7 @@ export const getCloudinaryUrl = (
  */
 const getRandomColor = (): string => {
   const colors = [
-    '#1DB954', // Spotify green
+    '#1DB954', // Mavrixfy green
     '#3D91F4', // blue
     '#E13300', // red
     '#FFA42B', // orange

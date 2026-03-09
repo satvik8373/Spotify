@@ -234,7 +234,7 @@ const drawCTAButton = (
   const buttonY = height - safeZone.bottom - 180;
   
   // Button background
-  ctx.fillStyle = '#1DB954'; // Spotify green
+  ctx.fillStyle = '#1DB954'; // Mavrixfy green
   ctx.beginPath();
   ctx.roundRect(buttonX, buttonY, buttonWidth, buttonHeight, 30);
   ctx.fill();
@@ -365,3 +365,4 @@ const formatMetadata = (content: any): string => {
 export const cleanupCardUrl = (url: string) => {
   URL.revokeObjectURL(url);
 };
+

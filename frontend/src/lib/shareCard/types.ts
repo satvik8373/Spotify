@@ -1,6 +1,6 @@
 /**
  * Share Card System - Type Definitions
- * Production-grade types for Spotify-style share cards
+ * Production-grade types for Mavrixfy-style share cards
  */
 
 export type ShareContentType = 'song' | 'album' | 'playlist' | 'podcast' | 'wrapped';
@@ -154,3 +154,4 @@ export const PLATFORM_DIMENSIONS: Record<SharePlatform, ShareCardDimensions> = {
     safeZone: { top: 40, bottom: 40, left: 40, right: 40 }
   }
 };
+

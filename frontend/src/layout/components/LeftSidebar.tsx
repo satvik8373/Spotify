@@ -16,7 +16,7 @@ import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { CreatePlaylistDialog } from '../../components/playlist/CreatePlaylistDialog';
 import { getLikedSongsCount } from '@/services/likedSongsService';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
-// Removed Spotify section per request
+// Removed Mavrixfy section per request
 
 interface LeftSidebarProps {
     isCollapsed?: boolean;
@@ -88,7 +88,7 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                         onClick={onToggleCollapse}
                         title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                     >
-                        {/* Sidebar icon: vertical rectangle with chevron - matches Spotify design */}
+                        {/* Sidebar icon: vertical rectangle with chevron - matches Mavrixfy design */}
                         <div className="relative w-5 h-4 flex items-center">
                             {/* Narrow left section (solid bar) - about 20% width */}
                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-foreground rounded-l"></div>
@@ -313,3 +313,5 @@ function FavouritePlaylists() {
         </div>
     );
 }
+
+

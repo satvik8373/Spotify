@@ -696,7 +696,7 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
               Sync Complete! 🎉
             </h3>
             <p className="text-gray-400 mb-6">
-              Successfully synced your Spotify songs to Mavrixfy
+              Successfully synced your Spotify songs to Spotify
             </p>
 
             {/* Compact Stats */}
@@ -740,3 +740,6 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
     </div>
   );
 }
+
+
+

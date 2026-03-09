@@ -75,7 +75,7 @@ const AccountDeletion = () => {
 								<li>Your liked songs and favorites</li>
 								<li>Your listening history and preferences</li>
 								<li>Your mood playlist data and analytics</li>
-								<li>Any connected third-party service tokens (Spotify, etc.)</li>
+								<li>Any connected third-party service tokens (Mavrixfy, etc.)</li>
 							</ul>
 						</section>
 
@@ -165,3 +165,4 @@ const AccountDeletion = () => {
 };
 
 export default AccountDeletion;
+

@@ -15,15 +15,16 @@ const isValidUrl = (url: string): boolean => {
 };
 
 interface AudioPlayerCoreProps {
+  audioRef: React.RefObject<HTMLAudioElement>;
   onTimeUpdate: (currentTime: number, duration: number) => void;
   onLoadingChange: (loading: boolean) => void;
 }
 
 const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
+  audioRef,
   onTimeUpdate,
   onLoadingChange
 }) => {
-  const audioRef = useRef<HTMLAudioElement>(null);
   const prevSongRef = useRef<string | null>(null);
   const isHandlingPlayback = useRef(false);
   const isHandlingEndRef = useRef(false);
@@ -45,6 +46,49 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
 
   // Use phone interruption hook for automatic pause/resume during calls
   const audioFocusState = usePhoneInterruption(audioRef);
+
+  const resumeAfterTrackAdvance = useCallback(() => {
+    const retryDelays = [120, 300, 700, 1300, 2000];
+    let retryIndex = 0;
+
+    const attemptResume = () => {
+      const state = usePlayerStore.getState();
+      const audio = audioRef.current;
+
+      if (!audio) {
+        isHandlingEndRef.current = false;
+        return;
+      }
+
+      if (!state.isPlaying || audio.ended) {
+        isHandlingEndRef.current = false;
+        return;
+      }
+
+      if (!audio.paused) {
+        state.setIsPlaying(true);
+        isHandlingEndRef.current = false;
+        return;
+      }
+
+      state.setUserInteracted();
+      audio.play()
+        .then(() => {
+          state.setIsPlaying(true);
+          isHandlingEndRef.current = false;
+        })
+        .catch(() => {
+          retryIndex += 1;
+          if (retryIndex >= retryDelays.length) {
+            isHandlingEndRef.current = false;
+            return;
+          }
+          setTimeout(attemptResume, retryDelays[retryIndex]);
+        });
+    };
+
+    setTimeout(attemptResume, retryDelays[0]);
+  }, [audioRef]);
 
   // Initialize audio context for iOS on mount
   useEffect(() => {
@@ -122,13 +166,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       }
 
       state.playNext();
-
-      // Use standard setTimeout, requestAnimationFrame is suspended in background on mobile OSes (iOS/Android)
-      setTimeout(() => {
-        audioRef.current?.play()
-          .catch(() => { })
-          .finally(() => { isHandlingEndRef.current = false; });
-      }, 50);
+      resumeAfterTrackAdvance();
     };
 
     // Throttled timeupdate with requestAnimationFrame
@@ -154,7 +192,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       audio.removeEventListener('ended', handleSongEnd);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
     };
-  }, [isPlaying, onTimeUpdate]);
+  }, [isPlaying, onTimeUpdate, resumeAfterTrackAdvance]);
 
   // Fallback for lock-screen/background cases where ended event can be delayed or missed.
   useEffect(() => {
@@ -169,33 +207,55 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         isHandlingEndRef.current = true;
         state.setUserInteracted();
         state.playNext();
-        setTimeout(() => {
-          audioRef.current?.play().catch(() => { });
-          isHandlingEndRef.current = false;
-        }, 120);
+        resumeAfterTrackAdvance();
       }
-    }, 2500);
+    }, 1500);
 
     return () => clearInterval(interval);
-  }, [currentSong]);
+  }, [currentSong, resumeAfterTrackAdvance]);
 
-  // Minimal background playback monitor - only when needed
+  // Background playback monitor for lock-screen/iOS resume reliability
   useEffect(() => {
-    if (!currentSong || !audioRef.current || !document.hidden) return;
+    if (!currentSong || !audioRef.current) return;
 
-    const backgroundPlaybackMonitor = setInterval(() => {
+    let hiddenMonitor: number | null = null;
+
+    const recoverPlaybackIfNeeded = () => {
       const state = usePlayerStore.getState();
       const audio = audioRef.current;
       if (!audio || audioFocusState.isInterrupted || !state.hasUserInteracted || state.wasPlayingBeforeInterruption) return;
 
-      // Only try to resume if we're clearly in a bad state
       if (audio.paused && state.isPlaying && !audio.ended && audio.readyState >= 2) {
         audio.play().catch(() => { });
       }
-    }, 8000); // Increased from 5s to 8s to reduce overhead
+    };
 
-    return () => clearInterval(backgroundPlaybackMonitor);
-  }, [currentSong, isPlaying, audioFocusState.isInterrupted]);
+    const stopMonitor = () => {
+      if (hiddenMonitor !== null) {
+        window.clearInterval(hiddenMonitor);
+        hiddenMonitor = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (hiddenMonitor === null) {
+          hiddenMonitor = window.setInterval(recoverPlaybackIfNeeded, 2500);
+        }
+      } else {
+        stopMonitor();
+      }
+      recoverPlaybackIfNeeded();
+    };
+
+    handleVisibilityChange();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopMonitor();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentSong, audioFocusState.isInterrupted, audioRef]);
 
   // Handle play/pause logic - optimized
   useEffect(() => {

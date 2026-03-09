@@ -849,7 +849,7 @@ export function PlaylistPage() {
           </Button>
         </div>
 
-        {/* Extended Spotify-style gradient background */}
+        {/* Extended Mavrixfy-style gradient background */}
         <div
           className="relative"
           style={{
@@ -867,7 +867,7 @@ export function PlaylistPage() {
           {/* Header content */}
           <div className="pt-12 pb-4 px-4 sm:px-6">
             <div className="flex flex-col md:flex-row items-start md:items-end gap-4 relative z-10 pb-2">
-              {/* Playlist cover image - Spotify-sized */}
+              {/* Playlist cover image - Mavrixfy-sized */}
               <div className="w-48 h-48 sm:w-56 sm:h-56 md:w-60 md:h-60 flex-shrink-0 mx-auto md:mx-0 relative group playlist-cover-shadow">
                 <img
                   src={currentPlaylist.imageUrl || '/default-playlist.jpg'}
@@ -890,7 +890,7 @@ export function PlaylistPage() {
                 )}
               </div>
 
-              {/* Playlist info with Spotify-like sizing */}
+              {/* Playlist info with Mavrixfy-like sizing */}
               <div className="flex flex-col justify-end text-foreground text-center md:text-left w-full">
                 <p className="text-xs uppercase font-medium mb-1 playlist-text-shadow">Public Playlist</p>
                 <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2 tracking-tight playlist-text-shadow leading-tight">
@@ -1412,3 +1412,5 @@ export function PlaylistPage() {
     </div>
   );
 }
+
+

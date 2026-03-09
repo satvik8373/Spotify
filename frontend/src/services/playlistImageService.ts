@@ -2,7 +2,7 @@ import { Song } from '@/types';
 
 /**
  * Creates a 4-grid collage image from song cover arts
- * Similar to how Spotify generates playlist covers automatically
+ * Similar to how Mavrixfy generates playlist covers automatically
  */
 export const createPlaylistCoverCollage = async (songs: Song[]): Promise<string> => {
   // If there are no songs, return a default image
@@ -130,7 +130,7 @@ export const createDominantColorCover = async (songs: Song[]): Promise<string> =
       tempCanvas.height = 50;
       const tempCtx = tempCanvas.getContext('2d');
       
-      if (!tempCtx) return { r: 30, g: 215, b: 96 }; // Spotify green as fallback
+      if (!tempCtx) return { r: 30, g: 215, b: 96 }; // Mavrixfy green as fallback
       
       tempCtx.drawImage(img, 0, 0, 50, 50);
       
@@ -166,7 +166,7 @@ export const createDominantColorCover = async (songs: Song[]): Promise<string> =
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     } else {
       // Fallback if no colors
-      ctx.fillStyle = 'rgb(30, 215, 96)'; // Spotify green
+      ctx.fillStyle = 'rgb(30, 215, 96)'; // Mavrixfy green
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     

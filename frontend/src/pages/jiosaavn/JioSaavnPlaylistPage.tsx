@@ -304,7 +304,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
           </Button>
         </div>
         
-        {/* Spotify-style gradient header */}
+        {/* Mavrixfy-style gradient header */}
         <div
           className="relative pt-12 pb-6 px-4 sm:px-6" 
           style={{
@@ -429,7 +429,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
             </div>
           ) : songs.length > 0 ? (
             <div className="mt-4">
-              {/* Spotify-style header row */}
+              {/* Mavrixfy-style header row */}
               <div className="grid grid-cols-[24px_4fr_minmax(120px,1fr)_48px] md:grid-cols-[24px_4fr_2fr_minmax(120px,1fr)_48px] border-b border-border text-sm text-muted-foreground py-2 px-4 mb-2">
                 <div className="flex items-center justify-center">#</div>
                 <div>Title</div>

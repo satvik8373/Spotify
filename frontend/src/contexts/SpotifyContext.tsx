@@ -120,7 +120,7 @@ export const SpotifyProvider: React.FC<{ children: ReactNode }> = ({ children })
 export const useSpotify = (): SpotifyContextType => {
   const context = useContext(SpotifyContext);
   if (context === undefined) {
-    throw new Error('useSpotify must be used within a SpotifyProvider');
+    throw new Error('useSpotify must be used within the music provider');
   }
   return context;
 };

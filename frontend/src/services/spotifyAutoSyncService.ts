@@ -14,7 +14,7 @@ interface SpotifyAutoSyncConfig {
   maxRetries: number;
 }
 
-// Background task manager for Spotify sync
+// Background task manager for Mavrixfy sync
 class BackgroundTaskManager {
   private tasks: Array<() => Promise<void>> = [];
   private isProcessing = false;
@@ -114,7 +114,7 @@ class SpotifyAutoSyncService {
   // Start auto-sync
   startAutoSync(intervalMinutes: number = 30) {
     if (!isSpotifyAuthenticated()) {
-      this.notifyListeners({ type: 'error', message: 'Spotify not connected' });
+      this.notifyListeners({ type: 'error', message: 'Mavrixfy not connected' });
       return false;
     }
 
@@ -186,7 +186,7 @@ class SpotifyAutoSyncService {
       this.notifyListeners({ type: 'syncing', message: 'Checking for new songs...' });
 
       try {
-        // Get recent Spotify liked songs (last 7 days to be safe)
+        // Get recent Mavrixfy liked songs (last 7 days to be safe)
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - 7);
         
@@ -298,7 +298,7 @@ class SpotifyAutoSyncService {
     return newSongs;
   }
 
-  // Convert Spotify tracks to app songs with optimized search
+  // Convert Mavrixfy tracks to app songs with optimized search
   private async convertTracksToAppSongs(tracks: any[]): Promise<Song[]> {
     const { convertIndianSongToAppSong } = useMusicStore.getState();
     const appSongs: Song[] = [];
@@ -319,7 +319,7 @@ class SpotifyAutoSyncService {
           image: searchResult?.image || track.album.images[0]?.url || '/placeholder-song.jpg',
           url: searchResult?.url || track.preview_url || '',
           duration: searchResult?.duration || Math.floor(track.duration_ms / 1000).toString(),
-          likedAt: track.added_at // Use original Spotify liked date
+          likedAt: track.added_at // Use original Mavrixfy liked date
         });
         
         appSongs.push(appSong);
@@ -335,7 +335,7 @@ class SpotifyAutoSyncService {
     return appSongs;
   }
 
-  // Get recent Spotify tracks
+  // Get recent Mavrixfy tracks
   private async getRecentSpotifyTracks(cutoffDate: Date) {
     const tracks = [];
     let offset = 0;
@@ -372,7 +372,7 @@ class SpotifyAutoSyncService {
         if (tracks.length >= 100) break;
       }
     } catch (error) {
-      // Error fetching recent Spotify tracks
+      // Error fetching recent Mavrixfy tracks
     }
 
     return tracks;

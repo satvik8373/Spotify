@@ -13,14 +13,6 @@ interface SpotifyLoginProps {
   compact?: boolean;
 }
 
-interface SpotifyLoginProps {
-  className?: string;
-  variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive';
-  size?: 'default' | 'sm' | 'lg' | 'icon';
-  showDisconnect?: boolean;
-  compact?: boolean;
-}
-
 const SpotifyLogin: React.FC<SpotifyLoginProps> = ({ 
   className, 
   variant = 'default',
@@ -238,3 +230,5 @@ const SpotifyLogin: React.FC<SpotifyLoginProps> = ({
 };
 
 export default SpotifyLogin;
+
+

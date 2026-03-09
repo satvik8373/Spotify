@@ -425,7 +425,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     }
   }, [currentSong?._id, currentSong?.title]); // Reset when song actually changes
 
-  // Swipe gesture handlers with Spotify-like logic
+  // Swipe gesture handlers with Mavrixfy-like logic
   const handleSwipeStart = useCallback((clientX: number, clientY: number) => {
     if (isDragging) return; // Don't interfere with progress bar dragging
 
@@ -457,7 +457,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     // Calculate velocity for momentum (pixels per millisecond)
     const velocity = timeDelta > 0 ? Math.abs(deltaX) / timeDelta : 0;
 
-    // Determine initial direction if not set (Spotify-like logic)
+    // Determine initial direction if not set (Mavrixfy-like logic)
     let initialDirection = swipeState.initialDirection;
     if (!initialDirection && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
       initialDirection = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
@@ -474,9 +474,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       const canSwipeLeft = currentIndex < queue.length - 1;
       const canSwipeRight = currentIndex > 0;
 
-      // Spotify-like resistance when reaching boundaries
+      // Mavrixfy-like resistance when reaching boundaries
       if ((direction === 'left' && !canSwipeLeft) || (direction === 'right' && !canSwipeRight)) {
-        // Apply strong resistance at boundaries (like Spotify)
+        // Apply strong resistance at boundaries (like Mavrixfy)
         const resistanceFactor = 0.2; // Much stronger resistance
         const limitedDeltaX = Math.sign(deltaX) * Math.min(Math.abs(deltaX) * resistanceFactor, 40);
 
@@ -532,15 +532,15 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         initialDirection
       }));
 
-      // Apply transform to album art for smooth visual feedback (Spotify-like)
+      // Apply transform to album art for smooth visual feedback (Mavrixfy-like)
       if (swipeContainerRef.current && Math.abs(deltaX) > 25) { // Increased threshold from 20 to 25
-        // Spotify-like scaling and movement with resistance
+        // Mavrixfy-like scaling and movement with resistance
         const maxMovement = 120; // Maximum movement distance
         const resistance = Math.abs(deltaX) / maxMovement;
         const clampedResistance = Math.min(resistance, 1);
 
         const movement = deltaX * (1 - clampedResistance * 0.3); // Apply resistance
-        const scale = 1 - (clampedResistance * 0.08); // Subtle scaling like Spotify
+        const scale = 1 - (clampedResistance * 0.08); // Subtle scaling like Mavrixfy
         const opacity = 1 - (clampedResistance * 0.25); // Gentle opacity change
 
         // Use requestAnimationFrame for smooth performance
@@ -642,7 +642,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     // Don't trigger song change for vertical scrolls or if no horizontal movement
     if (isVerticalScroll || !hasMovedHorizontally) return;
 
-    // Spotify-like thresholds - much higher and more restrictive
+    // Mavrixfy-like thresholds - much higher and more restrictive
     const distanceThreshold = 100; // Increased from 80 to 100
     const velocityThreshold = 0.8; // Increased from 0.3 to 0.8
     const minimumDistance = 60; // Must move at least this much regardless of velocity
@@ -1268,3 +1268,5 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 };
 
 export default SongDetailsView;
+
+

@@ -43,6 +43,15 @@ const getDeviceRank = (device: OutputDevice, activeDeviceId: string): number => 
   return rank;
 };
 
+const isUnwantedDeviceLabel = (label: string): boolean => {
+  const normalized = label.trim().toLowerCase();
+  if (!normalized) return true;
+  if (normalized === DEFAULT_BROWSER_LABEL.toLowerCase()) return true;
+  if (normalized === 'receiver') return true;
+  if (/^receiver(\s|\(|$)/i.test(label)) return true;
+  return false;
+};
+
 const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }) => {
   const [devices, setDevices] = React.useState<OutputDevice[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -189,11 +198,23 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
       }
     }
 
-    return Array.from(uniqueByLabel.values()).sort((a, b) => {
+    const sortedDevices = Array.from(uniqueByLabel.values()).sort((a, b) => {
       const rankDiff = getDeviceRank(b, activeDeviceId) - getDeviceRank(a, activeDeviceId);
       if (rankDiff !== 0) return rankDiff;
       return cleanDeviceLabel(a).localeCompare(cleanDeviceLabel(b));
     });
+
+    const filtered = sortedDevices.filter((device) => {
+      const label = cleanDeviceLabel(device);
+      return !isUnwantedDeviceLabel(label);
+    });
+
+    // Keep at least one fallback row if every device was filtered out.
+    if (filtered.length === 0 && sortedDevices.length > 0) {
+      return [sortedDevices[0]];
+    }
+
+    return filtered;
   }, [activeDeviceId, rawDevices]);
 
   return (
@@ -243,7 +264,7 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
                 </p>
               )}
               <p className="text-[11px] leading-relaxed text-white/55 mb-2">
-                Spotify-like list only shows browser/available outputs from your OS. For Bluetooth names, allow audio permission once, then refresh.
+                Mavrixfy-like list only shows browser/available outputs from your OS. For Bluetooth names, allow audio permission once, then refresh.
               </p>
               {error && <p className="text-[11px] text-red-300 mb-2">{error}</p>}
             </div>

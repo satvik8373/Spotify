@@ -97,7 +97,7 @@
   cursor: grabbing;
 }
 
-/* Smooth spring animation for swipe reset - Spotify-like */
+/* Smooth spring animation for swipe reset - Mavrixfy-like */
 .swipe-container.swipe-reset {
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -133,7 +133,7 @@
   will-change: auto !important;
 }
 
-/* Responsive album art sizing - Professional Spotify-like scaling */
+/* Responsive album art sizing - Professional Mavrixfy-like scaling */
 .album-art-responsive {
   display: block;
   object-fit: contain;

@@ -53,7 +53,7 @@ const SyncLikedSongsPage = () => {
                                 >
                                     <div className="flex items-center justify-center gap-2">
                                         <Music className="h-4 w-4" />
-                                        <span>Spotify Sync</span>
+                                        <span>Mavrixfy Sync</span>
                                     </div>
                                 </TabsTrigger>
                                 <TabsTrigger
@@ -133,3 +133,4 @@ const SyncLikedSongsPage = () => {
 };
 
 export default SyncLikedSongsPage;
+

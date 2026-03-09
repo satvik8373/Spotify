@@ -278,7 +278,7 @@ const MobileNav = () => {
         }
       `}</style>
 
-      {/* Mobile Header - Spotify style (only on home) */}
+      {/* Mobile Header - Mavrixfy style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
         <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden">
           {isLibraryRoute ? (
@@ -612,3 +612,4 @@ const MobileNav = () => {
 };
 
 export default MobileNav;
+

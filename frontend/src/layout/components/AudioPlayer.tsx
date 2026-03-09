@@ -38,6 +38,7 @@ const AudioPlayer = () => {
   return (
     <>
       <AudioPlayerCore
+        audioRef={audioRef}
         onTimeUpdate={handleTimeUpdate}
         onLoadingChange={handleLoadingChange}
       />

@@ -106,7 +106,7 @@ self.addEventListener('fetch', (event) => {
     // Cloudinary images - cache first strategy
     event.respondWith(handleImageRequest(request));
   } else if (url.hostname === 'api.spotify.com') {
-    // Spotify API - network first strategy
+    // Mavrixfy API - network first strategy
     event.respondWith(handleApiRequest(request));
   } else if (url.hostname === 'saavn.dev' || url.hostname.endsWith('.googleusercontent.com')) {
     // Bypass SW for these hosts to avoid unintended 504 fallbacks or rate-limit noise
@@ -302,3 +302,4 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 }); 
+

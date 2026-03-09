@@ -658,10 +658,10 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
 
           <ol className="list-decimal ml-6 space-y-4 text-sm">
             <li className="pb-2 border-b border-zinc-700">
-              <p className="mb-2">Open Spotify, Apple Music, or another music platform</p>
+              <p className="mb-2">Open Mavrixfy, Apple Music, or another music platform</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
                 <div className="bg-zinc-800 p-2 rounded flex items-center justify-center">
-                  <img src="/spotify.png" alt="Spotify" className="h-8 w-8 object-contain" onError={(e) => {
+                  <img src="/spotify.png" alt="Mavrixfy" className="h-8 w-8 object-contain" onError={(e) => {
                     (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzFFRDc2MCI+PHBhdGggZD0iTTEyIDJDNi40NzcgMiAyIDYuNDc3IDIgMTJzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptNC41ODYgMTQuNDI0YTAuNjIyIDAuNjIyIDAgMDEtLjg1Ny4yMDdjLTIuMzQ4LTEuNDM4LTUuMzA0LTEuNzYzLTguNzg1LTAuOTY3YTAuNjIyIDAuNjIyIDAgMDEtLjI1LTEuMjE4YzMuODA5LTAuODcxIDcuMDc3LTAuNDk2IDkuNjg2IDEuMTIxYTAuNjIyIDAuNjIyIDAgMDEwLjIwNiAwLjg1N3ptMS4yMjQtMi43MjdjLTAuMDc5IDAuMTMtMC4xOTEgMC4yMjctMC4zMjUgMC4yODRhMC43NzcgMC43NzcgMCAwMS0wLjc1My0wLjA1N2MtMi44NTQtMS43NTQtNy4yMDEtMi4yNjMtMTAuNTctMS4yMzlhMC43NzggMC43NzggMCAwMS0wLjQyOS0xLjQ5N2MzLjg1NS0xLjEwNyA4LjY1OC0wLjUxNyAxMS45NDMgMS41NDNhMC43NzcgMC43NzcgMCAwMS0wLjA1NSAxLjA3OGwwLjE4OS0wLjExMnptMC4xMDUtMi44MzVhMC45MzQgMC45MzQgMCAwMS0xLjI5MiAwLjI2N2MtMy4yNzQtMi4wMTQtOC42NTktMi4yLTExLjgwOC0xLjIxM2EwLjkzNyAwLjkzNyAwIDAxLTAuNTE1LTEuODA0YzMuNjA3LTEuMDc2IDkuNjA4LTAuODU5IDEzLjM1IDEuNDU3YTAuOTM0IDAuOTM0IDAgMDEwLjI2NSAxLjI5M3oiLz48L3N2Zz4=';
                   }} />
                 </div>
@@ -693,9 +693,9 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
             <li>
               <p className="mb-2">Copy the playlist URL by using the share option</p>
               <div className="bg-zinc-800 rounded-md p-3 text-xs flex items-center gap-2 overflow-hidden">
-                <code className="text-xs whitespace-nowrap overflow-hidden text-ellipsis">https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M</code>
+                <code className="text-xs whitespace-nowrap overflow-hidden text-ellipsis">https://www.mavrixfy.site/playlist/sample</code>
                 <button 
-                  onClick={() => copyToClipboard('https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M')}
+                  onClick={() => copyToClipboard('https://www.mavrixfy.site/playlist/sample')}
                   className="bg-zinc-700 hover:bg-zinc-600 p-1 rounded"
                 >
                   <Copy className="h-3 w-3" />

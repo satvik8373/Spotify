@@ -255,7 +255,7 @@
     transition: none !important;
   }
 
-  /* Spotify-like main content area padding for mobile */
+  /* Mavrixfy-like main content area padding for mobile */
   .overflow-auto.p-6 {
     padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
@@ -286,7 +286,7 @@
   }
 }
 
-/* Spotify-like player styling */
+/* Mavrixfy-like player styling */
 .slider-hover-effect [data-radix-slider-thumb] {
   height: 12px;
   width: 12px;
@@ -743,12 +743,12 @@ img.object-cover.bg-zinc-800 {
   }
 }
 
-/* Spotify-like gradients for different playlists */
+/* Mavrixfy-like gradients for different playlists */
 .spotify-liked-gradient {
   background: linear-gradient(180deg, rgb(32, 65, 207) 0%, rgb(13, 23, 125) 40%, rgb(6, 16, 42) 70%, rgb(0, 0, 0) 100%);
 }
 
-/* New Spotify mobile liked songs header with proper gradient */
+/* New Mavrixfy mobile liked songs header with proper gradient */
 .spotify-mobile-liked-header {
   padding-top: 85px;
   padding-bottom: 20px;
@@ -799,7 +799,7 @@ img.object-cover.bg-zinc-800 {
   pointer-events: none;
 }
 
-/* Enhance mobile experience for Spotify-like pages */
+/* Enhance mobile experience for Mavrixfy-like pages */
 @media (max-width: 640px) {
   .spotify-playlist-header {
     padding-top: 85px;
@@ -1171,7 +1171,7 @@ html {
 
 }
 
-/* Spotify-like mobile animations */
+/* Mavrixfy-like mobile animations */
 @media (max-width: 768px) {
   .mobile-song-item {
     animation: mobile-fade-in 0.3s ease-out;
@@ -1242,7 +1242,7 @@ html {
   }
 }
 
-/* Netflix/Spotify-style horizontal scroll enhancements */
+/* Netflix/Mavrixfy-style horizontal scroll enhancements */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -1473,3 +1473,5 @@ html {
 .mood-init-message {
   transition: opacity 0.35s ease, transform 0.35s ease !important;
 }
+
+

@@ -103,7 +103,7 @@ export function RecentlyPlayed() {
         )}
       </div>
 
-      {/* Rectangular cards matching Spotify design - thumbnail on left, text on right */}
+      {/* Rectangular cards matching Mavrixfy design - thumbnail on left, text on right */}
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-1.5">
         {recentItems.map(item => (
           <div
@@ -162,3 +162,4 @@ export function RecentlyPlayed() {
     </div>
   );
 }
+

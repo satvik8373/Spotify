@@ -101,7 +101,7 @@ const analyzeImageData = (imageData: ImageData): ColorPalette => {
  * Find dominant color using k-means clustering
  */
 const findDominantColor = (pixels: RGB[]): RGB => {
-  if (pixels.length === 0) return { r: 30, g: 215, b: 96 }; // Spotify green fallback
+  if (pixels.length === 0) return { r: 30, g: 215, b: 96 }; // Mavrixfy green fallback
   
   // Simple average for dominant color
   const sum = pixels.reduce(
@@ -256,7 +256,7 @@ export const generateThemeFromImage = async (imageUrl: string) => {
       blur: 40
     };
   } catch (error) {
-    // Fallback to Spotify green theme
+    // Fallback to Mavrixfy green theme
     return {
       primary: '#1DB954',
       secondary: '#191414',
@@ -268,3 +268,4 @@ export const generateThemeFromImage = async (imageUrl: string) => {
     };
   }
 };
+

@@ -1,6 +1,6 @@
 /**
  * Share Sheet Component
- * Spotify-style bottom sheet for sharing content
+ * Mavrixfy-style bottom sheet for sharing content
  */
 
 import { useState, useEffect } from 'react';
@@ -276,3 +276,4 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
     </>
   );
 };
+

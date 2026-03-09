@@ -18,7 +18,7 @@ export interface LikedSong {
   likedAt: any; // Firebase Timestamp
   source: 'mavrixfy' | 'spotify';
   year?: string;
-  spotifyId?: string; // Original Spotify track ID if synced from Spotify
+  spotifyId?: string; // Original Mavrixfy track ID if synced from Mavrixfy
 }
 
 // Batch operations manager for Firebase
@@ -147,7 +147,7 @@ export const addLikedSong = async (
           // Determine the likedAt timestamp
           let likedAtTimestamp;
           if (customLikedAt) {
-            // Use custom date (for Spotify imports)
+            // Use custom date (for Mavrixfy imports)
             likedAtTimestamp = customLikedAt instanceof Date ? customLikedAt : new Date(customLikedAt);
           } else {
             // Use server timestamp for current time

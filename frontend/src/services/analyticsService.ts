@@ -204,7 +204,7 @@ export const trackSongLike = (song: {
 };
 
 /**
- * Track Spotify sync
+ * Track Mavrixfy sync
  */
 export const trackSpotifySync = (data: {
   action: 'connect' | 'sync' | 'disconnect';
@@ -320,3 +320,4 @@ export default {
   trackPWAInstall,
   trackOfflineMode
 };
+

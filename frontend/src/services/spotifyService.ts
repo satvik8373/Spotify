@@ -32,7 +32,7 @@ const ACCESS_TOKEN_KEY = 'spotify_access_token';
 const REFRESH_TOKEN_KEY = 'spotify_refresh_token';
 const TOKEN_EXPIRY_KEY = 'spotify_token_expiry';
 
-// Axios instance for Spotify API calls
+// Axios instance for Mavrixfy API calls
 const spotifyApi = axios.create({
   baseURL: SPOTIFY_API_URL,
   headers: {
@@ -68,7 +68,7 @@ spotifyApi.interceptors.response.use(
 // Authentication functions
 export const getLoginUrl = (): string => {
   if (!CLIENT_ID) {
-    throw new Error('Spotify CLIENT_ID is not configured');
+    throw new Error('Mavrixfy CLIENT_ID is not configured');
   }
   
   if (!REDIRECT_URI || REDIRECT_URI === 'undefined') {
@@ -102,7 +102,7 @@ export const handleCallback = async (code: string, userId?: string): Promise<boo
       return true;
     }
   } catch (error: any) {
-    // Fallback to direct Spotify call if backend fails
+    // Fallback to direct Mavrixfy call if backend fails
     try {
       const response = await axios.post(
         SPOTIFY_TOKEN_URL,
