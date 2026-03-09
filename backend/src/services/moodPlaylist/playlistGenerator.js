@@ -15,6 +15,8 @@ import { searchSongs, getTrendingSongs } from '../jiosaavn.service.js';
 
 const db = admin.firestore();
 const PLAYLIST_SIZE = 20;
+const MAX_PRIMARY_SEARCH_QUERIES = 3;
+const MAX_SEARCH_RESULTS = 60;
 
 // ─────────────────────────────────────────
 // Fisher-Yates shuffle
@@ -257,9 +259,9 @@ async function generatePlaylist(genres, emotion, moodText, context = null) {
 
     // genres here = already the mapped search queries from genreMapper
     // Use them directly as JioSaavn queries
-    const searchQueries = genres; // Already tag queries from genreMapper
+    const searchQueries = Array.isArray(genres) ? genres.slice(0, MAX_PRIMARY_SEARCH_QUERIES) : [];
 
-    let songs = await querySongsByGenre(searchQueries, 120);
+    let songs = await querySongsByGenre(searchQueries, MAX_SEARCH_RESULTS);
 
     // If still not enough, add trending as supplement
     if (songs.length < PLAYLIST_SIZE) {

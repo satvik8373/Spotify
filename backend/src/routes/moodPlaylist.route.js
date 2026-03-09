@@ -28,7 +28,6 @@ import {
   logRateLimitHit
 } from '../services/moodPlaylist/analytics.js';
 import { protectRoute } from '../middleware/auth.middleware.js';
-import { firebaseAuth } from '../middleware/firebase-auth.middleware.js';
 import metricsCollector from '../services/moodPlaylist/metricsCollector.js';
 
 const router = express.Router();
@@ -609,7 +608,7 @@ router.delete('/share/:shareId', protectRoute, async (req, res) => {
   }
 });
 
-router.get('/mood-history', firebaseAuth, async (req, res) => {
+router.get('/mood-history', protectRoute, async (req, res) => {
   try {
     const userId = req.auth.uid;
     const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -633,7 +632,7 @@ router.get('/mood-history', firebaseAuth, async (req, res) => {
  * Converts a mood session into a permanent library playlist
  * Body: { playlistId } — the Firestore ID of the mood playlist to finalize
  */
-router.post('/mood-finalize', firebaseAuth, async (req, res) => {
+router.post('/mood-finalize', protectRoute, async (req, res) => {
   try {
     const userId = req.auth.uid;
     const { playlistId } = req.body;
