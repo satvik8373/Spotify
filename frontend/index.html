@@ -2,16 +2,16 @@
 <html lang="en">
 	<head>
 		<!-- Google Tag Manager -->
-		<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+		<script defer>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 		new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-		j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+		j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.defer=true;j.src=
 		'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 		})(window,document,'script','dataLayer','GTM-5FNR895V');</script>
 		<!-- End Google Tag Manager -->
 		
 		<!-- Google tag (gtag.js) -->
-		<script async src="https://www.googletagmanager.com/gtag/js?id=G-FQJS8LREP5"></script>
-		<script>
+		<script defer src="https://www.googletagmanager.com/gtag/js?id=G-FQJS8LREP5"></script>
+		<script defer>
 			window.dataLayer = window.dataLayer || [];
 			function gtag(){dataLayer.push(arguments);}
 			gtag('js', new Date());
@@ -19,7 +19,7 @@
 		</script>
 		
 		<!-- Google AdSense -->
-		<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6003470714469240"
+		<script defer src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6003470714469240"
 		     crossorigin="anonymous"></script>
 		
 		<meta charset="UTF-8" />
@@ -161,23 +161,6 @@
 		<!-- Remove unused generic preloads to avoid wasting bandwidth -->
 		
 		<!-- Mavrixfy Web Playback SDK: load after idle to avoid affecting FCP/LCP -->
-		<script>
-			// Mobile performance optimizations
-			if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-				// Mobile-specific optimizations
-				document.documentElement.classList.add('mobile-device');
-				
-				// Reduce animation complexity on mobile
-				const style = document.createElement('style');
-				style.textContent = `
-					@media (max-width: 768px) {
-						* { animation-duration: 0.1s !important; transition-duration: 0.1s !important; }
-						.mobile-optimized { transform: translateZ(0); will-change: auto; }
-					}
-				`;
-				document.head.appendChild(style);
-			}
-		</script>
 		
 		<!-- Critical CSS inline for mobile -->
 		<style>
@@ -233,33 +216,6 @@
 		<div id="root"></div>
 		<script type="module" src="/src/main.tsx"></script>
 		
-		<!-- Mobile-specific scripts -->
-		<script>
-			// Mobile-specific performance metrics
-			if (window.performance && window.performance.mark) {
-				window.performance.mark('mobile-app-start');
-			}
-			
-			// PWA theme color
-			function updatePWAThemeColors() {
-				const metaTheme = document.querySelector('meta[name="theme-color"]');
-				const existingMetaColor = metaTheme?.getAttribute('content');
-				const cssThemeColor = getComputedStyle(document.documentElement).getPropertyValue('--app-theme-color').trim();
-				const themeColor = cssThemeColor || existingMetaColor || '#121212';
-				
-				// Update theme-color meta tag
-				if (metaTheme) {
-					metaTheme.setAttribute('content', themeColor);
-				}
-				
-				document.documentElement.style.setProperty('--app-theme-color', themeColor);
-				// Update body background
-				document.body.style.backgroundColor = themeColor;
-			}
-			
-			// Initial theme color update
-			updatePWAThemeColors();
-		</script>
 	</body>
 </html>
 

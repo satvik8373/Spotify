@@ -102,7 +102,9 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
                     <img
                         src="https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg"
                         alt="AI Mood"
-                        className="w-14 h-14 mb-3 object-contain animate-pulse"
+                        width={56}
+                        height={56}
+                        className="w-14 h-14 mb-3 object-contain animate-pulse aspect-square"
                         style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 14px rgba(255,255,255,0.35))' }}
                     />
                     <h2 className="text-2xl font-black text-white tracking-tight leading-none mb-1.5">

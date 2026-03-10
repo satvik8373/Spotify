@@ -110,7 +110,7 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                             >
                                 <div className="w-[90px] h-[90px] rounded-2xl overflow-hidden bg-white/5 mb-1.5 shadow-xl relative">
                                     {song.imageUrl ? (
-                                        <img src={song.imageUrl} alt={song.title} className="w-full h-full object-cover" loading={index < 3 ? "eager" : "lazy"} />
+                                        <img src={song.imageUrl} alt={song.title} width={90} height={90} className="w-full h-full object-cover aspect-square" loading={index < 3 ? "eager" : "lazy"} />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center">
                                             <Music className="w-8 h-8 text-white/20" />
@@ -150,7 +150,7 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                             </span>
                             <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/5 flex-shrink-0 shadow-md">
                                 {song.imageUrl ? (
-                                    <img src={song.imageUrl} alt={song.title} className="w-full h-full object-cover" loading={index < 5 ? "eager" : "lazy"} />
+                                    <img src={song.imageUrl} alt={song.title} width={40} height={40} className="w-full h-full object-cover aspect-square" loading={index < 5 ? "eager" : "lazy"} />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center">
                                         <Music className="w-4 h-4 text-white/30" />
