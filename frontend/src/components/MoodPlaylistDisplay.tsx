@@ -130,7 +130,7 @@ export const MoodPlaylistDisplay: React.FC<MoodPlaylistDisplayProps> = ({
                 </span>
                 <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
                   {song.imageUrl ? (
-                    <img src={song.imageUrl} alt={song.title} className="w-full h-full object-cover" loading="lazy" />
+                    <img src={song.imageUrl} alt={song.title} className="w-full h-full object-cover" loading={index < 5 ? "eager" : "lazy"} />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Music className="w-4 h-4 text-white/30" />

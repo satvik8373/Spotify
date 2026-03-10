@@ -14,7 +14,6 @@ import HomePage from './pages/home/HomePage';
 import SearchPage from './pages/search/SearchPage';
 import LibraryPage from './pages/LibraryPage';
 import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
-import MoodPlaylistPage from './pages/MoodPlaylistPage';
 
 // Lazy load less critical pages only
 const SyncLikedSongsPage = lazy(() => import('./pages/liked-songs/SyncLikedSongsPage'));
@@ -31,6 +30,7 @@ const AccountDeletion = lazy(() => import('./pages/AccountDeletion'));
 
 // AI Mood Playlist page
 const MoodHistoryPage = lazy(() => import('./pages/mood-history/MoodHistoryPage'));
+const MoodPlaylistPage = lazy(() => import('./pages/MoodPlaylistPage'));
 
 // JioSaavn pages
 const JioSaavnPlaylistPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistPage'));

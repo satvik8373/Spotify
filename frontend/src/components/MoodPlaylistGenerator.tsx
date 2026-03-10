@@ -3,10 +3,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-import { MoodPlaylistLoading } from './MoodPlaylistLoading';
-import { MoodPlaylistDisplay } from './MoodPlaylistDisplay';
-import { MoodPlaylistDisplayMobile } from './MoodPlaylistDisplayMobile';
-import { MoodPlaylistGeneratorMobile } from './MoodPlaylistGeneratorMobile';
 import {
   generateMoodPlaylist,
   getMoodCreditStatus,
@@ -32,6 +28,11 @@ import {
 interface MoodPlaylistGeneratorProps {
   className?: string;
 }
+
+const MoodPlaylistLoading = React.lazy(() => import('./MoodPlaylistLoading').then(m => ({ default: m.MoodPlaylistLoading })));
+const MoodPlaylistDisplay = React.lazy(() => import('./MoodPlaylistDisplay').then(m => ({ default: m.MoodPlaylistDisplay })));
+const MoodPlaylistDisplayMobile = React.lazy(() => import('./MoodPlaylistDisplayMobile').then(m => ({ default: m.MoodPlaylistDisplayMobile })));
+const MoodPlaylistGeneratorMobile = React.lazy(() => import('./MoodPlaylistGeneratorMobile').then(m => ({ default: m.MoodPlaylistGeneratorMobile })));
 
 type ViewState = 'input' | 'loading' | 'display';
 const MIN_LOADING_DURATION_MS = 10000;
@@ -313,11 +314,17 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
     if (isMobile) {
       return (
         <div className="h-full min-h-0 flex flex-col">
-          <MoodPlaylistLoading className="h-full" />
+          <React.Suspense fallback={null}>
+            <MoodPlaylistLoading className="h-full" />
+          </React.Suspense>
         </div>
       );
     }
-    return <MoodPlaylistLoading className={className} />;
+    return (
+      <React.Suspense fallback={null}>
+        <MoodPlaylistLoading className={className} />
+      </React.Suspense>
+    );
   }
 
   // Show playlist display
@@ -339,26 +346,30 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
               <span>History</span>
             </button>
           </div>
-          <MoodPlaylistDisplayMobile
-            playlist={playlist}
-            bottomInsetPx={mobileBottomInsetPx}
-            onPlay={handlePlay}
-            onSave={handleSave}
-            onShare={handleShare}
-            onTryAgain={handleTryAgain}
-          />
+          <React.Suspense fallback={null}>
+            <MoodPlaylistDisplayMobile
+              playlist={playlist}
+              bottomInsetPx={mobileBottomInsetPx}
+              onPlay={handlePlay}
+              onSave={handleSave}
+              onShare={handleShare}
+              onTryAgain={handleTryAgain}
+            />
+          </React.Suspense>
         </div>
       );
     }
     // Desktop display
     return (
-      <MoodPlaylistDisplay
-        playlist={playlist}
-        onPlay={handlePlay}
-        onSave={handleSave}
-        onShare={handleShare}
-        onTryAgain={handleTryAgain}
-      />
+      <React.Suspense fallback={null}>
+        <MoodPlaylistDisplay
+          playlist={playlist}
+          onPlay={handlePlay}
+          onSave={handleSave}
+          onShare={handleShare}
+          onTryAgain={handleTryAgain}
+        />
+      </React.Suspense>
     );
   }
 
@@ -380,33 +391,35 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
             <span>History</span>
           </button>
         </div>
-        <MoodPlaylistGeneratorMobile
-          moodText={moodText}
-          charCount={charCount}
-          isValid={isValid}
-          isRateLimitReached={isRateLimitReached}
-          error={error}
-          rateLimitMessage={rateLimitMessage}
-          creditLabel={creditLabel}
-          MIN_LENGTH={MIN_LENGTH}
-          MAX_LENGTH={MAX_LENGTH}
-          bottomInsetPx={mobileBottomInsetPx}
-          onMoodChange={(text) => {
-            setMoodText(text);
-            setError(null);
-            if (!isRateLimitReached) {
-              setRateLimitMessage(null);
-            }
-          }}
-          onSubmit={handleSubmit}
-          onQuickMood={(text) => {
-            if (!isRateLimitReached) {
+        <React.Suspense fallback={null}>
+          <MoodPlaylistGeneratorMobile
+            moodText={moodText}
+            charCount={charCount}
+            isValid={isValid}
+            isRateLimitReached={isRateLimitReached}
+            error={error}
+            rateLimitMessage={rateLimitMessage}
+            creditLabel={creditLabel}
+            MIN_LENGTH={MIN_LENGTH}
+            MAX_LENGTH={MAX_LENGTH}
+            bottomInsetPx={mobileBottomInsetPx}
+            onMoodChange={(text) => {
               setMoodText(text);
               setError(null);
-              setRateLimitMessage(null);
-            }
-          }}
-        />
+              if (!isRateLimitReached) {
+                setRateLimitMessage(null);
+              }
+            }}
+            onSubmit={handleSubmit}
+            onQuickMood={(text) => {
+              if (!isRateLimitReached) {
+                setMoodText(text);
+                setError(null);
+                setRateLimitMessage(null);
+              }
+            }}
+          />
+        </React.Suspense>
       </div>
     );
   }
