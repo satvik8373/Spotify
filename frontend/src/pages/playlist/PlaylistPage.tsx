@@ -1133,6 +1133,8 @@ export function PlaylistPage() {
                             src={song.imageUrl || '/default-song.jpg'}
                             alt={song.title}
                             className="h-full w-full object-cover"
+                            loading={index < 5 ? "eager" : "lazy"}
+                            {...(index < 5 ? { fetchPriority: "high" } : {})}
                           />
                         </div>
                         <div className="flex flex-col min-w-0 flex-1">

@@ -21,6 +21,8 @@ const FeaturedSection = () => {
             src={song.imageUrl}
             alt={song.title}
             className="w-16 sm:w-20 h-16 sm:h-20 object-cover flex-shrink-0"
+            loading="eager"
+            fetchPriority="high"
           />
           <div className="flex-1 p-4">
             <p className="font-medium truncate">{song.title}</p>

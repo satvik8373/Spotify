@@ -8,12 +8,14 @@ import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON } from './utils/storageUtils';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
 
-// Preload critical components immediately - no lazy loading for main pages
+// Only preload absolute structural components
 import MainLayout from './layout/MainLayout';
-import HomePage from './pages/home/HomePage';
-import SearchPage from './pages/search/SearchPage';
-import LibraryPage from './pages/LibraryPage';
-import LikedSongsPage from './pages/liked-songs/LikedSongsPage';
+
+// Lazy load core pages to drastically cut initial JS payload
+const HomePage = lazy(() => import('./pages/home/HomePage'));
+const SearchPage = lazy(() => import('./pages/search/SearchPage'));
+const LibraryPage = lazy(() => import('./pages/LibraryPage'));
+const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
 
 // Lazy load less critical pages only
 const SyncLikedSongsPage = lazy(() => import('./pages/liked-songs/SyncLikedSongsPage'));
@@ -260,7 +262,7 @@ const router = createBrowserRouter(
 			children: [
 				{
 					path: '/home',
-					element: <AuthGate allowGuest={true}><HomePage /></AuthGate>
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><HomePage /></Suspense></AuthGate>
 				},
 				{
 					path: '/albums/:albumId',
@@ -268,11 +270,11 @@ const router = createBrowserRouter(
 				},
 				{
 					path: '/library',
-					element: <AuthGate><LibraryPage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><LibraryPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/liked-songs',
-					element: <AuthGate><LikedSongsPage /></AuthGate>
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><LikedSongsPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/liked-songs/sync',
@@ -280,7 +282,7 @@ const router = createBrowserRouter(
 				},
 				{
 					path: '/search',
-					element: <AuthGate allowGuest={true}><SearchPage /></AuthGate>
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SearchPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/profile',

@@ -12,12 +12,14 @@ interface PlaylistCardProps {
   playlist: Playlist;
   showDescription?: boolean;
   className?: string;
+  eagerLoad?: boolean;
 }
 
 export function PlaylistCard({
   playlist,
   showDescription = true,
-  className
+  className,
+  eagerLoad = false
 }: PlaylistCardProps) {
   const navigate = useNavigate();
   const { setCurrentSong } = usePlayerStore();
@@ -68,7 +70,8 @@ export function PlaylistCard({
                 alt={playlist.name}
                 className="w-full h-full object-cover rounded-[4px]"
                 onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
-                loading="lazy"
+                loading={eagerLoad ? "eager" : "lazy"}
+                {...(eagerLoad ? { fetchPriority: "high" } : {})}
               />
             </div>
 

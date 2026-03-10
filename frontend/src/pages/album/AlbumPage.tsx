@@ -58,6 +58,8 @@ const AlbumPage = () => {
                     src={album.imageUrl}
                     alt={album.title}
                     className="w-full h-full object-cover"
+                    loading="eager"
+                    fetchPriority="high"
                   />
                 </div>
                 <div className="flex flex-col items-center md:items-start">
