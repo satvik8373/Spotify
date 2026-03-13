@@ -282,7 +282,7 @@ const MobileNav = () => {
 
       {/* Mobile Header - Mavrixfy style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
-        <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden">
           {isLibraryRoute ? (
             <div className="flex items-center justify-between px-4 h-10">
               <div className="flex items-center gap-2">
@@ -431,7 +431,7 @@ const MobileNav = () => {
       )}
 
       {/* Bottom Navigation Wrapper - Pointer Events None so clicks pass through empty space */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-transparent flex flex-col justify-end pointer-events-none md:hidden" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-transparent flex flex-col justify-end pointer-events-none md:hidden" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}>
         {/* Floating Navigation Pill */}
         <div className="w-full flex justify-center pointer-events-auto">
           <div className="nav-container">
