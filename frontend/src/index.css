@@ -213,7 +213,7 @@
   /* PWA Safe Area Support - Fixed for Standalone Mode */
   .pwa-safe-area {
     background-color: var(--app-theme-color, #121212) !important;
-    min-height: 100vh;
+    min-height: calc(var(--vh, 1vh) * 100);
     min-height: -webkit-fill-available;
   }
 
@@ -232,7 +232,7 @@
     }
 
     body {
-      min-height: 100vh;
+      min-height: calc(var(--vh, 1vh) * 100);
       min-height: -webkit-fill-available;
       background-color: #121212;
     }
@@ -382,7 +382,7 @@
 /* Improve scrolling experience on touch devices */
 @media (pointer: coarse) {
   .h-\[calc\(100vh-5rem\)\] {
-    height: calc(100vh - 5rem - env(safe-area-inset-bottom, 0px));
+    height: calc(var(--vh, 1vh) * 100 - 5rem - env(safe-area-inset-bottom, 0px));
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
   }
@@ -712,6 +712,10 @@ img.object-cover.bg-zinc-800 {
 .h-screen {
   height: 100vh;
   height: calc(var(--vh, 1vh) * 100);
+}
+.min-h-screen {
+  min-height: 100vh;
+  min-height: calc(var(--vh, 1vh) * 100);
 }
 
 /* Transparent nav appearance improvements */
@@ -1476,5 +1480,3 @@ html {
 .mood-init-message {
   transition: opacity 0.35s ease, transform 0.35s ease !important;
 }
-
-

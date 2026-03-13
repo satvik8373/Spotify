@@ -426,7 +426,7 @@ const MobileNav = () => {
       )}
 
       {/* Bottom Navigation Wrapper - Fully transparent background */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex flex-col justify-end pointer-events-none md:hidden pb-2">
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex flex-col justify-end pointer-events-none md:hidden pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
         {/* Floating Navigation Pill */}
         <div className="w-full flex justify-center pointer-events-auto">
           <div className="nav-container">
@@ -609,4 +609,3 @@ const MobileNav = () => {
 };
 
 export default MobileNav;
-

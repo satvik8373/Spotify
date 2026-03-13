@@ -7,12 +7,12 @@
 
 /* Full-height container for playlist page with bottom nav visible */
 .hide-mobile-nav .h-screen {
-  height: 100vh !important;
+  height: calc(var(--vh, 1vh) * 100) !important;
 }
 
 /* Adjust layout height but keep space for bottom nav */
 .hide-mobile-nav [style*="height: calc"] {
-  height: calc(100vh - 72px) !important; /* Leave room for bottom nav */
+  height: calc(var(--vh, 1vh) * 100 - 72px) !important; /* Leave room for bottom nav */
   margin-top: 0 !important;
 }
 

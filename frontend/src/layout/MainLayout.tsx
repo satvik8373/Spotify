@@ -93,7 +93,13 @@ const MainLayout = () => {
   const isSyncPage = location.pathname === '/liked-songs/sync';
   const showMobilePlayer = hasActiveSong && !isSyncPage;
 
-  const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + MOBILE_NAV_BASE_PX + (showMobilePlayer ? MOBILE_PLAYER_PADDING_PX : 0);
+  const mobileSubtractPx = MOBILE_NAV_BASE_PX + (showMobilePlayer ? MOBILE_PLAYER_PADDING_PX : 0);
+  const safeAreaTop = 'env(safe-area-inset-top, 0px)';
+  const safeAreaBottom = 'env(safe-area-inset-bottom, 0px)';
+  const headerOffsetCss = isMobileHeaderRoute ? `${MOBILE_HEADER_PX}px + ${safeAreaTop}` : '0px';
+  const bottomOffsetCss = `${mobileSubtractPx}px + ${safeAreaBottom}`;
+  const mobileContentHeightCss = `calc(var(--vh, 1vh) * 100 - (${headerOffsetCss}) - (${bottomOffsetCss}))`;
+  const mobileContentMarginTopCss = isMobileHeaderRoute ? `calc(${headerOffsetCss})` : '0px';
 
   // Handle resize functionality
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -154,10 +160,8 @@ const MainLayout = () => {
       <div
         className="flex-1 flex overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-black"
         style={{
-          height: isMobile
-            ? `calc(100vh - ${mobileSubtractPx}px)`
-            : 'auto',
-          marginTop: isMobileHeaderRoute ? `${MOBILE_HEADER_PX}px` : '0',
+          height: isMobile ? mobileContentHeightCss : 'auto',
+          marginTop: mobileContentMarginTopCss,
         }}
       >
         {/* Audio player component - hidden but functional */}
