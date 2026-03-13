@@ -82,7 +82,7 @@ const MainLayout = () => {
 
   // Route-aware measurements for mobile header/nav spacing
   const MOBILE_HEADER_PX = 40;
-  const MOBILE_NAV_BASE_PX = 56; // h-14 = 56px
+  const MOBILE_NAV_BASE_PX = 48; // Reduced from 56px to 48px
   const MOBILE_PLAYER_PADDING_PX = 44; // paddingTop when song is active
   const isMobileHeaderRoute = isMobile && (
     location.pathname === '/home' ||

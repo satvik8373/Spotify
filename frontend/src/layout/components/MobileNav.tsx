@@ -248,13 +248,13 @@ const MobileNav = () => {
           position: relative;
           width: 96%;
           max-width: 480px;
-          margin: 0 auto 8px auto;
+          margin: 0 auto 4px auto;
           display: flex;
           flex-direction: column;
-          border-radius: 14px 14px 38px 38px;
+          border-radius: 12px 12px 32px 32px;
           overflow: hidden;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+          border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .nav-background {
@@ -275,17 +275,17 @@ const MobileNav = () => {
           display: flex;
           justify-content: space-evenly;
           align-items: center;
-          height: 54px;
-          padding: 0 6px;
+          height: 48px;
+          padding: 0 4px;
         }
       `}</style>
 
       {/* Mobile Header - Mavrixfy style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
-        <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden">
+        <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
           {isLibraryRoute ? (
-            <div className="flex items-center justify-between px-4 h-12">
-              <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-between px-4 h-10">
+              <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
                     <button
@@ -299,12 +299,12 @@ const MobileNav = () => {
                           alt={user.name || 'User'}
                           loading="lazy"
                           decoding="async"
-                          width="28"
-                          height="28"
-                          className="rounded-full object-cover h-7 w-7"
+                          width="26"
+                          height="26"
+                          className="rounded-full object-cover h-[26px] w-[26px]"
                         />
                       ) : (
-                        <User className="h-6 w-6 text-muted-foreground" />
+                        <User className="h-5 w-5 text-muted-foreground" />
                       )}
                     </button>
                     <ProfileDropdown
@@ -324,14 +324,14 @@ const MobileNav = () => {
                     <LogIn className="h-5 w-5 text-foreground" />
                   </button>
                 )}
-                <h2 className="text-base font-bold text-foreground">Your Library</h2>
+                <h2 className="text-sm font-bold text-foreground">Your Library</h2>
               </div>
               <div className="flex items-center gap-2">
               </div>
             </div>
           ) : isSearchRoute ? (
-            <div className="flex items-center justify-between px-4 h-12">
-              <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-between px-4 h-10">
+              <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
                     <button
@@ -345,12 +345,12 @@ const MobileNav = () => {
                           alt={user.name || 'User'}
                           loading="lazy"
                           decoding="async"
-                          width="28"
-                          height="28"
-                          className="rounded-full object-cover h-7 w-7"
+                          width="26"
+                          height="26"
+                          className="rounded-full object-cover h-[26px] w-[26px]"
                         />
                       ) : (
-                        <User className="h-6 w-6 text-muted-foreground" />
+                        <User className="h-5 w-5 text-muted-foreground" />
                       )}
                     </button>
                     <ProfileDropdown
@@ -370,13 +370,13 @@ const MobileNav = () => {
                     <LogIn className="h-5 w-5 text-foreground" />
                   </button>
                 )}
-                <h2 className="text-base font-bold text-foreground">Search</h2>
+                <h2 className="text-sm font-bold text-foreground">Search</h2>
               </div>
               <div className="flex items-center gap-2" />
             </div>
           ) : (
-            <div className="flex items-center justify-between px-4 h-12">
-              <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-between px-4 h-10">
+              <div className="flex items-center gap-2">
                 {isAuthenticated ? (
                   <div className="relative">
                     <button
@@ -390,12 +390,12 @@ const MobileNav = () => {
                           alt={user.name || 'User'}
                           loading="lazy"
                           decoding="async"
-                          width="28"
-                          height="28"
-                          className="rounded-full object-cover h-7 w-7"
+                          width="26"
+                          height="26"
+                          className="rounded-full object-cover h-[26px] w-[26px]"
                         />
                       ) : (
-                        <User className="h-6 w-6 text-muted-foreground" />
+                        <User className="h-5 w-5 text-muted-foreground" />
                       )}
                     </button>
                     <ProfileDropdown
@@ -419,10 +419,10 @@ const MobileNav = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowWhatsNew(true)}
-                  className="w-8 h-8 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
+                  className="w-7 h-7 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
                   aria-label="What's New"
                 >
-                  <Bell size={20} className="text-white transition-colors" />
+                  <Bell size={18} className="text-white transition-colors" />
                 </button>
               </div>
             </div>
@@ -451,35 +451,35 @@ const MobileNav = () => {
                 />
 
                 {/* Player Content */}
-                <div className="relative px-3 flex items-center justify-between w-full h-[52px]">
+                <div className="relative px-3 flex items-center justify-between w-full h-[48px]">
                   {/* Left: Album Art + Song Info */}
                   <div
                     className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
                     onClick={handleSongTap}
                   >
-                    <div className="h-full w-[46px] -ml-3 flex-shrink-0 overflow-hidden rounded-none shadow-none">
+                    <div className="h-full w-[42px] -ml-3 flex-shrink-0 overflow-hidden rounded-none shadow-none">
                       <img
                         src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')}
                         alt={currentSong.title}
                         className="w-full h-full object-cover"
                         loading="eager"
                         decoding="async"
-                        width="46"
-                        height="46"
+                        width="42"
+                        height="42"
                       />
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden mr-2">
                       <div className="w-full overflow-hidden mb-0" style={{ color: albumColors.text || '#ffffff' }}>
                         <PingPongScroll
                           text={currentSong.title}
-                          className="text-[12px] font-bold leading-tight py-0.5"
+                          className="text-[11px] font-bold leading-tight py-0.5"
                           velocity={15}
                         />
                       </div>
                       <div className="mt-0" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 35%)' }}>
                         <PingPongScroll
                           text={currentSong.artist}
-                          className="text-[10px] font-medium leading-tight"
+                          className="text-[9px] font-medium leading-tight"
                           velocity={12}
                         />
                       </div>
@@ -487,19 +487,19 @@ const MobileNav = () => {
                   </div>
 
                   {/* Right: Controls */}
-                    <div className="flex items-center gap-1.5" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
+                    <div className="flex items-center gap-1" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           usePlayerStore.getState().togglePlay();
                         }}
-                        className="p-2.5 transition-transform duration-200 active:scale-90"
+                        className="p-2 transition-transform duration-200 active:scale-90"
                         aria-label={isPlaying ? 'Pause' : 'Play'}
                       >
                         {isPlaying ? (
-                          <Pause className="h-5 w-5" fill="currentColor" />
+                          <Pause className="h-4.5 w-4.5" fill="currentColor" />
                         ) : (
-                          <Play className="h-5 w-5 ml-0.5" fill="currentColor" />
+                          <Play className="h-4.5 w-4.5 ml-0.5" fill="currentColor" />
                         )}
                       </button>
                       <button
@@ -519,10 +519,10 @@ const MobileNav = () => {
                         e.stopPropagation();
                         setShowQueue(true);
                       }}
-                        className="p-2.5 transition-transform duration-200 active:scale-90 opacity-90"
+                        className="p-2 transition-transform duration-200 active:scale-90 opacity-90"
                         aria-label="Open queue"
                       >
-                        <ListMusic className="h-5 w-5" />
+                        <ListMusic className="h-4.5 w-4.5" />
                       </button>
                     </div>
                 </div>
@@ -551,10 +551,10 @@ const MobileNav = () => {
                     )}
                   >
                     <item.icon
-                      className={cn('h-[18px] w-[18px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
+                      className={cn('h-[17px] w-[17px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
                       strokeWidth={isActive(item.path) ? 2.5 : 2}
                     />
-                    <span className="text-[8px] font-medium tracking-wide">
+                    <span className="text-[7.5px] font-medium tracking-wide">
                       {item.label}
                     </span>
                   </Link>
@@ -567,9 +567,9 @@ const MobileNav = () => {
                 aria-label="AI Mood"
                 className="flex items-center justify-center group flex-shrink-0 transition-transform duration-300 active:scale-95 px-1.5"
               >
-                <span className="relative flex items-center justify-center w-[44px] h-[44px] sm:w-[48px] sm:h-[48px]">
+                <span className="relative flex items-center justify-center w-[40px] h-[40px] sm:w-[42px] sm:h-[42px]">
                   <span
-                    className="relative z-10 w-[34px] h-[34px] sm:w-[36px] sm:h-[36px] bg-gradient-to-br from-[#ff7de8] via-[#b792ff] to-[#72c8ff] transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(255,132,232,0.52)]"
+                    className="relative z-10 w-[32px] h-[32px] sm:w-[34px] sm:h-[34px] bg-gradient-to-br from-[#ff7de8] via-[#b792ff] to-[#72c8ff] transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(255,132,232,0.52)]"
                     style={{
                       WebkitMaskImage: "url('https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg')",
                       WebkitMaskRepeat: 'no-repeat',
@@ -596,10 +596,10 @@ const MobileNav = () => {
                     )}
                   >
                     <item.icon
-                      className={cn('h-[18px] w-[18px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
+                      className={cn('h-[17px] w-[17px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
                       strokeWidth={isActive(item.path) ? 2.5 : 2}
                     />
-                    <span className="text-[8px] font-medium tracking-wide">
+                    <span className="text-[7.5px] font-medium tracking-wide">
                       {item.label}
                     </span>
                   </Link>
