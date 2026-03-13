@@ -248,7 +248,7 @@ const MobileNav = () => {
           position: relative;
           width: 96%;
           max-width: 480px;
-          margin: 0 auto;
+          margin: 0 auto 8px auto;
           display: flex;
           flex-direction: column;
           border-radius: 14px 14px 38px 38px;
@@ -263,7 +263,9 @@ const MobileNav = () => {
           left: 0;
           right: 0;
           bottom: 0;
-          background-color: #121212;
+          background-color: rgba(18, 18, 18, 0.95);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
           z-index: 10;
         }
 
@@ -429,9 +431,9 @@ const MobileNav = () => {
       )}
 
       {/* Bottom Navigation Wrapper - Pointer Events None so clicks pass through empty space */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-transparent flex flex-col justify-end pointer-events-none md:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-transparent flex flex-col justify-end pointer-events-none md:hidden" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))' }}>
         {/* Floating Navigation Pill */}
-        <div className="w-full flex justify-center pointer-events-auto pb-[3px]">
+        <div className="w-full flex justify-center pointer-events-auto">
           <div className="nav-container">
             {/* Background Layer */}
             <div className="nav-background"></div>
