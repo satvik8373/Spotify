@@ -430,10 +430,10 @@ const MobileNav = () => {
         </div>
       )}
 
-      {/* Bottom Navigation Wrapper - Pointer Events None so clicks pass through empty space */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-transparent flex flex-col justify-end pointer-events-none md:hidden" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))' }}>
+      {/* Bottom Navigation Wrapper - Fully transparent background */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex flex-col justify-end pointer-events-none md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {/* Floating Navigation Pill */}
-        <div className="w-full flex justify-center pointer-events-auto">
+        <div className="w-full flex justify-center pointer-events-auto pb-2">
           <div className="nav-container">
             {/* Background Layer */}
             <div className="nav-background"></div>
