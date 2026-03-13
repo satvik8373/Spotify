@@ -2,7 +2,7 @@
   "name": "Mavrixfy",
   "short_name": "Mavrixfy",
   "description": "Mavrixfy - Premium music streaming PWA",
-  "version": "2.0.1",
+  "version": "2.0.5",
   "start_url": "/?source=pwa",
   "display": "standalone",
   "background_color": "#121212",

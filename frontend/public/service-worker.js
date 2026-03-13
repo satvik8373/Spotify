@@ -1,7 +1,7 @@
 // Service Worker for Mavrixfy - iOS PWA Compatible
-const CACHE_NAME = 'mavrixfy-v2.0.4';
-const STATIC_CACHE = 'mavrixfy-static-v1.0.4';
-const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.4';
+const CACHE_NAME = 'mavrixfy-v2.0.5';
+const STATIC_CACHE = 'mavrixfy-static-v1.0.5';
+const DYNAMIC_CACHE = 'mavrixfy-dynamic-v1.0.5';
 
 // Detect iOS
 const isIOS = /iPad|iPhone|iPod/.test(self.navigator.userAgent);
