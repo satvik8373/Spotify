@@ -213,27 +213,28 @@
   /* PWA Safe Area Support - Fixed for Standalone Mode */
   .pwa-safe-area {
     background-color: var(--app-theme-color, #121212) !important;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
     min-height: 100vh;
     min-height: -webkit-fill-available;
   }
 
   /* Ensure status bar area matches app background in standalone mode */
   @supports (padding-top: env(safe-area-inset-top)) {
+    /* Remove body padding - handle it per component instead */
     body {
-      padding-top: env(safe-area-inset-top, 0px);
-      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-top: 0px;
+      padding-bottom: 0px;
     }
 
     /* Fix for iOS standalone mode - prevent white bars */
     html {
       height: -webkit-fill-available;
+      background-color: #121212;
     }
 
     body {
       min-height: 100vh;
       min-height: -webkit-fill-available;
+      background-color: #121212;
     }
   }
 

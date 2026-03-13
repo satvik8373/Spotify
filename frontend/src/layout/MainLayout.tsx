@@ -82,7 +82,7 @@ const MainLayout = () => {
 
   // Route-aware measurements for mobile header/nav spacing
   const MOBILE_HEADER_PX = 40;
-  const MOBILE_NAV_BASE_PX = 52; // Increased to account for bottom padding
+  const MOBILE_NAV_BASE_PX = 48; // Reduced from 56px to 48px
   const MOBILE_PLAYER_PADDING_PX = 44; // paddingTop when song is active
   const isMobileHeaderRoute = isMobile && (
     location.pathname === '/home' ||
@@ -143,7 +143,7 @@ const MainLayout = () => {
   const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : width;
 
   return (
-    <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative pwa-safe-area">
+    <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative">
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block flex-shrink-0 relative z-[100]">
         <MemoizedHeader />
@@ -154,7 +154,7 @@ const MainLayout = () => {
         className="flex-1 flex overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-black"
         style={{
           height: isMobile
-            ? `calc(100vh - ${mobileSubtractPx}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))`
+            ? `calc(100vh - ${mobileSubtractPx}px)`
             : 'auto',
           marginTop: isMobileHeaderRoute ? `${MOBILE_HEADER_PX}px` : '0',
         }}

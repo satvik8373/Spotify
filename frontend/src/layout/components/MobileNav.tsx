@@ -431,7 +431,7 @@ const MobileNav = () => {
       )}
 
       {/* Bottom Navigation Wrapper - Pointer Events None so clicks pass through empty space */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-transparent flex flex-col justify-end pointer-events-none md:hidden" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-transparent flex flex-col justify-end pointer-events-none md:hidden" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))' }}>
         {/* Floating Navigation Pill */}
         <div className="w-full flex justify-center pointer-events-auto">
           <div className="nav-container">
