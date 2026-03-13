@@ -86,7 +86,8 @@ const MainLayout = () => {
   const MOBILE_PLAYER_PADDING_PX = 44; // paddingTop when song is active
   const isMobileHeaderRoute = isMobile && (
     location.pathname === '/home' ||
-    location.pathname.startsWith('/search')
+    location.pathname.startsWith('/search') ||
+    location.pathname.startsWith('/library')
   );
 
   const isSyncPage = location.pathname === '/liked-songs/sync';
