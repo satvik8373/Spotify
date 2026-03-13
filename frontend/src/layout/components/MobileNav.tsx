@@ -238,11 +238,6 @@ const MobileNav = () => {
       />
 
       <style>{`
-        .mobile-nav-gradient-container {
-          background: transparent !important;
-          background-color: transparent !important;
-        }
-
         /* Floating Nav & Player Custom CSS */
         .nav-container {
           position: relative;
