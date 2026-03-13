@@ -265,7 +265,7 @@ const HomePage = () => {
 
         <div className="w-full overflow-x-hidden">
           {/* Recently Played Section */}
-          <section className="px-4 md:px-6 mb-6 w-full animate-[scaleIn_0.4s_ease-out]">
+          <section className="px-4 md:px-6 mb-6 w-full animate-[scaleIn_0.4s_ease-out] pt-2 md:pt-0">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-[6px] w-full max-w-full">
               {/* Liked Songs Card */}
               <RecentlyPlayedCard
