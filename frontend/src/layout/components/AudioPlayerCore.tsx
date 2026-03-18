@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePhoneInterruption } from '../../hooks/usePhoneInterruption';
 import { unlockAudioOnIOS, isIOS } from '@/utils/iosAudioFix';
+import { useAudioBridge } from '@/hooks/useAudioBridge';
+import { precacheUpcomingTracks, cacheAudioUrl } from '@/utils/audioCache';
 
 // Helper function to validate URLs
 const isValidUrl = (url: string): boolean => {
@@ -47,11 +49,14 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
   // Use phone interruption hook for automatic pause/resume during calls
   const audioFocusState = usePhoneInterruption(audioRef);
 
+  // Use audio bridge for iOS PWA MediaSession + AudioContext management
+  const { initializeBridge, resumeAudioContext } = useAudioBridge(audioRef);
+
   const resumeAfterTrackAdvance = useCallback(() => {
     const retryDelays = [120, 300, 700, 1300, 2000];
     let retryIndex = 0;
 
-    const attemptResume = () => {
+    const attemptResume = async () => {
       const state = usePlayerStore.getState();
       const audio = audioRef.current;
 
@@ -71,6 +76,9 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         return;
       }
 
+      // Resume AudioContext before play (fixes Bluetooth stuck bug)
+      await resumeAudioContext();
+
       state.setUserInteracted();
       audio.play()
         .then(() => {
@@ -88,14 +96,15 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
     };
 
     setTimeout(attemptResume, retryDelays[0]);
-  }, [audioRef]);
+  }, [audioRef, resumeAudioContext]);
 
   // Initialize audio context for iOS on mount
   useEffect(() => {
     if (isIOS()) {
-      // Unlock audio on first user interaction
+      // Unlock audio and initialize bridge on first user interaction
       const handleFirstInteraction = () => {
         unlockAudioOnIOS();
+        initializeBridge(); // Initialize AudioContext + MediaSession handlers
         document.removeEventListener('touchstart', handleFirstInteraction);
         document.removeEventListener('click', handleFirstInteraction);
       };
@@ -107,8 +116,18 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         document.removeEventListener('touchstart', handleFirstInteraction);
         document.removeEventListener('click', handleFirstInteraction);
       };
+    } else {
+      // For non-iOS, still initialize the bridge on first interaction
+      const handleFirstInteraction = () => {
+        initializeBridge();
+        document.removeEventListener('click', handleFirstInteraction);
+      };
+      document.addEventListener('click', handleFirstInteraction, { once: true });
+      return () => {
+        document.removeEventListener('click', handleFirstInteraction);
+      };
     }
-  }, []);
+  }, [initializeBridge]);
 
   // Reduce initial load block to 500ms instead of 3 seconds
   useEffect(() => {
@@ -314,12 +333,15 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
             isTrackTransitionPauseRef.current = false;
 
             if (isPlaying) {
-              playTimeoutRef.current = setTimeout(() => {
+              playTimeoutRef.current = setTimeout(async () => {
                 if (!audioRef.current) return;
 
                 if ((audioRef.current as any)._currentLoadingOperation !== currentLoadingOperation) {
                   return;
                 }
+
+                // Resume AudioContext before play (fixes Bluetooth stuck bug on iOS)
+                await resumeAudioContext();
 
                 const playPromise = audioRef.current.play();
                 if (playPromise !== undefined) {
@@ -369,19 +391,22 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         } else {
           // Same song, just play/resume
           if (audio.paused) {
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-              playPromise
-                .then(() => {
-                  isHandlingPlayback.current = false;
-                })
-                .catch(() => {
-                  setIsPlaying(false);
-                  isHandlingPlayback.current = false;
-                });
-            } else {
-              isHandlingPlayback.current = false;
-            }
+            // Resume AudioContext before play (fixes Bluetooth stuck bug)
+            resumeAudioContext().then(() => {
+              const playPromise = audio.play();
+              if (playPromise !== undefined) {
+                playPromise
+                  .then(() => {
+                    isHandlingPlayback.current = false;
+                  })
+                  .catch(() => {
+                    setIsPlaying(false);
+                    isHandlingPlayback.current = false;
+                  });
+              } else {
+                isHandlingPlayback.current = false;
+              }
+            });
           } else {
             isHandlingPlayback.current = false;
           }
@@ -404,7 +429,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       }
       isHandlingPlayback.current = false;
     }
-  }, [currentSong, isPlaying, setIsPlaying, onLoadingChange]);
+  }, [currentSong, isPlaying, setIsPlaying, onLoadingChange, resumeAudioContext]);
 
   // Handle audio element errors
   useEffect(() => {
@@ -556,6 +581,14 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
           // Update MediaSession when audio actually starts playing
           if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'playing';
+          }
+
+          // Pre-cache current and upcoming tracks for offline playback
+          if (store.currentSong?.audioUrl) {
+            cacheAudioUrl(store.currentSong.audioUrl);
+          }
+          if (store.queue.length > 1) {
+            precacheUpcomingTracks(store.queue, store.currentIndex, 3);
           }
         } catch (error) {
           // Silent error handling
