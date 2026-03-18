@@ -209,7 +209,7 @@ const registerMediaSessionHandlers = (
     }
   };
 
-  // Seek handlers
+  // Seek to specific position (used by lock screen scrubber)
   const seekToHandler = (details: MediaSessionActionDetails) => {
     const audio = getAudio();
     if (audio && details.seekTime !== undefined) {
@@ -228,24 +228,6 @@ const registerMediaSessionHandlers = (
     }
   };
 
-  const seekBackwardHandler = (details: MediaSessionActionDetails) => {
-    const audio = getAudio();
-    if (audio) {
-      const offset = details.seekOffset || 10;
-      audio.currentTime = Math.max(0, audio.currentTime - offset);
-      updatePositionState(audio);
-    }
-  };
-
-  const seekForwardHandler = (details: MediaSessionActionDetails) => {
-    const audio = getAudio();
-    if (audio) {
-      const offset = details.seekOffset || 10;
-      audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + offset);
-      updatePositionState(audio);
-    }
-  };
-
   // Register all handlers with safe wrapper
   const safeSetHandler = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
     try {
@@ -260,8 +242,13 @@ const registerMediaSessionHandlers = (
   safeSetHandler('nexttrack', nextTrackHandler);
   safeSetHandler('previoustrack', prevTrackHandler);
   safeSetHandler('seekto', seekToHandler);
-  safeSetHandler('seekbackward', seekBackwardHandler);
-  safeSetHandler('seekforward', seekForwardHandler);
+
+  // IMPORTANT: Do NOT register seekbackward/seekforward handlers
+  // iOS lock screen has limited space and will show seek buttons INSTEAD of
+  // previous/next track buttons if these handlers are registered.
+  // By setting them to null, iOS shows the track navigation buttons.
+  safeSetHandler('seekbackward', null);
+  safeSetHandler('seekforward', null);
 
   mediaSessionHandlersRegistered = true;
 };
