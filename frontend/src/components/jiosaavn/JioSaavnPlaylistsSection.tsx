@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, ChevronRight } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { JioSaavnPlaylistCard } from './JioSaavnPlaylistCard';
 import { JioSaavnPlaylist, jioSaavnService, PlaylistCategory } from '@/services/jioSaavnService';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,121 @@ interface JioSaavnPlaylistsSectionProps {
   categoryId?: string;
   limit?: number;
   showViewAll?: boolean;
+  playlistsOverride?: JioSaavnPlaylist[] | null;
+  disableAutoFetch?: boolean;
+}
+
+type CachedPlaylistPayload = {
+  data: JioSaavnPlaylist[];
+  updatedAt: number;
+  ctxSignature: string;
+};
+
+const CACHE_PREFIX = 'jiosaavn-cache-';
+
+const CATEGORY_TTL_MS: Record<string, number> = {
+  trending: 30 * 60 * 1000,
+  'most-viral': 45 * 60 * 1000,
+  'most-played': 60 * 60 * 1000,
+  'top-dhurandhar': 60 * 60 * 1000,
+  'new-arrivals': 45 * 60 * 1000,
+  bollywood: 60 * 60 * 1000,
+  romantic: 60 * 60 * 1000,
+  punjabi: 60 * 60 * 1000,
+};
+
+function getContextSignature(categoryId: string): string {
+  const now = new Date();
+  const hour = now.getHours();
+  const day = now.getDay();
+
+  const timeSlot =
+    hour >= 5 && hour < 12 ? 'morning' :
+    hour >= 12 && hour < 17 ? 'afternoon' :
+    hour >= 17 && hour < 22 ? 'evening' : 'night';
+
+  const isWeekend = day === 0 || day === 6;
+
+  let locale = 'en';
+  try {
+    locale = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase();
+  } catch {
+    // Keep fallback locale.
+  }
+
+  let languageBias = 'english';
+  if (isWeekend) {
+    languageBias = 'punjabi';
+  } else if (locale.startsWith('hi') || locale.startsWith('pa')) {
+    languageBias = 'hindi';
+  }
+
+  // Match app signature style.
+  return `${categoryId}|v5|${timeSlot}|${isWeekend ? 'weekend' : 'weekday'}|${languageBias}`;
+}
+
+function getCacheKey(categoryId: string): string {
+  return `${CACHE_PREFIX}${categoryId}`;
+}
+
+function getTtlMs(categoryId: string): number {
+  return CATEGORY_TTL_MS[categoryId] || (45 * 60 * 1000);
+}
+
+function readCachedPlaylists(categoryId: string): CachedPlaylistPayload | null {
+  const key = getCacheKey(categoryId);
+  const raw = localStorage.getItem(key);
+
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as CachedPlaylistPayload;
+      if (
+        Array.isArray(parsed?.data) &&
+        typeof parsed?.updatedAt === 'number' &&
+        typeof parsed?.ctxSignature === 'string'
+      ) {
+        return parsed;
+      }
+    } catch {
+      // Fall back to legacy cache shape.
+    }
+  }
+
+  // Backward compatibility with old cache format.
+  const legacyData = localStorage.getItem(`jiosaavn-${categoryId}`);
+  const legacyTime = localStorage.getItem(`jiosaavn-${categoryId}-time`);
+  if (!legacyData || !legacyTime) return null;
+
+  try {
+    const parsedData = JSON.parse(legacyData) as JioSaavnPlaylist[];
+    const updatedAt = Number.parseInt(legacyTime, 10);
+    if (!Array.isArray(parsedData) || Number.isNaN(updatedAt)) {
+      return null;
+    }
+
+    return {
+      data: parsedData,
+      updatedAt,
+      ctxSignature: 'legacy',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedPlaylists(categoryId: string, payload: CachedPlaylistPayload): void {
+  localStorage.setItem(getCacheKey(categoryId), JSON.stringify(payload));
+
+  // Also keep legacy keys updated for backward compatibility with old readers.
+  localStorage.setItem(`jiosaavn-${categoryId}`, JSON.stringify(payload.data));
+  localStorage.setItem(`jiosaavn-${categoryId}-time`, String(payload.updatedAt));
+}
+
+function isStale(cache: CachedPlaylistPayload, categoryId: string, nextSignature: string): boolean {
+  const ttlMs = getTtlMs(categoryId);
+  const ageMs = Date.now() - cache.updatedAt;
+  const signatureChanged = cache.ctxSignature !== nextSignature;
+  return ageMs > ttlMs || signatureChanged;
 }
 
 export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> = ({
@@ -21,6 +136,8 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   categoryId = 'trending',
   limit = 10,
   showViewAll = true,
+  playlistsOverride = null,
+  disableAutoFetch = false,
 }) => {
   const [playlists, setPlaylists] = useState<JioSaavnPlaylist[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,34 +146,41 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Find the category
     const foundCategory = jioSaavnService.getCategoryById(categoryId);
     setCategory(foundCategory || null);
-    
-    // Try to load from cache first
-    const cachedData = localStorage.getItem(`jiosaavn-${categoryId}`);
-    const cachedTimeStr = localStorage.getItem(`jiosaavn-${categoryId}-time`);
-    
-    if (cachedData && cachedTimeStr) {
-      try {
-        const parsed = JSON.parse(cachedData);
-        const cacheAge = Date.now() - parseInt(cachedTimeStr);
-        
-        // Use cache if it's less than 15 minutes old for fresher "live" content
-        if (cacheAge < 15 * 60 * 1000 && parsed.length > 0) {
-          setPlaylists(parsed);
-          return; // Don't fetch if we have valid cache
-        }
-      } catch (error) {
-        // Error parsing cached data
-      }
-    }
-    
-    // Only fetch if no valid cache exists, force refresh for varied content
-    fetchPlaylists(true);
-  }, [categoryId, limit]);
 
-  const fetchPlaylists = async (forceRefresh: boolean = false) => {
+    if (Array.isArray(playlistsOverride)) {
+      setPlaylists(playlistsOverride.slice(0, limit));
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    if (disableAutoFetch) {
+      setPlaylists([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const ctxSignature = getContextSignature(categoryId);
+    const cached = readCachedPlaylists(categoryId);
+
+    if (cached?.data?.length) {
+      setPlaylists(cached.data.slice(0, limit));
+    }
+
+    if (cached && !isStale(cached, categoryId, ctxSignature) && cached.data.length > 0) {
+      return;
+    }
+
+    // Stale-while-revalidate: keep cached UI (if any), fetch fresh in background.
+    fetchPlaylists({ forceRefresh: false, ctxSignature });
+  }, [categoryId, disableAutoFetch, limit, playlistsOverride]);
+
+  const fetchPlaylists = async (opts?: { forceRefresh?: boolean; ctxSignature?: string }) => {
+    const forceRefresh = opts?.forceRefresh ?? false;
+    const ctxSignature = opts?.ctxSignature ?? getContextSignature(categoryId);
+
     try {
       setIsLoading(true);
       setError(null);
@@ -64,9 +188,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       let data: JioSaavnPlaylist[];
       
       // Use optimized methods with timeout for better performance
-      const fetchPromise = categoryId === 'trending' 
-        ? jioSaavnService.get2026TrendingPlaylists(forceRefresh)
-        : jioSaavnService.getFreshPlaylistsByCategory(categoryId, limit, forceRefresh);
+      const fetchPromise = jioSaavnService.getFreshPlaylistsByCategory(categoryId, limit, forceRefresh);
 
       // Add timeout to prevent slow loading
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -92,10 +214,11 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       
       setPlaylists(data);
       
-      // Always cache the data for 15 minutes to prevent spamming API, even when force refreshing
-      const now = Date.now();
-      localStorage.setItem(`jiosaavn-${categoryId}`, JSON.stringify(data));
-      localStorage.setItem(`jiosaavn-${categoryId}-time`, now.toString());
+      writeCachedPlaylists(categoryId, {
+        data,
+        updatedAt: Date.now(),
+        ctxSignature,
+      });
     } catch (err) {
       setError('Failed to load playlists');
       toast.error('Failed to load JioSaavn playlists');
@@ -149,18 +272,16 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
 
   const handleRefresh = () => {
     // Clear ALL JioSaavn cache for a complete refresh
-    const cacheKeys = Object.keys(localStorage).filter(key => key.startsWith('jiosaavn-'));
+    const cacheKeys = Object.keys(localStorage).filter(
+      (key) => key.startsWith('jiosaavn-') || key.startsWith(CACHE_PREFIX)
+    );
     cacheKeys.forEach(key => {
       localStorage.removeItem(key);
     });
     
-    // Clear specific cache for this category
-    localStorage.removeItem(`jiosaavn-${categoryId}`);
-    localStorage.removeItem(`jiosaavn-${categoryId}-time`);
-    
     // Force a fresh fetch with randomization
     setPlaylists([]); // Clear current playlists to show loading
-    fetchPlaylists(true); // Pass true for forceRefresh
+    fetchPlaylists({ forceRefresh: true, ctxSignature: getContextSignature(categoryId) });
   };
 
   const getSectionTitle = () => {

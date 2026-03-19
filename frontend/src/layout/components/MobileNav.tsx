@@ -258,7 +258,11 @@ const MobileNav = () => {
           left: 0;
           right: 0;
           bottom: 0;
-          background-color: rgba(18, 18, 18, 0.95);
+          background:
+            linear-gradient(180deg,
+              color-mix(in srgb, var(--player-primary, #3857a8) 20%, rgba(10, 14, 22, 0.94)) 0%,
+              rgba(11, 15, 24, 0.96) 65%,
+              rgba(8, 10, 16, 0.98) 100%);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
           z-index: 10;
@@ -435,13 +439,13 @@ const MobileNav = () => {
 
             {/* Combined Mobile Player Segment */}
             {hasActiveSong && location.pathname !== '/liked-songs/sync' && (
-              <div className="relative z-20 w-full border-b border-white/5 bg-[#1a1a1a]/40">
+              <div className="relative z-20 w-full border-b border-white/5 bg-[#101522]/45">
                 {/* Album Color Tint */}
                 <div
                   className="absolute inset-0 opacity-30 mix-blend-screen"
                   style={{
-                    backgroundColor: albumColors.primary || 'transparent',
-                    transition: 'background-color 300ms ease',
+                    background: `linear-gradient(90deg, ${albumColors.primary || 'transparent'} 0%, transparent 72%)`,
+                    transition: 'background 320ms ease',
                   }}
                 />
 

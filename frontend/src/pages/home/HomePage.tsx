@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { PlaylistCard } from '../../components/playlist/PlaylistCard';
 import { JioSaavnPlaylistsSection } from '@/components/jiosaavn/JioSaavnPlaylistsSection';
 import { RecentlyPlayedCard } from '@/components/RecentlyPlayedCard';
+import { HomeJioSaavnCategoryData, jioSaavnService } from '@/services/jioSaavnService';
 import { useNavigate, Link } from 'react-router-dom';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
@@ -11,6 +12,22 @@ import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import HomeSkeleton from '@/components/skeletons/HomeSkeleton';
 import { updateMetaTags, metaPresets } from '@/utils/metaTags';
 import { AdContainer } from '@/components/AdContainer';
+
+const HOME_JIOSAAVN_SECTION_ORDER = [
+  'trending',
+  'most-viral',
+  'most-played',
+  'top-dhurandhar',
+  'new-arrivals',
+] as const;
+
+const HOME_JIOSAAVN_TITLES: Record<(typeof HOME_JIOSAAVN_SECTION_ORDER)[number], string> = {
+  trending: 'Trending Now',
+  'most-viral': 'Most Viral',
+  'most-played': 'Most Played',
+  'top-dhurandhar': 'Top Dhurandhar',
+  'new-arrivals': 'New Arrivals',
+};
 
 const HomePage = () => {
   const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
@@ -24,6 +41,8 @@ const HomePage = () => {
   const { loadLikedSongs } = useLikedSongsStore();
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
   const [likedSongsColor, setLikedSongsColor] = useState<string | null>(null);
+  const [playerThemeColor, setPlayerThemeColor] = useState<string>('rgb(60, 40, 120)');
+  const [homeJioCategories, setHomeJioCategories] = useState<HomeJioSaavnCategoryData[]>([]);
 
   // Load liked songs count
   useEffect(() => {
@@ -35,28 +54,24 @@ const HomePage = () => {
     updateMetaTags(metaPresets.home());
   }, []);
 
-  // Auto-refresh when app becomes visible
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && usePlaylistStore.getState().shouldRefresh()) {
-        usePlaylistStore.getState().refreshAllData();
+    const readThemeColor = () => {
+      const cssColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--player-primary')
+        .trim();
+      if (cssColor) {
+        setPlayerThemeColor(cssColor);
       }
     };
 
-    const handleFocus = () => {
-      if (usePlaylistStore.getState().shouldRefresh()) {
-        usePlaylistStore.getState().refreshAllData();
-      }
-    };
+    readThemeColor();
+    const observer = new MutationObserver(readThemeColor);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
+    return () => observer.disconnect();
   }, []);
+
+  // Keep home data stable like app: load on first mount, manual refresh handles hard updates.
 
   useEffect(() => {
     const initializeHomePage = async () => {
@@ -104,6 +119,42 @@ const HomePage = () => {
     };
   }, [publicPlaylists]); // Only depend on publicPlaylists, not recentItems
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadHomeJioCategories = async () => {
+      try {
+        const categories = await jioSaavnService.getHomeJioSaavnCategories({
+          forceRefresh: false,
+          limitPerCategory: 15,
+          realtime: false,
+        });
+
+        if (!isCancelled) {
+          setHomeJioCategories(categories);
+        }
+      } catch {
+        if (!isCancelled) {
+          setHomeJioCategories([]);
+        }
+      }
+    };
+
+    loadHomeJioCategories();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const homeJioCategoryMap = useMemo(() => {
+    const map = new Map<string, HomeJioSaavnCategoryData>();
+    homeJioCategories.forEach((category) => {
+      map.set(category.id, category);
+    });
+    return map;
+  }, [homeJioCategories]);
+
   // Function to get displayed items - no memoization
   const getDisplayedItems = () => {
     return displayItems;
@@ -144,7 +195,7 @@ const HomePage = () => {
     return `rgba(18, 18, 18, ${opacity})`;
   };
 
-  const activeColor = hoveredColor || likedSongsColor || 'rgb(60, 40, 120)';
+  const activeColor = hoveredColor || likedSongsColor || playerThemeColor;
 
   // Handle playlist click - simplified
   const handlePlaylistClick = (item: any) => {
@@ -343,41 +394,22 @@ const HomePage = () => {
           <AdContainer className="px-4 md:px-6" />
 
           {/* JioSaavn Sections */}
-          <section>
-            <JioSaavnPlaylistsSection
-              title="Trending Now"
-              categoryId="trending"
-              limit={14}
-              showViewAll={true}
-            />
-          </section>
+          {HOME_JIOSAAVN_SECTION_ORDER.map((categoryId) => {
+            const category = homeJioCategoryMap.get(categoryId);
 
-          <section>
-            <JioSaavnPlaylistsSection
-              title="Bollywood Hits"
-              categoryId="bollywood"
-              limit={14}
-              showViewAll={true}
-            />
-          </section>
-
-          <section>
-            <JioSaavnPlaylistsSection
-              title="Romantic Songs"
-              categoryId="romantic"
-              limit={14}
-              showViewAll={true}
-            />
-          </section>
-
-          <section>
-            <JioSaavnPlaylistsSection
-              title="Punjabi Music"
-              categoryId="punjabi"
-              limit={14}
-              showViewAll={true}
-            />
-          </section>
+            return (
+              <section key={categoryId}>
+                <JioSaavnPlaylistsSection
+                  title={category?.title || HOME_JIOSAAVN_TITLES[categoryId]}
+                  categoryId={categoryId}
+                  limit={15}
+                  showViewAll={true}
+                  playlistsOverride={category?.results ?? null}
+                  disableAutoFetch={homeJioCategories.length > 0}
+                />
+              </section>
+            );
+          })}
         </div>
       </div>
     </div>

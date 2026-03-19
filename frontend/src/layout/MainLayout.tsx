@@ -11,6 +11,7 @@ import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
 import DesktopFooter from '@/components/DesktopFooter';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
+import { useAlbumColors } from '@/hooks/useAlbumColors';
 
 // Memoized components to prevent unnecessary re-renders
 const MemoizedLeftSidebar = memo(LeftSidebar);
@@ -27,6 +28,7 @@ const MainLayout = () => {
   const [showQueue, setShowQueue] = useState(false);
   const currentSong = usePlayerStore(state => state.currentSong); // Selective subscription
   const hasActiveSong = !!currentSong;
+  const albumColors = useAlbumColors(currentSong?.imageUrl);
   const location = useLocation();
   const { width, isCollapsed, setWidth, toggleCollapse, setCollapsed } = useSidebarStore();
   const isResizing = useRef(false);
@@ -34,6 +36,24 @@ const MainLayout = () => {
   const COLLAPSE_THRESHOLD = 120;
 
   useBackgroundRefresh();
+
+  // Expose current-song palette globally so all sections can inherit the same live theme.
+  useEffect(() => {
+    const root = document.documentElement;
+
+    if (!currentSong) {
+      root.style.setProperty('--player-primary', 'rgb(56, 87, 168)');
+      root.style.setProperty('--player-secondary', 'rgb(22, 34, 74)');
+      root.style.setProperty('--player-text', '#f5fbff');
+      return;
+    }
+
+    const textColor = albumColors.text === 'black' ? '#0b141a' : '#f5fbff';
+
+    root.style.setProperty('--player-primary', albumColors.primary || 'rgb(56, 87, 168)');
+    root.style.setProperty('--player-secondary', albumColors.secondary || 'rgb(22, 34, 74)');
+    root.style.setProperty('--player-text', textColor);
+  }, [albumColors.primary, albumColors.secondary, albumColors.text, currentSong]);
 
   // Listen for queue toggle events (optimized)
   useEffect(() => {
