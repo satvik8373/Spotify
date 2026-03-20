@@ -3,6 +3,7 @@ import { resolveArtist } from '@/lib/resolveArtist';
 import { Album, Song, Stats } from '@/types';
 import { create } from 'zustand';
 import { requestManager } from '@/services/requestManager';
+import { getHighestQualityAudioUrl } from '@/utils/jiosaavnAudio';
 
 interface IndianSong {
   id: string;
@@ -77,16 +78,7 @@ function decodeHtml(html: string | undefined): string {
 
 // Convert JioSaavn track to IndianSong format
 function convertSaavnTrack(item: any): IndianSong {
-  // Get the best quality download URL (prefer 320kbps, then 160kbps, then 96kbps)
-  let audioUrl = '';
-  if (item.downloadUrl && Array.isArray(item.downloadUrl)) {
-    // Try to get the highest quality available
-    const downloadUrl = item.downloadUrl.find((d: any) => d.quality === '320kbps') ||
-      item.downloadUrl.find((d: any) => d.quality === '160kbps') ||
-      item.downloadUrl.find((d: any) => d.quality === '96kbps') ||
-      item.downloadUrl[item.downloadUrl.length - 1];
-    audioUrl = downloadUrl?.url || downloadUrl?.link || '';
-  }
+  const audioUrl = getHighestQualityAudioUrl(item.downloadUrl);
 
   // Get the best quality image
   let imageUrl = '';

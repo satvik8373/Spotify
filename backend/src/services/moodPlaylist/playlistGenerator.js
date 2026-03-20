@@ -12,6 +12,7 @@
 
 import admin from '../../config/firebase.js';
 import { searchSongs, getTrendingSongs } from '../jiosaavn.service.js';
+import { getHighestQualityAudioUrl } from '../../lib/jiosaavnAudio.js';
 
 const db = admin.firestore();
 const PLAYLIST_SIZE = 20;
@@ -121,13 +122,7 @@ function formatSong(song) {
   }
 
   // Robust audio URL parsing
-  let audioUrl = '';
-  if (song.downloadUrl && Array.isArray(song.downloadUrl)) {
-    const audObj = song.downloadUrl.find(d => d.quality === '320kbps') ||
-      song.downloadUrl.find(d => d.quality === '160kbps') ||
-      song.downloadUrl[song.downloadUrl.length - 1];
-    audioUrl = audObj?.url || audObj?.link || '';
-  }
+  const audioUrl = getHighestQualityAudioUrl(song.downloadUrl);
 
   return {
     _id: song.id,

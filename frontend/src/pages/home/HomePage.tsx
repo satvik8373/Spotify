@@ -6,12 +6,12 @@ import { RecentlyPlayedCard } from '@/components/RecentlyPlayedCard';
 import { HomeJioSaavnCategoryData, jioSaavnService } from '@/services/jioSaavnService';
 import { useNavigate, Link } from 'react-router-dom';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
 import { SectionWrapper } from '@/components/ui/section-wrapper';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import HomeSkeleton from '@/components/skeletons/HomeSkeleton';
 import { updateMetaTags, metaPresets } from '@/utils/metaTags';
-import { AdContainer } from '@/components/AdContainer';
 
 const HOME_JIOSAAVN_SECTION_ORDER = [
   'trending',
@@ -33,6 +33,7 @@ const HomePage = () => {
   const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
   const fetchPublicPlaylists = usePlaylistStore(state => state.fetchPublicPlaylists);
   const isLoading = usePlaylistStore(state => state.isLoading);
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
 
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [displayItems, setDisplayItems] = useState<any[]>([]);
@@ -43,6 +44,8 @@ const HomePage = () => {
   const [likedSongsColor, setLikedSongsColor] = useState<string | null>(null);
   const [playerThemeColor, setPlayerThemeColor] = useState<string>('rgb(60, 40, 120)');
   const [homeJioCategories, setHomeJioCategories] = useState<HomeJioSaavnCategoryData[]>([]);
+  const homePlaylistCardScrollWidth = 160;
+  const homePlaylistCardItemWidth = 160;
 
   // Load liked songs count
   useEffect(() => {
@@ -230,11 +233,12 @@ const HomePage = () => {
 
   if (isInitialLoading && !hasLoadedOnce) {
     return (
-      <div className="min-h-screen bg-[#121212] py-4 space-y-6 relative w-full z-10 pb-32 md:pb-8 animate-[fadeIn_0.3s_ease-out]">
-        {/* Recently played skeleton */}
-        <div className="px-4 md:px-6 mb-6 w-full">
-          <HomeSkeleton count={4} type="recently-played" className="" />
-        </div>
+      <div className="min-h-screen bg-transparent py-4 space-y-6 relative w-full z-10 pb-32 md:pb-8 animate-[fadeIn_0.3s_ease-out]">
+        {isAuthenticated && (
+          <div className="px-4 md:px-6 mb-6 w-full">
+            <HomeSkeleton count={4} type="recently-played" className="" />
+          </div>
+        )}
 
         {/* Made for you section skeleton */}
         <div className="px-4 md:px-6">
@@ -260,7 +264,7 @@ const HomePage = () => {
 
 
   return (
-    <div className="min-h-screen bg-[#121212] overflow-x-hidden relative animate-[fadeIn_0.4s_ease-out]">
+    <div className="min-h-screen bg-transparent overflow-x-hidden relative animate-[fadeIn_0.4s_ease-out]">
       {/* Dynamic background */}
       <div
         className="absolute top-0 left-0 right-0 pointer-events-none hidden md:block"
@@ -315,40 +319,39 @@ const HomePage = () => {
         </div>
 
         <div className="w-full overflow-x-hidden">
-          {/* Recently Played Section */}
-          <section className="px-4 md:px-6 mb-6 w-full animate-[scaleIn_0.4s_ease-out] pt-4 md:pt-0">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-[6px] w-full max-w-full">
-              {/* Liked Songs Card */}
-              <RecentlyPlayedCard
-                id="liked-songs"
-                title="Liked Songs"
-                imageUrl="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
-                subtitle="Playlist"
-                type="playlist"
-                onClick={() => navigate('/liked-songs')}
-                onPlay={() => navigate('/liked-songs')}
-                onHoverChange={(color) => handleColorChange(color, true)}
-              />
+          {isAuthenticated && (
+            <section className="px-4 md:px-6 mb-6 w-full animate-[scaleIn_0.4s_ease-out] pt-4 md:pt-0">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-[6px] w-full max-w-full">
+                <RecentlyPlayedCard
+                  id="liked-songs"
+                  title="Liked Songs"
+                  imageUrl="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
+                  subtitle="Playlist"
+                  type="playlist"
+                  onClick={() => navigate('/liked-songs')}
+                  onPlay={() => navigate('/liked-songs')}
+                  onHoverChange={(color) => handleColorChange(color, true)}
+                />
 
-              {/* Other recently played items */}
-              {getDisplayedItems().slice(0, 7).map((item: any) => {
-                const itemId = item._id || item.id;
-                return (
-                  <RecentlyPlayedCard
-                    key={itemId}
-                    id={itemId}
-                    title={item.title || item.name}
-                    imageUrl={item.image || item.imageUrl}
-                    subtitle={item.description || 'Playlist'}
-                    type="playlist"
-                    onClick={() => handlePlaylistClick(item)}
-                    onPlay={() => handlePlaylistClick(item)}
-                    onHoverChange={handleColorChange}
-                  />
-                );
-              })}
-            </div>
-          </section>
+                {getDisplayedItems().slice(0, 7).map((item: any) => {
+                  const itemId = item._id || item.id;
+                  return (
+                    <RecentlyPlayedCard
+                      key={itemId}
+                      id={itemId}
+                      title={item.title || item.name}
+                      imageUrl={item.image || item.imageUrl}
+                      subtitle={item.description || 'Playlist'}
+                      type="playlist"
+                      onClick={() => handlePlaylistClick(item)}
+                      onPlay={() => handlePlaylistClick(item)}
+                      onHoverChange={handleColorChange}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          )}
           {/* Public Playlists Section */}
           <SectionWrapper
             title="Made for you"
@@ -357,7 +360,7 @@ const HomePage = () => {
             onViewAll={() => navigate('/library')}
           >
             <HorizontalScroll
-              itemWidth={120}
+              itemWidth={homePlaylistCardScrollWidth}
               gap={10}
               showArrows={true}
               snapToItems={false}
@@ -365,7 +368,7 @@ const HomePage = () => {
             >
               {publicPlaylists.length > 0 ? (
                 publicPlaylists.slice(0, 20).map((playlist, index) => (
-                  <ScrollItem key={playlist._id} width={120}>
+                  <ScrollItem key={playlist._id} width={homePlaylistCardItemWidth}>
                     <div
                       className="animate-[scaleIn_0.3s_ease-out]"
                       style={{ animationDelay: `${index * 0.05}s` }}
@@ -373,7 +376,7 @@ const HomePage = () => {
                       <PlaylistCard
                         playlist={playlist}
                         showDescription={true}
-                        className="hover:bg-card/50 transition-all duration-200 hover:scale-105"
+                        className="hover:bg-card/50 transition-all duration-200"
                       />
                     </div>
                   </ScrollItem>
@@ -389,9 +392,6 @@ const HomePage = () => {
               )}
             </HorizontalScroll>
           </SectionWrapper>
-
-          {/* Ad Container - Non-intrusive placement */}
-          <AdContainer className="px-4 md:px-6" />
 
           {/* JioSaavn Sections */}
           {HOME_JIOSAAVN_SECTION_ORDER.map((categoryId) => {

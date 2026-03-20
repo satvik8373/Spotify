@@ -12,6 +12,7 @@ import { Song } from '@/types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { useSpotify } from '@/contexts/SpotifyContext';
+import { getHighestQualityAudioUrl } from '@/utils/jiosaavnAudio';
 import './liked-songs.css';
 import {
   DropdownMenu,
@@ -435,12 +436,7 @@ const LikedSongsPage = () => {
           const data = await response.json();
           
           if (data.success && data.data && data.data.downloadUrl) {
-            const downloadUrl = data.data.downloadUrl.find((d: any) => d.quality === '320kbps') ||
-              data.data.downloadUrl.find((d: any) => d.quality === '160kbps') ||
-              data.data.downloadUrl.find((d: any) => d.quality === '96kbps') ||
-              data.data.downloadUrl[data.data.downloadUrl.length - 1];
-            
-            const audioUrl = downloadUrl?.url || downloadUrl?.link || '';
+            const audioUrl = getHighestQualityAudioUrl(data.data.downloadUrl);
             
             if (audioUrl) {
               // Create updated song with audioUrl
@@ -872,5 +868,4 @@ const LikedSongsPage = () => {
 };
 
 export default LikedSongsPage;
-
 

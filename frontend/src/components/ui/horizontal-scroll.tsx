@@ -118,13 +118,14 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
         <div
           ref={scrollRef}
           className={cn(
-            "flex gap-4 overflow-x-auto overflow-y-hidden",
+            "flex overflow-x-auto overflow-y-hidden",
             "scrollbar-hide",
             snapToItems && "snap-x snap-mandatory",
             edgeToEdge && "pl-4 md:pl-6 pr-4 md:pr-6",
             className
           )}
           style={{
+            gap: `${gap}px`,
             WebkitOverflowScrolling: 'touch',
             overscrollBehaviorX: 'contain',
           }}
@@ -140,7 +141,7 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
 interface ScrollItemProps {
   children: React.ReactNode;
   className?: string;
-  width?: number;
+  width?: number | string;
   snapToCenter?: boolean;
 }
 
@@ -157,7 +158,7 @@ export const ScrollItem: React.FC<ScrollItemProps> = ({
         snapToCenter && "snap-center",
         className
       )}
-      style={{ width: `${width}px` }}
+      style={{ width: typeof width === 'number' ? `${width}px` : width }}
     >
       {children}
     </div>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getHighestQualityAudioUrl, getHighestQualityDownload } from '../lib/jiosaavnAudio.js';
 
 // Use the same API as the website for better reliability
 const JIOSAAVN_API_BASE_URL = 'https://saavn.sumit.co/api';
@@ -422,6 +423,8 @@ export const getLyrics = async (id) => {
 export const formatSongData = (song) => {
   if (!song) return null;
 
+  const audio = getHighestQualityDownload(song.downloadUrl);
+
   return {
     id: song.id,
     title: song.name,
@@ -430,7 +433,8 @@ export const formatSongData = (song) => {
     year: song.year,
     duration: song.duration,
     image: song.image && song.image.length > 2 ? song.image[2].url : '',
-    url: song.downloadUrl && song.downloadUrl.length > 4 ? song.downloadUrl[4].url : '',
+    audio,
+    url: getHighestQualityAudioUrl(song.downloadUrl) || song.url || '',
     source: 'jiosaavn'
   };
 };

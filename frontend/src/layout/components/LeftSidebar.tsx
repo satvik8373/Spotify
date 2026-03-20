@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { CreatePlaylistDialog } from '../../components/playlist/CreatePlaylistDialog';
 import { getLikedSongsCount } from '@/services/likedSongsService';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
@@ -23,11 +24,91 @@ interface LeftSidebarProps {
     onToggleCollapse?: () => void;
 }
 
+type LikedPlaylistsData = {
+    likedIds: string[];
+    metadata: Record<string, any>;
+};
+
+const readLikedPlaylistsData = (): LikedPlaylistsData => {
+    try {
+        const likedIds: string[] = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
+        const legacyJioLikedIds: string[] = JSON.parse(localStorage.getItem('liked_jiosaavn_playlists') || '[]');
+        const metadata: Record<string, any> = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
+
+        const mergedLikedIds = Array.from(new Set([...likedIds, ...legacyJioLikedIds]));
+
+        Object.keys(metadata).forEach((id) => {
+            const item = metadata[id];
+            if (!item) return;
+            if (typeof item.name === 'string' && item.name.toLowerCase().includes('jiosaavn')) {
+                item.name = item.name.replace(/jiosaavn/gi, 'Mavrixfy');
+            }
+            if (item?.createdBy?.fullName && String(item.createdBy.fullName).toLowerCase().includes('jiosaavn')) {
+                item.createdBy.fullName = 'Mavrixfy';
+            }
+        });
+
+        legacyJioLikedIds.forEach((id) => {
+            if (!metadata[id]) {
+                metadata[id] = {
+                    _id: id,
+                    id,
+                    name: 'Mavrixfy Playlist',
+                    imageUrl: '',
+                    createdBy: { fullName: 'Mavrixfy' },
+                    source: 'jiosaavn',
+                    routePath: `/jiosaavn/playlist/${id}`,
+                };
+            }
+        });
+
+        return {
+            likedIds: mergedLikedIds,
+            metadata,
+        };
+    } catch {
+        return { likedIds: [], metadata: {} };
+    }
+};
+
+const getLikedPlaylistId = (playlist: any): string | null => {
+    return playlist?._id || playlist?.id || null;
+};
+
+const getLikedPlaylistRoute = (playlist: any, playlistId: string): string => {
+    if (typeof playlist?.routePath === 'string' && playlist.routePath.trim().length > 0) {
+        return playlist.routePath;
+    }
+    if (playlist?.source === 'jiosaavn' || playlist?.type === 'jiosaavn-playlist') {
+        return `/jiosaavn/playlist/${playlistId}`;
+    }
+    return `/playlist/${playlistId}`;
+};
+
+const getLikedPlaylistOwnerLabel = (playlist: any): string => {
+    if (playlist?.source === 'jiosaavn' || playlist?.type === 'jiosaavn-playlist') {
+        return 'Mavrixfy';
+    }
+    if (playlist?.createdBy?.fullName) {
+        const owner = String(playlist.createdBy.fullName);
+        if (owner.toLowerCase().includes('jiosaavn')) {
+            return 'Mavrixfy';
+        }
+        return owner;
+    }
+    return 'Favourite';
+};
+
 export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSidebarProps) => {
     const { isAuthenticated } = useAuth();
+    const storeIsAuthenticated = useAuthStore(state => state.isAuthenticated);
+    const isActuallyAuthenticated = isAuthenticated || storeIsAuthenticated;
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [likedSongsCount, setLikedSongsCount] = useState(0);
-    const { userPlaylists, fetchUserPlaylists, fetchPublicPlaylists } = usePlaylistStore();
+    const [isSidebarLoading, setIsSidebarLoading] = useState(false);
+    const userPlaylists = usePlaylistStore(state => state.userPlaylists);
+    const fetchUserPlaylists = usePlaylistStore(state => state.fetchUserPlaylists);
+    const fetchPublicPlaylists = usePlaylistStore(state => state.fetchPublicPlaylists);
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -35,12 +116,52 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
     const isMoodPlaylistPage = location.pathname === '/mood-playlist';
 
     useEffect(() => {
-        if (isAuthenticated) {
-            fetchUserPlaylists();
-            loadLikedSongsCount();
+        let isCancelled = false;
+
+        const loadSidebarData = async () => {
+            setIsSidebarLoading(true);
+
+            if (isActuallyAuthenticated) {
+                await Promise.allSettled([
+                    fetchUserPlaylists(),
+                    fetchPublicPlaylists(),
+                ]);
+                if (!isCancelled) {
+                    loadLikedSongsCount();
+                }
+            } else {
+                await fetchPublicPlaylists();
+                if (!isCancelled) {
+                    setLikedSongsCount(0);
+                }
+            }
+
+            if (!isCancelled) {
+                setIsSidebarLoading(false);
+            }
+        };
+
+        loadSidebarData();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [isActuallyAuthenticated, fetchUserPlaylists, fetchPublicPlaylists]);
+
+    useEffect(() => {
+        if (!isActuallyAuthenticated || userPlaylists.length > 0) {
+            return;
         }
-        fetchPublicPlaylists();
-    }, [isAuthenticated, fetchUserPlaylists, fetchPublicPlaylists]);
+
+        // Retry once if the first auth-time fetch resolves before token/user profile settles.
+        const retryTimer = window.setTimeout(() => {
+            fetchUserPlaylists().catch(() => { });
+        }, 1500);
+
+        return () => {
+            window.clearTimeout(retryTimer);
+        };
+    }, [isActuallyAuthenticated, userPlaylists.length, fetchUserPlaylists]);
 
     // Listen for liked songs updates
     useEffect(() => {
@@ -53,10 +174,10 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
         return () => {
             document.removeEventListener('likedSongsUpdated', handleLikedSongsUpdated);
         };
-    }, []);
+    }, [isActuallyAuthenticated]);
 
     const loadLikedSongsCount = async () => {
-        if (isAuthenticated) {
+        if (isActuallyAuthenticated) {
             try {
                 const count = await getLikedSongsCount();
                 setLikedSongsCount(count);
@@ -200,7 +321,13 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                     {/* Only Favourites (liked playlists) and Liked Songs are shown */}
 
                     {/* Your Playlists */}
-                    {isAuthenticated && userPlaylists.length > 0 && (
+                    {isActuallyAuthenticated && isSidebarLoading && userPlaylists.length === 0 && !isCollapsed && (
+                        <div className="px-2 py-1 text-xs text-muted-foreground">
+                            Loading your playlists...
+                        </div>
+                    )}
+
+                    {isActuallyAuthenticated && userPlaylists.length > 0 && (
                         <div className="mt-1">
                             {!isCollapsed && (
                                 <h3 className="text-xs text-muted-foreground px-2 mb-1 font-medium">Your Playlists</h3>
@@ -255,22 +382,35 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
 export default LeftSidebar;
 
 function FavouritePlaylists() {
-    let likedIds: string[] = [];
-    let metadata: Record<string, any> = {};
-    try {
-        likedIds = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
-        metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
-    } catch { }
-
-    const { playlists } = usePlaylistStore();
+    const [likedData, setLikedData] = useState<LikedPlaylistsData>(() => readLikedPlaylistsData());
+    const playlists = usePlaylistStore(state => state.playlists);
     const location = useLocation();
     const isActive = (path: string) => location.pathname.startsWith(path);
 
+    useEffect(() => {
+        const syncLikedPlaylists = () => {
+            setLikedData(readLikedPlaylistsData());
+        };
+
+        document.addEventListener('likedPlaylistsUpdated', syncLikedPlaylists);
+        window.addEventListener('storage', syncLikedPlaylists);
+
+        return () => {
+            document.removeEventListener('likedPlaylistsUpdated', syncLikedPlaylists);
+            window.removeEventListener('storage', syncLikedPlaylists);
+        };
+    }, []);
+
     // Combine db playlists and external playlists metadata
-    const allLikedPlaylists = likedIds.map(id => {
+    const allLikedPlaylists = likedData.likedIds.map(id => {
+        const metadataItem = likedData.metadata[id];
+        if (metadataItem?.source === 'jiosaavn' || metadataItem?.routePath?.startsWith('/jiosaavn/')) {
+            return metadataItem;
+        }
+
         const dbPlaylist = playlists.find(p => p._id === id);
         if (dbPlaylist) return dbPlaylist;
-        if (metadata[id]) return metadata[id];
+        if (metadataItem) return metadataItem;
         return null;
     }).filter(Boolean) as any[];
 
@@ -280,13 +420,19 @@ function FavouritePlaylists() {
     return (
         <div className="mt-1">
             <h3 className="text-xs text-muted-foreground px-2 mb-1 font-medium">Favourites</h3>
-            {favs.map((playlist) => (
+            {favs.map((playlist) => {
+                const playlistId = getLikedPlaylistId(playlist);
+                if (!playlistId) return null;
+                const playlistRoute = getLikedPlaylistRoute(playlist, playlistId);
+                const ownerLabel = getLikedPlaylistOwnerLabel(playlist);
+
+                return (
                 <Link
-                    key={`fav-${playlist._id}`}
-                    to={`/playlist/${playlist._id}`}
+                    key={`fav-${playlistId}`}
+                    to={playlistRoute}
                     className={cn(
                         'flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/10 transition-colors',
-                        isActive(`/playlist/${playlist._id}`) ? 'bg-white/10' : ''
+                        isActive(playlistRoute) ? 'bg-white/10' : ''
                     )}
                 >
                     <div className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -305,13 +451,12 @@ function FavouritePlaylists() {
                     <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">{playlist.name}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                            {playlist.createdBy?.fullName ? `By ${playlist.createdBy.fullName}` : 'Favourite'}
+                            {`By ${ownerLabel}`}
                         </p>
                     </div>
                 </Link>
-            ))}
+                );
+            })}
         </div>
     );
 }
-
-

@@ -36,7 +36,7 @@ const JioSaavnCategoriesPage: React.FC = () => {
               <div className="flex-1">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <Music className="w-6 h-6 text-orange-500" />
-                  JioSaavn Categories
+                  Mavrixfy Categories
                 </h1>
                 <p className="text-sm text-white/60 mt-1">Discover music by mood, genre, and language</p>
               </div>

@@ -1,3 +1,5 @@
+import { getHighestQualityDownload } from '../utils.js';
+
 export default async function handler(req, res) {
   try {
     // Add CORS headers
@@ -38,16 +40,21 @@ export default async function handler(req, res) {
     // Process and filter the data to ensure only valid entries are returned
     const processedResults = data.data.results
       .filter(item => item.downloadUrl && item.downloadUrl.length > 0)
-      .map(item => ({
-        id: item.id,
-        title: item.name,
-        artist: item.primaryArtists,
-        album: item.album.name,
-        year: item.year,
-        duration: item.duration,
-        image: item.image[2].url,
-        url: item.downloadUrl[4].url,
-      }));
+      .map(item => {
+        const audio = getHighestQualityDownload(item.downloadUrl);
+
+        return {
+          id: item.id,
+          title: item.name,
+          artist: item.primaryArtists,
+          album: item.album.name,
+          year: item.year,
+          duration: item.duration,
+          image: item.image[2].url,
+          audio,
+          url: audio?.url || audio?.link || '',
+        };
+      });
     
     return res.status(200).json({ 
       status: 'success',

@@ -25,7 +25,6 @@ const DesktopFooter = () => {
                             <ul className="flex flex-col gap-2">
                                 <li><a href="mailto:artists@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">For Artists</a></li>
                                 <li><a href="mailto:developers@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Developers</a></li>
-                                <li><a href="mailto:advertising@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Advertising</a></li>
                                 <li><a href="mailto:investors@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Investors</a></li>
                                 <li><a href="mailto:vendors@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Vendors</a></li>
                             </ul>
@@ -58,7 +57,7 @@ const DesktopFooter = () => {
                     {/* Social Icons */}
                     <div className="flex gap-4">
                         <a 
-                            href="https://instagram.com/mavrixfy" 
+                            href="https://instagram.com/mavrixfy_music" 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="w-10 h-10 rounded-full bg-[#292929] hover:bg-[#727272] flex items-center justify-center text-white transition-colors"
@@ -94,7 +93,6 @@ const DesktopFooter = () => {
                         <Link to="/privacy" className="text-[#a7a7a7] hover:text-white">Safety & Privacy Center</Link>
                         <Link to="/privacy" className="text-[#a7a7a7] hover:text-white">Privacy Policy</Link>
                         <Link to="/privacy" className="text-[#a7a7a7] hover:text-white">Cookies</Link>
-                        <Link to="/about" className="text-[#a7a7a7] hover:text-white">About Ads</Link>
                         <Link to="/about" className="text-[#a7a7a7] hover:text-white">Accessibility</Link>
                     </div>
                     <div className="flex flex-col items-end gap-1">

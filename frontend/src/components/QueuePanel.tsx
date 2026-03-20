@@ -74,7 +74,7 @@ const QueuePanel: React.FC<QueuePanelProps> = ({ onClose }) => {
 
     return (
         <div ref={panelRef} className="h-full w-full bg-background flex flex-col overflow-hidden">
-            <div ref={contentRef}>
+            <div ref={contentRef} className="h-full min-h-0 flex flex-col">
                 {/* Header */}
                 <div className="px-3 py-3 flex items-center justify-between border-b border-border/50 flex-shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
@@ -99,7 +99,7 @@ const QueuePanel: React.FC<QueuePanelProps> = ({ onClose }) => {
             </div>
 
             {/* Content */}
-            <CustomScrollbar className="flex-1 w-full">
+            <CustomScrollbar className="flex-1 min-h-0 w-full">
                 <div className="px-3">
                     <div className="py-3 space-y-4">
                         {/* Now Playing */}

@@ -105,6 +105,11 @@ function blend(rgb: number[], target: number[], amount: number): number[] {
   ];
 }
 
+function hueDistance(a: number, b: number): number {
+  const diff = Math.abs(a - b) % 360;
+  return diff > 180 ? 360 - diff : diff;
+}
+
 // Calculate saturation (0-1)
 function getSaturation(rgb: number[]): number {
   const r = rgb[0] / 255;
@@ -246,8 +251,9 @@ function adjustForProfessionalContrast(baseInput: number[], isLikedSongs: boolea
   // Generate professional color palette
   const palette = generateProfessionalPalette(base);
 
-  // Use the vibrant color as the primary background
-  const bg = palette.vibrant;
+  // Keep backgrounds closer to the dominant album tone (Spotify-like),
+  // then enrich with vibrant color depth without over-shifting hue.
+  const bg = blend(palette.vibrant, palette.darkVibrant, 0.42);
   
   // Get color properties for metadata
   const [h, s, l] = rgbToHsl(bg[0], bg[1], bg[2]);
@@ -286,7 +292,7 @@ function adjustForProfessionalContrast(baseInput: number[], isLikedSongs: boolea
     text,
     overlay,
     accent,
-    secondary: palette.secondary,
+    secondary: blend(palette.secondary, palette.darkVibrant, 0.35),
     vibrant: palette.vibrant,
     muted: palette.muted,
     darkVibrant: palette.darkVibrant,
@@ -326,11 +332,13 @@ export const useAlbumColors = (imageUrl: string | undefined, isLikedSongs: boole
 
     img.onload = () => {
       try {
+        // Dominant color keeps the UI matched to the overall cover artwork.
+        const dominantColor = colorThief.getColor(img) as number[];
         // Get extended palette for maximum color analysis
         const palette = colorThief.getPalette(img, 32) as number[][]; // Increased from 16 to 32 colors
 
         // Professional color selection algorithm with more color candidates
-        let bestColor = palette[0];
+        let bestColor = palette[0] || dominantColor;
         let maxScore = -Infinity;
 
         // Analyze all colors with professional scoring - prioritize vibrant, saturated colors
@@ -358,7 +366,17 @@ export const useAlbumColors = (imageUrl: string | undefined, isLikedSongs: boole
           });
         }
 
-        const result = adjustForProfessionalContrast(bestColor, isLikedSongs);
+        // Blend dominant + vibrant candidate so large-area album tones win.
+        const [dominantHue, dominantSat] = rgbToHsl(dominantColor[0], dominantColor[1], dominantColor[2]);
+        const [candidateHue] = rgbToHsl(bestColor[0], bestColor[1], bestColor[2]);
+        const hueGap = hueDistance(dominantHue, candidateHue);
+
+        let enrichment = 0.26;
+        if (dominantSat < 0.2) enrichment = 0.38;
+        if (hueGap > 40) enrichment = 0.14;
+
+        const baseColor = blend(dominantColor, bestColor, enrichment);
+        const result = adjustForProfessionalContrast(baseColor, isLikedSongs);
 
         const primaryCss = rgbToCss(result.bg);
         const secondaryCss = rgbToCss(result.secondary);

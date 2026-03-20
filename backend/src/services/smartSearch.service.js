@@ -9,6 +9,7 @@
  */
 
 import { searchSongs } from './jiosaavn.service.js';
+import { getHighestQualityAudioUrl } from '../lib/jiosaavnAudio.js';
 import { detectEmotionByKeywords } from './moodPlaylist/fallbackDetector.js';
 import { mapEmotionToGenres } from './moodPlaylist/genreMapper.js';
 import { detectContext } from './moodPlaylist/contextDetector.js';
@@ -70,13 +71,7 @@ function formatSong(song) {
     }
 
     // Robust audio URL parsing
-    let audioUrl = '';
-    if (song.downloadUrl && Array.isArray(song.downloadUrl)) {
-        const audObj = song.downloadUrl.find(d => d.quality === '320kbps') ||
-            song.downloadUrl.find(d => d.quality === '160kbps') ||
-            song.downloadUrl[song.downloadUrl.length - 1];
-        audioUrl = audObj?.url || audObj?.link || '';
-    }
+    const audioUrl = getHighestQualityAudioUrl(song.downloadUrl);
 
     return {
         id: song.id,

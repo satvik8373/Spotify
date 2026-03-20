@@ -20,6 +20,81 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { CreatePlaylistDialog } from '../components/playlist/CreatePlaylistDialog';
 import { cn } from '@/lib/utils';
 
+type LikedPlaylistsData = {
+  likedIds: string[];
+  metadata: Record<string, any>;
+};
+
+const readLikedPlaylistsData = (): LikedPlaylistsData => {
+  try {
+    const likedIds: string[] = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
+    const legacyJioLikedIds: string[] = JSON.parse(localStorage.getItem('liked_jiosaavn_playlists') || '[]');
+    const metadata: Record<string, any> = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
+
+    const mergedLikedIds = Array.from(new Set([...likedIds, ...legacyJioLikedIds]));
+
+    Object.keys(metadata).forEach((id) => {
+      const item = metadata[id];
+      if (!item) return;
+      if (typeof item.name === 'string' && item.name.toLowerCase().includes('jiosaavn')) {
+        item.name = item.name.replace(/jiosaavn/gi, 'Mavrixfy');
+      }
+      if (item?.createdBy?.fullName && String(item.createdBy.fullName).toLowerCase().includes('jiosaavn')) {
+        item.createdBy.fullName = 'Mavrixfy';
+      }
+    });
+
+    legacyJioLikedIds.forEach((id) => {
+      if (!metadata[id]) {
+        metadata[id] = {
+          _id: id,
+          id,
+          name: 'Mavrixfy Playlist',
+          imageUrl: '',
+          createdBy: { fullName: 'Mavrixfy' },
+          source: 'jiosaavn',
+          routePath: `/jiosaavn/playlist/${id}`,
+        };
+      }
+    });
+
+    return {
+      likedIds: mergedLikedIds,
+      metadata,
+    };
+  } catch {
+    return { likedIds: [], metadata: {} };
+  }
+};
+
+const getLikedPlaylistId = (playlist: any): string | null => {
+  return playlist?._id || playlist?.id || null;
+};
+
+const getLikedPlaylistRoute = (playlist: any, playlistId: string): string => {
+  if (typeof playlist?.routePath === 'string' && playlist.routePath.trim().length > 0) {
+    return playlist.routePath;
+  }
+  if (playlist?.source === 'jiosaavn' || playlist?.type === 'jiosaavn-playlist') {
+    return `/jiosaavn/playlist/${playlistId}`;
+  }
+  return `/playlist/${playlistId}`;
+};
+
+const getLikedPlaylistOwnerLabel = (playlist: any): string => {
+  if (playlist?.source === 'jiosaavn' || playlist?.type === 'jiosaavn-playlist') {
+    return 'Mavrixfy';
+  }
+  if (playlist?.createdBy?.fullName) {
+    const owner = String(playlist.createdBy.fullName);
+    if (owner.toLowerCase().includes('jiosaavn')) {
+      return 'Mavrixfy';
+    }
+    return owner;
+  }
+  return 'Unknown';
+};
+
 const LibraryPage = () => {
   const { isAuthenticated, loading, user } = useAuth();
   const navigate = useNavigate();
@@ -519,21 +594,34 @@ const LibraryPage = () => {
 
 // Liked Playlists Section Component
 function LikedPlaylistsSection() {
-  let likedIds: string[] = [];
-  let metadata: Record<string, any> = {};
-  try {
-    likedIds = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
-    metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
-  } catch { }
-
-  const { playlists } = usePlaylistStore();
+  const [likedData, setLikedData] = useState<LikedPlaylistsData>(() => readLikedPlaylistsData());
+  const playlists = usePlaylistStore(state => state.playlists);
   const { compactLibraryLayout } = useSettingsStore();
   const navigate = useNavigate();
 
-  const allLikedPlaylists = likedIds.map(id => {
+  useEffect(() => {
+    const syncLikedPlaylists = () => {
+      setLikedData(readLikedPlaylistsData());
+    };
+
+    document.addEventListener('likedPlaylistsUpdated', syncLikedPlaylists);
+    window.addEventListener('storage', syncLikedPlaylists);
+
+    return () => {
+      document.removeEventListener('likedPlaylistsUpdated', syncLikedPlaylists);
+      window.removeEventListener('storage', syncLikedPlaylists);
+    };
+  }, []);
+
+  const allLikedPlaylists = likedData.likedIds.map(id => {
+    const metadataItem = likedData.metadata[id];
+    if (metadataItem?.source === 'jiosaavn' || metadataItem?.routePath?.startsWith('/jiosaavn/')) {
+      return metadataItem;
+    }
+
     const dbPlaylist = playlists.find(p => p._id === id);
     if (dbPlaylist) return dbPlaylist;
-    if (metadata[id]) return metadata[id];
+    if (metadataItem) return metadataItem;
     return null;
   }).filter(Boolean) as any[];
 
@@ -547,14 +635,21 @@ function LikedPlaylistsSection() {
         Favourite Playlists
       </div>
       <div className="space-y-1">
-        {favs.map((playlist) => (
+        {favs.map((playlist) => {
+          const playlistId = getLikedPlaylistId(playlist);
+          if (!playlistId) return null;
+
+          const playlistRoute = getLikedPlaylistRoute(playlist, playlistId);
+          const ownerLabel = getLikedPlaylistOwnerLabel(playlist);
+
+          return (
           <div
-            key={`fav-${playlist._id}`}
+            key={`fav-${playlistId}`}
             className={cn(
               "flex items-center hover:bg-accent rounded-md cursor-pointer group transition-colors",
               compactLibraryLayout ? "gap-2 p-1" : "gap-3 p-3"
             )}
-            onClick={() => navigate(`/playlist/${playlist._id}`)}
+            onClick={() => navigate(playlistRoute)}
           >
             <img
               src={playlist.imageUrl || '/default-playlist.jpg'}
@@ -569,11 +664,12 @@ function LikedPlaylistsSection() {
               <h3 className="font-medium text-foreground truncate">{playlist.name}</h3>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Heart className="h-3 w-3" />
-                Favourite • {playlist.createdBy?.fullName || 'Unknown'}
+                Favourite • {ownerLabel}
               </p>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

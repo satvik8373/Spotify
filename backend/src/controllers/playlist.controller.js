@@ -1,6 +1,7 @@
 import { Playlist } from '../models/playlist.model.js';
 import { Song } from '../models/song.model.js';
 import admin from 'firebase-admin';
+import { getHighestQualityAudioUrl } from '../lib/jiosaavnAudio.js';
 
 // Create a new playlist
 export const createPlaylist = async (req, res) => {
@@ -639,7 +640,7 @@ export const importJioSaavnPlaylist = async (req, res) => {
         album: song.album?.name || song.album,
         duration: song.duration,
         imageUrl: song.image?.[2]?.url || song.image,
-        streamUrl: song.downloadUrl?.[4]?.url || song.url,
+        streamUrl: getHighestQualityAudioUrl(song.downloadUrl) || song.url,
         year: song.year,
         source: 'jiosaavn',
         importedAt: new Date()
@@ -744,7 +745,7 @@ export const autoPopulateFromJioSaavn = async (req, res) => {
         album: song.album?.name || song.album,
         duration: song.duration,
         imageUrl: song.image?.[2]?.url || song.image,
-        streamUrl: song.downloadUrl?.[4]?.url || song.url,
+        streamUrl: getHighestQualityAudioUrl(song.downloadUrl) || song.url,
         year: song.year,
         source: 'jiosaavn',
         importedAt: new Date()

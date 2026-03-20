@@ -26,16 +26,56 @@ const MemoizedDesktopFooter = memo(DesktopFooter);
 const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showQueue, setShowQueue] = useState(false);
+  const [isDocumentFullscreen, setIsDocumentFullscreen] = useState(false);
   const currentSong = usePlayerStore(state => state.currentSong); // Selective subscription
+  const isPlaying = usePlayerStore(state => state.isPlaying);
   const hasActiveSong = !!currentSong;
   const albumColors = useAlbumColors(currentSong?.imageUrl);
   const location = useLocation();
   const { width, isCollapsed, setWidth, toggleCollapse, setCollapsed } = useSidebarStore();
   const isResizing = useRef(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const previousDocumentTitleRef = useRef(document.title);
+  const playbackTitleActiveRef = useRef(false);
   const COLLAPSE_THRESHOLD = 120;
 
   useBackgroundRefresh();
+
+  // Show current playing track in browser title while playback is active.
+  useEffect(() => {
+    const fallbackTitle = previousDocumentTitleRef.current || 'Mavrixfy';
+
+    if (!isPlaying || !currentSong) {
+      if (playbackTitleActiveRef.current) {
+        document.title = fallbackTitle;
+        playbackTitleActiveRef.current = false;
+      } else {
+        previousDocumentTitleRef.current = document.title;
+      }
+      return;
+    }
+
+    if (!playbackTitleActiveRef.current) {
+      previousDocumentTitleRef.current = document.title;
+      playbackTitleActiveRef.current = true;
+    }
+
+    const songTitle = currentSong.title || 'Unknown Title';
+    const songArtist = currentSong.artist || 'Unknown Artist';
+    const playbackTitle = `${songTitle} - ${songArtist} | Mavrixfy`;
+
+    if (document.title !== playbackTitle) {
+      document.title = playbackTitle;
+    }
+  }, [isPlaying, currentSong?._id, currentSong?.title, currentSong?.artist, location.pathname]);
+
+  useEffect(() => {
+    return () => {
+      if (playbackTitleActiveRef.current) {
+        document.title = previousDocumentTitleRef.current || 'Mavrixfy';
+      }
+    };
+  }, []);
 
   // Expose current-song palette globally so all sections can inherit the same live theme.
   useEffect(() => {
@@ -58,9 +98,41 @@ const MainLayout = () => {
   // Listen for queue toggle events (optimized)
   useEffect(() => {
     const handleToggleQueue = () => setShowQueue(prev => !prev);
+    const handleOpenQueue = () => setShowQueue(true);
+    const handleCloseQueue = () => setShowQueue(false);
+
     window.addEventListener('toggleQueue', handleToggleQueue, { passive: true });
-    return () => window.removeEventListener('toggleQueue', handleToggleQueue);
+    window.addEventListener('openQueue', handleOpenQueue, { passive: true });
+    window.addEventListener('closeQueue', handleCloseQueue, { passive: true });
+
+    return () => {
+      window.removeEventListener('toggleQueue', handleToggleQueue);
+      window.removeEventListener('openQueue', handleOpenQueue);
+      window.removeEventListener('closeQueue', handleCloseQueue);
+    };
   }, []);
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      const doc = document as any;
+      setIsDocumentFullscreen(Boolean(document.fullscreenElement || doc.webkitFullscreenElement));
+    };
+
+    syncFullscreenState();
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenState as EventListener);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+      document.removeEventListener('webkitfullscreenchange', syncFullscreenState as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isDocumentFullscreen && showQueue) {
+      setShowQueue(false);
+    }
+  }, [isDocumentFullscreen, showQueue]);
 
   // Optimized mobile detection with debouncing
   useEffect(() => {
@@ -112,6 +184,12 @@ const MainLayout = () => {
 
   const isSyncPage = location.pathname === '/liked-songs/sync';
   const showMobilePlayer = hasActiveSong && !isSyncPage;
+  const hideDesktopFooter = (
+    location.pathname.startsWith('/playlist/') ||
+    location.pathname.startsWith('/jiosaavn/playlist/') ||
+    location.pathname === '/jiosaavn/playlists' ||
+    location.pathname === '/mood-playlist'
+  );
 
   const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + MOBILE_NAV_BASE_PX + (showMobilePlayer ? MOBILE_PLAYER_PADDING_PX : 0);
 
@@ -164,7 +242,7 @@ const MainLayout = () => {
   const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : width;
 
   return (
-    <div className="h-screen bg-black text-foreground flex flex-col overflow-hidden max-w-full relative">
+    <div className="h-screen bg-transparent text-foreground flex flex-col overflow-hidden max-w-full relative">
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block flex-shrink-0 relative z-[100]">
         <MemoizedHeader />
@@ -172,7 +250,7 @@ const MainLayout = () => {
 
       {/* Main content area */}
       <div
-        className="flex-1 flex overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-black"
+        className="flex-1 flex overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-transparent"
         style={{
           height: isMobile
             ? `calc(100vh - ${mobileSubtractPx}px)`
@@ -205,14 +283,14 @@ const MainLayout = () => {
 
         {/* Main content */}
         <div className="flex-1 h-full overflow-hidden">
-          <CustomScrollbar className="h-full mobile-scroll-fix bg-[#121212] md:rounded-lg">
+          <CustomScrollbar className="h-full mobile-scroll-fix bg-transparent md:rounded-lg">
             <Outlet />
-            <MemoizedDesktopFooter />
+            {!hideDesktopFooter && <MemoizedDesktopFooter />}
           </CustomScrollbar>
         </div>
 
         {/* Queue Panel - Desktop only */}
-        {!isMobile && showQueue && (
+        {!isMobile && showQueue && !isDocumentFullscreen && (
           <div className="w-[280px] min-w-[280px] h-full flex-shrink-0">
             <div className="h-full bg-[#121212] rounded-lg overflow-hidden">
               <MemoizedQueuePanel onClose={() => setShowQueue(false)} />

@@ -194,7 +194,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60" />
                   <Input
-                    placeholder="Search JioSaavn playlists..."
+                    placeholder="Search playlists..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:bg-white/15 focus:border-white/30"
@@ -299,7 +299,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
           {/* Content */}
           <div className="p-4">
             {isLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-5">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div key={i} className="space-y-3">
                     <div
@@ -339,7 +339,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-5">
                   {playlists.map((playlist) => (
                     <JioSaavnPlaylistCard
                       key={playlist.id}

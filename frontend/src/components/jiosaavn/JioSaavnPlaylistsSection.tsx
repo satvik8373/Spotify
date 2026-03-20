@@ -144,6 +144,8 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<PlaylistCategory | null>(null);
   const navigate = useNavigate();
+  const cardScrollWidth = 160;
+  const cardItemWidth = 160;
 
   useEffect(() => {
     const foundCategory = jioSaavnService.getCategoryById(categoryId);
@@ -221,7 +223,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       });
     } catch (err) {
       setError('Failed to load playlists');
-      toast.error('Failed to load JioSaavn playlists');
+      toast.error('Failed to load playlists');
     } finally {
       setIsLoading(false);
     }
@@ -287,12 +289,12 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   const getSectionTitle = () => {
     if (title) return title;
     if (category) return `${category.icon} ${category.name}`;
-    return 'JioSaavn Playlists';
+    return 'Mavrixfy Playlists';
   };
 
   const getSectionDescription = () => {
     if (category) return category.description;
-    return 'Discover curated playlists from JioSaavn';
+    return 'Discover curated playlists from Mavrixfy';
   };
 
   if (error && playlists.length === 0) {
@@ -332,7 +334,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       onViewAll={handleViewAll}
     >
       <HorizontalScroll
-        itemWidth={120}
+        itemWidth={cardScrollWidth}
         gap={10}
         showArrows={true}
         snapToItems={false}
@@ -341,7 +343,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
         {isLoading ? (
           // Loading skeleton
           Array.from({ length: 8 }).map((_, i) => (
-            <ScrollItem key={i} width={120}>
+            <ScrollItem key={i} width={cardItemWidth}>
               <div className="space-y-2 p-1">
                 <div 
                   className="w-full aspect-square rounded-md bg-muted animate-pulse" 
@@ -361,7 +363,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
         ) : (
           // Actual playlist cards
           playlists.map((playlist) => (
-            <ScrollItem key={playlist.id} width={120}>
+            <ScrollItem key={playlist.id} width={cardItemWidth}>
               <JioSaavnPlaylistCard
                 playlist={playlist}
                 onClick={handlePlaylistClick}

@@ -463,6 +463,23 @@ export function PlaylistPage() {
         if (!likedPlaylists.includes(id)) {
           likedPlaylists.push(id);
           localStorage.setItem('liked_playlists', JSON.stringify(likedPlaylists));
+
+          // Persist lightweight metadata so sidebar/library can render favourites immediately.
+          if (currentPlaylist) {
+            const metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
+            metadata[id] = {
+              _id: currentPlaylist._id,
+              name: currentPlaylist.name,
+              imageUrl: currentPlaylist.imageUrl || '',
+              createdBy: currentPlaylist.createdBy?.fullName
+                ? { fullName: currentPlaylist.createdBy.fullName }
+                : undefined,
+              source: 'public',
+              routePath: `/playlist/${id}`,
+            };
+            localStorage.setItem('liked_playlists_metadata', JSON.stringify(metadata));
+          }
+
           setIsLiked(true);
           updateMetrics('likes');
           try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch { }
@@ -1414,5 +1431,3 @@ export function PlaylistPage() {
     </div>
   );
 }
-
-

@@ -16,10 +16,12 @@ import { Button } from '@/components/ui/button';
 import { ShuffleButton } from '@/components/ShuffleButton';
 import { JioSaavnPlaylist, JioSaavnSong, jioSaavnService } from '@/services/jioSaavnService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { cn } from '@/lib/utils';
 import { formatTime } from '@/utils/formatTime';
+import { getHighestQualityAudioUrl } from '@/utils/jiosaavnAudio';
 import '../../styles/playlist-page.css';
 import toast from 'react-hot-toast';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
@@ -43,6 +45,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
   const [metrics, setMetrics] = useState({ likes: 0, shares: 0, plays: 0 });
   const [hasPlayed, setHasPlayed] = useState(false);
   const [isShuffleOn, setIsShuffleOn] = useState(false);
+  const { isAuthenticated } = useAuthStore();
 
   const { playAlbum, setIsPlaying: setPlayerIsPlaying, setUserInteracted } = usePlayerStore();
   const { currentSong, isPlaying: playerIsPlaying } = usePlayerSync();
@@ -95,9 +98,34 @@ const JioSaavnPlaylistPage: React.FC = () => {
         const playlistMetrics = allMetrics[playlistId] || { likes: 0, shares: 0, plays: 0 };
         setMetrics(playlistMetrics);
 
-        // Check if user has liked this playlist
-        const likedPlaylists = JSON.parse(localStorage.getItem('liked_jiosaavn_playlists') || '[]');
-        setIsLiked(likedPlaylists.includes(playlistId));
+        // Use shared liked playlists key so JioSaavn favourites appear in sidebar/library.
+        const likedPlaylists = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
+        const legacyLikedPlaylists = JSON.parse(localStorage.getItem('liked_jiosaavn_playlists') || '[]');
+
+        // Backward compatibility: migrate legacy likes into shared key.
+        if (legacyLikedPlaylists.includes(playlistId) && !likedPlaylists.includes(playlistId)) {
+          const migrated = [...likedPlaylists, playlistId];
+          localStorage.setItem('liked_playlists', JSON.stringify(migrated));
+
+          const metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
+          if (!metadata[playlistId]) {
+            metadata[playlistId] = {
+              _id: playlistId,
+              id: playlistId,
+              name: playlist?.name || 'Mavrixfy Playlist',
+              imageUrl: playlist?.image ? jioSaavnService.getBestImageUrl(playlist.image) : '',
+              createdBy: { fullName: 'Mavrixfy' },
+              source: 'jiosaavn',
+              routePath: `/jiosaavn/playlist/${playlistId}`,
+            };
+            localStorage.setItem('liked_playlists_metadata', JSON.stringify(metadata));
+          }
+
+          setIsLiked(true);
+          try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch { }
+        } else {
+          setIsLiked(likedPlaylists.includes(playlistId));
+        }
 
         // Check if user has already played this playlist
         const playedPlaylists = JSON.parse(localStorage.getItem('user_played_jiosaavn_playlists') || '[]');
@@ -194,19 +222,56 @@ const JioSaavnPlaylistPage: React.FC = () => {
       e.preventDefault();
     }
 
+    if (!isAuthenticated || !playlistId) {
+      return;
+    }
+
     try {
-      const likedPlaylists = JSON.parse(localStorage.getItem('liked_jiosaavn_playlists') || '[]');
+      const likedPlaylists = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
+      const legacyLikedPlaylists = JSON.parse(localStorage.getItem('liked_jiosaavn_playlists') || '[]');
 
       if (isLiked) {
         const updatedLikes = likedPlaylists.filter((id: string) => id !== playlistId);
-        localStorage.setItem('liked_jiosaavn_playlists', JSON.stringify(updatedLikes));
+        localStorage.setItem('liked_playlists', JSON.stringify(updatedLikes));
+
+        // Keep legacy key in sync for backward compatibility.
+        const updatedLegacyLikes = legacyLikedPlaylists.filter((id: string) => id !== playlistId);
+        localStorage.setItem('liked_jiosaavn_playlists', JSON.stringify(updatedLegacyLikes));
+
+        // Remove metadata.
+        const metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
+        delete metadata[playlistId];
+        localStorage.setItem('liked_playlists_metadata', JSON.stringify(metadata));
+
         setIsLiked(false);
+        try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch { }
       } else {
         if (!likedPlaylists.includes(playlistId)) {
           likedPlaylists.push(playlistId);
-          localStorage.setItem('liked_jiosaavn_playlists', JSON.stringify(likedPlaylists));
+          localStorage.setItem('liked_playlists', JSON.stringify(likedPlaylists));
+
+          // Keep legacy key in sync for backward compatibility.
+          if (!legacyLikedPlaylists.includes(playlistId)) {
+            legacyLikedPlaylists.push(playlistId);
+            localStorage.setItem('liked_jiosaavn_playlists', JSON.stringify(legacyLikedPlaylists));
+          }
+
+          // Persist metadata so sidebar/library can render immediately.
+          const metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
+          metadata[playlistId] = {
+            _id: playlistId,
+            id: playlistId,
+            name: playlist?.name || 'Mavrixfy Playlist',
+            imageUrl: playlist?.image ? jioSaavnService.getBestImageUrl(playlist.image) : '',
+            createdBy: { fullName: 'Mavrixfy' },
+            source: 'jiosaavn',
+            routePath: `/jiosaavn/playlist/${playlistId}`,
+          };
+          localStorage.setItem('liked_playlists_metadata', JSON.stringify(metadata));
+
           setIsLiked(true);
           updateMetrics('likes');
+          try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch { }
         }
       }
     } catch (error) {
@@ -563,8 +628,7 @@ const JioSaavnPlaylistPage: React.FC = () => {
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const downloadUrl = song.downloadUrl.find(url => url.quality === '320kbps')?.url ||
-                                                     song.downloadUrl[0]?.url;
+                                  const downloadUrl = getHighestQualityAudioUrl(song.downloadUrl);
                                   if (downloadUrl) {
                                     window.open(downloadUrl, '_blank');
                                   } else {

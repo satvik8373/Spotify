@@ -3,6 +3,7 @@ import {
   TrendingUp, Clapperboard, Heart, Music, PartyPopper, Dumbbell,
   BookMarked, Radio, Globe, Globe2
 } from 'lucide-react';
+import { getHighestQualityAudioUrl } from '@/utils/jiosaavnAudio';
 
 // Updated to use more reliable JioSaavn API endpoints with fallbacks
 const BASE_URL = 'https://saavn.sumit.co/api';
@@ -1351,9 +1352,7 @@ class JioSaavnService {
   convertToAppSong(jioSong: JioSaavnSong): any {
     const primaryArtist = jioSong.artists.primary[0];
     const bestImageUrl = this.getBestImageUrl(jioSong.image);
-    const bestDownloadUrl = jioSong.downloadUrl.find(url => url.quality === '320kbps') ||
-      jioSong.downloadUrl.find(url => url.quality === '160kbps') ||
-      jioSong.downloadUrl[0];
+    const bestDownloadUrl = getHighestQualityAudioUrl(jioSong.downloadUrl);
 
     return {
       _id: `jiosaavn_${jioSong.id}`,
@@ -1362,7 +1361,7 @@ class JioSaavnService {
       albumId: jioSong.album.name,
       duration: jioSong.duration,
       imageUrl: bestImageUrl,
-      audioUrl: bestDownloadUrl?.url || '',
+      audioUrl: bestDownloadUrl || '',
       source: 'jiosaavn',
       language: jioSong.language,
       year: jioSong.year,
