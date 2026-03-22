@@ -4,6 +4,7 @@ import { usePlayerStore } from '@/stores/usePlayerStore';
 import { X, Trash2, ListMusic, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { shallow } from 'zustand/shallow';
 
 interface QueueDrawerProps {
   isOpen: boolean;
@@ -15,7 +16,16 @@ const MOBILE_MID_HEIGHT = 62;
 const MOBILE_MAX_HEIGHT = 88;
 
 const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
-  const { queue, currentSong, currentIndex, removeFromQueue, playAlbum } = usePlayerStore();
+  const { queue, currentSong, currentIndex, removeFromQueue, playAlbum } = usePlayerStore(
+    (state) => ({
+      queue: state.queue,
+      currentSong: state.currentSong,
+      currentIndex: state.currentIndex,
+      removeFromQueue: state.removeFromQueue,
+      playAlbum: state.playAlbum,
+    }),
+    shallow
+  );
   const [isMobile, setIsMobile] = React.useState(false);
   const [drawerHeight, setDrawerHeight] = React.useState(MOBILE_MID_HEIGHT);
   const [isDragging, setIsDragging] = React.useState(false);

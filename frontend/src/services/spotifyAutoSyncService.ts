@@ -316,6 +316,7 @@ class SpotifyAutoSyncService {
           id: `spotify-auto-${track.id}`,
           title: title,
           artist: artist,
+          album: track.album?.name,
           image: searchResult?.image || track.album.images[0]?.url || '/placeholder-song.jpg',
           url: searchResult?.url || track.preview_url || '',
           duration: searchResult?.duration || Math.floor(track.duration_ms / 1000).toString(),

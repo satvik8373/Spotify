@@ -1,11 +1,49 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { resolveArtist } from '@/lib/resolveArtist';
+import { shallow } from 'zustand/shallow';
 
 const getAudioFromRef = (
   audioRef: React.RefObject<HTMLAudioElement>
 ): HTMLAudioElement | null => {
   return audioRef.current ?? (document.querySelector('audio') as HTMLAudioElement | null);
+};
+
+const TRACK_COMMAND_PAUSE_GUARD_MS = 900;
+const INVALID_TEXT_VALUES = new Set(['', 'null', 'undefined', '[object object]']);
+const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
+
+const getSafeText = (value: unknown): string => {
+  if (value === null || value === undefined) return '';
+  const normalized = String(value).trim();
+  return INVALID_TEXT_VALUES.has(normalized.toLowerCase()) ? '' : normalized;
+};
+
+const getMetadataAlbum = (song: any): string => {
+  const album = getSafeText(song?.album);
+  if (album) return album;
+
+  const albumId = getSafeText(song?.albumId);
+  if (albumId && !OBJECT_ID_PATTERN.test(albumId)) return albumId;
+
+  return 'Unknown Album';
+};
+
+const ensurePlaybackWhenExpected = (
+  audioRef: React.RefObject<HTMLAudioElement>,
+  delayMs: number
+): void => {
+  window.setTimeout(() => {
+    const store = usePlayerStore.getState();
+    if (!store.hasUserInteracted || !store.isPlaying) return;
+
+    const audio = getAudioFromRef(audioRef);
+    if (!audio || (!audio.paused && !audio.ended)) return;
+
+    void audio.play().catch(() => {
+      // Ignore retries that fail due to platform autoplay/focus rules.
+    });
+  }, delayMs);
 };
 
 const updatePositionState = (audio: HTMLAudioElement): void => {
@@ -44,7 +82,7 @@ const updateMetadata = (song: any): void => {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: song.title || 'Unknown Title',
       artist: resolveArtist(song),
-      album: song.albumId ? String(song.albumId) : song.album || 'Unknown Album',
+      album: getMetadataAlbum(song),
       artwork: [
         { src: artworkUrl, sizes: '96x96', type: 'image/jpeg' },
         { src: artworkUrl, sizes: '128x128', type: 'image/jpeg' },
@@ -59,7 +97,8 @@ const updateMetadata = (song: any): void => {
 };
 
 const registerMediaSessionHandlers = (
-  audioRef: React.RefObject<HTMLAudioElement>
+  audioRef: React.RefObject<HTMLAudioElement>,
+  pauseGuardUntilRef: React.MutableRefObject<number>
 ): void => {
   if (!('mediaSession' in navigator)) return;
 
@@ -87,6 +126,10 @@ const registerMediaSessionHandlers = (
   });
 
   setHandler('pause', () => {
+    if (Date.now() < pauseGuardUntilRef.current) {
+      return;
+    }
+
     const store = usePlayerStore.getState();
     store.setIsPlaying(false);
 
@@ -97,18 +140,28 @@ const registerMediaSessionHandlers = (
   });
 
   setHandler('nexttrack', () => {
+    pauseGuardUntilRef.current = Date.now() + TRACK_COMMAND_PAUSE_GUARD_MS;
+
     const store = usePlayerStore.getState();
     store.setUserInteracted();
+    store.setIsPlaying(true);
     store.playNext();
+
+    ensurePlaybackWhenExpected(audioRef, 0);
+    ensurePlaybackWhenExpected(audioRef, 350);
   });
 
   setHandler('previoustrack', () => {
+    pauseGuardUntilRef.current = Date.now() + TRACK_COMMAND_PAUSE_GUARD_MS;
+
     const store = usePlayerStore.getState();
     store.setUserInteracted();
+    store.setIsPlaying(true);
 
     const audio = getAudioFromRef(audioRef);
     if (audio && audio.currentTime > 3) {
       audio.currentTime = 0;
+      store.setCurrentTime(0);
       if (!audio.paused) {
         void audio.play().catch(() => {});
       }
@@ -116,6 +169,8 @@ const registerMediaSessionHandlers = (
     }
 
     store.playPrevious();
+    ensurePlaybackWhenExpected(audioRef, 0);
+    ensurePlaybackWhenExpected(audioRef, 350);
   });
 
   setHandler('seekto', (details) => {
@@ -124,7 +179,11 @@ const registerMediaSessionHandlers = (
 
     const seekTime = Math.max(0, Math.min(details.seekTime, audio.duration || 0));
     audio.currentTime = seekTime;
-    usePlayerStore.getState().setCurrentTime(seekTime);
+    const store = usePlayerStore.getState();
+    store.setCurrentTime(seekTime);
+    if (store.isPlaying && audio.paused) {
+      void audio.play().catch(() => {});
+    }
     updatePositionState(audio);
   });
 
@@ -135,20 +194,27 @@ const registerMediaSessionHandlers = (
 
 export const useAudioBridge = (audioRef: React.RefObject<HTMLAudioElement>) => {
   const positionUpdateInterval = useRef<NodeJS.Timeout | null>(null);
-  const { currentSong, isPlaying } = usePlayerStore();
+  const pauseGuardUntilRef = useRef(0);
+  const { currentSong, isPlaying } = usePlayerStore(
+    (state) => ({
+      currentSong: state.currentSong,
+      isPlaying: state.isPlaying,
+    }),
+    shallow
+  );
 
   const initializeBridge = useCallback(() => {
     if (!audioRef.current) return;
 
-    registerMediaSessionHandlers(audioRef);
-  }, [audioRef]);
+    registerMediaSessionHandlers(audioRef, pauseGuardUntilRef);
+  }, [audioRef, pauseGuardUntilRef]);
 
   // Ensure handlers exist whenever the audio element becomes available.
   useEffect(() => {
     if (audioRef.current) {
-      registerMediaSessionHandlers(audioRef);
+      registerMediaSessionHandlers(audioRef, pauseGuardUntilRef);
     }
-  }, [audioRef]);
+  }, [audioRef, pauseGuardUntilRef]);
 
   useEffect(() => {
     if (currentSong) {

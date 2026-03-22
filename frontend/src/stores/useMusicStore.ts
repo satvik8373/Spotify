@@ -317,12 +317,14 @@ export const useMusicStore = create<MusicStore>((set) => ({
     const likedAtDate = song.likedAt ?
       (song.likedAt instanceof Date ? song.likedAt.toISOString() : song.likedAt) :
       now;
+    const album = song.album?.trim() || null;
 
     return {
       _id: song.id || `indian-song-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       title: song.title || 'Unknown Title',
       artist: resolveArtist(song),
-      albumId: null,
+      album,
+      albumId: album,
       imageUrl: song.image || '',
       audioUrl: song.url || '',
       duration: parseInt(song.duration || '0'),

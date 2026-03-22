@@ -4,6 +4,7 @@ import { usePhoneInterruption } from '../../hooks/usePhoneInterruption';
 import { unlockAudioOnIOS, isIOS } from '@/utils/iosAudioFix';
 import { useAudioBridge } from '@/hooks/useAudioBridge';
 import { precacheUpcomingTracks, cacheAudioUrl } from '@/utils/audioCache';
+import { shallow } from 'zustand/shallow';
 
 const isValidUrl = (url: string): boolean => {
   if (!url) return false;
@@ -49,7 +50,18 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
     setIsPlaying,
     setCurrentTime,
     setDuration,
-  } = usePlayerStore();
+  } = usePlayerStore(
+    (state) => ({
+      currentSong: state.currentSong,
+      isPlaying: state.isPlaying,
+      isRepeating: state.isRepeating,
+      setCurrentSong: state.setCurrentSong,
+      setIsPlaying: state.setIsPlaying,
+      setCurrentTime: state.setCurrentTime,
+      setDuration: state.setDuration,
+    }),
+    shallow
+  );
 
   const { initializeBridge } = useAudioBridge(audioRef);
 
@@ -74,6 +86,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
         if (!store.isPlaying) {
           store.setIsPlaying(true);
         }
+        isSourceChangingRef.current = false;
       } catch (error) {
         if (isAbortError(error)) {
           return;
@@ -81,6 +94,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
 
         if (playRequestIdRef.current === requestId) {
           usePlayerStore.getState().setIsPlaying(false);
+          isSourceChangingRef.current = false;
         }
       }
     },
@@ -199,12 +213,13 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
     audio.load();
 
     const handleCanPlay = () => {
-      isSourceChangingRef.current = false;
       onLoadingChange(false);
 
       const store = usePlayerStore.getState();
       if (store.isPlaying && store.hasUserInteracted) {
         void attemptPlay(audio);
+      } else {
+        isSourceChangingRef.current = false;
       }
     };
 
@@ -364,6 +379,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
     };
 
     const handlePlaying = () => {
+      isSourceChangingRef.current = false;
       onLoadingChange(false);
     };
 

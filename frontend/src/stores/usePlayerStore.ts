@@ -2,8 +2,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Song } from '@/types';
 
-export type Queue = Song[];
-
 export type InterruptionReason = 'call' | 'bluetooth' | 'system' | 'notification' | null;
 
 export type ShuffleMode = 'off' | 'normal' | 'smart';
@@ -19,14 +17,11 @@ export interface PlayerState {
   currentIndex: number;
   currentTime: number;
   duration: number;
-  volume: number;
   hasUserInteracted: boolean;
-  autoplayBlocked: boolean;
   wasPlayingBeforeInterruption: boolean;
   interruptionReason: InterruptionReason;
   audioOutputDevice: string | null;
   lastPlayNextTime: number;
-  skipRestoreUntilTs?: number;
 
   // Actions
   setCurrentSong: (song: Song) => void;
@@ -125,6 +120,23 @@ const smartShuffleArray = <T extends Song>(array: T[]): T[] => {
   return result;
 };
 
+const persistedStateCache = new Map<string, string>();
+
+const persistedPlayerStorage = createJSONStorage(() => ({
+  getItem: (name: string) => localStorage.getItem(name),
+  setItem: (name: string, value: string) => {
+    if (persistedStateCache.get(name) === value) {
+      return;
+    }
+    persistedStateCache.set(name, value);
+    localStorage.setItem(name, value);
+  },
+  removeItem: (name: string) => {
+    persistedStateCache.delete(name);
+    localStorage.removeItem(name);
+  },
+}));
+
 export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, get) => ({
@@ -138,26 +150,15 @@ export const usePlayerStore = create<PlayerState>()(
       currentIndex: 0,
       currentTime: 0,
       duration: 0,
-      volume: 100,
       hasUserInteracted: false,
-      autoplayBlocked: false,
       wasPlayingBeforeInterruption: false,
       interruptionReason: null,
       audioOutputDevice: null,
       lastPlayNextTime: 0,
-      skipRestoreUntilTs: 0,
 
       setCurrentSong: (song) => {
         if (song.audioUrl && song.audioUrl.startsWith('blob:')) {
           return;
-        }
-
-        const audio = document.querySelector('audio');
-        if (audio) {
-          audio.pause();
-          audio.currentTime = 0;
-          audio.src = '';
-          audio.load();
         }
 
         set({
@@ -175,9 +176,9 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       setCurrentTime: (time) => {
-        // Only update if difference is significant (reduce re-renders)
+        // Throttle high-frequency updates to keep UI smooth on mobile.
         const current = get().currentTime;
-        if (Math.abs(current - time) > 0.5) {
+        if (Math.abs(current - time) > 1) {
           set({ currentTime: time });
         }
       },
@@ -219,14 +220,6 @@ export const usePlayerStore = create<PlayerState>()(
           validIndex = 0;
         }
 
-        const audio = document.querySelector('audio');
-        if (audio) {
-          audio.pause();
-          audio.currentTime = 0;
-          audio.src = '';
-          audio.load();
-        }
-
         const originalQueue = [...validSongs];
         let playQueue = [...validSongs];
         let playIndex = validIndex;
@@ -252,46 +245,17 @@ export const usePlayerStore = create<PlayerState>()(
           currentTime: 0,
           hasUserInteracted: true
         });
-
-        try {
-          const playerState = {
-            currentSong: playQueue[playIndex],
-            currentTime: 0,
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
-          // Error handling without logging
-        }
       },
 
       playNext: () => {
-        const { queue, currentIndex, shuffleMode, isRepeating } = get();
+        const { queue, currentIndex, shuffleMode } = get();
 
         if (queue.length === 0) return;
 
         // Prevent rapid successive calls
         const now = Date.now();
         const lastPlayNext = get().lastPlayNextTime || 0;
-        if (now - lastPlayNext < 500) { // 500ms cooldown
-          return;
-        }
-
-        // First check if we should repeat the current song
-        if (isRepeating) {
-          const audio = document.querySelector('audio');
-          if (audio) {
-            audio.currentTime = 0;
-            audio.dataset.ending = 'false';
-            audio.play().catch(() => { });
-          }
-          set({
-            currentTime: 0,
-            hasUserInteracted: true,
-            isPlaying: true,
-            lastPlayNextTime: now,
-            skipRestoreUntilTs: now + 5000
-          });
+        if (now - lastPlayNext < 250) { // 250ms cooldown
           return;
         }
 
@@ -304,14 +268,6 @@ export const usePlayerStore = create<PlayerState>()(
           return;
         }
 
-        // Save current state before changing
-        const currentState = {
-          currentSong: queue[currentIndex],
-          currentIndex,
-          currentTime: 0, // Reset time for new song
-          timestamp: new Date().toISOString()
-        };
-
         // Update state with new song
         set({
           currentIndex: newIndex,
@@ -320,22 +276,7 @@ export const usePlayerStore = create<PlayerState>()(
           hasUserInteracted: true,
           isPlaying: true, // Always ensure playback continues
           lastPlayNextTime: now, // Track when we last called playNext
-          skipRestoreUntilTs: now + 5000 // prevent time restore for 5s on track change
         });
-
-        // Save to localStorage as a backup
-        try {
-          const playerState = {
-            currentSong: queue[newIndex],
-            currentIndex: newIndex,
-            timestamp: new Date().toISOString(),
-            previousState: currentState, // Store previous state for recovery
-            isPlaying: true // Include playback state explicitly
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
-          // Error handling without logging
-        }
       },
 
       playPrevious: () => {
@@ -358,7 +299,6 @@ export const usePlayerStore = create<PlayerState>()(
             currentTime: 0,
             hasUserInteracted: true,
             isPlaying: true,
-            skipRestoreUntilTs: Date.now() + 5000
           });
           return;
         }
@@ -371,21 +311,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentTime: 0, // Reset time for new song
           hasUserInteracted: true,
           isPlaying: true, // Always ensure playback continues
-          skipRestoreUntilTs: Date.now() + 5000
         });
-
-        // Save to localStorage as a backup
-        try {
-          const playerState = {
-            currentSong: queue[newIndex],
-            currentIndex: newIndex,
-            currentTime: 0, // Reset time for new song
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('player_state', JSON.stringify(playerState));
-        } catch (_error) {
-          // Error handling without logging
-        }
       },
 
       toggleShuffle: () => {
@@ -587,17 +513,15 @@ export const usePlayerStore = create<PlayerState>()(
     }),
     {
       name: 'player-store',
-      storage: createJSONStorage(() => localStorage),
+      storage: persistedPlayerStorage,
       partialize: (state) => ({
         currentSong: state.currentSong,
         queue: state.queue,
         originalQueue: state.originalQueue,
         currentIndex: state.currentIndex,
-        currentTime: state.currentTime,
         isShuffled: state.isShuffled,
         shuffleMode: state.shuffleMode,
         isRepeating: state.isRepeating,
-        autoplayBlocked: state.autoplayBlocked,
         wasPlayingBeforeInterruption: state.wasPlayingBeforeInterruption,
         interruptionReason: state.interruptionReason,
         audioOutputDevice: state.audioOutputDevice,
@@ -636,7 +560,11 @@ setTimeout(() => {
   }
 
   if (store.currentSong && store.queue.length === 0) {
-    store.playAlbum([store.currentSong], 0);
+    usePlayerStore.setState({
+      queue: [store.currentSong],
+      originalQueue: [store.currentSong],
+      currentIndex: 0,
+    });
   }
 
   try {

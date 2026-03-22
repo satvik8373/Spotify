@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
+import { shallow } from 'zustand/shallow';
 
 import SongDetailsView from '@/components/SongDetailsView';
 import QueueDrawer from '@/components/QueueDrawer';
@@ -31,12 +32,75 @@ import type { AudioOutputDeviceType } from '@/lib/audioOutputDevice';
  * - Android: Enable background play in browser settings (Menu > Settings > Media > Background play)
  */
 
+type NavItem = {
+  label: string;
+  icon: typeof Home;
+  path: string;
+  position: 'left' | 'right';
+};
 
+const NAV_ITEMS: NavItem[] = [
+  {
+    label: 'Home',
+    icon: Home,
+    path: '/home',
+    position: 'left'
+  },
+  {
+    label: 'Search',
+    icon: Search,
+    path: '/search',
+    position: 'left'
+  },
+  {
+    label: 'Library',
+    icon: Library,
+    path: '/library',
+    position: 'right'
+  },
+  {
+    label: 'Liked',
+    icon: Heart,
+    path: '/liked-songs',
+    position: 'right'
+  },
+];
+
+const LEFT_NAV_ITEMS = NAV_ITEMS.filter((item) => item.position === 'left');
+const RIGHT_NAV_ITEMS = NAV_ITEMS.filter((item) => item.position === 'right');
+
+const MobileProgressBar = React.memo(() => {
+  const { currentTime, duration } = usePlayerStore(
+    (state) => ({
+      currentTime: state.currentTime,
+      duration: state.duration,
+    }),
+    shallow
+  );
+
+  const progress = React.useMemo(() => {
+    if (!duration || !Number.isFinite(duration) || duration <= 0) return 0;
+    if (!Number.isFinite(currentTime) || currentTime <= 0) return 0;
+
+    return Math.max(0, Math.min(100, (currentTime / duration) * 100));
+  }, [currentTime, duration]);
+
+  return (
+    <div className="relative h-[2px] bg-white/5 w-full overflow-hidden">
+      <div
+        className="h-full bg-white absolute top-0 left-0 transition-all duration-100 ease-linear rounded-r-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  );
+});
+
+MobileProgressBar.displayName = 'MobileProgressBar';
 
 const MobileNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentTime, duration } = usePlayerStore();
+  const togglePlay = usePlayerStore((state) => state.togglePlay);
   const { isPlaying, currentSong } = usePlayerSync();
   const { isAuthenticated, user } = useAuth();
   const [showSongDetails, setShowSongDetails] = useState(false);
@@ -44,7 +108,6 @@ const MobileNav = () => {
   const [showQueue, setShowQueue] = useState(false);
   const [showOutputPicker, setShowOutputPicker] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
-  const [progress, setProgress] = useState(0);
   const albumColors = useAlbumColors(currentSong?.imageUrl);
   const { deviceLabel, deviceType } = useAudioOutputDevice(!!currentSong && isPlaying);
 
@@ -88,49 +151,11 @@ const MobileNav = () => {
     };
   }, [showProfileMenu]);
 
-  // Update progress for the progress bar
-  useEffect(() => {
-    if (currentTime && duration) {
-      setProgress((currentTime / duration) * 100);
-    } else {
-      setProgress(0);
-    }
-  }, [currentTime, duration]);
-
-
-
-  const navItems = [
-    {
-      label: 'Home',
-      icon: Home,
-      path: '/home',
-      position: 'left'
-    },
-    {
-      label: 'Search',
-      icon: Search,
-      path: '/search',
-      position: 'left'
-    },
-    {
-      label: 'Library',
-      icon: Library,
-      path: '/library',
-      position: 'right'
-    },
-    {
-      label: 'Liked',
-      icon: Heart,
-      path: '/liked-songs',
-      position: 'right'
-    },
-  ];
-
-  const isActive = (path: string) => {
+  const isActive = React.useCallback((path: string) => {
     if (path === '/home' && location.pathname === '/home') return true;
     if (path !== '/home' && location.pathname.startsWith(path)) return true;
     return false;
-  };
+  }, [location.pathname]);
 
   // Show compact top header on specific routes
   const isLibraryRoute = location.pathname.startsWith('/library');
@@ -222,10 +247,12 @@ const MobileNav = () => {
       <WhatsNewDialog open={showWhatsNew} onOpenChange={setShowWhatsNew} />
 
       {/* Song Details View */}
-      <SongDetailsView
-        isOpen={showSongDetails}
-        onClose={() => setShowSongDetails(false)}
-      />
+      {showSongDetails && (
+        <SongDetailsView
+          isOpen={showSongDetails}
+          onClose={() => setShowSongDetails(false)}
+        />
+      )}
 
       {/* Queue Drawer */}
       <QueueDrawer
@@ -453,7 +480,7 @@ const MobileNav = () => {
                 <div className="relative px-3 flex items-center justify-between w-full h-[48px]">
                   {/* Left: Album Art + Song Info */}
                   <div
-                    className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
+                    className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer touch-manipulation"
                     onClick={handleSongTap}
                   >
                     <div className="h-full w-[42px] -ml-3 flex-shrink-0 overflow-hidden rounded-none shadow-none">
@@ -490,9 +517,9 @@ const MobileNav = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          usePlayerStore.getState().togglePlay();
+                          togglePlay();
                         }}
-                        className="p-2 transition-transform duration-200 active:scale-90"
+                        className="p-2 transition-transform duration-200 active:scale-90 touch-manipulation"
                         aria-label={isPlaying ? 'Pause' : 'Play'}
                       >
                         {isPlaying ? (
@@ -507,7 +534,7 @@ const MobileNav = () => {
                           e.stopPropagation();
                           setShowOutputPicker(true);
                         }}
-                        className="p-1.5 transition-transform duration-200 active:scale-90 opacity-90"
+                        className="p-1.5 transition-transform duration-200 active:scale-90 opacity-90 touch-manipulation"
                         aria-label={`Open output devices. Current output: ${deviceLabel}`}
                         title={deviceLabel}
                       >
@@ -518,7 +545,7 @@ const MobileNav = () => {
                         e.stopPropagation();
                         setShowQueue(true);
                       }}
-                        className="p-2 transition-transform duration-200 active:scale-90 opacity-90"
+                        className="p-2 transition-transform duration-200 active:scale-90 opacity-90 touch-manipulation"
                         aria-label="Open queue"
                       >
                         <ListMusic className="h-4.5 w-4.5" />
@@ -527,12 +554,7 @@ const MobileNav = () => {
                 </div>
 
                 {/* Progress Bar Divider */}
-                <div className="relative h-[2px] bg-white/5 w-full overflow-hidden">
-                  <div
-                    className="h-full bg-white absolute top-0 left-0 transition-all duration-100 ease-linear rounded-r-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"
-                    style={{ width: `${progress || 0}%` }}
-                  />
-                </div>
+                <MobileProgressBar />
               </div>
             )}
 
@@ -540,12 +562,12 @@ const MobileNav = () => {
             <nav className="nav-content w-full flex justify-between">
               {/* Left Side */}
               <div className="flex flex-1 justify-evenly items-center">
-                {navItems.filter(i => i.position === 'left').map(item => (
+                {LEFT_NAV_ITEMS.map(item => (
                   <Link
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      'flex flex-col items-center justify-center gap-0.5 transition-all duration-300 flex-1',
+                      'flex flex-col items-center justify-center gap-0.5 transition-all duration-300 flex-1 touch-manipulation select-none',
                       isActive(item.path) ? 'text-white' : 'text-[#888] hover:text-white'
                     )}
                   >
@@ -564,7 +586,7 @@ const MobileNav = () => {
               <Link
                 to="/mood-playlist"
                 aria-label="AI Mood"
-                className="flex items-center justify-center group flex-shrink-0 transition-transform duration-300 active:scale-95 px-1.5"
+                className="flex items-center justify-center group flex-shrink-0 transition-transform duration-300 active:scale-95 px-1.5 touch-manipulation select-none"
               >
                 <span className="relative flex items-center justify-center w-[40px] h-[40px] sm:w-[42px] sm:h-[42px]">
                   <span
@@ -585,12 +607,12 @@ const MobileNav = () => {
 
               {/* Right Side */}
               <div className="flex flex-1 justify-evenly items-center">
-                {navItems.filter(i => i.position === 'right').map(item => (
+                {RIGHT_NAV_ITEMS.map(item => (
                   <Link
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      'flex flex-col items-center justify-center gap-0.5 transition-all duration-300 flex-1',
+                      'flex flex-col items-center justify-center gap-0.5 transition-all duration-300 flex-1 touch-manipulation select-none',
                       isActive(item.path) ? 'text-white' : 'text-[#888] hover:text-white'
                     )}
                   >

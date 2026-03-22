@@ -1,5 +1,5 @@
 import { useAuthStore } from "@/stores/useAuthStore";
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, serverTimestamp, writeBatch, limit } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, serverTimestamp, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Song } from "@/types";
 
@@ -63,6 +63,60 @@ const firebaseBatchManager = new FirebaseBatchManager();
 // Cache for duplicate checks to avoid repeated Firebase queries
 const duplicateCheckCache = new Map<string, { result: boolean; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const INVALID_TEXT_VALUES = new Set(['', 'null', 'undefined', '[object object]']);
+const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
+
+const normalizeText = (value: unknown): string => {
+  if (value === null || value === undefined) return '';
+  const normalized = String(value).trim();
+  return INVALID_TEXT_VALUES.has(normalized.toLowerCase()) ? '' : normalized;
+};
+
+const getAlbumNameFromSong = (song: Song): string => {
+  const album = normalizeText(song.album);
+  if (album) return album;
+
+  const albumId = normalizeText(song.albumId);
+  if (!albumId || OBJECT_ID_PATTERN.test(albumId)) {
+    return '';
+  }
+
+  return albumId;
+};
+
+const toIsoDateString = (value: unknown): string | null => {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+
+  if (typeof value === 'object') {
+    const timestampLike = value as {
+      toDate?: () => Date;
+      seconds?: number;
+      _seconds?: number;
+    };
+
+    if (typeof timestampLike.toDate === 'function') {
+      return toIsoDateString(timestampLike.toDate());
+    }
+
+    const seconds = typeof timestampLike.seconds === 'number'
+      ? timestampLike.seconds
+      : timestampLike._seconds;
+    if (typeof seconds === 'number') {
+      return toIsoDateString(seconds * 1000);
+    }
+  }
+
+  return null;
+};
 
 /**
  * Optimized check if a song already exists in liked songs (by title and artist)
@@ -158,7 +212,7 @@ export const addLikedSong = async (
             id: song._id, // Store the original song ID in the data
             title: song.title,
             artist: song.artist,
-            albumName: song.albumId || '',
+            albumName: getAlbumNameFromSong(song),
             imageUrl: song.imageUrl,
             audioUrl: song.audioUrl,
             duration: song.duration,
@@ -224,7 +278,7 @@ export const addMultipleLikedSongs = async (songs: Song[], source: 'mavrixfy' | 
             id: song._id,
             title: song.title,
             artist: song.artist,
-            albumName: song.albumId || '',
+            albumName: getAlbumNameFromSong(song),
             imageUrl: song.imageUrl,
             audioUrl: song.audioUrl,
             duration: song.duration,
@@ -346,21 +400,28 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
       if (!songId) {
         return; // Skip songs without valid IDs
       }
+
+      const albumName = normalizeText(data.albumName);
+      const safeAlbumName = albumName && !OBJECT_ID_PATTERN.test(albumName) ? albumName : '';
+      const likedAtIso = toIsoDateString(data.likedAt);
+      const nowIso = new Date().toISOString();
+      const createdAtIso = likedAtIso ?? nowIso;
       
       songs.push({
         _id: songId, // Use Firestore document ID as _id
         title: data.title,
         artist: data.artist,
+        album: safeAlbumName || null,
         imageUrl: data.imageUrl,
         audioUrl: data.audioUrl,
         duration: data.duration || 0,
-        albumId: data.albumName || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        albumId: safeAlbumName || null,
+        createdAt: createdAtIso,
+        updatedAt: toIsoDateString((data as { updatedAt?: unknown }).updatedAt) ?? createdAtIso,
         // Preserve source information for UI indicators
-        source: data.source,
+        source: data.source || 'mavrixfy',
         spotifyId: data.spotifyId,
-        likedAt: data.likedAt, // Keep the liked timestamp
+        likedAt: likedAtIso ?? createdAtIso,
         // Store the original data.id as a separate field for reference
         originalId: data.id
       } as Song & { source?: string; spotifyId?: string; likedAt?: any; originalId?: string });

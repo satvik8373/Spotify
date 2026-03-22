@@ -29,6 +29,80 @@ const formatTime = (seconds: number) => {
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 };
 
+const INVALID_TEXT_VALUES = new Set(['', 'null', 'undefined', '[object object]']);
+const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
+
+const getSafeText = (value: unknown): string => {
+  if (value === null || value === undefined) return '';
+  const normalized = String(value).trim();
+  if (INVALID_TEXT_VALUES.has(normalized.toLowerCase())) {
+    return '';
+  }
+  return normalized;
+};
+
+const getSongAlbumLabel = (song: Song): string => {
+  const songWithAlbum = song as Song & { album?: unknown };
+  const album = getSafeText(songWithAlbum.album);
+  if (album) return album;
+
+  const albumId = getSafeText(song.albumId);
+  if (albumId && !OBJECT_ID_PATTERN.test(albumId)) return albumId;
+
+  return 'Unknown Album';
+};
+
+const parseSongDate = (value: unknown): Date | null => {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (typeof value === 'object') {
+    const timestampLike = value as {
+      toDate?: () => Date;
+      seconds?: number;
+      _seconds?: number;
+    };
+
+    if (typeof timestampLike.toDate === 'function') {
+      return parseSongDate(timestampLike.toDate());
+    }
+
+    const seconds = typeof timestampLike.seconds === 'number'
+      ? timestampLike.seconds
+      : timestampLike._seconds;
+    if (typeof seconds === 'number') {
+      return parseSongDate(seconds * 1000);
+    }
+  }
+
+  return null;
+};
+
+const getSongDateForDisplay = (song: Song): string => {
+  const date = parseSongDate(song.likedAt) ?? parseSongDate(song.createdAt);
+  if (!date) return 'Recently added';
+
+  const currentYear = new Date().getFullYear();
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: currentYear !== date.getFullYear() ? 'numeric' : undefined,
+  });
+};
+
+const getSongTimestamp = (song: Song): number => {
+  const date = parseSongDate(song.likedAt) ?? parseSongDate(song.createdAt);
+  return date ? date.getTime() : 0;
+};
+
 // Memoized song item component to prevent unnecessary re-renders
 const MemoizedSongItem = React.memo(({
   song,
@@ -189,25 +263,14 @@ const MemoizedSongItem = React.memo(({
       {/* Desktop album */}
       {!isMobile && (
         <div className="flex items-center text-muted-foreground truncate">
-          {song.albumId || 'Unknown Album'}
+          {getSongAlbumLabel(song)}
         </div>
       )}
 
       {/* Desktop date added */}
       {!isMobile && (
         <div className="flex items-center text-muted-foreground text-sm">
-          {song.likedAt ?
-            new Date(song.likedAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: new Date().getFullYear() !== new Date(song.likedAt).getFullYear() ? 'numeric' : undefined
-            }) :
-            new Date(song.createdAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: new Date().getFullYear() !== new Date(song.createdAt).getFullYear() ? 'numeric' : undefined
-            })
-          }
+          {getSongDateForDisplay(song)}
         </div>
       )}
 
@@ -354,11 +417,7 @@ const LikedSongsPage = () => {
     switch (method) {
       case 'recent':
         // Sort by likedAt timestamp (most recent first)
-        return [...songs].sort((a, b) => {
-          const aDate = a.likedAt ? new Date(a.likedAt).getTime() : new Date(a.createdAt).getTime();
-          const bDate = b.likedAt ? new Date(b.likedAt).getTime() : new Date(b.createdAt).getTime();
-          return bDate - aDate; // Descending order (newest first)
-        });
+        return [...songs].sort((a, b) => getSongTimestamp(b) - getSongTimestamp(a));
       case 'title':
         return [...songs].sort((a, b) => a.title.localeCompare(b.title));
       case 'artist':
@@ -868,4 +927,3 @@ const LikedSongsPage = () => {
 };
 
 export default LikedSongsPage;
-

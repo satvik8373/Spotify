@@ -25,9 +25,23 @@ export const useAudioOutputDevice = (isActive: boolean): AudioOutputState => {
     deviceType: 'browser',
   });
 
+  const updateState = useCallback((next: AudioOutputState) => {
+    setState((prev) => {
+      if (
+        prev.deviceLabel === next.deviceLabel &&
+        prev.isBluetooth === next.isBluetooth &&
+        prev.deviceId === next.deviceId &&
+        prev.deviceType === next.deviceType
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
+
   const refreshOutputDevice = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) {
-      setState({
+      updateState({
         deviceLabel: DEFAULT_DEVICE_LABEL,
         isBluetooth: false,
         deviceId: null,
@@ -41,7 +55,7 @@ export const useAudioOutputDevice = (isActive: boolean): AudioOutputState => {
       const audioOutputs = devices.filter((device) => device.kind === 'audiooutput');
 
       if (audioOutputs.length === 0) {
-        setState({
+        updateState({
           deviceLabel: DEFAULT_DEVICE_LABEL,
           isBluetooth: false,
           deviceId: null,
@@ -72,21 +86,21 @@ export const useAudioOutputDevice = (isActive: boolean): AudioOutputState => {
       const deviceType = detectAudioOutputDeviceType(outputLabel);
       const isBluetooth = deviceType === 'bluetooth' || deviceType === 'headphones';
 
-      setState({
+      updateState({
         deviceLabel: outputLabel,
         isBluetooth,
         deviceId: selected?.deviceId || null,
         deviceType,
       });
     } catch {
-      setState({
+      updateState({
         deviceLabel: DEFAULT_DEVICE_LABEL,
         isBluetooth: false,
         deviceId: null,
         deviceType: 'browser',
       });
     }
-  }, [preferredOutputId]);
+  }, [preferredOutputId, updateState]);
 
   useEffect(() => {
     if (!isActive) return;
