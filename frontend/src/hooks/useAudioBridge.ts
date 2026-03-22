@@ -126,11 +126,14 @@ const registerMediaSessionHandlers = (
   });
 
   setHandler('pause', () => {
-    if (Date.now() < pauseGuardUntilRef.current) {
+    const store = usePlayerStore.getState();
+    const now = Date.now();
+    const isRecentTrackChange = now - (store.lastPlayNextTime || 0) < TRACK_COMMAND_PAUSE_GUARD_MS;
+
+    if (now < pauseGuardUntilRef.current || isRecentTrackChange) {
       return;
     }
 
-    const store = usePlayerStore.getState();
     store.setIsPlaying(false);
 
     const audio = getAudioFromRef(audioRef);
@@ -215,6 +218,22 @@ export const useAudioBridge = (audioRef: React.RefObject<HTMLAudioElement>) => {
       registerMediaSessionHandlers(audioRef, pauseGuardUntilRef);
     }
   }, [audioRef, pauseGuardUntilRef]);
+
+  // Keep lock-screen metadata and playback state in sync with store transitions,
+  // even when React render timing is throttled in iOS background mode.
+  useEffect(() => {
+    const unsubscribe = usePlayerStore.subscribe((state, prevState) => {
+      if (state.currentSong !== prevState.currentSong && state.currentSong) {
+        updateMetadata(state.currentSong);
+      }
+
+      if (state.isPlaying !== prevState.isPlaying && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = state.isPlaying ? 'playing' : 'paused';
+      }
+    });
+
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (currentSong) {

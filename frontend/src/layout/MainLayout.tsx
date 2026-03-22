@@ -176,6 +176,7 @@ const MainLayout = () => {
   const MOBILE_HEADER_PX = 40;
   const MOBILE_NAV_BASE_PX = 48; // Reduced from 56px to 48px
   const MOBILE_PLAYER_PADDING_PX = 44; // paddingTop when song is active
+  const MOBILE_SAFE_TOP = 'env(safe-area-inset-top, 0px)';
   const isMobileHeaderRoute = isMobile && (
     location.pathname === '/home' ||
     location.pathname.startsWith('/search') ||
@@ -191,7 +192,15 @@ const MainLayout = () => {
     location.pathname === '/mood-playlist'
   );
 
-  const mobileSubtractPx = (isMobileHeaderRoute ? MOBILE_HEADER_PX : 0) + MOBILE_NAV_BASE_PX + (showMobilePlayer ? MOBILE_PLAYER_PADDING_PX : 0);
+  const mobileBottomSubtractPx = MOBILE_NAV_BASE_PX + (showMobilePlayer ? MOBILE_PLAYER_PADDING_PX : 0);
+  const mobileHeight = isMobile
+    ? isMobileHeaderRoute
+      ? `calc(100vh - ${mobileBottomSubtractPx}px - ${MOBILE_HEADER_PX}px - ${MOBILE_SAFE_TOP})`
+      : `calc(100vh - ${mobileBottomSubtractPx}px)`
+    : 'auto';
+  const mobileTopOffset = isMobileHeaderRoute
+    ? `calc(${MOBILE_HEADER_PX}px + ${MOBILE_SAFE_TOP})`
+    : '0px';
 
   // Handle resize functionality
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -252,10 +261,8 @@ const MainLayout = () => {
       <div
         className="flex-1 flex overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-transparent"
         style={{
-          height: isMobile
-            ? `calc(100vh - ${mobileSubtractPx}px)`
-            : 'auto',
-          marginTop: isMobileHeaderRoute ? `${MOBILE_HEADER_PX}px` : '0',
+          height: mobileHeight,
+          marginTop: mobileTopOffset,
         }}
       >
         {/* Audio player component - hidden but functional */}
