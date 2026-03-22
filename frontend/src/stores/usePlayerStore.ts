@@ -196,21 +196,29 @@ export const usePlayerStore = create<PlayerState>()(
       playAlbum: (songs, initialIndex) => {
         if (songs.length === 0) return;
 
-        // Get the song that was requested to play
-        const requestedSong = songs[initialIndex];
+        const sanitizedSongs = songs.map((song) => {
+          if (!song.audioUrl || !song.audioUrl.startsWith('blob:')) {
+            return song;
+          }
+          return {
+            ...song,
+            audioUrl: '',
+          };
+        });
 
-        const validSongs = songs.filter(song => song.audioUrl && !song.audioUrl.startsWith('blob:'));
-
-        if (validSongs.length === 0) {
+        if (sanitizedSongs.length === 0) {
           return;
         }
 
-        // Find the requested song in the filtered array
-        let validIndex = validSongs.findIndex(song => song._id === requestedSong?._id);
+        // Get the song that was requested to play
+        const requestedSong = sanitizedSongs[initialIndex] || sanitizedSongs[0];
+
+        // Find the requested song in the sanitized array
+        let validIndex = sanitizedSongs.findIndex(song => song._id === requestedSong?._id);
 
         // If not found by ID, try to find by title and artist
         if (validIndex === -1 && requestedSong) {
-          validIndex = validSongs.findIndex(song =>
+          validIndex = sanitizedSongs.findIndex(song =>
             song.title === requestedSong.title && song.artist === requestedSong.artist
           );
         }
@@ -220,14 +228,14 @@ export const usePlayerStore = create<PlayerState>()(
           validIndex = 0;
         }
 
-        const originalQueue = [...validSongs];
-        let playQueue = [...validSongs];
+        const originalQueue = [...sanitizedSongs];
+        let playQueue = [...sanitizedSongs];
         let playIndex = validIndex;
 
         const { shuffleMode } = get();
-        if (shuffleMode !== 'off' && validSongs.length > 1) {
-          const selectedSong = validSongs[validIndex];
-          const otherSongs = validSongs.filter((_, i) => i !== validIndex);
+        if (shuffleMode !== 'off' && sanitizedSongs.length > 1) {
+          const selectedSong = sanitizedSongs[validIndex];
+          const otherSongs = sanitizedSongs.filter((_, i) => i !== validIndex);
 
           const shuffledOthers = shuffleMode === 'smart'
             ? smartShuffleArray(otherSongs)

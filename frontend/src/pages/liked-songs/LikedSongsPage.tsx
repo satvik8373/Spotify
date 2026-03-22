@@ -12,7 +12,7 @@ import { Song } from '@/types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { useSpotify } from '@/contexts/SpotifyContext';
-import { getHighestQualityAudioUrl } from '@/utils/jiosaavnAudio';
+import { resolveSongAudioUrl } from '@/utils/songAudioResolver';
 import './liked-songs.css';
 import {
   DropdownMenu,
@@ -477,40 +477,21 @@ const LikedSongsPage = () => {
       return;
     }
 
-    // Check if song has audioUrl, if not, try to fetch it
+    // Resolve missing audioUrl with multiple fallbacks:
+    // 1) direct song-id lookup, 2) title/artist search.
     let songToPlay = song;
     if (!song.audioUrl) {
-      // Try to extract the song ID from the _id field
-      // The _id might be in format like "indian-song-..." or "liked-..."
-      const songId = song._id?.includes('indian-song-') 
-        ? song._id.split('indian-song-')[1]?.split('-')[0]
-        : song._id?.includes('liked-')
-        ? song._id.split('liked-')[1]?.split('-')[0]
-        : song._id;
-      
-      if (songId && songId.length > 5) {
-        try {
-          toast.loading('Loading song...', { id: 'loading-song' });
-          const response = await fetch(`/api/jiosaavn/songs/${songId}`);
-          const data = await response.json();
-          
-          if (data.success && data.data && data.data.downloadUrl) {
-            const audioUrl = getHighestQualityAudioUrl(data.data.downloadUrl);
-            
-            if (audioUrl) {
-              // Create updated song with audioUrl
-              songToPlay = { ...song, audioUrl };
-            }
-          }
-          toast.dismiss('loading-song');
-        } catch (error) {
-          toast.dismiss('loading-song');
-          toast.error('Failed to load song');
-          return;
+      toast.loading('Loading song...', { id: 'loading-song' });
+      try {
+        const resolvedAudioUrl = await resolveSongAudioUrl(song);
+
+        if (resolvedAudioUrl) {
+          songToPlay = { ...song, audioUrl: resolvedAudioUrl };
         }
-      } else {
-        toast.error('Cannot play this song - invalid ID');
-        return;
+      } catch (error) {
+        toast.error('Failed to load song');
+      } finally {
+        toast.dismiss('loading-song');
       }
     }
 

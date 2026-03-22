@@ -108,6 +108,11 @@ const MobileNav = () => {
   const [showQueue, setShowQueue] = useState(false);
   const [showOutputPicker, setShowOutputPicker] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const [isStandalonePWA, setIsStandalonePWA] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+  });
   const albumColors = useAlbumColors(currentSong?.imageUrl);
   const { deviceLabel, deviceType } = useAudioOutputDevice(!!currentSong && isPlaying);
 
@@ -150,6 +155,32 @@ const MobileNav = () => {
       document.removeEventListener('click', handleClickOutside);
     };
   }, [showProfileMenu]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const updateStandaloneState = () => {
+      setIsStandalonePWA(
+        mediaQuery.matches || (window.navigator as any).standalone === true
+      );
+    };
+
+    updateStandaloneState();
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateStandaloneState);
+    } else {
+      mediaQuery.addListener(updateStandaloneState);
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', updateStandaloneState);
+      } else {
+        mediaQuery.removeListener(updateStandaloneState);
+      }
+    };
+  }, []);
 
   const isActive = React.useCallback((path: string) => {
     if (path === '/home' && location.pathname === '/home') return true;
@@ -308,7 +339,10 @@ const MobileNav = () => {
 
       {/* Mobile Header - Mavrixfy style (only on home) */}
       {showMobileTopHeader && !isLikedRoute && (
-        <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden pt-[env(safe-area-inset-top,0px)]">
+        <div
+          className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden"
+          style={{ paddingTop: isStandalonePWA ? 'env(safe-area-inset-top, 0px)' : '0px' }}
+        >
           {isLibraryRoute ? (
             <div className="flex items-center justify-between px-4 h-10">
               <div className="flex items-center gap-2">

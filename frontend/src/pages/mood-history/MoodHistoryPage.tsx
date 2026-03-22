@@ -49,7 +49,6 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
     const playSongs = useCallback((e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
         const songs = session.songs
-            .filter(s => s.audioUrl)
             .map(s => ({ ...s, albumId: null, createdAt: '', updatedAt: '' }));
         if (!songs.length) { toast.error('No playable songs in this session'); return; }
         playAlbum(songs, 0);
@@ -65,7 +64,6 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
     const playSpecificSong = (e: React.MouseEvent, idx: number) => {
         e.stopPropagation();
         const songs = session.songs
-            .filter(s => s.audioUrl)
             .map(s => ({ ...s, albumId: null, createdAt: '', updatedAt: '' }));
         if (songs.length > 0) {
             playAlbum(songs, idx);
@@ -374,4 +372,3 @@ export default function MoodHistoryPage() {
         </div>
     );
 }
-

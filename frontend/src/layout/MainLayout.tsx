@@ -25,6 +25,11 @@ const MemoizedDesktopFooter = memo(DesktopFooter);
 
 const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isStandalonePWA, setIsStandalonePWA] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+  });
   const [showQueue, setShowQueue] = useState(false);
   const [isDocumentFullscreen, setIsDocumentFullscreen] = useState(false);
   const currentSong = usePlayerStore(state => state.currentSong); // Selective subscription
@@ -151,6 +156,33 @@ const MainLayout = () => {
     };
   }, []);
 
+  // Use safe-area top spacing only when running as installed PWA.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const updateStandaloneState = () => {
+      setIsStandalonePWA(
+        mediaQuery.matches || (window.navigator as any).standalone === true
+      );
+    };
+
+    updateStandaloneState();
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateStandaloneState);
+    } else {
+      mediaQuery.addListener(updateStandaloneState);
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', updateStandaloneState);
+      } else {
+        mediaQuery.removeListener(updateStandaloneState);
+      }
+    };
+  }, []);
+
   // Optimized viewport width variable
   useEffect(() => {
     let rafId: number;
@@ -193,13 +225,18 @@ const MainLayout = () => {
   );
 
   const mobileBottomSubtractPx = MOBILE_NAV_BASE_PX + (showMobilePlayer ? MOBILE_PLAYER_PADDING_PX : 0);
+  const mobileSafeTop = isStandalonePWA ? MOBILE_SAFE_TOP : '0px';
   const mobileHeight = isMobile
     ? isMobileHeaderRoute
-      ? `calc(100vh - ${mobileBottomSubtractPx}px - ${MOBILE_HEADER_PX}px - ${MOBILE_SAFE_TOP})`
+      ? isStandalonePWA
+        ? `calc(100vh - ${mobileBottomSubtractPx}px - ${MOBILE_HEADER_PX}px - ${MOBILE_SAFE_TOP})`
+        : `calc(100vh - ${mobileBottomSubtractPx}px - ${MOBILE_HEADER_PX}px)`
       : `calc(100vh - ${mobileBottomSubtractPx}px)`
     : 'auto';
   const mobileTopOffset = isMobileHeaderRoute
-    ? `calc(${MOBILE_HEADER_PX}px + ${MOBILE_SAFE_TOP})`
+    ? isStandalonePWA
+      ? `calc(${MOBILE_HEADER_PX}px + ${mobileSafeTop})`
+      : `${MOBILE_HEADER_PX}px`
     : '0px';
 
   // Handle resize functionality
@@ -259,7 +296,7 @@ const MainLayout = () => {
 
       {/* Main content area */}
       <div
-        className="flex-1 flex overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-transparent"
+        className="flex-1 flex overflow-hidden md:pl-1 md:gap-1 relative z-0 bg-transparent"
         style={{
           height: mobileHeight,
           marginTop: mobileTopOffset,

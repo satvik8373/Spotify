@@ -53,6 +53,7 @@ import { ScrollArea } from '../../components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { SongFileUploader } from '../../components/playlist/SongFileUploader';
 import { updatePlaylistCoverFromSongs } from '../../services/playlistService';
+import { resolveSongAudioUrl } from '@/utils/songAudioResolver';
 
 function AddSongsDialog({
   isOpen,
@@ -580,53 +581,6 @@ export function PlaylistPage() {
     setIsPlaying(true);
 
     try {
-      // If song has no audio URL, try to find it
-      if (!song.audioUrl) {
-        toast.loading("Finding audio for this song...");
-        try {
-          const searchQuery = `${song.title} ${song.artist}`.trim();
-          await useMusicStore.getState().searchIndianSongs(searchQuery);
-
-          const results = useMusicStore.getState().indianSearchResults;
-          if (results && results.length > 0) {
-            // Found a match, update the song with the audio URL
-            const foundSong = results[0];
-            const updatedSong = {
-              ...song,
-              audioUrl: foundSong.url || '',
-              imageUrl: song.imageUrl || foundSong.image
-            };
-
-            // Update the song in the playlist
-            const updatedSongs = currentPlaylist.songs.map((s, idx) =>
-              idx === index ? updatedSong : s
-            );
-
-            // Play the updated song
-            playAlbum(updatedSongs, index);
-            toast.dismiss();
-
-            // Force playback to start
-            usePlayerStore.getState().setUserInteracted();
-            usePlayerStore.getState().setIsPlaying(true);
-
-            // Reset states
-            setIsPlaying(false);
-            return;
-          } else {
-            toast.dismiss();
-            toast.error("Couldn't find audio for this song");
-            setIsPlaying(false);
-            return;
-          }
-        } catch (error) {
-          toast.dismiss();
-          toast.error("Error finding audio");
-          setIsPlaying(false);
-          return;
-        }
-      }
-
       // Disable shuffle to ensure we play the selected song
       if (playerStore.shuffleMode !== 'off') {
         playerStore.setShuffleMode('off');
@@ -670,39 +624,27 @@ export function PlaylistPage() {
     }
 
     try {
-      // Search for the song to get its audio URL
-      const searchQuery = `${song.title} ${song.artist}`.trim();
-      await useMusicStore.getState().searchIndianSongs(searchQuery);
-
-      const results = useMusicStore.getState().indianSearchResults;
-      if (results && results.length > 0) {
-        // Found a match, update the song with the audio URL
-        const foundSong = results[0];
-        const updatedSong = {
-          ...song,
-          audioUrl: foundSong.url || '',
-          imageUrl: song.imageUrl || foundSong.image
-        };
-
-        // Update the song in the playlist
-        const updatedSongs = currentPlaylist.songs.map((s, idx) =>
-          idx === index ? updatedSong : s
-        );
-
-        // Update the playlist with the new songs array
-        // This is a simplified approach - in a real app, you would want to
-        // persist this change to your backend storage
-        usePlaylistStore.setState({
-          currentPlaylist: {
-            ...currentPlaylist,
-            songs: updatedSongs
-          }
-        });
-      } else {
-        // Silent error handling
+      toast.loading('Finding audio...', { id: 'playlist-find-audio' });
+      const resolvedAudioUrl = await resolveSongAudioUrl(song);
+      if (!resolvedAudioUrl) {
+        toast.error('Audio not found for this song', { id: 'playlist-find-audio' });
+        return;
       }
+
+      const updatedSongs = currentPlaylist.songs.map((s, idx) =>
+        idx === index ? { ...s, audioUrl: resolvedAudioUrl } : s
+      );
+
+      usePlaylistStore.setState({
+        currentPlaylist: {
+          ...currentPlaylist,
+          songs: updatedSongs
+        }
+      });
+
+      toast.success('Audio added', { id: 'playlist-find-audio' });
     } catch (error) {
-      // Silent error handling
+      toast.error('Failed to find audio', { id: 'playlist-find-audio' });
     }
   };
 

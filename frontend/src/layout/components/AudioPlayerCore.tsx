@@ -4,6 +4,11 @@ import { usePhoneInterruption } from '../../hooks/usePhoneInterruption';
 import { unlockAudioOnIOS, isIOS } from '@/utils/iosAudioFix';
 import { useAudioBridge } from '@/hooks/useAudioBridge';
 import { precacheUpcomingTracks, cacheAudioUrl } from '@/utils/audioCache';
+import {
+  getSongResolutionKey,
+  isSameSong,
+  resolveSongAudioUrl,
+} from '@/utils/songAudioResolver';
 import { shallow } from 'zustand/shallow';
 
 const isValidUrl = (url: string): boolean => {
@@ -41,6 +46,8 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
   const isSourceChangingRef = useRef(false);
   const playRequestIdRef = useRef(0);
   const lastTimeUpdateRef = useRef(0);
+  const activeResolutionKeyRef = useRef<string | null>(null);
+  const failedResolutionKeysRef = useRef<Set<string>>(new Set());
 
   const {
     currentSong,
@@ -100,6 +107,24 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
     },
     []
   );
+
+  const ensurePlaybackAfterTrackAdvance = useCallback(() => {
+    const retryDelays = [250, 700, 1300, 2200];
+
+    retryDelays.forEach((delay) => {
+      window.setTimeout(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        const store = usePlayerStore.getState();
+        if (!store.isPlaying || !store.hasUserInteracted) return;
+        if (!audio.paused && !audio.ended) return;
+        if (audio.readyState < 2) return;
+
+        void attemptPlay(audio);
+      }, delay);
+    });
+  }, [audioRef, attemptPlay]);
 
   // Initialize lock-screen handlers on first interaction.
   useEffect(() => {
@@ -177,6 +202,80 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
   }, [setCurrentSong, setCurrentTime, setIsPlaying]);
 
   const audioUrl = normalizeAudioUrl(currentSong?.audioUrl);
+
+  // Resolve missing audio URLs once globally so tracks are not skipped.
+  useEffect(() => {
+    if (!currentSong) return;
+
+    const existingAudioUrl = normalizeAudioUrl(currentSong.audioUrl);
+    if (existingAudioUrl) {
+      failedResolutionKeysRef.current.delete(getSongResolutionKey(currentSong));
+      return;
+    }
+
+    const songKey = getSongResolutionKey(currentSong);
+    if (!songKey) return;
+    if (failedResolutionKeysRef.current.has(songKey)) return;
+    if (activeResolutionKeyRef.current === songKey) return;
+
+    let cancelled = false;
+    activeResolutionKeyRef.current = songKey;
+    onLoadingChange(true);
+
+    const resolveAudio = async () => {
+      const resolvedAudioUrl = await resolveSongAudioUrl(currentSong);
+      if (cancelled) return;
+
+      const store = usePlayerStore.getState();
+      if (!store.currentSong || !isSameSong(store.currentSong, currentSong)) {
+        return;
+      }
+
+      if (!resolvedAudioUrl) {
+        failedResolutionKeysRef.current.add(songKey);
+        store.setIsPlaying(false);
+        return;
+      }
+
+      failedResolutionKeysRef.current.delete(songKey);
+
+      const applyResolvedAudio = (song: typeof store.currentSong) => {
+        if (!song) return song;
+        return isSameSong(song, currentSong)
+          ? { ...song, audioUrl: resolvedAudioUrl }
+          : song;
+      };
+
+      usePlayerStore.setState({
+        currentSong: applyResolvedAudio(store.currentSong),
+        queue: store.queue.map((song) =>
+          isSameSong(song, currentSong)
+            ? { ...song, audioUrl: resolvedAudioUrl }
+            : song
+        ),
+        originalQueue: store.originalQueue.map((song) =>
+          isSameSong(song, currentSong)
+            ? { ...song, audioUrl: resolvedAudioUrl }
+            : song
+        ),
+      });
+    };
+
+    void resolveAudio().finally(() => {
+      if (cancelled) return;
+      if (activeResolutionKeyRef.current === songKey) {
+        activeResolutionKeyRef.current = null;
+      }
+      onLoadingChange(false);
+    });
+
+    return () => {
+      cancelled = true;
+      if (activeResolutionKeyRef.current === songKey) {
+        activeResolutionKeyRef.current = null;
+      }
+    };
+  }, [currentSong, onLoadingChange]);
 
   // Load new source only when URL changes; avoid aggressive pause/play loops.
   useEffect(() => {
@@ -336,6 +435,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
 
       store.setUserInteracted();
       store.playNext();
+      ensurePlaybackAfterTrackAdvance();
     };
 
     const handlePlay = () => {
@@ -409,7 +509,7 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       audio.removeEventListener('playing', handlePlaying);
       audio.removeEventListener('error', handleError);
     };
-  }, [audioRef, attemptPlay, onLoadingChange, onTimeUpdate, setCurrentTime, setDuration]);
+  }, [audioRef, attemptPlay, ensurePlaybackAfterTrackAdvance, onLoadingChange, onTimeUpdate, setCurrentTime, setDuration]);
 
   if (audioUrl && !isValidUrl(audioUrl)) {
     return (

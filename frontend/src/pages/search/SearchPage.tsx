@@ -105,9 +105,8 @@ const SearchPage = () => {
 
   // Play a song from smart results
   const playSong = useCallback((song: SmartSearchSong, allSongs: SmartSearchSong[]) => {
-    if (!song.audioUrl) { toast.error('Song not available'); return; }
     setUserInteracted?.();
-    const converted = allSongs.map(convertSong).filter(s => s.audioUrl);
+    const converted = allSongs.map(convertSong);
     const idx = converted.findIndex(s => s._id === song.id);
     playAlbum(converted, idx >= 0 ? idx : 0);
     setIsPlaying(true);
@@ -120,7 +119,7 @@ const SearchPage = () => {
       smartResult.topResult,
       ...smartResult.results,
       ...smartResult.similarSongs
-    ].filter(s => s.audioUrl);
+    ];
     playSong(smartResult.topResult, allSongs);
   }, [smartResult, playSong]);
 

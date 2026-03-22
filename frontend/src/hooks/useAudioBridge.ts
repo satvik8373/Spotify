@@ -10,6 +10,7 @@ const getAudioFromRef = (
 };
 
 const TRACK_COMMAND_PAUSE_GUARD_MS = 900;
+const AUTO_TRACK_CHANGE_PAUSE_GUARD_MS = 3000;
 const INVALID_TEXT_VALUES = new Set(['', 'null', 'undefined', '[object object]']);
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
 
@@ -128,15 +129,16 @@ const registerMediaSessionHandlers = (
   setHandler('pause', () => {
     const store = usePlayerStore.getState();
     const now = Date.now();
-    const isRecentTrackChange = now - (store.lastPlayNextTime || 0) < TRACK_COMMAND_PAUSE_GUARD_MS;
+    const isRecentTrackChange = now - (store.lastPlayNextTime || 0) < AUTO_TRACK_CHANGE_PAUSE_GUARD_MS;
+    const audio = getAudioFromRef(audioRef);
+    const isTransitionPhase = !audio || audio.paused || audio.ended || audio.readyState < 2;
 
-    if (now < pauseGuardUntilRef.current || isRecentTrackChange) {
+    if (isTransitionPhase && (now < pauseGuardUntilRef.current || isRecentTrackChange)) {
       return;
     }
 
     store.setIsPlaying(false);
 
-    const audio = getAudioFromRef(audioRef);
     if (audio && !audio.paused) {
       audio.pause();
     }
@@ -224,16 +226,38 @@ export const useAudioBridge = (audioRef: React.RefObject<HTMLAudioElement>) => {
   useEffect(() => {
     const unsubscribe = usePlayerStore.subscribe((state, prevState) => {
       if (state.currentSong !== prevState.currentSong && state.currentSong) {
+        if (state.isPlaying) {
+          pauseGuardUntilRef.current = Math.max(
+            pauseGuardUntilRef.current,
+            Date.now() + AUTO_TRACK_CHANGE_PAUSE_GUARD_MS
+          );
+        }
+
         updateMetadata(state.currentSong);
+
+        if (state.isPlaying) {
+          ensurePlaybackWhenExpected(audioRef, 0);
+          ensurePlaybackWhenExpected(audioRef, 350);
+          ensurePlaybackWhenExpected(audioRef, 900);
+          ensurePlaybackWhenExpected(audioRef, 1800);
+        }
       }
 
       if (state.isPlaying !== prevState.isPlaying && 'mediaSession' in navigator) {
         navigator.mediaSession.playbackState = state.isPlaying ? 'playing' : 'paused';
       }
+
+      if (
+        state.currentSong !== prevState.currentSong &&
+        state.isPlaying &&
+        'mediaSession' in navigator
+      ) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
     });
 
     return unsubscribe;
-  }, []);
+  }, [audioRef, pauseGuardUntilRef]);
 
   useEffect(() => {
     if (currentSong) {
