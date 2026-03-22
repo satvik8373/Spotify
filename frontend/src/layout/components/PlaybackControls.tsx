@@ -241,7 +241,7 @@ export const PlaybackControls = () => {
 	const queue = usePlayerStore(state => state.queue);
 	const currentIndex = usePlayerStore(state => state.currentIndex);
 
-	const [volume, setVolume] = useState(75);
+	const [volume, setVolume] = useState(100);
 	const [currentTime, setCurrentTime] = useState(0);
 	const [duration, setDuration] = useState(0);
 	const [isTransitioning, setIsTransitioning] = useState(false);
