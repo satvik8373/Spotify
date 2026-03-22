@@ -461,31 +461,16 @@ export const PlaybackControls = () => {
 			}
 		};
 
-		const handleEnded = () => {
-			if (isRepeating && audio) {
-				audio.currentTime = 0;
-				audio.play().catch(() => { });
-			} else {
-				// Only call playNext once to avoid race conditions
-				const store = usePlayerStore.getState();
-				store.setUserInteracted();
-				store.playNext();
-				store.setIsPlaying(true);
-			}
-		};
-
 		audio.addEventListener("timeupdate", updateTime);
 		audio.addEventListener("loadedmetadata", updateDuration);
-		audio.addEventListener("ended", handleEnded);
 
 		return () => {
 			if (audio) {
 				audio.removeEventListener("timeupdate", updateTime);
 				audio.removeEventListener("loadedmetadata", updateDuration);
-				audio.removeEventListener("ended", handleEnded);
 			}
 		};
-	}, [currentSong, volume, isRepeating, playNext]);
+	}, [currentSong, volume]);
 
 	// Listen for like updates from other components
 	useEffect(() => {

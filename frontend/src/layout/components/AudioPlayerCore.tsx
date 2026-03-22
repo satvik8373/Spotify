@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePhoneInterruption } from '../../hooks/usePhoneInterruption';
 import { unlockAudioOnIOS, isIOS } from '@/utils/iosAudioFix';
@@ -33,8 +33,6 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
   const isTrackTransitionPauseRef = useRef(false);
   const loadStarted = useRef<boolean>(false);
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const {
     currentSong,
@@ -128,12 +126,6 @@ const AudioPlayerCore: React.FC<AudioPlayerCoreProps> = ({
       };
     }
   }, [initializeBridge]);
-
-  // Reduce initial load block to 500ms instead of 3 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => setIsInitialLoad(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
 
   // Clean up on unmount and save state before page unload
   useEffect(() => {
