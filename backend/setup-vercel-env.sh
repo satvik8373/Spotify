@@ -24,14 +24,21 @@ fi
 echo "✅ Vercel CLI found"
 echo ""
 
-# Read .env file and set variables
-if [ ! -f ".env" ]; then
-    echo "❌ .env file not found in current directory"
-    echo "   Please run this script from the backend directory"
-    exit 1
+# Read env file and set variables
+ENV_FILE="${1:-.env}"
+if [ ! -f "$ENV_FILE" ]; then
+    if [ -f "vercel-env-detailed.example" ]; then
+        ENV_FILE="vercel-env-detailed.example"
+        echo "ℹ️  .env not found, using $ENV_FILE"
+    else
+        echo "❌ .env file not found in current directory"
+        echo "   Please run this script from the backend directory"
+        echo "   Or pass a file path: bash setup-vercel-env.sh your-file.env"
+        exit 1
+    fi
 fi
 
-echo "📝 Reading .env file..."
+echo "📝 Reading $ENV_FILE..."
 echo ""
 
 # Function to add environment variable
@@ -65,7 +72,7 @@ while IFS='=' read -r key value; do
     
     add_env_var "$key" "$value"
     
-done < .env
+done < "$ENV_FILE"
 
 echo ""
 echo "=========================================="

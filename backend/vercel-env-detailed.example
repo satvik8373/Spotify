@@ -1,0 +1,67 @@
+# Core runtime
+NODE_ENV=production
+FRONTEND_URL=https://mavrixfy.site
+BACKEND_URL=https://spotify-api-drab.vercel.app
+VERCEL=true
+
+# JWT fallback auth secret
+JWT_SECRET=replace_with_a_long_random_secret
+
+# Firebase (preferred: single JSON string in one line)
+FIREBASE_SERVICE_ACCOUNT={"type":"service_account","project_id":"spotify-8fefc","private_key":"-----BEGIN PRIVATE KEY-----\\nREPLACE_ME\\n-----END PRIVATE KEY-----\\n","client_email":"firebase-adminsdk-fbsvc@spotify-8fefc.iam.gserviceaccount.com"}
+
+# Firebase (alternative to FIREBASE_SERVICE_ACCOUNT)
+FIREBASE_PROJECT_ID=spotify-8fefc
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@spotify-8fefc.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nREPLACE_ME\n-----END PRIVATE KEY-----\n"
+FIREBASE_DATABASE_URL=https://spotify-8fefc-default-rtdb.firebaseio.com
+FIREBASE_STORAGE_BUCKET=spotify-8fefc.firebasestorage.app
+
+# Spotify integration
+SPOTIFY_CLIENT_ID=replace_with_spotify_client_id
+SPOTIFY_CLIENT_SECRET=replace_with_spotify_client_secret
+SPOTIFY_REDIRECT_URI=https://mavrixfy.site/spotify-callback
+
+# Google OAuth (mobile)
+GOOGLE_CLIENT_ID=replace_with_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=replace_with_google_oauth_client_secret
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=replace_if_used
+
+# Cloudinary uploads
+CLOUDINARY_CLOUD_NAME=replace_with_cloud_name
+CLOUDINARY_API_KEY=replace_with_api_key
+CLOUDINARY_API_SECRET=replace_with_api_secret
+
+# OTP email service (Gmail mode)
+EMAIL_SERVICE=gmail
+EMAIL_USER=replace_with_sender_email
+EMAIL_APP_PASSWORD=replace_with_gmail_app_password
+
+# OTP email service (SMTP mode; use if EMAIL_SERVICE=smtp)
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASSWORD=
+
+# Facebook auth (optional)
+FACEBOOK_APP_ID=
+FACEBOOK_APP_SECRET=
+
+# Mood playlist AI and limits
+HUGGINGFACE_API_KEY=replace_with_hf_token
+MOOD_PLAYLIST_CACHE_TTL_HOURS=24
+MOOD_PLAYLIST_ALERT_CHECK_INTERVAL=15
+MOOD_PLAYLIST_ALERT_EMAIL=
+MOOD_FREE_DAILY_LIMIT=5
+MOOD_CREDIT_RESET_HOURS=24
+SLACK_WEBHOOK_URL=
+
+# Optional API overrides
+JIOSAAVN_API_BASE_URL=https://saavn.dev/api
+APK_DOWNLOAD_URL=https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.2.1/mavrixfy.apk
+
+# Railway-only (not needed for Vercel functions)
+# PORT=5000
+# GOOGLE_APPLICATION_CREDENTIALS=
+# API_URL=http://localhost:5000

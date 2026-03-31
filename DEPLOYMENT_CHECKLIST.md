@@ -36,6 +36,7 @@ If you have Vercel CLI installed:
 
 ```bash
 cd backend
+cp vercel-env-detailed.example .env  # fill secret values first
 npm i -g vercel
 vercel login
 vercel link

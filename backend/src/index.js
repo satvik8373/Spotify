@@ -42,6 +42,7 @@ import { verifyEmailConfig } from "./services/email.service.js";
 const __dirname = path.resolve();
 const app = express();
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || "0.0.0.0";
 
 // Trust proxy - CRITICAL for Vercel to detect HTTPS correctly
 app.set('trust proxy', 1);
@@ -268,8 +269,9 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, HOST, () => {
   console.log("Server is running on port " + PORT);
+  console.log("Server host: " + HOST);
   console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Running on Vercel: ${process.env.VERCEL ? 'Yes' : 'No'}`);
@@ -283,3 +285,19 @@ httpServer.listen(PORT, () => {
     }
   });
 });
+
+const gracefulShutdown = (signal) => {
+  console.log(`Received ${signal}. Shutting down server gracefully...`);
+  httpServer.close(() => {
+    console.log("HTTP server closed.");
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error("Forced shutdown after timeout.");
+    process.exit(1);
+  }, 10000).unref();
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));

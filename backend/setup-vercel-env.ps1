@@ -23,18 +23,25 @@ if (-not $vercelExists) {
 Write-Host "✅ Vercel CLI found" -ForegroundColor Green
 Write-Host ""
 
-# Check if .env file exists
-if (-not (Test-Path ".env")) {
-    Write-Host "❌ .env file not found in current directory" -ForegroundColor Red
-    Write-Host "   Please run this script from the backend directory" -ForegroundColor Yellow
-    exit 1
+# Resolve env file path
+$envFile = if ($args.Count -gt 0 -and $args[0]) { $args[0] } else { ".env" }
+if (-not (Test-Path $envFile)) {
+    if (Test-Path "vercel-env-detailed.example") {
+        $envFile = "vercel-env-detailed.example"
+        Write-Host "ℹ️  .env not found, using $envFile" -ForegroundColor Cyan
+    } else {
+        Write-Host "❌ .env file not found in current directory" -ForegroundColor Red
+        Write-Host "   Please run this script from the backend directory" -ForegroundColor Yellow
+        Write-Host "   Or pass a file path: .\setup-vercel-env.ps1 your-file.env" -ForegroundColor Yellow
+        exit 1
+    }
 }
 
-Write-Host "📝 Reading .env file..." -ForegroundColor Cyan
+Write-Host "📝 Reading $envFile..." -ForegroundColor Cyan
 Write-Host ""
 
 # Read .env file
-$envContent = Get-Content ".env"
+$envContent = Get-Content $envFile
 
 # Variables to skip
 $skipVars = @("GOOGLE_APPLICATION_CREDENTIALS")
