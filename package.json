@@ -6,8 +6,9 @@
     "node": "20.x"
   },
   "scripts": {
-    "postinstall": "node scripts/install.js",
-    "build": "node scripts/build.js"
+    "postinstall": "npm --prefix backend install",
+    "build": "npm --prefix backend run build",
+    "start": "npm --prefix backend start"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
