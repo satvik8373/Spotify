@@ -12,6 +12,8 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
   const [isInstalledPWA, setIsInstalledPWA] = useState(false);
 
   useEffect(() => {
+    let removeServiceWorkerListener: (() => void) | null = null;
+
     // Check if Android and not in standalone mode
     const userAgent = navigator.userAgent.toLowerCase();
     const isAndroid = /android/.test(userAgent);
@@ -43,7 +45,7 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
       }, [messageChannel.port2]);
       
       // Listen for app installed events from service worker
-      navigator.serviceWorker.addEventListener('message', (event) => {
+      const handleServiceWorkerMessage = (event: MessageEvent) => {
         if (event.data && event.data.type === 'APP_INSTALLED') {
           // App was just installed
           setDeferredPrompt(null);
@@ -56,7 +58,11 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
             localStorage.setItem('android-pwa-helper-shown', 'true');
           }, 2000);
         }
-      });
+      };
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+      removeServiceWorkerListener = () => {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+      };
     }
     
     // Check if the user has seen this helper before
@@ -95,7 +101,7 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     
     // Listen for successful installations
-    window.addEventListener('appinstalled', () => {
+    const handleAppInstalled = () => {
       // PWA was installed successfully
       // Clear the deferredPrompt so it can't be used again
       setDeferredPrompt(null);
@@ -105,11 +111,15 @@ const AndroidPWAHelper: React.FC<AndroidPWAHelperProps> = ({ onDismiss }) => {
         setInstallMode('homescreen');
         setShowHelper(true);
       }, 2000);
-    });
+    };
+    window.addEventListener('appinstalled', handleAppInstalled);
     
     return () => {
+      if (removeServiceWorkerListener) {
+        removeServiceWorkerListener();
+      }
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', () => {});
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
   

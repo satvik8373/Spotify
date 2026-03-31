@@ -3,16 +3,41 @@ import nodemailer from 'nodemailer';
 // Create reusable transporter
 let transporter = null;
 
+const getEmailService = () => (process.env.EMAIL_SERVICE || 'gmail').toLowerCase();
+
+export const isEmailServiceConfigured = () => {
+  const emailService = getEmailService();
+
+  if (emailService === 'gmail') {
+    return Boolean(process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD);
+  }
+
+  if (emailService === 'smtp') {
+    return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD);
+  }
+
+  return false;
+};
+
 const createTransporter = () => {
   if (transporter) return transporter;
 
   // Configure email service based on environment variables
-  const emailService = process.env.EMAIL_SERVICE || 'gmail';
-  
+  const emailService = getEmailService();
+
+  if (!isEmailServiceConfigured()) {
+    const err = new Error('Email service is not fully configured');
+    err.code = 'EMAIL_NOT_CONFIGURED';
+    throw err;
+  }
+
   if (emailService === 'gmail') {
     // Gmail configuration
     transporter = nodemailer.createTransport({
       service: 'gmail',
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_APP_PASSWORD // Use App Password, not regular password
@@ -24,6 +49,9 @@ const createTransporter = () => {
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: process.env.SMTP_SECURE === 'true',
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD
@@ -142,11 +170,20 @@ export const sendOTPEmail = async (email, otp) => {
 // Verify email configuration
 export const verifyEmailConfig = async () => {
   try {
+    if (!isEmailServiceConfigured()) {
+      console.log('Email service is not configured. Skipping email verification.');
+      return false;
+    }
+
     const transporter = createTransporter();
     await transporter.verify();
     console.log('Email service is ready to send emails');
     return true;
   } catch (error) {
+    if (error.code === 'EMAIL_NOT_CONFIGURED') {
+      console.log('Email service is not configured. Skipping email verification.');
+      return false;
+    }
     console.error('Email service configuration error:', error);
     return false;
   }

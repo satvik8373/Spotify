@@ -59,12 +59,17 @@ const PWAInstallPrompt = () => {
     const detectedPlatform = detectPlatform();
     setPlatform(detectedPlatform);
     
-    // Handle the beforeinstallprompt event (Chrome/Edge/Android)
-    window.addEventListener('beforeinstallprompt', (e) => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Android flow is handled by AndroidPWAHelper to avoid duplicate prompts.
+      if (detectedPlatform === 'android') return;
+
+      // Handle install prompt for desktop and compatible browsers.
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-        setShowPrompt(true);
-    });
+      setShowPrompt(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     // For iOS, we'll show our custom prompt after a delay
     if (detectedPlatform === 'ios') {
@@ -87,9 +92,7 @@ const PWAInstallPrompt = () => {
     }
     
     return () => {
-      window.removeEventListener('beforeinstallprompt', (e) => {
-        setDeferredPrompt(e as BeforeInstallPromptEvent);
-      });
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
 

@@ -276,14 +276,21 @@ httpServer.listen(PORT, HOST, () => {
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Running on Vercel: ${process.env.VERCEL ? 'Yes' : 'No'}`);
 
-  // Verify email configuration
-  verifyEmailConfig().then(isReady => {
-    if (isReady) {
-      console.log('✓ Email service configured and ready');
-    } else {
-      console.log('⚠ Email service not configured - OTP will be shown in console only');
-    }
-  });
+  // Verify email configuration unless explicitly disabled
+  const shouldVerifyEmailOnStartup = process.env.VERIFY_EMAIL_ON_STARTUP !== "false";
+  if (shouldVerifyEmailOnStartup) {
+    verifyEmailConfig().then(isReady => {
+      if (isReady) {
+        console.log('✓ Email service configured and ready');
+      } else {
+        console.log('⚠ Email service not configured - OTP email delivery is disabled');
+      }
+    }).catch((err) => {
+      console.error('Email verification startup check failed:', err?.message || err);
+    });
+  } else {
+    console.log('Email startup verification disabled by VERIFY_EMAIL_ON_STARTUP=false');
+  }
 });
 
 const gracefulShutdown = (signal) => {
