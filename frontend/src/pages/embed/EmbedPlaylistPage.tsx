@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { resolveApiBaseUrl } from '@/lib/apiUrl';
 
 interface Song {
   _id: string;
@@ -57,10 +58,7 @@ const EmbedPlaylistPage = () => {
     const fetchPlaylist = async () => {
       try {
         // Use fetch instead of axiosInstance to avoid auth headers
-        const apiUrl = import.meta.env.VITE_API_URL ||
-          (window.location.hostname.includes('mavrixfy.site')
-            ? '/api'
-            : 'http://localhost:5000/api');
+        const apiUrl = resolveApiBaseUrl();
         
         const response = await fetch(`${apiUrl}/playlists/${id}`, {
           method: 'GET',

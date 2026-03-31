@@ -8,6 +8,7 @@ import { auth } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/stores/useAuthStore';
+import axiosInstance from '@/lib/axios';
 
 interface LocationState {
   email: string;
@@ -62,26 +63,7 @@ const VerifyEmail = () => {
 
   const sendVerificationCode = async () => {
     try {
-      // Get base URL without /api since we'll add the full path
-      let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      
-      // Remove /api suffix if present
-      API_URL = API_URL.replace(/\/api\/?$/, '');
-      
-      // Call backend API to send OTP
-      const response = await fetch(`${API_URL}/api/otp/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send OTP');
-      }
+      const { data } = await axiosInstance.post('/otp/send', { email });
 
       // In development, the OTP is returned in the response
       if (data.otp) {
@@ -92,7 +74,8 @@ const VerifyEmail = () => {
       
       setVerificationSent(true);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to send verification code');
+      const message = error?.response?.data?.message || error.message || 'Failed to send verification code';
+      toast.error(message);
     }
   };
 
@@ -147,24 +130,12 @@ const VerifyEmail = () => {
     setLoading(true);
 
     try {
-      // Get base URL without /api since we'll add the full path
-      let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      
-      // Remove /api suffix if present
-      API_URL = API_URL.replace(/\/api\/?$/, '');
-      
-      // Verify OTP with backend
-      const verifyResponse = await fetch(`${API_URL}/api/otp/verify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, otp: otpCode }),
+      const { data: verifyData } = await axiosInstance.post('/otp/verify', {
+        email,
+        otp: otpCode,
       });
 
-      const verifyData = await verifyResponse.json();
-
-      if (!verifyResponse.ok) {
+      if (!verifyData?.success) {
         const errorMessage = verifyData.message || 'Invalid verification code';
         if (verifyData.attemptsLeft !== undefined && verifyData.attemptsLeft > 0) {
           toast.error(`${errorMessage} (${verifyData.attemptsLeft} attempts remaining)`);
@@ -203,6 +174,19 @@ const VerifyEmail = () => {
       toast.success('Account created successfully!');
       navigate('/home', { replace: true });
     } catch (error: any) {
+      if (error?.response?.data) {
+        const verifyData = error.response.data;
+        const errorMessage = verifyData.message || 'Invalid verification code';
+        if (verifyData.attemptsLeft !== undefined && verifyData.attemptsLeft > 0) {
+          toast.error(`${errorMessage} (${verifyData.attemptsLeft} attempts remaining)`);
+        } else {
+          toast.error(errorMessage);
+        }
+        setOtp(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+        return;
+      }
+
       if (error.code === 'auth/email-already-in-use') {
         toast.error('Email already in use. Please login instead.');
         navigate('/login');
