@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { handleCallback, isAuthenticated as isSpotifyAuthenticated } from '../services/spotifyService';
+import {
+  getSavedTracks,
+  getSpotifyUserErrorMessage,
+  handleCallback,
+  isAuthenticated as isSpotifyAuthenticated,
+  logout as spotifyLogout
+} from '../services/spotifyService';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { PageLoading } from '../components/ui/loading';
@@ -40,6 +46,15 @@ const SpotifyCallback: React.FC = () => {
           
           // Verify tokens are actually stored and valid
           if (isSpotifyAuthenticated()) {
+            try {
+              await getSavedTracks(1, 0);
+            } catch (spotifyAccessError: any) {
+              spotifyLogout();
+              setError('Spotify access denied (403)');
+              setErrorDetails(getSpotifyUserErrorMessage(spotifyAccessError));
+              return;
+            }
+
             try { sessionStorage.setItem('spotify_sync_prompt', '1'); } catch {}
             
             // Add a small delay to ensure tokens are properly stored

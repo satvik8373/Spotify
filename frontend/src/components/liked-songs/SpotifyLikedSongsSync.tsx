@@ -6,7 +6,11 @@ import { toast } from 'sonner';
 import { useMusicStore } from '@/stores/useMusicStore';
 import { Song } from '@/types';
 import { addLikedSong, isSongAlreadyLiked } from '@/services/likedSongsService';
-import { isAuthenticated as isSpotifyAuthenticated, getSavedTracks } from '@/services/spotifyService';
+import {
+  getSavedTracks,
+  getSpotifyUserErrorMessage,
+  isAuthenticated as isSpotifyAuthenticated
+} from '@/services/spotifyService';
 import SpotifyLogin from '@/components/SpotifyLogin';
 
 interface SpotifyLikedSongsSyncProps {
@@ -123,8 +127,12 @@ export function SpotifyLikedSongsSync({ onClose }: SpotifyLikedSongsSyncProps) {
 
       const modeText = mode === 'new' ? 'recent' : 'total';
       toast.success(`Found ${tracks.length} ${modeText} Spotify songs, ${newTracks.length} are new`);
-    } catch (error) {
-      toast.error('Failed to load Spotify liked songs');
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        setIsSpotifyConnected(false);
+      }
+      toast.error(getSpotifyUserErrorMessage(error));
     } finally {
       setIsLoadingTracks(false);
     }

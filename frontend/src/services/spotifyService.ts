@@ -32,6 +32,72 @@ const ACCESS_TOKEN_KEY = 'spotify_access_token';
 const REFRESH_TOKEN_KEY = 'spotify_refresh_token';
 const TOKEN_EXPIRY_KEY = 'spotify_token_expiry';
 
+const extractSpotifyErrorMessage = (error: any): string => {
+  return String(
+    error?.response?.data?.error?.message ||
+    error?.response?.data?.message ||
+    error?.message ||
+    ''
+  ).trim();
+};
+
+const extractSpotifyAuthHeader = (error: any): string => {
+  return String(
+    error?.response?.headers?.['www-authenticate'] ||
+    ''
+  ).toLowerCase();
+};
+
+const isUserNotRegisteredError = (error: any): boolean => {
+  const message = extractSpotifyErrorMessage(error).toLowerCase();
+  const authHeader = extractSpotifyAuthHeader(error);
+  return (
+    message.includes('user not registered') ||
+    message.includes('development mode') ||
+    message.includes('developer dashboard') ||
+    authHeader.includes('user not registered')
+  );
+};
+
+const isInsufficientScopeError = (error: any): boolean => {
+  const message = extractSpotifyErrorMessage(error).toLowerCase();
+  const authHeader = extractSpotifyAuthHeader(error);
+  return (
+    message.includes('insufficient') ||
+    message.includes('scope') ||
+    message.includes('permissions') ||
+    authHeader.includes('insufficient_scope') ||
+    authHeader.includes('scope=')
+  );
+};
+
+export const getSpotifyUserErrorMessage = (error: any): string => {
+  const status = error?.response?.status;
+  const rawMessage = extractSpotifyErrorMessage(error);
+
+  if (status === 401) {
+    return 'Spotify session expired. Please reconnect Spotify.';
+  }
+
+  if (status === 403 && isUserNotRegisteredError(error)) {
+    return 'This Spotify app is in Development mode. Add your Spotify account in Spotify Dashboard > Users and Access, then reconnect.';
+  }
+
+  if (status === 403 && isInsufficientScopeError(error)) {
+    return 'Spotify permissions are missing (user-library-read). Disconnect and reconnect Spotify.';
+  }
+
+  if (status === 403) {
+    return 'Spotify denied access to your liked songs. Check Spotify app settings and reconnect.';
+  }
+
+  if (rawMessage) {
+    return rawMessage;
+  }
+
+  return 'Spotify request failed. Please reconnect and try again.';
+};
+
 // Axios instance for Mavrixfy API calls
 const spotifyApi = axios.create({
   baseURL: SPOTIFY_API_URL,
@@ -58,7 +124,8 @@ spotifyApi.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 403) {
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
       logout();
     }
     return Promise.reject(error);
@@ -414,6 +481,7 @@ export default {
   handleCallback,
   logout,
   isAuthenticated,
+  getSpotifyUserErrorMessage,
   getCurrentUser,
   searchTracks,
   getTrack,
