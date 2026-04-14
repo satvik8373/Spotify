@@ -62,6 +62,7 @@ class AudioManager {
 
   constructor() {
     Howler.autoUnlock = true;
+    Howler.autoSuspend = false; // prevent AudioContext from suspending after 30s idle
     Howler.html5PoolSize = 1;
     this.registerMediaSessionHandlers();
     this.attachDebugHandles();
@@ -83,7 +84,7 @@ class AudioManager {
   }
 
   private getCurrentNode(): HowlNode | null {
-    return (this.currentSound?._sounds?.[0]?._node as HowlNode | undefined) ?? null;
+    return ((this.currentSound as any)?._sounds?.[0]?._node as HowlNode | undefined) ?? null;
   }
 
   // ── Position state ────────────────────────────────────────────────────────
