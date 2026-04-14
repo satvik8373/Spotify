@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
@@ -86,141 +87,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const albumColors = useAlbumColors(currentSong?.imageUrl);
   const swipeContainerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
-
-  // ── Dismiss swipe (swipe-down to close) ──────────────────────────────────
-  // All state is kept in refs so we never trigger React re-renders during drag.
   const panelRef = useRef<HTMLDivElement>(null);
-  const dismissDrag = useRef({
-    active: false,
-    startY: 0,
-    startX: 0,
-    lastY: 0,
-    lastTime: 0,
-    velocityY: 0,
-    rafId: 0,
-    lockedDirection: null as 'dismiss' | 'horizontal' | null,
-  });
-
-  // Attach native (non-passive) touch listeners to the panel for dismiss gesture.
-  // We use native listeners so we can call preventDefault on horizontal swipes
-  // without React's synthetic event system interfering.
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (!panel) return;
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      const d = dismissDrag.current;
-      d.active = true;
-      d.startY = t.clientY;
-      d.startX = t.clientX;
-      d.lastY = t.clientY;
-      d.lastTime = Date.now();
-      d.velocityY = 0;
-      d.lockedDirection = null;
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      const d = dismissDrag.current;
-      if (!d.active) return;
-
-      const t = e.touches[0];
-      const deltaY = t.clientY - d.startY;
-      const deltaX = t.clientX - d.startX;
-      const now = Date.now();
-      const dt = now - d.lastTime || 1;
-
-      // Lock direction on first significant movement
-      if (!d.lockedDirection && (Math.abs(deltaY) > 6 || Math.abs(deltaX) > 6)) {
-        d.lockedDirection = Math.abs(deltaY) > Math.abs(deltaX) ? 'dismiss' : 'horizontal';
-      }
-
-      // Only handle downward dismiss swipes
-      if (d.lockedDirection !== 'dismiss' || deltaY < 0) {
-        if (d.lockedDirection === 'horizontal') d.active = false;
-        return;
-      }
-
-      // Prevent page scroll while dismissing
-      e.preventDefault();
-
-      d.velocityY = (t.clientY - d.lastY) / dt;
-      d.lastY = t.clientY;
-      d.lastTime = now;
-
-      // Rubber-band resistance: full movement up to 80px, then 30% beyond
-      const resistance = deltaY > 80 ? 80 + (deltaY - 80) * 0.3 : deltaY;
-      const progress = Math.min(resistance / window.innerHeight, 1);
-      const scale = 1 - progress * 0.06;
-      const opacity = 1 - progress * 0.4;
-
-      cancelAnimationFrame(d.rafId);
-      d.rafId = requestAnimationFrame(() => {
-        if (!panelRef.current) return;
-        panelRef.current.style.transition = 'none';
-        panelRef.current.style.transform = `translateY(${resistance}px) scale(${scale})`;
-        panelRef.current.style.opacity = String(opacity);
-      });
-    };
-
-    const onTouchEnd = () => {
-      const d = dismissDrag.current;
-      if (!d.active) return;
-      d.active = false;
-      cancelAnimationFrame(d.rafId);
-
-      if (d.lockedDirection !== 'dismiss') return;
-
-      const deltaY = d.lastY - d.startY;
-      const shouldDismiss = deltaY > 120 || d.velocityY > 0.5;
-
-      if (shouldDismiss) {
-        // Animate out then call onClose
-        if (panelRef.current) {
-          panelRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0, 0.67, 0), opacity 0.28s ease';
-          panelRef.current.style.transform = `translateY(100%)`;
-          panelRef.current.style.opacity = '0';
-        }
-        setTimeout(() => {
-          onClose();
-          // Reset so CSS class takes over again after close
-          if (panelRef.current) {
-            panelRef.current.style.transition = '';
-            panelRef.current.style.transform = '';
-            panelRef.current.style.opacity = '';
-          }
-        }, 280);
-      } else {
-        // Spring back
-        if (panelRef.current) {
-          panelRef.current.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease';
-          panelRef.current.style.transform = 'translateY(0px) scale(1)';
-          panelRef.current.style.opacity = '1';
-        }
-        setTimeout(() => {
-          if (panelRef.current) {
-            panelRef.current.style.transition = '';
-            panelRef.current.style.transform = '';
-            panelRef.current.style.opacity = '';
-          }
-        }, 400);
-      }
-    };
-
-    panel.addEventListener('touchstart', onTouchStart, { passive: true });
-    panel.addEventListener('touchmove', onTouchMove, { passive: false });
-    panel.addEventListener('touchend', onTouchEnd, { passive: true });
-    panel.addEventListener('touchcancel', onTouchEnd, { passive: true });
-
-    return () => {
-      panel.removeEventListener('touchstart', onTouchStart);
-      panel.removeEventListener('touchmove', onTouchMove);
-      panel.removeEventListener('touchend', onTouchEnd);
-      panel.removeEventListener('touchcancel', onTouchEnd);
-    };
-  }, [onClose]);
-  // ─────────────────────────────────────────────────────────────────────────
 
   // Handle screen size changes for responsive design
   useEffect(() => {
@@ -862,17 +729,36 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const displayProgress = isDragging ? dragProgress : (currentTime / duration) * 100 || 0;
 
   return (
-    <div
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div
       ref={panelRef}
       className={cn(
-        'fixed inset-0 z-50 flex flex-col song-details-view ios-height-fix',
+        'fixed inset-0 z-[200] flex flex-col song-details-view',
         responsiveClasses.container,
-        isOpen ? 'translate-y-0' : 'translate-y-full'
       )}
       style={{
         background: `linear-gradient(180deg, ${albumColors.primary} 0%, ${albumColors.secondary} 100%)`,
-        // Let CSS (ios-height-fix + inset-0) handle height — avoids stale JS pixel values
       }}
+      // ── Full-screen page enter / exit ────────────────────────────────────
+      initial={{ y: '100%' }}
+      animate={{ y: 0 }}
+      exit={{ y: '100%' }}
+      transition={{ type: 'spring', stiffness: 380, damping: 42, mass: 1 }}
+      // ── Drag-to-dismiss — framer owns the y offset during drag ───────────
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={{ top: 0, bottom: 0.3 }}
+      dragMomentum={false}
+      dragDirectionLock
+      onDragEnd={(_e, info) => {
+        // Call onClose directly — AnimatePresence plays the exit animation
+        if (info.offset.y > 100 || info.velocity.y > 500) {
+          onClose();
+        }
+        // If not dismissed, framer springs back to animate target (y:0) automatically
+      }}
+      // ─────────────────────────────────────────────────────────────────────
     >
       {/* Header - Fixed height, clears notch/Dynamic Island */}
       <div className={cn(
@@ -1335,12 +1221,10 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         )}
       </div>
 
-      {/* Bottom Actions - Fixed height */}
-      <div className={cn(
-        "px-4 flex items-center justify-center flex-shrink-0",
-        responsiveClasses.bottom || ""
-      )}
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)', minHeight: '64px' }}
+      {/* Bottom Actions — always anchored to the bottom, clears home indicator */}
+      <div
+        className="px-4 flex items-center justify-center flex-shrink-0"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', minHeight: '60px' }}
       >
         <div className="flex items-center justify-center gap-12">
           <button
@@ -1367,7 +1251,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
           />
         </div>
       </div>
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

@@ -246,13 +246,11 @@ const MobileNav = () => {
     <>
       <WhatsNewDialog open={showWhatsNew} onOpenChange={setShowWhatsNew} />
 
-      {/* Song Details View */}
-      {showSongDetails && (
-        <SongDetailsView
-          isOpen={showSongDetails}
-          onClose={() => setShowSongDetails(false)}
-        />
-      )}
+      {/* Song Details View — always mounted so AnimatePresence can animate exit */}
+      <SongDetailsView
+        isOpen={showSongDetails}
+        onClose={() => setShowSongDetails(false)}
+      />
 
       {/* Queue Drawer */}
       <QueueDrawer

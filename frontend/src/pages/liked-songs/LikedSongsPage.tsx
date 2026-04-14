@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Search, ListPlus, User, Upload } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ShuffleButton } from '@/components/ShuffleButton';
 import { Input } from '@/components/ui/input';
@@ -355,6 +356,10 @@ const LikedSongsPage = () => {
   const [filterQuery, setFilterQuery] = useState('');
   const navigate = useNavigate();
 
+  // Sticky header — shown when the hero scrolls out of view
+  const heroRef = useRef<HTMLDivElement>(null);
+  const [showStickyHeader, setShowStickyHeader] = useState(false);
+
   const { togglePlay, playAlbum, setIsPlaying, setUserInteracted } = usePlayerStore();
   const { currentSong, isPlaying } = usePlayerSync();
   const { isAuthenticated } = useAuthStore();
@@ -380,6 +385,38 @@ const LikedSongsPage = () => {
   useEffect(() => {
     loadAndSetLikedSongs();
   }, [isAuthenticated]);
+
+  // Sticky header — show only after the controls row scrolls out of view.
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero || !isMobile) return;
+
+    // Find the nearest scrollable ancestor (CustomScrollbar's inner div)
+    const getScrollParent = (el: HTMLElement): HTMLElement => {
+      let node: HTMLElement | null = el.parentElement;
+      while (node) {
+        const { overflowY } = window.getComputedStyle(node);
+        if (overflowY === 'auto' || overflowY === 'scroll') return node;
+        node = node.parentElement;
+      }
+      return document.documentElement;
+    };
+
+    const scrollParent = getScrollParent(hero);
+
+    const check = () => {
+      // Both rects are in viewport coordinates — their difference is scroll-independent
+      const heroBottom = hero.getBoundingClientRect().bottom;
+      const containerTop = scrollParent.getBoundingClientRect().top;
+      // Hero has scrolled away when its bottom is above the container's top edge
+      setShowStickyHeader(heroBottom < containerTop);
+    };
+
+    scrollParent.addEventListener('scroll', check, { passive: true });
+    check(); // run once for restored scroll position
+
+    return () => scrollParent.removeEventListener('scroll', check);
+  }, [isMobile]);
 
   // Handle window resize
   useEffect(() => {
@@ -618,6 +655,59 @@ const LikedSongsPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground liked-songs-page">
+
+      {/* Sticky header — appears when controls row scrolls out of view (mobile only) */}
+      {isMobile && (
+        <AnimatePresence>
+          {showStickyHeader && (
+            <motion.div
+              key="sticky-header"
+              initial={{ opacity: 0, y: -56 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -56 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 40, mass: 0.7 }}
+              className="fixed left-0 right-0 z-50 flex items-center justify-between px-4 bg-[#1a0a2e] backdrop-blur-xl border-b border-white/[0.07] shadow-lg"
+              style={{
+                top: 0,
+                paddingTop: 'calc(env(safe-area-inset-top, 0px) + 10px)',
+                paddingBottom: '10px',
+              }}
+            >
+              {/* Left: heart icon + title */}
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-md bg-gradient-to-br from-purple-400 to-purple-700 flex items-center justify-center flex-shrink-0 shadow-md">
+                  <Heart className="h-3.5 w-3.5 text-white fill-white" />
+                </div>
+                <span className="text-[15px] font-bold text-white truncate tracking-tight">
+                  Liked Songs
+                </span>
+              </div>
+
+              {/* Right: shuffle + play */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <ShuffleButton
+                  size="sm"
+                  className="h-8 w-8 text-white/70 hover:text-white"
+                  accentColor="#1ed760"
+                />
+                <button
+                  onClick={handleMainPlayPause}
+                  disabled={likedSongs.length === 0}
+                  className="h-9 w-9 rounded-full bg-green-500 hover:bg-green-400 active:scale-95 transition-all flex items-center justify-center shadow-lg disabled:opacity-40"
+                  aria-label={isCurrentPlaylistPlaying ? 'Pause' : 'Play'}
+                >
+                  {isCurrentPlaylistPlaying ? (
+                    <Pause className="h-4 w-4 fill-black text-black" />
+                  ) : (
+                    <Play className="h-4 w-4 fill-black text-black ml-0.5" />
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+
       {/* Mobile Header */}
       {isMobile ? (
         <div className="relative">
@@ -645,8 +735,8 @@ const LikedSongsPage = () => {
             </div>
           </div>
 
-          {/* Mobile controls - Spotify-style */}
-          <div className="px-4 pb-4 flex items-center justify-between bg-gradient-to-b from-background/20 to-background">
+          {/* Mobile controls row — heroRef watches this: sticky appears when it scrolls away */}
+          <div ref={heroRef} className="px-4 pb-4 flex items-center justify-between bg-gradient-to-b from-background/20 to-background">
             <div className="flex items-center gap-4">
               <Button
                 size="icon"

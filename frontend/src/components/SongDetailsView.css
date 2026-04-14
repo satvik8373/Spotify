@@ -1,60 +1,22 @@
 /* SongDetailsView - Mobile-optimized styles */
 
-/* Open/close slide animation — driven by Tailwind translate-y-0 / translate-y-full classes.
-   During a dismiss drag the JS sets inline style which overrides this. */
+/* fixed inset-0 covers the full screen including behind notch and home indicator.
+   No height override needed — inset-0 is top:0 right:0 bottom:0 left:0.
+   Framer Motion owns all transforms. */
 .song-details-view {
-  transition: transform 0.35s cubic-bezier(0.32, 0, 0.67, 0), opacity 0.35s ease;
   will-change: transform;
-  backdrop-filter: blur(0px);
-}
-
-/* Backdrop blur animation */
-.song-details-view.translate-y-0 {
-  backdrop-filter: blur(20px);
-}
-
-.song-details-view.translate-y-full {
-  backdrop-filter: blur(0px);
-}
-
-/* Ensure the transform classes work properly */
-.song-details-view.translate-y-0 {
-  transform: translateY(0) !important;
-}
-
-.song-details-view.translate-y-full {
-  transform: translateY(100%) !important;
-}
-
-/* Content fade-in animation when opening */
-.song-details-view>* {
-  transition: opacity 0.3s ease-out 0.1s !important;
-}
-
-.song-details-view.translate-y-full>* {
-  opacity: 0;
-}
-
-.song-details-view.translate-y-0>* {
-  opacity: 1;
-}
-
-/* Safe area support for iOS devices */
-.pt-safe-top {
-  padding-top: env(safe-area-inset-top, 1rem);
-}
-
-.pb-safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 1rem);
-}
-
-/* Ensure no scrolling on any mobile device */
-.song-details-view {
-  /* fixed inset-0 already covers full screen including behind notch.
-     Use dvh + webkit-fill-available so height is always the real viewport. */
-  height: 100dvh;
-  height: -webkit-fill-available;
+  touch-action: none;
+  overscroll-behavior: none;
   overflow: hidden;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* iOS fill-available fix — only applied via the ios-height-fix class when needed */
+@supports (-webkit-touch-callout: none) {
+  .ios-height-fix {
+    height: -webkit-fill-available;
+  }
 }
 
 /* Text shadow styles for song info */
@@ -89,11 +51,7 @@
   /* Disable all default touch behaviors for progress bar */
 }
 
-/* Main container touch handling */
-.song-details-view {
-  touch-action: pan-y;
-  /* Allow vertical scrolling by default */
-}
+/* Main container touch handling — Framer Motion manages touch-action */
 
 .swipe-container:active {
   cursor: grabbing;
@@ -321,13 +279,6 @@
   display: block;
 }
 
-/* Fix for iOS viewport height issues */
-@supports (-webkit-touch-callout: none) {
-  .ios-height-fix {
-    height: -webkit-fill-available;
-  }
-}
-
 /* Swipe feedback animations */
 @keyframes swipe-left-hint {
   0% {
@@ -382,16 +333,6 @@
 
 .swipe-indicator-right {
   left: 16px;
-}
-
-/* Smooth momentum scrolling for iOS */
-.song-details-view {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Prevent bounce scrolling on iOS */
-.song-details-view {
-  overscroll-behavior: none;
 }
 
 /* Queue list styles */
