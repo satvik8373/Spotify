@@ -10,10 +10,21 @@ type HowlNode = HTMLAudioElement & {
 
 const FALLBACK_ARTWORK = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
 const PLAY_ERROR_RETRY_LIMIT = 1;
-// Fallback poll interval — only used when native timeupdate isn't available
 const PROGRESS_INTERVAL_MS = 500;
-// Default seek offset for seekbackward/seekforward (seconds)
 const DEFAULT_SEEK_OFFSET = 10;
+
+// ── Platform detection ────────────────────────────────────────────────────────
+// Detected once at module load — never changes during a session.
+const IS_IOS = typeof navigator !== 'undefined' &&
+  /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+  !(window as any).MSStream;
+
+const IS_IOS_PWA = IS_IOS &&
+  (typeof (navigator as any).standalone === 'boolean'
+    ? (navigator as any).standalone === true
+    : window.matchMedia('(display-mode: standalone)').matches);
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const getSongKey = (song: Song | null | undefined): string =>
   song?._id || `${song?.title ?? 'unknown'}::${song?.artist ?? 'unknown'}`;
@@ -34,16 +45,12 @@ const isValidAudioUrl = (audioUrl?: string): boolean => {
   }
 };
 
-const setMediaSessionHandler = (
+const trySetActionHandler = (
   action: MediaSessionAction,
   handler: MediaSessionActionHandler | null,
 ) => {
   if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
-  try {
-    navigator.mediaSession.setActionHandler(action, handler);
-  } catch {
-    // Ignore unsupported handlers.
-  }
+  try { navigator.mediaSession.setActionHandler(action, handler); } catch { /* unsupported */ }
 };
 
 class AudioManager {
@@ -51,23 +58,23 @@ class AudioManager {
   private currentSong: Song | null = null;
   private queue: Song[] = [];
   private currentIndex = -1;
-  // Fallback interval — only active when native timeupdate isn't available
   private progressTimer: number | null = null;
   private volume = 1;
   private playRetryCounts = new Map<string, number>();
   private failedSongKeys = new Set<string>();
   private mediaSessionRegistered = false;
-  // Bound timeupdate handler so we can remove it cleanly
   private boundTimeUpdate: (() => void) | null = null;
 
   constructor() {
     Howler.autoUnlock = true;
-    Howler.autoSuspend = false; // prevent AudioContext from suspending after 30s idle
+    Howler.autoSuspend = false;
+    // Keep pool at 1 — iOS only allows one active audio element in PWA mode
     Howler.html5PoolSize = 1;
     this.registerMediaSessionHandlers();
     this.attachDebugHandles();
   }
 
+  // ── Debug ─────────────────────────────────────────────────────────────────
   private attachDebugHandles() {
     if (typeof window === 'undefined') return;
     const w = window as any;
@@ -88,22 +95,24 @@ class AudioManager {
   }
 
   // ── Position state ────────────────────────────────────────────────────────
-  // Called from native <audio> timeupdate — fires in background, unlike setInterval.
+  // Driven by native <audio> timeupdate so it fires even when backgrounded/locked.
   private syncPositionState() {
     const duration = this.getDuration();
     const position = this.getCurrentTime();
 
-    // Update React store
     usePlayerStore.setState({ currentTime: position, duration });
 
-    // Update lock screen progress bar
     if (
       typeof navigator === 'undefined' ||
       !('mediaSession' in navigator) ||
       !('setPositionState' in navigator.mediaSession)
     ) return;
 
-    if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(position)) return;
+    // Guard: setPositionState throws if values are invalid
+    if (
+      !Number.isFinite(duration) || duration <= 0 ||
+      !Number.isFinite(position) || position < 0
+    ) return;
 
     try {
       navigator.mediaSession.setPositionState({
@@ -111,22 +120,14 @@ class AudioManager {
         position: Math.min(position, duration),
         playbackRate: 1,
       });
-    } catch {
-      // Ignore.
-    }
+    } catch { /* ignore */ }
   }
 
-  // ── Native timeupdate listener ────────────────────────────────────────────
-  // Attaches directly to the <audio> element so it fires even when the tab is
-  // backgrounded / screen is locked. This is the official approach per MDN.
+  // ── Native timeupdate ─────────────────────────────────────────────────────
   private attachNativeTimeUpdate() {
     this.detachNativeTimeUpdate();
     const node = this.getCurrentNode();
-    if (!node) {
-      // Fallback: use interval if native node not yet available
-      this.startFallbackTimer();
-      return;
-    }
+    if (!node) { this.startFallbackTimer(); return; }
     this.boundTimeUpdate = () => this.syncPositionState();
     node.addEventListener('timeupdate', this.boundTimeUpdate);
   }
@@ -140,7 +141,6 @@ class AudioManager {
     this.clearFallbackTimer();
   }
 
-  // ── Fallback interval (desktop / non-html5 mode) ──────────────────────────
   private clearFallbackTimer() {
     if (this.progressTimer !== null) {
       window.clearInterval(this.progressTimer);
@@ -154,79 +154,123 @@ class AudioManager {
   }
 
   // ── Metadata ──────────────────────────────────────────────────────────────
+  // iOS quirks (researched):
+  //   • Only the FIRST artwork entry is used on iOS — put smallest first so it
+  //     renders sharply in the small lock-screen widget (96×96 or 128×128).
+  //   • iOS 18+ uses 512×512 for the full-screen player; include it last.
+  //   • album field is ignored on iOS when artist is set — omit to save bytes.
+  //   • Artwork must be an absolute HTTPS URL — blob: URLs work on desktop but
+  //     are unreliable on iOS PWA.
   private updateMediaMetadata(song: Song | null) {
     if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
     if (!song) { navigator.mediaSession.metadata = null; return; }
 
-    const artworkUrl = song.imageUrl?.startsWith('http')
+    const raw = song.imageUrl?.startsWith('http')
       ? song.imageUrl
       : song.imageUrl
         ? new URL(song.imageUrl, window.location.origin).toString()
         : FALLBACK_ARTWORK;
 
+    // Ensure HTTPS — some CDN URLs come as HTTP
+    const artworkUrl = raw.replace(/^http:\/\//i, 'https://');
+
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: song.title || 'Unknown Title',
         artist: resolveArtist(song),
-        album: (song as any).album || '',
+        // album intentionally omitted — iOS ignores it when artist is set,
+        // and on Android it takes up space without adding value here.
         artwork: [
+          // Smallest first — iOS picks the first entry for the lock-screen widget
           { src: artworkUrl, sizes: '96x96',   type: 'image/jpeg' },
+          { src: artworkUrl, sizes: '128x128', type: 'image/jpeg' },
           { src: artworkUrl, sizes: '192x192', type: 'image/jpeg' },
+          { src: artworkUrl, sizes: '256x256', type: 'image/jpeg' },
           { src: artworkUrl, sizes: '512x512', type: 'image/jpeg' },
         ],
       });
-    } catch {
-      // Ignore.
-    }
+    } catch { /* ignore */ }
   }
 
-  // ── Media Session action handlers ─────────────────────────────────────────
-  // Registered once at construction. All handlers are kept alive for the
-  // lifetime of the app — this is the official pattern per web.dev/media-session.
+  // ── Media Session handlers ────────────────────────────────────────────────
+  // Critical iOS rule (from research):
+  //   Registering seekbackward + seekforward REPLACES the nexttrack/previoustrack
+  //   buttons with skip-10s buttons on iOS Control Center / lock screen.
+  //   Solution: on iOS, register ONLY nexttrack/previoustrack (no seek handlers).
+  //   On Android/Chrome, register all handlers for full seek bar support.
   private registerMediaSessionHandlers() {
-    if (typeof navigator === 'undefined' || this.mediaSessionRegistered || !('mediaSession' in navigator)) return;
+    if (
+      typeof navigator === 'undefined' ||
+      this.mediaSessionRegistered ||
+      !('mediaSession' in navigator)
+    ) return;
     this.mediaSessionRegistered = true;
 
-    setMediaSessionHandler('play', () => {
+    // play / pause — universal
+    trySetActionHandler('play', () => {
+      if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
       void this.resumeSong();
     });
 
-    setMediaSessionHandler('pause', () => {
+    trySetActionHandler('pause', () => {
+      if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'paused';
+      }
       this.pauseSong();
     });
 
-    setMediaSessionHandler('nexttrack', () => {
+    // nexttrack / previoustrack — universal
+    // Set playbackState = 'playing' immediately so iOS doesn't remove controls
+    // while the new track is loading.
+    trySetActionHandler('nexttrack', () => {
+      if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
       usePlayerStore.setState({ lastPlayNextTime: 0 });
       usePlayerStore.getState().playNext();
     });
 
-    setMediaSessionHandler('previoustrack', () => {
+    trySetActionHandler('previoustrack', () => {
+      if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
       usePlayerStore.getState().playPrevious();
     });
 
-    // seekto — lock screen progress bar scrubbing
-    setMediaSessionHandler('seekto', (details) => {
-      if (typeof details.seekTime !== 'number') return;
-      this.seekTo(details.seekTime);
-      // Immediately update position state so lock screen reflects new position
-      this.syncPositionState();
-    });
+    if (IS_IOS) {
+      // iOS: do NOT register seekbackward/seekforward — they hide next/prev buttons.
+      // Explicitly null them out in case a previous registration exists.
+      trySetActionHandler('seekbackward', null);
+      trySetActionHandler('seekforward', null);
+      // seekto still works on iOS for progress bar scrubbing
+      trySetActionHandler('seekto', (details) => {
+        if (typeof details.seekTime !== 'number') return;
+        this.seekTo(details.seekTime);
+        this.syncPositionState();
+      });
+    } else {
+      // Android / Chrome / desktop: register full seek support
+      trySetActionHandler('seekto', (details) => {
+        if (typeof details.seekTime !== 'number') return;
+        this.seekTo(details.seekTime);
+        this.syncPositionState();
+      });
 
-    // seekbackward / seekforward — headset buttons, lock screen skip buttons
-    setMediaSessionHandler('seekbackward', (details) => {
-      const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
-      const next = Math.max(0, this.getCurrentTime() - offset);
-      this.seekTo(next);
-      this.syncPositionState();
-    });
+      trySetActionHandler('seekbackward', (details) => {
+        const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
+        this.seekTo(Math.max(0, this.getCurrentTime() - offset));
+        this.syncPositionState();
+      });
 
-    setMediaSessionHandler('seekforward', (details) => {
-      const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
-      const duration = this.getDuration();
-      const next = duration > 0 ? Math.min(duration, this.getCurrentTime() + offset) : this.getCurrentTime() + offset;
-      this.seekTo(next);
-      this.syncPositionState();
-    });
+      trySetActionHandler('seekforward', (details) => {
+        const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
+        const dur = this.getDuration();
+        this.seekTo(dur > 0 ? Math.min(dur, this.getCurrentTime() + offset) : this.getCurrentTime() + offset);
+        this.syncPositionState();
+      });
+    }
   }
 
   // ── Output device ─────────────────────────────────────────────────────────
@@ -284,7 +328,7 @@ class AudioManager {
 
     const howl = new Howl({
       src: [audioUrl],
-      html5: true,
+      html5: true,   // MUST be true — Web Audio API breaks background on iOS PWA
       preload: true,
       volume: this.volume,
 
@@ -292,23 +336,18 @@ class AudioManager {
         this.currentSong = song;
         this.currentSound = howl;
         this.syncDebugHandles();
-
-        // Attach native timeupdate AFTER play starts so the node exists
+        // Attach native timeupdate after play so the <audio> node exists
         this.attachNativeTimeUpdate();
-
         this.updateMediaMetadata(song);
         usePlayerStore.setState({
           currentSong: song,
           isPlaying: true,
           duration: howl.duration() || usePlayerStore.getState().duration,
         });
-
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'playing';
         }
-
         void this.applyPreferredOutputDevice();
-        // Sync position immediately so lock screen shows correct time from the start
         this.syncPositionState();
       },
 
@@ -321,7 +360,6 @@ class AudioManager {
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'paused';
         }
-        // Keep timeupdate attached during pause so position stays accurate
       },
 
       onstop: () => {
@@ -332,9 +370,7 @@ class AudioManager {
       },
 
       onload: () => {
-        const dur = howl.duration() || 0;
-        usePlayerStore.setState({ duration: dur });
-        // Duration is now known — update position state
+        usePlayerStore.setState({ duration: howl.duration() || 0 });
         this.syncPositionState();
       },
 
@@ -386,7 +422,7 @@ class AudioManager {
       return;
     }
 
-    // Sync queue from store so background/lock screen state is always fresh
+    // Always sync queue from store — keeps lock screen state fresh
     const storeState = usePlayerStore.getState();
     if (storeState.queue.length > 0) {
       this.queue = [...storeState.queue];
@@ -407,6 +443,7 @@ class AudioManager {
     this.disposeCurrentSound();
 
     this.currentSong = song;
+    // Set metadata immediately so lock screen shows song info before audio loads
     this.updateMediaMetadata(song);
     this.currentSound = this.buildHowl(song);
     this.syncDebugHandles();
@@ -424,7 +461,8 @@ class AudioManager {
     const song = store.currentSong ?? this.currentSong;
     if (!song) return;
 
-    // Resume suspended AudioContext (common after backgrounding on mobile)
+    // Resume suspended AudioContext — happens after backgrounding on Android/desktop.
+    // On iOS PWA we use html5:true so Howler.ctx may be null — that's fine.
     if (Howler.ctx && Howler.ctx.state === 'suspended') {
       try { await Howler.ctx.resume(); } catch { /* ignore */ }
     }
