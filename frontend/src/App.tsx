@@ -432,17 +432,21 @@ function App() {
 			void audioManager.resumeIfPausedUnexpectedly();
 		};
 
-		// Resume after tab switch, screen unlock, or network reconnect
+		// Resume after tab switch, screen unlock, network reconnect, or any tap
+		// pointerup covers iOS PWA interruptions (calls, Siri, etc.) that
+		// visibilitychange alone doesn't catch
 		const handleResume = () => void audioManager.resumeIfPausedUnexpectedly();
 
 		document.addEventListener('visibilitychange', handleVisibilityChange);
 		window.addEventListener('focus', handleResume);
 		window.addEventListener('online', handleResume);
+		document.addEventListener('pointerup', handleResume, { passive: true });
 
 		return () => {
 			document.removeEventListener('visibilitychange', handleVisibilityChange);
 			window.removeEventListener('focus', handleResume);
 			window.removeEventListener('online', handleResume);
+			document.removeEventListener('pointerup', handleResume);
 		};
 	}, []);
 
