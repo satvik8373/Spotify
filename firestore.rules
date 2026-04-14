@@ -55,8 +55,8 @@ service cloud.firestore {
     
     // Playlists collection
     match /playlists/{playlistId} {
-      // Allow read if authenticated (for public playlists and user's own playlists)
-      allow read: if isAuthenticated();
+      // Guests can read only public playlists; authenticated users can read all playlists.
+      allow read: if resource.data.isPublic == true || isAuthenticated();
       allow create: if isAuthenticated();
       allow update, delete: if isAuthenticated() && 
         (isOwner(resource.data.createdBy.uid) || isOwner(resource.data.createdBy.id));

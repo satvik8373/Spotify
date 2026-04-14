@@ -1,6 +1,3 @@
-/* Import custom styles */
-@import './styles/spotify-sync.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -143,9 +140,10 @@
     /* Prevent any horizontal movement */
   }
 
-  /* iOS 100vh bug fix */
+  /* dvh fix for full-height utility */
   .full-h {
-    height: calc(var(--vh, 1vh) * 100);
+    height: 100dvh;
+    height: calc(var(--vh, 1dvh) * 100);
   }
 
   /* Fixed header — clears notch/Dynamic Island */
@@ -290,31 +288,29 @@
     opacity: 0.8;
   }
 
-  /* PWA Safe Area Support - Fixed for Standalone Mode */
+  /* PWA Safe Area Support */
   .pwa-safe-area {
-    background-color: var(--app-theme-color, #121212) !important;
-    min-height: 100vh;
+    background-color: var(--app-theme-color, #000000) !important;
+    min-height: 100dvh;
     min-height: -webkit-fill-available;
   }
 
   /* Ensure status bar area matches app background in standalone mode */
   @supports (padding-top: env(safe-area-inset-top)) {
-    /* Remove body padding - handle it per component instead */
     body {
       padding-top: 0px;
       padding-bottom: 0px;
     }
 
-    /* Fix for iOS standalone mode - prevent white bars */
     html {
       height: -webkit-fill-available;
-      background-color: #121212;
+      background-color: #000000;
     }
 
     body {
-      min-height: 100vh;
+      min-height: 100dvh;
       min-height: -webkit-fill-available;
-      background-color: #121212;
+      background-color: #000000;
     }
   }
 
@@ -462,7 +458,7 @@
 /* Improve scrolling experience on touch devices */
 @media (pointer: coarse) {
   .h-\[calc\(100vh-5rem\)\] {
-    height: calc(100vh - 5rem - env(safe-area-inset-bottom, 0px));
+    height: calc(100dvh - 5rem - env(safe-area-inset-bottom, 0px));
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
   }
@@ -788,10 +784,10 @@ img.object-cover.bg-zinc-800 {
   padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0rem));
 }
 
-/* Ensure content doesn't get hidden behind transparent nav */
+/* dvh fix: use dynamic viewport height so browser chrome is excluded on mobile */
 .h-screen {
-  height: 100vh;
-  height: calc(var(--vh, 1vh) * 100);
+  height: 100dvh;
+  height: calc(var(--vh, 1dvh) * 100);
 }
 
 /* Transparent nav appearance improvements */

@@ -19,7 +19,6 @@ import {
   Plus,
   Search,
   Heart,
-  FileText,
   Trash,
   Pause,
   Music2,
@@ -50,24 +49,19 @@ import {
 } from '../../components/ui/dropdown-menu';
 import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { SongFileUploader } from '../../components/playlist/SongFileUploader';
 import { updatePlaylistCoverFromSongs } from '../../services/playlistService';
 
 function AddSongsDialog({
   isOpen,
   onClose,
   playlistId,
-  initialTab,
 }: {
   isOpen: boolean;
   onClose: () => void;
   playlistId: string;
-  initialTab: 'search' | 'upload';
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const [activeTab, setActiveTab] = useState<'search' | 'upload'>(initialTab);
   // Removed unused addSongToPlaylist
   const {
     indianSearchResults,
@@ -187,69 +181,48 @@ function AddSongsDialog({
         <DialogHeader>
           <DialogTitle>Add Songs to Playlist</DialogTitle>
           <DialogDescription>
-            Search for songs or upload a file to add them to your playlist
+            Search for songs to add them to your playlist
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs
-          defaultValue="search"
-          value={activeTab}
-          onValueChange={(value: string) => setActiveTab(value as 'search' | 'upload')}
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="search" className="flex items-center gap-1">
+        <div className="mt-4">
+          <div className="relative">
+            <Input
+              placeholder="Search for songs..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="pr-10"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-full"
+              onClick={handleSearch}
+            >
               <Search className="h-4 w-4" />
-              <span>Search</span>
-            </TabsTrigger>
-            <TabsTrigger value="upload" className="flex items-center gap-1">
-              <FileText className="h-4 w-4" />
-              <span>Upload File</span>
-            </TabsTrigger>
-          </TabsList>
+            </Button>
+          </div>
 
-          <TabsContent value="search" className="mt-4">
-            <div className="relative">
-              <Input
-                placeholder="Search for songs..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="pr-10"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full"
-                onClick={handleSearch}
-              >
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <ScrollArea className="h-[400px] pr-4 mt-4 thin-scroll">
-              {isIndianMusicLoading ? (
-                <div className="p-4"></div>
-              ) : (
-                <>
-                  {isSearching && (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium">Search Results</h3>
-                      {indianSearchResults.length > 0 ? (
-                        indianSearchResults.map(song => renderSongItem(song, true))
-                      ) : (
-                        <p className="text-sm text-muted-foreground py-2">No results found</p>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value="upload" className="mt-4">
-            <SongFileUploader playlistId={playlistId} onClose={onClose} />
-          </TabsContent>
-        </Tabs>
+          <ScrollArea className="h-[400px] pr-4 mt-4 thin-scroll">
+            {isIndianMusicLoading ? (
+              <div className="p-4"></div>
+            ) : (
+              <>
+                {isSearching && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Search Results</h3>
+                    {indianSearchResults.length > 0 ? (
+                      indianSearchResults.map(song => renderSongItem(song, true))
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-2">No results found</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -269,12 +242,10 @@ export function PlaylistPage() {
   // Removed unused addSongToPlaylist from store
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showAddSongsDialog, setShowAddSongsDialog] = useState(false);
-  const [addSongsDialogTab, setAddSongsDialogTab] = useState<'search' | 'upload'>('search');
   const [isLiked, setIsLiked] = useState(false);
   const [metrics, setMetrics] = useState({ likes: 0, shares: 0, plays: 0 });
   const [hasPlayed, setHasPlayed] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   // Removed unused playingSongId state to avoid warnings
 
@@ -651,9 +622,7 @@ export function PlaylistPage() {
     }
   };
 
-  // Add a function to open the AddSongsDialog with a specific tab
-  const openAddSongsDialog = (tab: 'search' | 'upload' = 'search') => {
-    setAddSongsDialogTab(tab);
+  const openAddSongsDialog = () => {
     setShowAddSongsDialog(true);
   };
 
@@ -1004,19 +973,11 @@ export function PlaylistPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-popover text-popover-foreground border-border">
                   <DropdownMenuItem
-                    onClick={() => openAddSongsDialog('search')}
+                    onClick={openAddSongsDialog}
                     className="hover:bg-accent"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Songs
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => openAddSongsDialog('upload')}
-                    className="hover:bg-accent"
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Upload File
                   </DropdownMenuItem>
 
                   {isOwner && (
@@ -1066,7 +1027,7 @@ export function PlaylistPage() {
                     variant="ghost"
                     size="icon"
                     className="w-10 h-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
-                    onClick={() => openAddSongsDialog('search')}
+                    onClick={openAddSongsDialog}
                     title="Add songs"
                   >
                     <Plus className="h-5 w-5" />
@@ -1324,7 +1285,7 @@ export function PlaylistPage() {
                 Add some songs to your playlist by clicking the "Add songs" button.
               </p>
               <Button
-                onClick={() => openAddSongsDialog('search')}
+                onClick={openAddSongsDialog}
                 className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
               >
                 Add songs
@@ -1338,7 +1299,7 @@ export function PlaylistPage() {
       {currentPlaylist && currentPlaylist.songs.length === 0 && (
         <div className="fixed bottom-20 right-6 z-30">
           <Button
-            onClick={() => openAddSongsDialog('search')}
+            onClick={openAddSongsDialog}
             className="bg-green-500 text-black rounded-full shadow-lg flex items-center gap-2 px-4 sm:px-6 py-4 sm:py-6 h-auto hover:scale-105 transition-all hover:bg-green-400"
           >
             <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -1361,7 +1322,6 @@ export function PlaylistPage() {
           isOpen={showAddSongsDialog}
           onClose={() => setShowAddSongsDialog(false)}
           playlistId={currentPlaylist._id}
-          initialTab={addSongsDialogTab}
         />
       )}
 

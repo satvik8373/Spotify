@@ -1,5 +1,5 @@
 import axiosInstance from '../lib/axios';
-import { create } from 'zustand';
+import { createWithEqualityFn as create } from 'zustand/traditional';
 import { persist } from 'zustand/middleware';
 
 interface AuthStore {

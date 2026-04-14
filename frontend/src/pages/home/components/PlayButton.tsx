@@ -5,7 +5,7 @@ import { Pause, Play } from 'lucide-react';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
 
 const PlayButton = ({ song }: { song: Song }) => {
-  const { setCurrentSong, togglePlay } = usePlayerStore();
+  const { playAlbum, togglePlay } = usePlayerStore();
   const { isPlaying, currentSong } = usePlayerSync();
   const isCurrentSong = currentSong?._id === song._id;
 
@@ -13,7 +13,7 @@ const PlayButton = ({ song }: { song: Song }) => {
     if (isCurrentSong) {
       togglePlay();
     } else {
-      setCurrentSong(song);
+      playAlbum([song], 0);
     }
   };
 

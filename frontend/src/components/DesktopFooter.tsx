@@ -37,7 +37,6 @@ const DesktopFooter = () => {
                                 <li><a href="mailto:support@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Support</a></li>
                                 <li><Link to="/home" className="text-[#a7a7a7] hover:text-white hover:underline">Free Mobile App</Link></li>
                                 <li><Link to="/search" className="text-[#a7a7a7] hover:text-white hover:underline">Discover Music</Link></li>
-                                <li><Link to="/liked-songs/sync" className="text-[#a7a7a7] hover:text-white hover:underline">Import your music</Link></li>
                             </ul>
                         </div>
 

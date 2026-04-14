@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Search, Plus, ListPlus, User, RefreshCw } from 'lucide-react';
+import { Heart, Music, Play, Pause, Clock, MoreHorizontal, ArrowDownUp, Search, ListPlus, User, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShuffleButton } from '@/components/ShuffleButton';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,6 @@ import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { Song } from '@/types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { useSpotify } from '@/contexts/SpotifyContext';
 import { getHighestQualityAudioUrl } from '@/utils/jiosaavnAudio';
 import './liked-songs.css';
 import {
@@ -351,17 +350,14 @@ const MemoizedSongItem = React.memo(({
 MemoizedSongItem.displayName = 'MemoizedSongItem';
 
 const LikedSongsPage = () => {
-  const [isLoading, setIsLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sortMethod, setSortMethod] = useState<'recent' | 'title' | 'artist'>('recent');
   const [filterQuery, setFilterQuery] = useState('');
-
   const navigate = useNavigate();
 
   const { togglePlay, playAlbum, setIsPlaying, setUserInteracted } = usePlayerStore();
   const { currentSong, isPlaying } = usePlayerSync();
   const { isAuthenticated } = useAuthStore();
-  const { isAuthenticated: isSpotifyConnected, fetchSavedTracks } = useSpotify();
 
   // Use the store instead of local state for liked songs
   const { likedSongs, loadLikedSongs: loadLikedSongsFromStore, removeLikedSong: removeLikedSongFromStore } = useLikedSongsStore();
@@ -559,6 +555,10 @@ const LikedSongsPage = () => {
     setSortMethod(method);
   }, []);
 
+  const openImportTool = useCallback(() => {
+    navigate('/liked-songs/import');
+  }, [navigate]);
+
   // Play all liked songs
   const playAllSongs = useCallback(() => {
     if (likedSongs.length > 0) {
@@ -605,42 +605,6 @@ const LikedSongsPage = () => {
       playAllSongs();
     }
   }, [isCurrentPlaylistPlaying, handlePausePlaylist, playAllSongs]);
-
-  // Manual Spotify sync
-  const handleManualSync = useCallback(async () => {
-    if (!isSpotifyConnected) {
-      toast.error('Please connect to Spotify first');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      toast.loading('Syncing with Spotify...', { id: 'manual-sync' });
-
-      // Fetch saved tracks from Spotify
-      const spotifyTracks = await fetchSavedTracks(50); // Get recent 50 tracks
-
-      if (spotifyTracks.length === 0) {
-        toast.success('No new tracks to sync', { id: 'manual-sync' });
-        return;
-      }
-
-      // Process and add tracks (this would use the existing SpotifyLikedSongsSync logic)
-      // For now, just show success message
-      toast.success(`Found ${spotifyTracks.length} tracks from Spotify!`, { id: 'manual-sync' });
-
-      toast.success(`Found ${spotifyTracks.length} tracks from Spotify!`, { id: 'manual-sync' });
-
-      // Navigate to the sync page with spotify tab active
-      navigate('/liked-songs/sync');
-
-    } catch (error) {
-      // Manual sync error
-      toast.error('Failed to sync with Spotify', { id: 'manual-sync' });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isSpotifyConnected, fetchSavedTracks]);
 
   if (!isAuthenticated) {
     return (
@@ -701,29 +665,6 @@ const LikedSongsPage = () => {
                 accentColor="#1ed760"
               />
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
-                onClick={() => {
-                  navigate('/liked-songs/sync');
-                }}
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
-
-              {isSpotifyConnected && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
-                  onClick={handleManualSync}
-                  disabled={isLoading}
-                  title="Sync with Spotify"
-                >
-                  <RefreshCw className={cn("h-5 w-5", isLoading && "animate-spin")} />
-                </Button>
-              )}
             </div>
 
             <DropdownMenu>
@@ -744,6 +685,10 @@ const LikedSongsPage = () => {
                 <DropdownMenuItem onClick={() => handleSortChange('artist')}>
                   <Music className="h-4 w-4 mr-2" />
                   Artist
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={openImportTool}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Open Import Tool
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -793,30 +738,6 @@ const LikedSongsPage = () => {
                 accentColor="#1ed760"
               />
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-12 w-12 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
-                onClick={() => {
-                  navigate('/liked-songs/sync');
-                }}
-              >
-                <Plus className="h-6 w-6" />
-              </Button>
-
-              {isSpotifyConnected && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-12 w-12 text-white/80 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200"
-                  onClick={handleManualSync}
-                  disabled={isLoading}
-                  title="Sync with Spotify"
-                >
-                  <RefreshCw className={cn("h-6 w-6", isLoading && "animate-spin")} />
-                </Button>
-              )}
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-12 w-12 text-white/70 hover:text-white hover:bg-white/10">
@@ -835,6 +756,10 @@ const LikedSongsPage = () => {
                   <DropdownMenuItem onClick={() => handleSortChange('artist')}>
                     <Music className="h-4 w-4 mr-2" />
                     Artist
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={openImportTool}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Open Import Tool
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -863,9 +788,7 @@ const LikedSongsPage = () => {
 
       {/* Songs List - Spotify-style */}
       <div className={cn(isMobile ? "px-4 pb-32" : "px-8 pb-8")}>
-        {isLoading ? (
-          <div className="py-12"></div>
-        ) : likedSongs.length > 0 ? (
+        {likedSongs.length > 0 ? (
           <div className={cn("pb-8", isMobile ? "pb-32" : "")}>
             {/* Desktop header */}
             {!isMobile && (
@@ -910,18 +833,14 @@ const LikedSongsPage = () => {
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Heart className="h-16 w-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">No liked songs yet</h3>
-            <p className="text-muted-foreground mb-6">Songs you like will appear here</p>
-            <Button onClick={() => {
-              navigate('/liked-songs/sync');
-            }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Songs
+            <p className="text-muted-foreground mb-5">Songs you like will appear here</p>
+            <Button onClick={openImportTool}>
+              <Upload className="h-4 w-4 mr-2" />
+              Open Import Tool
             </Button>
           </div>
         )}
       </div>
-
-      {/* Add Songs Dialog removed - replaced with /liked-songs/sync page */}
     </div>
   );
 };

@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useCallback, memo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import LeftSidebar from './components/LeftSidebar';
-import AudioPlayer from './components/AudioPlayer';
 import { PlaybackControls } from './components/PlaybackControls';
 import MobileNav from './components/MobileNav';
 import Header from '@/components/Header';
@@ -15,7 +14,6 @@ import { useAlbumColors } from '@/hooks/useAlbumColors';
 
 // Memoized components to prevent unnecessary re-renders
 const MemoizedLeftSidebar = memo(LeftSidebar);
-const MemoizedAudioPlayer = memo(AudioPlayer);
 const MemoizedPlaybackControls = memo(PlaybackControls);
 const MemoizedMobileNav = memo(MobileNav);
 const MemoizedHeader = memo(Header);
@@ -183,8 +181,7 @@ const MainLayout = () => {
     location.pathname.startsWith('/library')
   );
 
-  const isSyncPage = location.pathname === '/liked-songs/sync';
-  const showMobilePlayer = hasActiveSong && !isSyncPage;
+  const showMobilePlayer = hasActiveSong;
   const hideDesktopFooter = (
     location.pathname.startsWith('/playlist/') ||
     location.pathname.startsWith('/jiosaavn/playlist/') ||
@@ -193,10 +190,13 @@ const MainLayout = () => {
   );
 
   const mobileBottomSubtractPx = MOBILE_NAV_BASE_PX + (showMobilePlayer ? MOBILE_PLAYER_PADDING_PX : 0);
+  // Use 100dvh (dynamic viewport height) so the layout accounts for browser chrome on mobile.
+  // Fall back to the JS-measured --vh variable for browsers that don't support dvh yet.
+  const dvh = 'calc(var(--vh, 1dvh) * 100)';
   const mobileHeight = isMobile
     ? isMobileHeaderRoute
-      ? `calc(100vh - ${mobileBottomSubtractPx}px - ${MOBILE_HEADER_PX}px - ${MOBILE_SAFE_TOP})`
-      : `calc(100vh - ${mobileBottomSubtractPx}px)`
+      ? `calc(${dvh} - ${mobileBottomSubtractPx}px - ${MOBILE_HEADER_PX}px - ${MOBILE_SAFE_TOP})`
+      : `calc(${dvh} - ${mobileBottomSubtractPx}px)`
     : 'auto';
   const mobileTopOffset = isMobileHeaderRoute
     ? `calc(${MOBILE_HEADER_PX}px + ${MOBILE_SAFE_TOP})`
@@ -251,7 +251,9 @@ const MainLayout = () => {
   const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : width;
 
   return (
-    <div className="h-screen bg-transparent text-foreground flex flex-col overflow-hidden max-w-full relative">
+    <div className="bg-transparent text-foreground flex flex-col overflow-hidden max-w-full relative"
+      style={{ height: 'calc(var(--vh, 1dvh) * 100)' }}
+    >
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block flex-shrink-0 relative z-[100]">
         <MemoizedHeader />
@@ -265,9 +267,6 @@ const MainLayout = () => {
           marginTop: mobileTopOffset,
         }}
       >
-        {/* Audio player component - hidden but functional */}
-        <MemoizedAudioPlayer />
-
         {/* Left sidebar - hidden on mobile */}
         {!isMobile && (
           <div

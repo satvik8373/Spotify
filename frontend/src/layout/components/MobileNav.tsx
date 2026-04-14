@@ -25,7 +25,7 @@ import type { AudioOutputDeviceType } from '@/lib/audioOutputDevice';
  * 
  * Features:
  * - Profile dropdown with logout functionality
- * - Integration with Media Session API in AudioPlayer.tsx for lockscreen controls
+ * - Integration with the centralized audio manager for lockscreen controls
  * 
  * Note: For full lockscreen controls to work properly on mobile devices:
  * - iOS: Activate video to fullscreen mode, then swipe up to home screen
@@ -465,7 +465,7 @@ const MobileNav = () => {
             <div className="nav-background"></div>
 
             {/* Combined Mobile Player Segment */}
-            {hasActiveSong && location.pathname !== '/liked-songs/sync' && (
+            {hasActiveSong && (
               <div className="relative z-20 w-full border-b border-white/5 bg-[#101522]/45">
                 {/* Album Color Tint */}
                 <div

@@ -101,7 +101,8 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 // Cleanup legacy custom service worker registrations.
-// Vite PWA handles registration via registerSW.js.
+// Vite PWA handles registration via registerSW.js (sw.js).
+// Only unregister the old hand-rolled service-worker.js — never touch the Workbox SW.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.getRegistrations()
@@ -112,7 +113,7 @@ if ('serviceWorker' in navigator) {
             registration.waiting?.scriptURL ||
             registration.installing?.scriptURL ||
             '';
-
+          // Only remove the old manual SW, not the Workbox-generated one
           if (scriptUrl.includes('/service-worker.js')) {
             registration.unregister().catch(() => { });
           }
@@ -122,13 +123,33 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-if (isIOSPWA && 'serviceWorker' in navigator) {
-  // For iOS PWA, unregister any existing service workers to prevent issues
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    registrations.forEach(registration => {
-      registration.unregister().catch(() => { });
+// Auto-apply waiting SW update and reload so all users get new changes immediately.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.ready.then((registration) => {
+    // Poll for updates every 60 seconds while the app is open
+    setInterval(() => registration.update().catch(() => {}), 60_000);
+
+    // If a new SW is already waiting (e.g. user had the tab open), activate it now
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+
+    // Watch for future updates
+    registration.addEventListener('updatefound', () => {
+      const newWorker = registration.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // New SW installed and waiting — tell it to take over immediately
+          newWorker.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
     });
-  }).catch(() => { });
+  }).catch(() => {});
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

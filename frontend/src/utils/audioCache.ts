@@ -112,10 +112,15 @@ export const isAudioCached = async (url: string): Promise<boolean> => {
   if (!('caches' in window) || !url) return false;
 
   try {
-    const cache = await caches.open('mavrixfy-audio-v2.1.0');
-    const response = await cache.match(url);
-    return !!response;
-  } catch (error) {
+    // Check across all open caches (Workbox names them dynamically)
+    const cacheNames = await caches.keys();
+    for (const name of cacheNames) {
+      const cache = await caches.open(name);
+      const response = await cache.match(url);
+      if (response) return true;
+    }
+    return false;
+  } catch {
     return false;
   }
 };

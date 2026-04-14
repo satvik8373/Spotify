@@ -234,21 +234,20 @@ const mixRgb = (from: [number, number, number], to: [number, number, number], t:
 const rgbToCss = ([r, g, b]: [number, number, number]) => `rgb(${r} ${g} ${b})`;
 
 export const PlaybackControls = () => {
-	const { togglePlay, playNext, playPrevious, playAlbum, removeFromQueue } = usePlayerStore();
+	const { togglePlay, playNext, playPrevious, playAlbum, removeFromQueue, seekTo, toggleRepeat, setVolume } = usePlayerStore();
 	const { isPlaying, currentSong } = usePlayerSync();
 	const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
 	const shuffleMode = usePlayerStore(state => state.shuffleMode);
 	const queue = usePlayerStore(state => state.queue);
 	const currentIndex = usePlayerStore(state => state.currentIndex);
+	const currentTime = usePlayerStore(state => state.currentTime);
+	const duration = usePlayerStore(state => state.duration);
+	const volume = usePlayerStore(state => state.volume);
+	const isRepeating = usePlayerStore(state => state.isRepeating);
 
-	const [volume, setVolume] = useState(100);
-	const [currentTime, setCurrentTime] = useState(0);
-	const [duration, setDuration] = useState(0);
 	const [isTransitioning, setIsTransitioning] = useState(false);
 	const [showSongDetails, setShowSongDetails] = useState(false);
-	const [isRepeating, setIsRepeating] = useState(false);
 	const [isLiked, setIsLiked] = useState(false);
-	const [showVolumeSlider, setShowVolumeSlider] = useState(false);
 	const [showQueue, setShowQueue] = useState(false);
 	const [isMiniPlayerOpen, setIsMiniPlayerOpen] = useState(false);
 	const [isFullscreenPlayerOpen, setIsFullscreenPlayerOpen] = useState(false);
@@ -257,9 +256,7 @@ export const PlaybackControls = () => {
 	const [, setHasFullscreenDetailsUnlocked] = useState(false);
 	const [fullscreenArtworkLuminance, setFullscreenArtworkLuminance] = useState(0.45);
 	const [fullscreenSecondaryRgb, setFullscreenSecondaryRgb] = useState<[number, number, number]>([16, 16, 22]);
-	const audioRef = useRef<HTMLAudioElement | null>(null);
 	const playerRef = useRef<HTMLDivElement>(null);
-	const volumeControlRef = useRef<HTMLDivElement>(null);
 	const miniPlayerWindowRef = useRef<Window | null>(null);
 	const fullscreenScrollContainerRef = useRef<HTMLDivElement | null>(null);
 	const fullscreenRelatedSliderRef = useRef<HTMLDivElement | null>(null);
@@ -328,12 +325,9 @@ export const PlaybackControls = () => {
 	} as const;
 
 	// Desktop seek helper for custom progress bar
-	const seekTo = (newTime: number) => {
+	const seekToPosition = (newTime: number) => {
 		if (isNaN(newTime)) return;
-		if (audioRef.current) {
-			audioRef.current.currentTime = Math.max(0, Math.min(newTime, isNaN(duration) ? 0 : duration));
-			setCurrentTime(audioRef.current.currentTime);
-		}
+		seekTo(Math.max(0, Math.min(newTime, isNaN(duration) ? 0 : duration)));
 	};
 
 	// Get liked state from the liked songs store if possible
@@ -436,42 +430,6 @@ export const PlaybackControls = () => {
 		};
 	}, [currentSong?.imageUrl]);
 
-	// Handle audio element events
-	useEffect(() => {
-		const audioElement = document.querySelector("audio");
-		if (!audioElement) {
-			return;
-		}
-
-		audioRef.current = audioElement;
-		const audio = audioRef.current;
-
-		// Set initial volume
-		audio.volume = volume / 100;
-
-		const updateTime = () => {
-			if (audio && !isNaN(audio.currentTime)) {
-				setCurrentTime(audio.currentTime);
-			}
-		};
-
-		const updateDuration = () => {
-			if (audio && !isNaN(audio.duration)) {
-				setDuration(audio.duration);
-			}
-		};
-
-		audio.addEventListener("timeupdate", updateTime);
-		audio.addEventListener("loadedmetadata", updateDuration);
-
-		return () => {
-			if (audio) {
-				audio.removeEventListener("timeupdate", updateTime);
-				audio.removeEventListener("loadedmetadata", updateDuration);
-			}
-		};
-	}, [currentSong, volume]);
-
 	// Listen for like updates from other components
 	useEffect(() => {
 		const handleLikeUpdate = (e: Event) => {
@@ -537,20 +495,6 @@ export const PlaybackControls = () => {
 		return () => {
 			window.removeEventListener('focus', handleFocus);
 			window.removeEventListener('pageshow', handleFocus);
-		};
-	}, []);
-
-	// Handle click outside volume control
-	useEffect(() => {
-		const handleClickOutside = (e: MouseEvent) => {
-			if (volumeControlRef.current && !volumeControlRef.current.contains(e.target as Node)) {
-				setShowVolumeSlider(false);
-			}
-		};
-
-		document.addEventListener('mousedown', handleClickOutside);
-		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
 		};
 	}, []);
 
@@ -640,7 +584,7 @@ export const PlaybackControls = () => {
 		const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
 		const safeCurrent = Number.isFinite(currentTime) && currentTime >= 0 ? Math.min(currentTime, safeDuration || currentTime) : 0;
 		const progressPct = safeDuration > 0 ? (safeCurrent / safeDuration) * 100 : 0;
-		const isAudioMuted = Boolean(audioRef.current?.muted || (audioRef.current && audioRef.current.volume <= 0.01));
+		const isAudioMuted = volume <= 0;
 
 		if (titleEl) titleEl.textContent = songTitle;
 		if (artistEl) artistEl.textContent = songArtist;
@@ -1049,18 +993,14 @@ export const PlaybackControls = () => {
 		});
 
 		progressTrack?.addEventListener("click", (event) => {
-			const audioElement = audioRef.current;
-			if (!audioElement) return;
-			const effectiveDuration = Number.isFinite(audioElement.duration) && audioElement.duration > 0
-				? audioElement.duration
-				: 0;
+			const effectiveDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
 			if (!effectiveDuration || effectiveDuration <= 0) return;
 			const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
 			const offsetX = event.clientX - rect.left;
 			const ratio = Math.max(0, Math.min(1, offsetX / rect.width));
-			audioElement.currentTime = ratio * effectiveDuration;
+			seekTo(ratio * effectiveDuration);
 		});
-	}, [toggleLikeSong]);
+	}, [duration, seekTo, toggleLikeSong]);
 
 	const toggleMiniPlayer = useCallback(async () => {
 		if (miniPlayerWindowRef.current && !miniPlayerWindowRef.current.closed) {
@@ -1179,15 +1119,6 @@ export const PlaybackControls = () => {
 		};
 	}, [closeMiniPlayer]);
 
-	// Handle seeking
-	// const handleSeek = (value: number[]) => {
-	// 	const newTime = value[0];
-	// 	if (audioRef.current) {
-	// 		audioRef.current.currentTime = newTime;
-	// 		setCurrentTime(newTime);
-	// 	}
-	// };
-
 	const handleLikeToggle = (e: React.MouseEvent) => {
 		// Stop event propagation to prevent the song details view from opening
 		e.stopPropagation();
@@ -1212,10 +1143,6 @@ export const PlaybackControls = () => {
 				source: 'PlaybackControls'
 			}
 		}));
-	};
-
-	const toggleRepeat = () => {
-		setIsRepeating(!isRepeating);
 	};
 
 	if (!currentSong) return null;
@@ -1701,11 +1628,10 @@ export const PlaybackControls = () => {
 								<div
 									className="relative w-full cursor-pointer py-1"
 									onClick={(e) => {
-										if (!audioRef.current) return;
 										const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
 										const offsetX = e.clientX - rect.left;
 										const pct = Math.max(0, Math.min(1, offsetX / rect.width));
-										seekTo(pct * (isNaN(duration) ? 0 : duration));
+										seekToPosition(pct * (isNaN(duration) ? 0 : duration));
 									}}
 								>
 									<div className="h-1 w-full rounded-full overflow-hidden bg-white/30 group-hover:bg-white/40 transition-colors">
@@ -1756,9 +1682,6 @@ export const PlaybackControls = () => {
 									startingValue={0}
 									onValueChange={(val) => {
 										setVolume(val);
-										if (audioRef.current) {
-											audioRef.current.volume = val / 100;
-										}
 									}}
 									className="w-full"
 								/>

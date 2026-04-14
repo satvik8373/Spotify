@@ -39,9 +39,11 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     togglePlay,
     playNext,
     playPrevious,
-    currentTime: storeCurrentTime,
-    duration: storeDuration,
-    setCurrentTime: setStoreCurrentTime,
+    currentTime,
+    duration,
+    seekTo,
+    isRepeating,
+    toggleRepeat,
     queue,
     currentIndex,
     playAlbum
@@ -50,10 +52,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const { currentSong, isPlaying } = usePlayerSync();
 
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
-  const [isRepeating, setIsRepeating] = useState(false);
   const [showQueue, setShowQueue] = useState(false); // Start with queue closed
   const [showMenu, setShowMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -81,7 +80,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     initialDirection: null as 'horizontal' | 'vertical' | null
   });
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSeekTimeRef = useRef<number>(0);
@@ -224,35 +222,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     };
   }, [currentSong, likedSongIds]);
 
-  // Audio element sync
-  useEffect(() => {
-    audioRef.current = document.querySelector("audio");
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    setCurrentTime(storeCurrentTime || audio.currentTime);
-    setDuration(storeDuration || audio.duration);
-
-    const updateTime = () => {
-      setCurrentTime(audio.currentTime);
-      if (setStoreCurrentTime) setStoreCurrentTime(audio.currentTime);
-    };
-
-    const updateDuration = () => {
-      if (!isNaN(audio.duration)) {
-        setDuration(audio.duration);
-      }
-    };
-
-    audio.addEventListener("timeupdate", updateTime);
-    audio.addEventListener("loadedmetadata", updateDuration);
-
-    return () => {
-      audio.removeEventListener("timeupdate", updateTime);
-      audio.removeEventListener("loadedmetadata", updateDuration);
-    };
-  }, [currentSong, storeCurrentTime, storeDuration, setStoreCurrentTime]);
-
   // Optimized seek function with throttling
   const handleSeek = (clientX: number, rect: DOMRect, immediate = false) => {
     const offsetX = clientX - rect.left;
@@ -266,11 +235,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
     const now = Date.now();
     if (immediate || now - lastSeekTimeRef.current > 100) { // Throttle to 10fps for audio seeking
       lastSeekTimeRef.current = now;
-
-      if (audioRef.current && !isNaN(newTime)) {
-        audioRef.current.currentTime = newTime;
-        setCurrentTime(newTime);
-        if (setStoreCurrentTime) setStoreCurrentTime(newTime);
+      if (!isNaN(newTime)) {
+        seekTo(newTime);
       }
     } else {
       // Clear previous timeout and set new one for delayed seek
@@ -279,10 +245,8 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       }
 
       dragTimeoutRef.current = setTimeout(() => {
-        if (audioRef.current && !isNaN(newTime)) {
-          audioRef.current.currentTime = newTime;
-          setCurrentTime(newTime);
-          if (setStoreCurrentTime) setStoreCurrentTime(newTime);
+        if (!isNaN(newTime)) {
+          seekTo(newTime);
         }
       }, 50);
     }
@@ -978,7 +942,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                   </button>
 
                   <button
-                    onClick={() => setIsRepeating(!isRepeating)}
+                    onClick={toggleRepeat}
                     className={cn(
                       "p-1.5 active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10",
                       isRepeating ? "text-white bg-white/20" : "text-white/70"
@@ -1219,7 +1183,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 </button>
 
                 <button
-                  onClick={() => setIsRepeating(!isRepeating)}
+                  onClick={toggleRepeat}
                   className={cn(
                     "p-2 active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10",
                     isRepeating ? "text-white bg-white/20" : "text-white/70"
@@ -1268,5 +1232,4 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 };
 
 export default SongDetailsView;
-
 

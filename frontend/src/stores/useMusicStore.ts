@@ -1,7 +1,7 @@
 import axiosInstance from '../lib/axios';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { Album, Song, Stats } from '@/types';
-import { create } from 'zustand';
+import { createWithEqualityFn as create } from 'zustand/traditional';
 import { requestManager } from '@/services/requestManager';
 import { getHighestQualityAudioUrl } from '@/utils/jiosaavnAudio';
 

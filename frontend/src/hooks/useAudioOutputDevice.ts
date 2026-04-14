@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { detectAudioOutputDeviceType, type AudioOutputDeviceType } from '@/lib/audioOutputDevice';
+import { audioManager } from '@/utils/audioManager';
 
 const DEFAULT_DEVICE_LABEL = 'This web browser';
 
@@ -12,8 +13,7 @@ interface AudioOutputState {
 }
 
 const getAudioElement = (): HTMLAudioElement | null => {
-  if (typeof document === 'undefined') return null;
-  return document.querySelector('audio');
+  return audioManager.getCurrentNodeForOutput();
 };
 
 export const useAudioOutputDevice = (isActive: boolean): AudioOutputState => {

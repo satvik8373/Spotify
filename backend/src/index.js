@@ -4,6 +4,18 @@ import dotenv from "dotenv";
 // Load environment variables first
 dotenv.config();
 
+// Normalize local development defaults even if .env contains production values.
+// This keeps npm run dev behavior predictable on localhost.
+const isLocalRuntime = !process.env.VERCEL;
+const isDevLifecycle = process.env.npm_lifecycle_event === "dev";
+if (isLocalRuntime && isDevLifecycle) {
+  process.env.NODE_ENV = "development";
+
+  if (!process.env.FRONTEND_URL || process.env.FRONTEND_URL.includes("mavrixfy.site")) {
+    process.env.FRONTEND_URL = "http://localhost:3000";
+  }
+}
+
 
 import fileUpload from "express-fileupload";
 import path from "path";
@@ -22,7 +34,6 @@ import authRoutes from "./routes/auth.route.js";
 import songRoutes from "./routes/song.route.js";
 import albumRoutes from "./routes/album.route.js";
 import statRoutes from "./routes/stat.route.js";
-import spotifyRoutes from "./routes/spotify.route.js";
 import musicRoutes from "./routes/music.route.js";
 import playlistRoutes from "./routes/playlist.route.js";
 import moodPlaylistRoutes from "./routes/moodPlaylist.route.js";
@@ -133,20 +144,22 @@ app.use(async (req, res, next) => {
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, "public")));
 
-// Only use file upload middleware in non-Vercel environment
-if (!process.env.VERCEL) {
-  app.use(
-    fileUpload({
-      useTempFiles: true,
-      tempFileDir: path.join(__dirname, "tmp"),
-      createParentPath: true,
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB  max file size
-      },
-    })
-  );
+// Use file upload middleware in all environments.
+// On Vercel, keep uploads in memory (no temp filesystem dependency).
+const uploadUsesTempFiles = !process.env.VERCEL;
+app.use(
+  fileUpload({
+    useTempFiles: uploadUsesTempFiles,
+    ...(uploadUsesTempFiles ? { tempFileDir: path.join(__dirname, "tmp") } : {}),
+    createParentPath: uploadUsesTempFiles,
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB max file size
+    },
+  })
+);
 
-  // cron jobs
+// Temp file cleanup is only needed when temp files are enabled.
+if (uploadUsesTempFiles) {
   const tempDir = path.join(process.cwd(), "tmp");
   cron.schedule("0 * * * *", () => {
     if (fs.existsSync(tempDir)) {
@@ -156,7 +169,7 @@ if (!process.env.VERCEL) {
           return;
         }
         for (const file of files) {
-          fs.unlink(path.join(tempDir, file), (err) => { });
+          fs.unlink(path.join(tempDir, file), () => { });
         }
       });
     }
@@ -172,7 +185,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/songs", songRoutes);
 app.use("/api/albums", albumRoutes);
 app.use("/api/stats", statRoutes);
-app.use("/api/spotify", spotifyRoutes);
 app.use("/api/music", musicRoutes);
 app.use("/api/playlists", moodPlaylistRoutes);
 app.use("/api/playlists", playlistRoutes);
@@ -186,13 +198,6 @@ app.use("/api/otp", otpRoutes);
 app.use("/api/app", appRoutes);
 app.use("/api/version", versionRoutes);
 app.use("/api/search", smartSearchRoutes);
-
-// Special route to handle Spotify callback directly
-app.get('/spotify-callback', (req, res) => {
-  // Redirect to our API endpoint that handles the callback
-  const { code, state } = req.query;
-  res.redirect(`/api/spotify/callback?code=${code}&state=${state}`);
-});
 
 // Add a root route handler
 app.get('/', (req, res) => {
@@ -267,11 +272,15 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-httpServer.listen(PORT, () => {
-  console.log("Server is running on port " + PORT);
+let startupResolved = false;
+
+const logStartupStatus = (port, fallbackReason = "") => {
+  console.log(`Server is running on port ${port}`);
+  if (fallbackReason) {
+    console.log(`Port fallback: ${fallbackReason}`);
+  }
   console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Running on Vercel: ${process.env.VERCEL ? 'Yes' : 'No'}`);
 
   // Verify email configuration
@@ -282,4 +291,29 @@ httpServer.listen(PORT, () => {
       console.log('⚠ Email service not configured - OTP will be shown in console only');
     }
   });
+};
+
+const startServer = (port, fallbackReason = "") => {
+  httpServer.listen(port, () => {
+    if (startupResolved) return;
+    startupResolved = true;
+    const address = httpServer.address();
+    const activePort = typeof address === 'object' && address ? address.port : port;
+    logStartupStatus(activePort, fallbackReason);
+  });
+};
+
+httpServer.on('error', (error) => {
+  if (error?.code === 'EADDRINUSE' && !startupResolved) {
+    console.warn(`Port ${PORT} is already in use. Retrying with a random open port...`);
+    setTimeout(() => {
+      startServer(0, `Primary port ${PORT} was busy`);
+    }, 100);
+    return;
+  }
+
+  console.error('Server startup error:', error);
+  process.exit(1);
 });
+
+startServer(PORT);

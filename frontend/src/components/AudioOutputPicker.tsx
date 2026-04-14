@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Bluetooth, Car, Check, Headphones, Monitor, RefreshCw, Smartphone, Speaker, Tv, Volume2 } from 'lucide-react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { detectAudioOutputDeviceType, type AudioOutputDeviceType } from '@/lib/audioOutputDevice';
+import { audioManager } from '@/utils/audioManager';
 
 interface AudioOutputPickerProps {
   isOpen: boolean;
@@ -82,8 +83,7 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
   };
 
   const getAudioElement = React.useCallback((): AudioWithSink | null => {
-    if (typeof document === 'undefined') return null;
-    return document.querySelector('audio') as AudioWithSink | null;
+    return audioManager.getCurrentNodeForOutput() as AudioWithSink | null;
   }, []);
 
   const loadDevices = React.useCallback(async () => {
@@ -147,7 +147,10 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
       setSwitchingId(deviceId);
       setError(null);
       try {
-        await audio.setSinkId(deviceId);
+        const wasApplied = await audioManager.setOutputDevice(deviceId);
+        if (!wasApplied) {
+          throw new Error('Output device switch was rejected');
+        }
         usePlayerStore.setState({ audioOutputDevice: deviceId });
         setActiveDeviceId(deviceId);
       } catch {
@@ -310,4 +313,3 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
 };
 
 export default AudioOutputPicker;
-

@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { audioManager } from '@/utils/audioManager';
 
 interface Props {
   children: ReactNode;
@@ -56,14 +57,7 @@ class ErrorBoundary extends Component<Props, State> {
     // If it's an audio error, try to reset audio state
     if (isAudioError) {
       try {
-        const audio = document.querySelector('audio');
-        if (audio) {
-          audio.pause();
-          audio.src = '';
-          audio.load();
-        }
-        // Clear player state
-        localStorage.removeItem('player_state');
+        audioManager.stopSong();
       } catch (e) {
         // Ignore cleanup errors
       }

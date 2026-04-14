@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { createWithEqualityFn as create } from 'zustand/traditional';
 import { Playlist } from '../types';
 import * as playlistService from '../services/playlistService';
 import { useMusicStore } from '../stores/useMusicStore';

@@ -18,10 +18,12 @@ export default defineConfig(({ mode }) => {
 			react(),
 			VitePWA({
 				registerType: 'autoUpdate',
+				injectRegister: 'auto',
+				includeAssets: ['mavrixfy.png', 'apple-touch-icon.png', 'mavrixfy-icons/*.png'],
 				workbox: {
 					globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,avif}'],
-					// Exclude audio files from precaching
 					globIgnores: ['**/*.{mp3,mp4,m4a,aac,ogg,wav,flac}'],
+					cleanupOutdatedCaches: true,
 					runtimeCaching: [
 						{
 							urlPattern: /^https:\/\/res\.cloudinary\.com\/.*/i,
@@ -34,25 +36,17 @@ export default defineConfig(({ mode }) => {
 								},
 							},
 						},
+						// Audio — never cache, always stream fresh
 						{
-							urlPattern: /^https:\/\/api\.spotify\.com\/.*/i,
-							handler: 'NetworkFirst',
-							options: {
-								cacheName: 'spotify-api',
-								expiration: {
-									maxEntries: 50,
-									maxAgeSeconds: 60 * 60 * 5, // 5 hours
-								},
-							},
-						},
-						// Audio files - NetworkOnly (no caching for iOS compatibility)
-						{
-							urlPattern: /\.(mp3|mp4|m4a|aac|ogg|wav|flac)$/i,
+							urlPattern: /\.(mp3|mp4|m4a|aac|ogg|wav|flac)(\?.*)?$/i,
 							handler: 'NetworkOnly',
 						},
-						// JioSaavn CDN - NetworkOnly for audio
 						{
-							urlPattern: /^https:\/\/aac\.saavncdn\.com\/.*/i,
+							urlPattern: /^https:\/\/(aac|cdnx?)\.saavncdn\.com\/.*/i,
+							handler: 'NetworkOnly',
+						},
+						{
+							urlPattern: /saavn\.me\/.*/i,
 							handler: 'NetworkOnly',
 						},
 					],
@@ -61,25 +55,39 @@ export default defineConfig(({ mode }) => {
 					name: 'Mavrixfy',
 					short_name: 'Mavrixfy',
 					description: 'Discover, listen to, and organize music you love',
-					theme_color: '#121212',
-					background_color: '#121212',
+					theme_color: '#000000',
+					background_color: '#000000',
 					display: 'standalone',
 					orientation: 'portrait',
 					scope: '/',
-					start_url: '/',
+					start_url: '/?source=pwa',
+					lang: 'en',
+					categories: ['music', 'entertainment'],
 					icons: [
 						{
 							src: '/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
 							sizes: '192x192',
 							type: 'image/png',
-							purpose: 'any maskable'
+							purpose: 'any',
 						},
 						{
 							src: '/mavrixfy-icons/mavrixfy-icon-maskable-512.png',
 							sizes: '512x512',
 							type: 'image/png',
-							purpose: 'any maskable'
-						}
+							purpose: 'any',
+						},
+						{
+							src: '/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
+							sizes: '192x192',
+							type: 'image/png',
+							purpose: 'maskable',
+						},
+						{
+							src: '/mavrixfy-icons/mavrixfy-icon-maskable-512.png',
+							sizes: '512x512',
+							type: 'image/png',
+							purpose: 'maskable',
+						},
 					],
 					shortcuts: [
 						{
@@ -87,17 +95,20 @@ export default defineConfig(({ mode }) => {
 							short_name: 'Liked',
 							description: 'View your liked songs',
 							url: '/liked-songs',
-							icons: [{ src: '/shortcut-liked-96.png', sizes: '96x96' }]
+							icons: [{ src: '/shortcut-liked-96.png', sizes: '96x96' }],
 						},
 						{
 							name: 'Search',
 							short_name: 'Search',
 							description: 'Search for music',
 							url: '/search',
-							icons: [{ src: '/shortcut-search-96.png', sizes: '96x96' }]
-						}
-					]
-				}
+							icons: [{ src: '/shortcut-search-96.png', sizes: '96x96' }],
+						},
+					],
+				},
+				devOptions: {
+					enabled: false, // enable locally if you need to test SW in dev
+				},
 			}),
 			compression({
 				algorithms: ['gzip'],
@@ -116,6 +127,12 @@ export default defineConfig(({ mode }) => {
 		},
 		server: {
 			port: 3000,
+			allowedHosts: [
+				'localhost',
+				'127.0.0.1',
+				'.ngrok-free.app',
+				'0b40-2401-4900-8fec-ca38-5daf-e2ce-d28a-7cef.ngrok-free.app'
+			],
 		
 			hmr: {
 				overlay: false,

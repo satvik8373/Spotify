@@ -48,9 +48,6 @@ const cleanApiUrl = FINAL_API_URL === "/api" ? FINAL_API_URL : FINAL_API_URL.rep
 const axiosInstance = axios.create({
 	baseURL: cleanApiUrl,
 	timeout: 20000,
-	headers: {
-		"Content-Type": "application/json",
-	},
 	withCredentials: true
 });
 
@@ -66,6 +63,16 @@ export const setAuthToken = (token: string | null) => {
 // Add request interceptor
 axiosInstance.interceptors.request.use(
 	async (config) => {
+		// Keep multipart boundaries intact for file uploads.
+		if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+			const headers = config.headers as any;
+			if (headers && typeof headers.set === "function") {
+				headers.set("Content-Type", undefined);
+			} else if (headers) {
+				delete headers["Content-Type"];
+			}
+		}
+
 		// Get token from Firebase for each request (lazy import to avoid eager Firebase load)
 		try {
 			const { auth, waitForAuthReady } = await import('./firebase');

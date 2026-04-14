@@ -2,11 +2,11 @@ import { RouterProvider, createBrowserRouter, Navigate, useLocation } from 'reac
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
-import { spotifyAutoSyncService } from './services/spotifyAutoSyncService';
 
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON } from './utils/storageUtils';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
+import { audioManager } from './utils/audioManager';
 
 // Only preload absolute structural components
 import MainLayout from './layout/MainLayout';
@@ -16,14 +16,13 @@ const HomePage = lazy(() => import('./pages/home/HomePage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
 const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
+const LikedSongsImportPage = lazy(() => import('./pages/liked-songs/LikedSongsImportPage'));
 
 // Lazy load less critical pages only
-const SyncLikedSongsPage = lazy(() => import('./pages/liked-songs/SyncLikedSongsPage'));
 const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
 const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.PlaylistPage })));
 const SongPage = lazy(() => import('./pages/song/SongPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const SpotifyCallback = lazy(() => import('./pages/SpotifyCallback'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const About = lazy(() => import('./pages/About'));
@@ -51,8 +50,6 @@ import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
-import AndroidPWAHelper from './components/AndroidPWAHelper';
-import { SpotifyProvider } from './contexts/SpotifyContext';
 
 const CHUNK_RECOVERY_KEY = 'mavrixfy_chunk_recovery_done';
 
@@ -209,10 +206,6 @@ const router = createBrowserRouter(
 			element: <VerifyEmail />
 		},
 		{
-			path: '/spotify-callback',
-			element: <SpotifyCallback />
-		},
-		{
 			path: '/privacy',
 			element: (
 				<div className="h-screen overflow-y-auto bg-[#121212]">
@@ -277,8 +270,8 @@ const router = createBrowserRouter(
 					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><LikedSongsPage /></Suspense></AuthGate>
 				},
 				{
-					path: '/liked-songs/sync',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SyncLikedSongsPage /></Suspense></AuthGate>
+					path: '/liked-songs/import',
+					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><LikedSongsImportPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/search',
@@ -352,16 +345,6 @@ function AppContent() {
 				// Clean up offline data and sync
 				cleanupOfflineData().catch(() => { });
 
-				const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
-				if (hasCachedAuth) {
-					setTimeout(() => {
-						const autoSyncConfig = spotifyAutoSyncService.getConfig();
-						if (autoSyncConfig.enabled) {
-							spotifyAutoSyncService.startAutoSync(autoSyncConfig.intervalMinutes);
-						}
-					}, 3000);
-				}
-
 				// Minimal splash time - 200ms only
 				setTimeout(() => {
 					setShowSplash(false);
@@ -420,7 +403,6 @@ function AppContent() {
 				}}
 			/>
 			<PWAInstallPrompt />
-			<AndroidPWAHelper />
 		</div>
 	);
 }
@@ -444,11 +426,21 @@ function App() {
 		};
 	}, []);
 
+	useEffect(() => {
+		const handleVisibilityChange = () => {
+			if (document.visibilityState !== 'visible') return;
+			void audioManager.resumeIfPausedUnexpectedly();
+		};
+
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+		};
+	}, []);
+
 	return (
 		<AuthProvider>
-			<SpotifyProvider>
-				<AppContent />
-			</SpotifyProvider>
+			<AppContent />
 		</AuthProvider>
 	);
 }

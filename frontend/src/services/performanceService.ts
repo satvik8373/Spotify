@@ -60,7 +60,6 @@ export class PerformanceService {
     // DNS prefetch for external domains
     const domains = [
       'res.cloudinary.com',
-      'api.spotify.com',
       'firebase.googleapis.com',
       'fonts.googleapis.com',
       'fonts.gstatic.com'
@@ -76,7 +75,6 @@ export class PerformanceService {
     // Preconnect to critical domains
     const criticalDomains = [
       'https://res.cloudinary.com',
-      'https://api.spotify.com',
       'https://firebase.googleapis.com'
     ];
 

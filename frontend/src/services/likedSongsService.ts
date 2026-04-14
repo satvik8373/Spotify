@@ -16,9 +16,27 @@ export interface LikedSong {
   audioUrl: string;
   duration?: number;
   likedAt: any; // Firebase Timestamp
-  source: 'mavrixfy' | 'spotify';
+  source: 'mavrixfy' | 'spotify' | 'saavn';
   year?: string;
   spotifyId?: string; // Original Mavrixfy track ID if synced from Mavrixfy
+}
+
+export interface BulkLikedSongIssue {
+  title: string;
+  artist: string;
+  album?: string;
+  addedAt?: string;
+  reason: 'already_added' | 'duplicate_in_import' | 'invalid_song' | 'storage_failed';
+}
+
+export interface AddMultipleLikedSongsResult {
+  added: number;
+  skipped: number;
+  errors: number;
+  alreadyAdded: number;
+  duplicateInImport: number;
+  skippedSongs: BulkLikedSongIssue[];
+  errorSongs: BulkLikedSongIssue[];
 }
 
 // Batch operations manager for Firebase
@@ -172,7 +190,7 @@ export const isSongAlreadyLiked = async (title: string, artist: string): Promise
  */
 export const addLikedSong = async (
   song: Song, 
-  source: 'mavrixfy' | 'spotify' = 'mavrixfy', 
+  source: 'mavrixfy' | 'spotify' | 'saavn' = 'mavrixfy', 
   spotifyId?: string,
   customLikedAt?: string | Date
 ): Promise<{ added: boolean; reason?: string }> => {
@@ -246,34 +264,115 @@ export const addLikedSong = async (
 /**
  * Optimized batch add multiple songs to liked songs
  */
-export const addMultipleLikedSongs = async (songs: Song[], source: 'mavrixfy' | 'spotify' = 'mavrixfy'): Promise<{ added: number; skipped: number; errors: number }> => {
+export const addMultipleLikedSongs = async (
+  songs: Song[],
+  source: 'mavrixfy' | 'spotify' | 'saavn' = 'mavrixfy'
+): Promise<AddMultipleLikedSongsResult> => {
   const { isAuthenticated, userId } = useAuthStore.getState();
   
   if (!isAuthenticated || !userId) {
-    return { added: 0, skipped: 0, errors: 0 };
+    return {
+      added: 0,
+      skipped: 0,
+      errors: 0,
+      alreadyAdded: 0,
+      duplicateInImport: 0,
+      skippedSongs: [],
+      errorSongs: [],
+    };
   }
 
   let added = 0;
   let skipped = 0;
   let errors = 0;
+  let alreadyAdded = 0;
+  let duplicateInImport = 0;
+  const skippedSongs: BulkLikedSongIssue[] = [];
+  const errorSongs: BulkLikedSongIssue[] = [];
 
   try {
-    // Process songs in batches of 10 for better performance
-    const batchSize = 10;
-    for (let i = 0; i < songs.length; i += batchSize) {
-      const batch = writeBatch(db);
-      const songBatch = songs.slice(i, i + batchSize);
-      
-      for (const song of songBatch) {
-        try {
-          // Quick duplicate check using cache
-          const alreadyExists = await isSongAlreadyLiked(song.title, song.artist);
-          if (alreadyExists) {
-            skipped++;
-            continue;
-          }
+    const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+    const existingSnapshot = await getDocs(likedSongsRef);
+    const existingKeys = new Set<string>();
+    const existingIds = new Set<string>();
 
+    existingSnapshot.forEach((docSnap) => {
+      existingIds.add(docSnap.id);
+      const data = docSnap.data();
+      const existingTitle = String(data.title || '').toLowerCase().trim();
+      const existingArtist = String(data.artist || '').toLowerCase().trim();
+      if (existingTitle && existingArtist) {
+        existingKeys.add(`${existingTitle}|${existingArtist}`);
+      }
+    });
+
+    const normalizedInput = new Map<string, Song>();
+    const seenInputIds = new Set<string>();
+    for (const song of songs) {
+      const title = String(song?.title || '').trim();
+      const artist = String(song?.artist || '').trim();
+      const id = String(song?._id || '').trim();
+      if (!title || !artist || !id) {
+        errors += 1;
+        errorSongs.push({
+          title,
+          artist,
+          album: String(song?.album || '').trim(),
+          addedAt: toIsoDateString((song as Song)?.likedAt) ?? toIsoDateString((song as Song)?.createdAt) ?? undefined,
+          reason: 'invalid_song',
+        });
+        continue;
+      }
+
+      const dedupeKey = `${title.toLowerCase()}|${artist.toLowerCase()}`;
+      if (normalizedInput.has(dedupeKey) || seenInputIds.has(id)) {
+        skipped += 1;
+        duplicateInImport += 1;
+        skippedSongs.push({
+          title,
+          artist,
+          album: String(song?.album || '').trim(),
+          addedAt: toIsoDateString(song?.likedAt) ?? toIsoDateString(song?.createdAt) ?? undefined,
+          reason: 'duplicate_in_import',
+        });
+        continue;
+      }
+
+      normalizedInput.set(dedupeKey, song);
+      seenInputIds.add(id);
+    }
+
+    const uniqueSongs = Array.from(normalizedInput.values());
+    const batchSize = 200;
+
+    for (let i = 0; i < uniqueSongs.length; i += batchSize) {
+      const batch = writeBatch(db);
+      const songBatch = uniqueSongs.slice(i, i + batchSize);
+      let writesInBatch = 0;
+      const committedSongs: Song[] = [];
+
+      for (const song of songBatch) {
+        const normalizedTitle = String(song.title || '').toLowerCase().trim();
+        const normalizedArtist = String(song.artist || '').toLowerCase().trim();
+        const dedupeKey = `${normalizedTitle}|${normalizedArtist}`;
+
+        if (existingKeys.has(dedupeKey) || existingIds.has(song._id)) {
+          skipped += 1;
+          alreadyAdded += 1;
+          skippedSongs.push({
+            title: song.title,
+            artist: song.artist,
+            album: String(song.album || '').trim(),
+            addedAt: toIsoDateString(song.likedAt) ?? toIsoDateString(song.createdAt) ?? undefined,
+            reason: 'already_added',
+          });
+          continue;
+        }
+
+        try {
           const likedSongRef = doc(db, 'users', userId, 'likedSongs', song._id);
+          const likedAtIso = toIsoDateString(song.likedAt) ?? toIsoDateString(song.createdAt);
+          const likedAtValue = likedAtIso ? new Date(likedAtIso) : serverTimestamp();
           const likedSongData: LikedSong = {
             id: song._id,
             title: song.title,
@@ -283,35 +382,77 @@ export const addMultipleLikedSongs = async (songs: Song[], source: 'mavrixfy' | 
             audioUrl: song.audioUrl,
             duration: song.duration,
             year: '',
-            likedAt: serverTimestamp(),
-            source: source
+            likedAt: likedAtValue,
+            source
           };
-          
-          batch.set(likedSongRef, likedSongData);
-          added++;
+
+          batch.set(likedSongRef, likedSongData, { merge: true });
+          existingKeys.add(dedupeKey);
+          existingIds.add(song._id);
+          committedSongs.push(song);
+          writesInBatch += 1;
+          added += 1;
         } catch (error) {
-          errors++;
+          errors += 1;
+          errorSongs.push({
+            title: song.title,
+            artist: song.artist,
+            album: String(song.album || '').trim(),
+            addedAt: toIsoDateString(song.likedAt) ?? toIsoDateString(song.createdAt) ?? undefined,
+            reason: 'storage_failed',
+          });
         }
       }
-      
-      // Commit the batch
-      if (added > 0) {
-        await batch.commit();
-      }
-      
-      // Small delay between batches to avoid overwhelming Firestore
-      if (i + batchSize < songs.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+
+      if (writesInBatch > 0) {
+        try {
+          await batch.commit();
+
+          committedSongs.forEach((song) => {
+            const cacheKey = `${userId}:${song.title.toLowerCase().trim()}:${song.artist.toLowerCase().trim()}`;
+            duplicateCheckCache.set(cacheKey, { result: true, timestamp: Date.now() });
+          });
+        } catch (error) {
+          added -= committedSongs.length;
+          errors += committedSongs.length;
+
+          committedSongs.forEach((song) => {
+            const normalizedTitle = String(song.title || '').toLowerCase().trim();
+            const normalizedArtist = String(song.artist || '').toLowerCase().trim();
+            existingKeys.delete(`${normalizedTitle}|${normalizedArtist}`);
+            existingIds.delete(song._id);
+            errorSongs.push({
+              title: song.title,
+              artist: song.artist,
+              album: String(song.album || '').trim(),
+              addedAt: toIsoDateString(song.likedAt) ?? toIsoDateString(song.createdAt) ?? undefined,
+              reason: 'storage_failed',
+            });
+          });
+        }
       }
     }
 
-    // Dispatch event to notify other components
     document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
-    
-    return { added, skipped, errors };
-    
+    return {
+      added,
+      skipped,
+      errors,
+      alreadyAdded,
+      duplicateInImport,
+      skippedSongs,
+      errorSongs,
+    };
   } catch (error) {
-    return { added, skipped, errors: errors + 1 };
+    return {
+      added,
+      skipped,
+      errors: errors + 1,
+      alreadyAdded,
+      duplicateInImport,
+      skippedSongs,
+      errorSongs,
+    };
   }
 };
 
