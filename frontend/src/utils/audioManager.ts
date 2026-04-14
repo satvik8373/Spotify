@@ -10,7 +10,10 @@ type HowlNode = HTMLAudioElement & {
 
 const FALLBACK_ARTWORK = 'https://cdn.iconscout.com/icon/free/png-256/free-music-1779799-1513951.png';
 const PLAY_ERROR_RETRY_LIMIT = 1;
+// Fallback poll interval — only used when native timeupdate isn't available
 const PROGRESS_INTERVAL_MS = 500;
+// Default seek offset for seekbackward/seekforward (seconds)
+const DEFAULT_SEEK_OFFSET = 10;
 
 const getSongKey = (song: Song | null | undefined): string =>
   song?._id || `${song?.title ?? 'unknown'}::${song?.artist ?? 'unknown'}`;
@@ -23,7 +26,6 @@ const normalizeAudioUrl = (audioUrl?: string): string => {
 const isValidAudioUrl = (audioUrl?: string): boolean => {
   const normalized = normalizeAudioUrl(audioUrl);
   if (!normalized || normalized.startsWith('blob:')) return false;
-
   try {
     const parsed = new URL(normalized);
     return parsed.protocol === 'https:' || parsed.protocol === 'http:';
@@ -37,11 +39,10 @@ const setMediaSessionHandler = (
   handler: MediaSessionActionHandler | null,
 ) => {
   if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
-
   try {
     navigator.mediaSession.setActionHandler(action, handler);
   } catch {
-    // Ignore unsupported handlers on the current browser.
+    // Ignore unsupported handlers.
   }
 };
 
@@ -50,11 +51,14 @@ class AudioManager {
   private currentSong: Song | null = null;
   private queue: Song[] = [];
   private currentIndex = -1;
+  // Fallback interval — only active when native timeupdate isn't available
   private progressTimer: number | null = null;
   private volume = 1;
   private playRetryCounts = new Map<string, number>();
   private failedSongKeys = new Set<string>();
   private mediaSessionRegistered = false;
+  // Bound timeupdate handler so we can remove it cleanly
+  private boundTimeUpdate: (() => void) | null = null;
 
   constructor() {
     Howler.autoUnlock = true;
@@ -65,53 +69,40 @@ class AudioManager {
 
   private attachDebugHandles() {
     if (typeof window === 'undefined') return;
-
-    const debugWindow = window as Window & {
-      currentSound?: Howl | null;
-      mavrixfyAudioManager?: AudioManager;
-      mavrixfyFailedSongs?: string[];
-    };
-
-    debugWindow.mavrixfyAudioManager = this;
-    debugWindow.currentSound = this.currentSound;
-    debugWindow.mavrixfyFailedSongs = Array.from(this.failedSongKeys);
+    const w = window as any;
+    w.mavrixfyAudioManager = this;
+    w.currentSound = this.currentSound;
+    w.mavrixfyFailedSongs = Array.from(this.failedSongKeys);
   }
 
   private syncDebugHandles() {
     if (typeof window === 'undefined') return;
-
-    const debugWindow = window as Window & {
-      currentSound?: Howl | null;
-      mavrixfyFailedSongs?: string[];
-    };
-
-    debugWindow.currentSound = this.currentSound;
-    debugWindow.mavrixfyFailedSongs = Array.from(this.failedSongKeys);
+    const w = window as any;
+    w.currentSound = this.currentSound;
+    w.mavrixfyFailedSongs = Array.from(this.failedSongKeys);
   }
 
   private getCurrentNode(): HowlNode | null {
-    const currentNode = this.currentSound?._sounds?.[0]?._node as HowlNode | undefined;
-    return currentNode ?? null;
+    return (this.currentSound?._sounds?.[0]?._node as HowlNode | undefined) ?? null;
   }
 
-  private clearProgressTimer() {
-    if (this.progressTimer !== null) {
-      window.clearInterval(this.progressTimer);
-      this.progressTimer = null;
-    }
-  }
-
+  // ── Position state ────────────────────────────────────────────────────────
+  // Called from native <audio> timeupdate — fires in background, unlike setInterval.
   private syncPositionState() {
-    if (typeof navigator === 'undefined' || !('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) {
-      return;
-    }
-
     const duration = this.getDuration();
     const position = this.getCurrentTime();
 
-    if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(position)) {
-      return;
-    }
+    // Update React store
+    usePlayerStore.setState({ currentTime: position, duration });
+
+    // Update lock screen progress bar
+    if (
+      typeof navigator === 'undefined' ||
+      !('mediaSession' in navigator) ||
+      !('setPositionState' in navigator.mediaSession)
+    ) return;
+
+    if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(position)) return;
 
     try {
       navigator.mediaSession.setPositionState({
@@ -120,30 +111,51 @@ class AudioManager {
         playbackRate: 1,
       });
     } catch {
-      // Ignore unsupported position state updates.
+      // Ignore.
     }
   }
 
-  private startProgressTimer() {
-    this.clearProgressTimer();
-    this.progressTimer = window.setInterval(() => {
-      const duration = this.getDuration();
-      const currentTime = this.getCurrentTime();
-      usePlayerStore.setState({
-        currentTime,
-        duration,
-      });
-      this.syncPositionState();
-    }, PROGRESS_INTERVAL_MS);
-  }
-
-  private updateMediaMetadata(song: Song | null) {
-    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
-
-    if (!song) {
-      navigator.mediaSession.metadata = null;
+  // ── Native timeupdate listener ────────────────────────────────────────────
+  // Attaches directly to the <audio> element so it fires even when the tab is
+  // backgrounded / screen is locked. This is the official approach per MDN.
+  private attachNativeTimeUpdate() {
+    this.detachNativeTimeUpdate();
+    const node = this.getCurrentNode();
+    if (!node) {
+      // Fallback: use interval if native node not yet available
+      this.startFallbackTimer();
       return;
     }
+    this.boundTimeUpdate = () => this.syncPositionState();
+    node.addEventListener('timeupdate', this.boundTimeUpdate);
+  }
+
+  private detachNativeTimeUpdate() {
+    const node = this.getCurrentNode();
+    if (node && this.boundTimeUpdate) {
+      node.removeEventListener('timeupdate', this.boundTimeUpdate);
+    }
+    this.boundTimeUpdate = null;
+    this.clearFallbackTimer();
+  }
+
+  // ── Fallback interval (desktop / non-html5 mode) ──────────────────────────
+  private clearFallbackTimer() {
+    if (this.progressTimer !== null) {
+      window.clearInterval(this.progressTimer);
+      this.progressTimer = null;
+    }
+  }
+
+  private startFallbackTimer() {
+    this.clearFallbackTimer();
+    this.progressTimer = window.setInterval(() => this.syncPositionState(), PROGRESS_INTERVAL_MS);
+  }
+
+  // ── Metadata ──────────────────────────────────────────────────────────────
+  private updateMediaMetadata(song: Song | null) {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+    if (!song) { navigator.mediaSession.metadata = null; return; }
 
     const artworkUrl = song.imageUrl?.startsWith('http')
       ? song.imageUrl
@@ -155,55 +167,23 @@ class AudioManager {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: song.title || 'Unknown Title',
         artist: resolveArtist(song),
-        album: song.album || 'Unknown Album',
+        album: (song as any).album || '',
         artwork: [
-          { src: artworkUrl, sizes: '96x96', type: 'image/jpeg' },
+          { src: artworkUrl, sizes: '96x96',   type: 'image/jpeg' },
           { src: artworkUrl, sizes: '192x192', type: 'image/jpeg' },
           { src: artworkUrl, sizes: '512x512', type: 'image/jpeg' },
         ],
       });
     } catch {
-      // Ignore metadata failures.
+      // Ignore.
     }
   }
 
-  private async applyPreferredOutputDevice() {
-    const preferredOutputId = usePlayerStore.getState().audioOutputDevice;
-    if (!preferredOutputId) return;
-
-    const node = this.getCurrentNode();
-    if (!node || typeof node.setSinkId !== 'function') return;
-
-    try {
-      await node.setSinkId(preferredOutputId);
-    } catch (error) {
-      console.warn('[audioManager] Unable to switch output device', error);
-    }
-  }
-
-  private disposeCurrentSound() {
-    this.clearProgressTimer();
-
-    if (!this.currentSound) {
-      this.syncDebugHandles();
-      return;
-    }
-
-    try {
-      this.currentSound.off();
-      this.currentSound.stop();
-      this.currentSound.unload();
-    } catch (error) {
-      console.warn('[audioManager] Failed to dispose previous sound', error);
-    }
-
-    this.currentSound = null;
-    this.syncDebugHandles();
-  }
-
+  // ── Media Session action handlers ─────────────────────────────────────────
+  // Registered once at construction. All handlers are kept alive for the
+  // lifetime of the app — this is the official pattern per web.dev/media-session.
   private registerMediaSessionHandlers() {
     if (typeof navigator === 'undefined' || this.mediaSessionRegistered || !('mediaSession' in navigator)) return;
-
     this.mediaSessionRegistered = true;
 
     setMediaSessionHandler('play', () => {
@@ -215,7 +195,6 @@ class AudioManager {
     });
 
     setMediaSessionHandler('nexttrack', () => {
-      // Reset debounce guard so lock screen next always works
       usePlayerStore.setState({ lastPlayNextTime: 0 });
       usePlayerStore.getState().playNext();
     });
@@ -224,61 +203,76 @@ class AudioManager {
       usePlayerStore.getState().playPrevious();
     });
 
+    // seekto — lock screen progress bar scrubbing
     setMediaSessionHandler('seekto', (details) => {
       if (typeof details.seekTime !== 'number') return;
       this.seekTo(details.seekTime);
+      // Immediately update position state so lock screen reflects new position
+      this.syncPositionState();
     });
 
-    setMediaSessionHandler('seekbackward', null);
-    setMediaSessionHandler('seekforward', null);
+    // seekbackward / seekforward — headset buttons, lock screen skip buttons
+    setMediaSessionHandler('seekbackward', (details) => {
+      const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
+      const next = Math.max(0, this.getCurrentTime() - offset);
+      this.seekTo(next);
+      this.syncPositionState();
+    });
+
+    setMediaSessionHandler('seekforward', (details) => {
+      const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
+      const duration = this.getDuration();
+      const next = duration > 0 ? Math.min(duration, this.getCurrentTime() + offset) : this.getCurrentTime() + offset;
+      this.seekTo(next);
+      this.syncPositionState();
+    });
+  }
+
+  // ── Output device ─────────────────────────────────────────────────────────
+  private async applyPreferredOutputDevice() {
+    const preferredOutputId = usePlayerStore.getState().audioOutputDevice;
+    if (!preferredOutputId) return;
+    const node = this.getCurrentNode();
+    if (!node || typeof node.setSinkId !== 'function') return;
+    try { await node.setSinkId(preferredOutputId); } catch { /* ignore */ }
+  }
+
+  // ── Sound lifecycle ───────────────────────────────────────────────────────
+  private disposeCurrentSound() {
+    this.detachNativeTimeUpdate();
+    if (!this.currentSound) { this.syncDebugHandles(); return; }
+    try {
+      this.currentSound.off();
+      this.currentSound.stop();
+      this.currentSound.unload();
+    } catch { /* ignore */ }
+    this.currentSound = null;
+    this.syncDebugHandles();
   }
 
   private handlePlaybackFailure(song: Song, phase: 'load' | 'play', error: unknown) {
     const songKey = getSongKey(song);
     this.failedSongKeys.add(songKey);
     this.syncDebugHandles();
-
-    console.error(`[audioManager] ${phase} failure`, {
-      song,
-      error,
-    });
-
-    usePlayerStore.setState({
-      isPlaying: false,
-      currentTime: 0,
-      duration: 0,
-    });
-
+    console.error(`[audioManager] ${phase} failure`, { song, error });
+    usePlayerStore.setState({ isPlaying: false, currentTime: 0, duration: 0 });
     const store = usePlayerStore.getState();
-    const hasNextTrack = store.queue.length > 1;
-
-    if (hasNextTrack) {
-      store.playNext();
-      return;
-    }
-
+    if (store.queue.length > 1) { store.playNext(); return; }
     this.stopSong();
   }
 
   private handleTrackEnd() {
     const store = usePlayerStore.getState();
-
     if (store.isRepeating && this.currentSound) {
       this.seekTo(0);
       void this.resumeSong();
       return;
     }
-
     if (store.queue.length <= 1) {
       this.stopSong();
-      usePlayerStore.setState({
-        isPlaying: false,
-        currentTime: 0,
-      });
+      usePlayerStore.setState({ isPlaying: false, currentTime: 0 });
       return;
     }
-
-    // Reset debounce guard so auto-advance on track end is never blocked
     usePlayerStore.setState({ lastPlayNextTime: 0 });
     store.playNext();
   }
@@ -292,13 +286,16 @@ class AudioManager {
       html5: true,
       preload: true,
       volume: this.volume,
+
       onplay: () => {
         this.currentSong = song;
         this.currentSound = howl;
-        this.startProgressTimer();
         this.syncDebugHandles();
-        this.updateMediaMetadata(song);
 
+        // Attach native timeupdate AFTER play starts so the node exists
+        this.attachNativeTimeUpdate();
+
+        this.updateMediaMetadata(song);
         usePlayerStore.setState({
           currentSong: song,
           isPlaying: true,
@@ -310,75 +307,69 @@ class AudioManager {
         }
 
         void this.applyPreferredOutputDevice();
+        // Sync position immediately so lock screen shows correct time from the start
         this.syncPositionState();
       },
+
       onpause: () => {
-        this.clearProgressTimer();
         usePlayerStore.setState({
           isPlaying: false,
           currentTime: this.getCurrentTime(),
           duration: this.getDuration(),
         });
-
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'paused';
         }
+        // Keep timeupdate attached during pause so position stays accurate
       },
-      onstop: () => {
-        this.clearProgressTimer();
 
+      onstop: () => {
+        this.detachNativeTimeUpdate();
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'none';
         }
       },
+
       onload: () => {
-        usePlayerStore.setState({
-          duration: howl.duration() || 0,
-        });
+        const dur = howl.duration() || 0;
+        usePlayerStore.setState({ duration: dur });
+        // Duration is now known — update position state
         this.syncPositionState();
       },
+
       onseek: () => {
-        const currentTime = this.getCurrentTime();
-        usePlayerStore.setState({ currentTime });
+        usePlayerStore.setState({ currentTime: this.getCurrentTime() });
         this.syncPositionState();
       },
+
       onend: () => {
-        this.clearProgressTimer();
-        usePlayerStore.setState({
-          currentTime: howl.duration() || 0,
-        });
+        this.detachNativeTimeUpdate();
+        usePlayerStore.setState({ currentTime: howl.duration() || 0 });
         this.handleTrackEnd();
       },
-      onloaderror: (_soundId, error) => {
+
+      onloaderror: (_id, error) => {
         this.handlePlaybackFailure(song, 'load', error);
       },
-      onplayerror: (_soundId, error) => {
-        const retryCount = this.playRetryCounts.get(songKey) ?? 0;
 
+      onplayerror: (_id, error) => {
+        const retryCount = this.playRetryCounts.get(songKey) ?? 0;
         if (retryCount < PLAY_ERROR_RETRY_LIMIT) {
           this.playRetryCounts.set(songKey, retryCount + 1);
-
-          howl.once('unlock', () => {
-            howl.play();
-          });
-
+          howl.once('unlock', () => howl.play());
           window.setTimeout(() => {
-            try {
-              howl.play();
-            } catch (retryError) {
-              this.handlePlaybackFailure(song, 'play', retryError);
-            }
+            try { howl.play(); } catch (e) { this.handlePlaybackFailure(song, 'play', e); }
           }, 250);
-
           return;
         }
-
         this.handlePlaybackFailure(song, 'play', error);
       },
     });
 
     return howl;
   }
+
+  // ── Public API ────────────────────────────────────────────────────────────
 
   setQueue(songs: Song[], startIndex = 0) {
     this.queue = [...songs];
@@ -394,25 +385,19 @@ class AudioManager {
       return;
     }
 
-    // Always sync internal queue from store before playing so background/lock screen state is fresh
+    // Sync queue from store so background/lock screen state is always fresh
     const storeState = usePlayerStore.getState();
     if (storeState.queue.length > 0) {
-      const storeIndex = storeState.currentIndex >= 0 ? storeState.currentIndex : 0;
       this.queue = [...storeState.queue];
-      this.currentIndex = storeIndex;
+      this.currentIndex = storeState.currentIndex >= 0 ? storeState.currentIndex : 0;
     }
 
     const currentSongKey = getSongKey(this.currentSong);
     const nextSongKey = getSongKey(song);
 
     if (this.currentSound && currentSongKey === nextSongKey) {
-      if (this.currentSound.state() === 'loading') {
-        return;
-      }
-
-      if (!this.currentSound.playing()) {
-        this.currentSound.play();
-      }
+      if (this.currentSound.state() === 'loading') return;
+      if (!this.currentSound.playing()) this.currentSound.play();
       return;
     }
 
@@ -425,13 +410,7 @@ class AudioManager {
     this.currentSound = this.buildHowl(song);
     this.syncDebugHandles();
 
-    usePlayerStore.setState({
-      currentSong: song,
-      isPlaying: false,
-      currentTime: 0,
-      duration: 0,
-    });
-
+    usePlayerStore.setState({ currentSong: song, isPlaying: false, currentTime: 0, duration: 0 });
     this.currentSound.play();
   }
 
@@ -442,16 +421,11 @@ class AudioManager {
   async resumeSong() {
     const store = usePlayerStore.getState();
     const song = store.currentSong ?? this.currentSong;
-
     if (!song) return;
 
     // Resume suspended AudioContext (common after backgrounding on mobile)
     if (Howler.ctx && Howler.ctx.state === 'suspended') {
-      try {
-        await Howler.ctx.resume();
-      } catch {
-        // Ignore — will retry on next interaction
-      }
+      try { await Howler.ctx.resume(); } catch { /* ignore */ }
     }
 
     if (!this.currentSound || getSongKey(song) !== getSongKey(this.currentSong)) {
@@ -460,20 +434,14 @@ class AudioManager {
       return;
     }
 
-    if (this.currentSound.state() === 'loading' || this.currentSound.playing()) {
-      return;
-    }
-
-    if (!this.currentSound.playing()) {
-      this.currentSound.play();
-    }
+    if (this.currentSound.state() === 'loading' || this.currentSound.playing()) return;
+    this.currentSound.play();
   }
 
   stopSong() {
     this.disposeCurrentSound();
     this.currentSong = null;
     this.syncDebugHandles();
-
     if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'none';
     }
@@ -481,11 +449,10 @@ class AudioManager {
 
   seekTo(timeInSeconds: number) {
     if (!this.currentSound) return;
-
     const duration = this.currentSound.duration() || 0;
-    const nextTime = Math.max(0, Math.min(timeInSeconds, duration || timeInSeconds));
-    this.currentSound.seek(nextTime);
-    usePlayerStore.setState({ currentTime: nextTime });
+    const next = Math.max(0, Math.min(timeInSeconds, duration || timeInSeconds));
+    this.currentSound.seek(next);
+    usePlayerStore.setState({ currentTime: next });
     this.syncPositionState();
   }
 
@@ -494,65 +461,32 @@ class AudioManager {
     this.currentSound?.volume(this.volume);
   }
 
-  getVolume() {
-    return this.volume;
-  }
+  getVolume() { return this.volume; }
 
   getCurrentTime() {
     if (!this.currentSound) return 0;
-    const currentTime = this.currentSound.seek();
-    return typeof currentTime === 'number' ? currentTime : 0;
+    const t = this.currentSound.seek();
+    return typeof t === 'number' ? t : 0;
   }
 
-  getDuration() {
-    return this.currentSound?.duration() || 0;
-  }
-
-  isPlaying() {
-    return Boolean(this.currentSound?.playing());
-  }
-
-  getCurrentSong() {
-    return this.currentSong;
-  }
-
-  getQueue() {
-    return [...this.queue];
-  }
-
-  getCurrentIndex() {
-    return this.currentIndex;
-  }
-
-  getCurrentNodeForOutput() {
-    return this.getCurrentNode();
-  }
+  getDuration() { return this.currentSound?.duration() || 0; }
+  isPlaying() { return Boolean(this.currentSound?.playing()); }
+  getCurrentSong() { return this.currentSong; }
+  getQueue() { return [...this.queue]; }
+  getCurrentIndex() { return this.currentIndex; }
+  getCurrentNodeForOutput() { return this.getCurrentNode(); }
 
   async setOutputDevice(deviceId: string) {
     const node = this.getCurrentNode();
     if (!node || typeof node.setSinkId !== 'function') return false;
-
-    try {
-      await node.setSinkId(deviceId);
-      return true;
-    } catch (error) {
-      console.warn('[audioManager] Unable to set sinkId', error);
-      return false;
-    }
+    try { await node.setSinkId(deviceId); return true; } catch { return false; }
   }
 
   async resumeIfPausedUnexpectedly() {
     const store = usePlayerStore.getState();
     if (!store.isPlaying || !store.currentSong) return;
-
-    if (!this.currentSound) {
-      await this.playSong(store.currentSong);
-      return;
-    }
-
-    if (!this.currentSound.playing()) {
-      this.currentSound.play();
-    }
+    if (!this.currentSound) { await this.playSong(store.currentSong); return; }
+    if (!this.currentSound.playing()) this.currentSound.play();
   }
 }
 

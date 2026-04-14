@@ -145,6 +145,7 @@ export const CustomScrollbar: React.FC<CustomScrollbarProps> = ({
     <div className="relative w-full h-full">
       <div
         ref={scrollContainerRef}
+        data-scroll-container="true"
         className={cn('w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar-hide', className)}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >

@@ -181,6 +181,9 @@ const MainLayout = () => {
     location.pathname.startsWith('/library')
   );
 
+  // Routes that need safe-area top margin but have no mobile header
+  const isMobileSafeAreaRoute = isMobile && !isMobileHeaderRoute;
+
   const showMobilePlayer = hasActiveSong;
   const hideDesktopFooter = (
     location.pathname.startsWith('/playlist/') ||
@@ -196,11 +199,15 @@ const MainLayout = () => {
   const mobileHeight = isMobile
     ? isMobileHeaderRoute
       ? `calc(${dvh} - ${mobileBottomSubtractPx}px - ${MOBILE_HEADER_PX}px - ${MOBILE_SAFE_TOP})`
-      : `calc(${dvh} - ${mobileBottomSubtractPx}px)`
+      : isMobileSafeAreaRoute
+        ? `calc(${dvh} - ${mobileBottomSubtractPx}px - ${MOBILE_SAFE_TOP})`
+        : `calc(${dvh} - ${mobileBottomSubtractPx}px)`
     : 'auto';
   const mobileTopOffset = isMobileHeaderRoute
     ? `calc(${MOBILE_HEADER_PX}px + ${MOBILE_SAFE_TOP})`
-    : '0px';
+    : isMobileSafeAreaRoute
+      ? MOBILE_SAFE_TOP
+      : '0px';
 
   // Handle resize functionality
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
