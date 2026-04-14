@@ -622,7 +622,9 @@ const LikedSongsPage = () => {
       {isMobile ? (
         <div className="relative">
           {/* Mobile gradient header - Spotify-like */}
-          <div className="bg-gradient-to-b from-purple-600/80 via-purple-700/60 to-background px-4 pt-16 pb-6">
+          <div className="bg-gradient-to-b from-purple-600/80 via-purple-700/60 to-background px-4 pb-6"
+            style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}
+          >
             <div className="flex items-center gap-4">
               {/* Spotify-style heart icon for mobile */}
               <div className="w-20 h-20 bg-gradient-to-br from-purple-400 via-purple-500 to-purple-600 rounded-md flex items-center justify-center shadow-2xl relative overflow-hidden flex-shrink-0">

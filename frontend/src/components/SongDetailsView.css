@@ -1,8 +1,9 @@
 /* SongDetailsView - Mobile-optimized styles */
 
-/* Smooth opening/closing animation */
+/* Open/close slide animation — driven by Tailwind translate-y-0 / translate-y-full classes.
+   During a dismiss drag the JS sets inline style which overrides this. */
 .song-details-view {
-  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+  transition: transform 0.35s cubic-bezier(0.32, 0, 0.67, 0), opacity 0.35s ease;
   will-change: transform;
   backdrop-filter: blur(0px);
 }
@@ -49,9 +50,10 @@
 
 /* Ensure no scrolling on any mobile device */
 .song-details-view {
-  height: 100vh;
+  /* fixed inset-0 already covers full screen including behind notch.
+     Use dvh + webkit-fill-available so height is always the real viewport. */
   height: 100dvh;
-  /* Dynamic viewport height for better mobile support */
+  height: -webkit-fill-available;
   overflow: hidden;
 }
 
