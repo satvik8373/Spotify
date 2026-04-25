@@ -15,6 +15,105 @@ function getAdminApp(): App {
   return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
 }
 
+// Send to Expo Push Service (handles Android FCM + iOS APNs automatically)
+async function sendExpoNotifications(
+  tokens: string[],
+  title: string,
+  body: string,
+  data: Record<string, string>
+): Promise<{ delivered: number; failed: number }> {
+  if (tokens.length === 0) return { delivered: 0, failed: 0 };
+
+  const messages = tokens.map(to => ({
+    to,
+    title,
+    body,
+    data,
+    sound: 'default',
+    channelId: 'mavrixfy-default',
+    priority: 'high',
+  }));
+
+  // Expo push API accepts up to 100 per request
+  let delivered = 0;
+  let failed = 0;
+
+  for (let i = 0; i < messages.length; i += 100) {
+    const batch = messages.slice(i, i + 100);
+    try {
+      const res = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Accept-Encoding': 'gzip, deflate',
+        },
+        body: JSON.stringify(batch),
+      });
+      const result = await res.json() as { data: { status: string }[] };
+      result.data?.forEach(r => {
+        if (r.status === 'ok') delivered++;
+        else failed++;
+      });
+    } catch {
+      failed += batch.length;
+    }
+  }
+
+  return { delivered, failed };
+}
+
+// Send to web via Firebase Admin SDK (FCM web tokens)
+async function sendWebNotifications(
+  app: App,
+  tokens: string[],
+  title: string,
+  body: string,
+  imageUrl?: string,
+  route?: string,
+  notificationId?: string
+): Promise<{ delivered: number; invalidTokens: string[] }> {
+  if (tokens.length === 0) return { delivered: 0, invalidTokens: [] };
+
+  const messaging = getMessaging(app);
+  const invalidTokens: string[] = [];
+  let delivered = 0;
+
+  for (let i = 0; i < tokens.length; i += 500) {
+    const batch = tokens.slice(i, i + 500);
+    const messages = batch.map(token => ({
+      token,
+      notification: { title, body, ...(imageUrl ? { imageUrl } : {}) },
+      data: {
+        ...(route ? { route } : {}),
+        ...(notificationId ? { notificationId } : {}),
+      },
+      webpush: {
+        notification: {
+          title,
+          body,
+          icon: 'https://mavrixfy.site/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
+          ...(imageUrl ? { image: imageUrl } : {}),
+          requireInteraction: false,
+        },
+        fcmOptions: { link: route ? `/${route}` : '/' },
+      },
+    }));
+
+    const response = await messaging.sendEach(messages);
+    delivered += response.successCount;
+    response.responses.forEach((res, idx) => {
+      const code = res.error?.code;
+      if (code === 'messaging/invalid-registration-token' ||
+          code === 'messaging/registration-token-not-registered') {
+        invalidTokens.push(batch[idx].token);
+      }
+    });
+  }
+
+  return { delivered, invalidTokens };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const app = getAdminApp();
@@ -25,101 +124,106 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title and message are required' }, { status: 400 });
     }
 
-    // Collect all enabled native FCM tokens (skip Expo tokens)
+    // Collect all tokens grouped by type
     const usersSnap = await db.collection('users').get();
-    const tokens: { token: string; platform: string }[] = [];
+    const expoTokens: string[]   = []; // Expo push tokens → Android + iOS
+    const webTokens: string[]    = []; // FCM web tokens → browser
+    const androidFcmTokens: string[] = []; // Native Android FCM tokens
+    const tokenDocRefs: { ref: FirebaseFirestore.DocumentReference; token: string }[] = [];
 
     for (const userDoc of usersSnap.docs) {
       const tokensSnap = await userDoc.ref.collection('pushTokens').get();
       for (const t of tokensSnap.docs) {
         const d = t.data();
-        if (!d.enabled || !d.nativePushToken) continue;
-        if (d.nativePushToken.startsWith('ExponentPushToken')) continue;
-        if (d.nativePushTokenType === 'expo') continue;
-        tokens.push({ token: d.nativePushToken, platform: d.platform || 'android' });
+        if (!d.enabled) continue;
+
+        // Expo push token (works for both Android + iOS via Expo service)
+        if (d.expoPushToken?.startsWith('ExponentPushToken')) {
+          expoTokens.push(d.expoPushToken);
+          continue;
+        }
+
+        // Web FCM token
+        if (d.platform === 'web' && d.nativePushToken) {
+          webTokens.push(d.nativePushToken);
+          tokenDocRefs.push({ ref: t.ref, token: d.nativePushToken });
+          continue;
+        }
+
+        // Native Android FCM token (type = "android")
+        if (d.platform === 'android' && d.nativePushTokenType === 'android' && d.nativePushToken) {
+          androidFcmTokens.push(d.nativePushToken);
+          continue;
+        }
+
+        // iOS native APNs tokens — skip, use Expo token instead
+        // (raw APNs tokens require Apple certificates, use expoPushToken path)
       }
     }
 
-    if (tokens.length === 0) {
-      if (notificationId) {
-        await db.collection('notifications').doc(notificationId).update({ delivered: 0, status: 'no_tokens' });
-      }
-      return NextResponse.json({ delivered: 0, total: 0, message: 'No registered devices found' });
-    }
+    const data: Record<string, string> = {
+      ...(route ? { route } : {}),
+      ...(notificationId ? { notificationId } : {}),
+    };
 
-    const messaging = getMessaging(app);
-    const invalidTokens: string[] = [];
-    let delivered = 0;
+    // Send in parallel
+    const [expoResult, webResult, androidResult] = await Promise.all([
+      sendExpoNotifications(expoTokens, title, message, data),
+      sendWebNotifications(app, webTokens, title, message, imageUrl, route, notificationId),
+      // Android native FCM via Admin SDK
+      androidFcmTokens.length > 0
+        ? (async () => {
+            const messaging = getMessaging(app);
+            let delivered = 0;
+            for (let i = 0; i < androidFcmTokens.length; i += 500) {
+              const batch = androidFcmTokens.slice(i, i + 500);
+              const msgs = batch.map(token => ({
+                token,
+                notification: { title, body: message },
+                data,
+                android: { priority: 'high' as const, notification: { channelId: 'mavrixfy-default', sound: 'default' } },
+              }));
+              const r = await messaging.sendEach(msgs);
+              delivered += r.successCount;
+            }
+            return { delivered };
+          })()
+        : Promise.resolve({ delivered: 0 }),
+    ]);
 
-    for (let i = 0; i < tokens.length; i += 500) {
-      const batch = tokens.slice(i, i + 500);
-
-      const messages = batch.map(({ token, platform }) => {
-        const base: any = {
-          token,
-          notification: { title, body: message, ...(imageUrl ? { imageUrl } : {}) },
-          data: {
-            ...(route ? { route } : {}),
-            ...(notificationId ? { notificationId } : {}),
-          },
-        };
-
-        if (platform === 'web') {
-          base.webpush = {
-            notification: {
-              title,
-              body: message,
-              icon: '/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
-              ...(imageUrl ? { image: imageUrl } : {}),
-              requireInteraction: false,
-            },
-            fcmOptions: { link: route ? `/${route}` : '/' },
-          };
-        } else if (platform === 'android') {
-          base.android = {
-            priority: 'high',
-            notification: { channelId: 'mavrixfy-default', sound: 'default' },
-          };
-        } else if (platform === 'ios') {
-          base.apns = { payload: { aps: { sound: 'default', badge: 1 } } };
-        }
-
-        return base;
-      });
-
-      const response = await messaging.sendEach(messages);
-      delivered += response.successCount;
-
-      response.responses.forEach((res, idx) => {
-        if (!res.success) {
-          const code = res.error?.code;
-          if (
-            code === 'messaging/invalid-registration-token' ||
-            code === 'messaging/registration-token-not-registered'
-          ) {
-            invalidTokens.push(batch[idx].token);
-          }
-        }
-      });
-    }
-
-    // Disable stale tokens
-    if (invalidTokens.length > 0) {
-      for (const userDoc of usersSnap.docs) {
-        const tokensSnap = await userDoc.ref.collection('pushTokens').get();
-        for (const t of tokensSnap.docs) {
-          if (invalidTokens.includes(t.data().nativePushToken)) {
-            await t.ref.update({ enabled: false });
-          }
+    // Disable invalid web tokens
+    if (webResult.invalidTokens.length > 0) {
+      for (const { ref, token } of tokenDocRefs) {
+        if (webResult.invalidTokens.includes(token)) {
+          await ref.update({ enabled: false });
         }
       }
     }
+
+    const totalDelivered = expoResult.delivered + webResult.delivered + androidResult.delivered;
+    const totalTokens = expoTokens.length + webTokens.length + androidFcmTokens.length;
 
     if (notificationId) {
-      await db.collection('notifications').doc(notificationId).update({ delivered, status: 'sent' });
+      await db.collection('notifications').doc(notificationId).update({
+        delivered: totalDelivered,
+        status: 'sent',
+        breakdown: {
+          expo: expoResult.delivered,
+          web: webResult.delivered,
+          android: androidResult.delivered,
+        },
+      });
     }
 
-    return NextResponse.json({ delivered, total: tokens.length });
+    return NextResponse.json({
+      delivered: totalDelivered,
+      total: totalTokens,
+      breakdown: {
+        expo: { delivered: expoResult.delivered, tokens: expoTokens.length },
+        web:  { delivered: webResult.delivered,  tokens: webTokens.length },
+        android: { delivered: androidResult.delivered, tokens: androidFcmTokens.length },
+      },
+    });
 
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
