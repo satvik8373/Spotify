@@ -210,7 +210,7 @@ class FirestoreService<T extends FirebaseDocument> {
     this.cacheTimestamps.set(key, Date.now());
   }
 
-  private invalidateCache(): void {
+  protected invalidateCache(): void {
     this.cache.clear();
     this.cacheTimestamps.clear();
   }
@@ -240,6 +240,30 @@ interface FirestorePlaylist extends Omit<Playlist, '_id'> {
 interface FirestoreUser extends Omit<User, '_id'> {
   id: string;
 }
+
+const getTimestampMillis = (value: any): number => {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof value.toDate === 'function') {
+    const date = value.toDate();
+    return date instanceof Date ? date.getTime() : 0;
+  }
+  const seconds = typeof value.seconds === 'number' ? value.seconds : value._seconds;
+  return typeof seconds === 'number' ? seconds * 1000 : 0;
+};
+
+const sortPlaylistsByNewest = (playlists: FirestorePlaylist[]): FirestorePlaylist[] => {
+  return [...playlists].sort((a, b) => {
+    const aTime = getTimestampMillis((a as any).updatedAt) || getTimestampMillis((a as any).createdAt);
+    const bTime = getTimestampMillis((b as any).updatedAt) || getTimestampMillis((b as any).createdAt);
+    return bTime - aTime;
+  });
+};
 
 // Songs service
 export class SongsService extends FirestoreService<FirestoreSong> {
@@ -409,13 +433,27 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
   }
 
   // Get user playlists - query by both createdBy.id and createdBy.uid to cover all playlist types
-  async getUserPlaylists(userId: string): Promise<FirestorePlaylist[]> {
+  async getUserPlaylists(userId: string, maxCount = 100): Promise<FirestorePlaylist[]> {
     try {
-      // AI-generated playlists (backend-saved) use `createdBy.uid`
-      // User-created playlists (frontend-created) use `createdBy.id`
-      const [byId, byUid] = await Promise.all([
-        this.getByField('createdBy.id', userId),
-        this.getByField('createdBy.uid', userId),
+      const safeLimit = Math.min(Math.max(Number(maxCount) || 100, 1), 100);
+      const getByOwnerField = async (field: 'createdBy.id' | 'createdBy.uid') => {
+        try {
+          const q = query(
+            this.getCollectionRef(),
+            where(field, '==', userId),
+            orderBy('createdAt', 'desc'),
+            limit(safeLimit)
+          );
+          const snapshot = await getDocs(q);
+          return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FirestorePlaylist));
+        } catch {
+          return this.getByField(field, userId);
+        }
+      };
+
+      const [byUid, byId] = await Promise.all([
+        getByOwnerField('createdBy.uid'),
+        getByOwnerField('createdBy.id'),
       ]);
 
       // Merge and deduplicate by document id
@@ -432,27 +470,40 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
         }
       }
 
-      // Sort by createdAt descending
-      merged.sort((a, b) => {
-        const ta = (a as any).createdAt?._seconds || (a as any).createdAt?.seconds || 0;
-        const tb = (b as any).createdAt?._seconds || (b as any).createdAt?.seconds || 0;
-        return tb - ta;
-      });
-
-      return merged;
+      return sortPlaylistsByNewest(merged).slice(0, safeLimit);
     } catch (error) {
       throw error;
     }
   }
 
   // Get featured playlists
-  async getFeaturedPlaylists(): Promise<FirestorePlaylist[]> {
-    return this.getByField('featured', true);
+  async getFeaturedPlaylists(maxCount = 50): Promise<FirestorePlaylist[]> {
+    const safeLimit = Math.min(Math.max(Number(maxCount) || 50, 1), 100);
+    try {
+      return await this.getAll([
+        where('featured', '==', true),
+        orderBy('updatedAt', 'desc'),
+        limit(safeLimit)
+      ]);
+    } catch {
+      const playlists = await this.getByField('featured', true);
+      return sortPlaylistsByNewest(playlists).slice(0, safeLimit);
+    }
   }
 
   // Get all public playlists
-  async getPublicPlaylists(): Promise<FirestorePlaylist[]> {
-    return this.getByField('isPublic', true);
+  async getPublicPlaylists(maxCount = 50): Promise<FirestorePlaylist[]> {
+    const safeLimit = Math.min(Math.max(Number(maxCount) || 50, 1), 100);
+    try {
+      return await this.getAll([
+        where('isPublic', '==', true),
+        orderBy('updatedAt', 'desc'),
+        limit(safeLimit)
+      ]);
+    } catch {
+      const playlists = await this.getByField('isPublic', true);
+      return sortPlaylistsByNewest(playlists).slice(0, safeLimit);
+    }
   }
 
   // Add song to playlist
@@ -475,7 +526,10 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
 
       // Add song to playlist
       const updatedSongs = [...songs, song];
-      return await this.update(playlistId, { songs: updatedSongs } as Partial<FirestorePlaylist>);
+      return await this.update(playlistId, {
+        songs: updatedSongs,
+        songCount: updatedSongs.length
+      } as Partial<FirestorePlaylist>);
     } catch (error) {
       throw error;
     }
@@ -498,7 +552,10 @@ export class PlaylistsService extends FirestoreService<FirestorePlaylist> {
       const updatedSongs = songs.filter(s => (s as any).id !== songId && (s as any)._id !== songId);
 
       // Update playlist
-      return await this.update(playlistId, { songs: updatedSongs } as Partial<FirestorePlaylist>);
+      return await this.update(playlistId, {
+        songs: updatedSongs,
+        songCount: updatedSongs.length
+      } as Partial<FirestorePlaylist>);
     } catch (error) {
       throw error;
     }

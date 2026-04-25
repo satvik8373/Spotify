@@ -7,7 +7,10 @@
   },
   "scripts": {
     "postinstall": "node scripts/install.js",
-    "build": "node scripts/build.js"
+    "build": "node scripts/build.js",
+    "firestore:deploy:indexes": "npx firebase-tools deploy --only firestore:indexes",
+    "firestore:deploy:rules": "npx firebase-tools deploy --only firestore:rules",
+    "firestore:migrate": "node scripts/firestore-maintenance.js"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",

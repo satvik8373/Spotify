@@ -10,6 +10,9 @@ dist/
 .env.local
 .env.production
 mavrixfy_flutter/
+firebase-service-account*.json
+google-service-account*.json
+service-account*.json
 
 # IDE and Editor
 .vscode/

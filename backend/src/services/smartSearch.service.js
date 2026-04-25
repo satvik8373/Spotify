@@ -28,6 +28,12 @@ const MOOD_PHRASES = [
 ];
 
 const ARTIST_SUFFIXES = ['songs', 'hits', 'best songs', 'playlist', 'top songs', 'all songs'];
+const VARIANT_KEYWORDS_PATTERN = /\b(remix|version|edit|mix|dj|slowed|reverb|cover|acoustic|live|instrumental|karaoke|nightcore|lo[-\s]?fi|sped[-\s]?up|mashup|ringtone|bgm|jukebox)\b/gi;
+const VARIANT_KEYWORDS_TEST = new RegExp(VARIANT_KEYWORDS_PATTERN.source, 'i');
+const NOISE_KEYWORDS_PATTERN = /\b(official|audio|video|lyrics?|full|track|song)\b/gi;
+const MIN_CORRECTION_SIMILARITY = 0.72;
+const MIN_RESULT_SIMILARITY = 0.34;
+const MAX_COMPARE_LENGTH = 64;
 
 /**
  * Classify query intent
@@ -47,6 +53,107 @@ export function detectQueryIntent(query) {
 
     // Default: treat as song title search
     return 'song';
+}
+
+// ─────────────────────────────────────────
+// Layer A: Query Understanding
+// ─────────────────────────────────────────
+function normalizeText(value = '') {
+    return String(value)
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/feat\.?|ft\.?/gi, ' ')
+        .replace(/&/g, ' and ')
+        .replace(/[^\w\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function addAspiratedVariants(term, candidates) {
+    if (!term || term.length < 3) return;
+
+    // Handles common Indian transliteration typos: "d" vs "dh", "t" vs "th".
+    for (let i = 0; i < term.length; i += 1) {
+        const char = term[i];
+        const next = term[i + 1] || '';
+        if ('bdgkpctj'.includes(char) && next !== 'h') {
+            candidates.add(`${term.slice(0, i + 1)}h${term.slice(i + 1)}`);
+        }
+        if ('bdgkpctj'.includes(char) && next === 'h') {
+            candidates.add(`${term.slice(0, i + 1)}${term.slice(i + 2)}`);
+        }
+    }
+}
+
+function createSearchPlan(query) {
+    const originalQuery = String(query || '').trim().replace(/\s+/g, ' ');
+    const normalizedQuery = normalizeText(originalQuery);
+    if (normalizedQuery.length < 2) {
+        return { originalQuery, normalizedQuery, retrievalQueries: [] };
+    }
+
+    const tokens = normalizedQuery.split(' ').filter(Boolean);
+    const candidates = new Set([originalQuery, normalizedQuery]);
+
+    if (tokens.length === 1) {
+        const term = tokens[0];
+        addAspiratedVariants(term, candidates);
+        if (term.length >= 5) candidates.add(term.slice(0, -1));
+        if (term.length >= 7) candidates.add(term.slice(0, -2));
+        if (term.length >= 6) {
+            candidates.add(term.slice(0, Math.max(4, Math.floor(term.length * 0.75))));
+        }
+    } else {
+        candidates.add(tokens.slice(0, 2).join(' '));
+        if (tokens[0]) candidates.add(tokens[0]);
+        tokens.forEach(token => addAspiratedVariants(token, candidates));
+        addAspiratedVariants(tokens.join(''), candidates);
+    }
+
+    return {
+        originalQuery,
+        normalizedQuery,
+        retrievalQueries: Array.from(candidates)
+            .filter(candidate => candidate.length >= 2)
+            .slice(0, 8)
+    };
+}
+
+function stringSimilarity(a, b) {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    if (a.includes(b) || b.includes(a)) return 0.92;
+
+    const left = a.slice(0, MAX_COMPARE_LENGTH);
+    const right = b.slice(0, MAX_COMPARE_LENGTH);
+    const matrix = Array.from({ length: left.length + 1 }, () =>
+        new Array(right.length + 1).fill(0)
+    );
+
+    for (let i = 0; i <= left.length; i += 1) matrix[i][0] = i;
+    for (let j = 0; j <= right.length; j += 1) matrix[0][j] = j;
+
+    for (let i = 1; i <= left.length; i += 1) {
+        for (let j = 1; j <= right.length; j += 1) {
+            const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
+            );
+        }
+    }
+
+    return 1 - matrix[left.length][right.length] / Math.max(left.length, right.length);
+}
+
+function canonicalTitle(title) {
+    return normalizeText(String(title || '').replace(/[\(\[\{].*?[\)\]\}]/g, ' '))
+        .replace(VARIANT_KEYWORDS_PATTERN, ' ')
+        .replace(NOISE_KEYWORDS_PATTERN, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 // ─────────────────────────────────────────
@@ -82,7 +189,157 @@ function formatSong(song) {
         duration: parseInt(song.duration) || 0,
         imageUrl,
         audioUrl,
-        source: 'jiosaavn'
+        source: 'jiosaavn',
+        playCount: Number(song.playCount || song.play_count || 0) || 0
+    };
+}
+
+// ─────────────────────────────────────────
+// Layer C: Top-K Ranking
+// ─────────────────────────────────────────
+function getMatchScore(query, title, canonical, artist, album) {
+    return Math.min(1, Math.max(
+        stringSimilarity(query, title),
+        stringSimilarity(query, canonical)
+    ) +
+        stringSimilarity(query, artist) * 0.2 +
+        stringSimilarity(query, album) * 0.12);
+}
+
+function buildCandidate(rawSong, query) {
+    const formatted = formatSong(rawSong);
+    if (!formatted.id || !formatted.title) return null;
+
+    const normalizedTitle = normalizeText(formatted.title);
+    const normalizedArtist = normalizeText(formatted.artist);
+    const normalizedAlbum = normalizeText(formatted.album);
+    const canonical = canonicalTitle(formatted.title) || normalizedTitle;
+    const combinedText = `${formatted.title} ${formatted.artist} ${formatted.album}`;
+    const isVariant = VARIANT_KEYWORDS_TEST.test(normalizeText(combinedText));
+    const hasArtist = normalizedArtist && normalizedArtist !== 'unknown artist';
+    const hasAlbum = Boolean(normalizedAlbum);
+    const hasOfficialFlag = Boolean(rawSong.isOfficial || rawSong.official || rawSong.isOriginal || rawSong.copyright || rawSong.label);
+    const year = Number(formatted.year || 0);
+
+    return {
+        song: formatted,
+        id: formatted.id,
+        title: formatted.title,
+        canonicalTitle: canonical,
+        normalizedTitle,
+        normalizedArtist,
+        normalizedAlbum,
+        playCount: formatted.playCount || 0,
+        year,
+        metadataScore:
+            Number(Boolean(hasArtist)) +
+            Number(hasAlbum) +
+            Number(year > 0) +
+            Number(hasOfficialFlag),
+        originalPriority: isVariant
+            ? 0
+            : hasOfficialFlag
+                ? 3
+                : hasArtist && hasAlbum
+                    ? 2
+                    : 1,
+        matchScore: getMatchScore(query, normalizedTitle, canonical, normalizedArtist, normalizedAlbum)
+    };
+}
+
+function compareCandidates(a, b) {
+    if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+    if (b.originalPriority !== a.originalPriority) return b.originalPriority - a.originalPriority;
+    if (b.playCount !== a.playCount) return b.playCount - a.playCount;
+    if (b.metadataScore !== a.metadataScore) return b.metadataScore - a.metadataScore;
+    if (b.year !== a.year) return b.year - a.year;
+    return a.title.localeCompare(b.title);
+}
+
+function withMatchScore(candidate, correctedQuery) {
+    return {
+        ...candidate,
+        matchScore: getMatchScore(
+            correctedQuery,
+            candidate.normalizedTitle,
+            candidate.canonicalTitle,
+            candidate.normalizedArtist,
+            candidate.normalizedAlbum
+        )
+    };
+}
+
+function findCorrectedQuery(normalizedQuery, candidates) {
+    let bestCorrection = normalizedQuery;
+    let bestScore = 0;
+
+    for (const candidate of candidates) {
+        const target = candidate.canonicalTitle || candidate.normalizedTitle;
+        if (!target || target === normalizedQuery) continue;
+
+        const similarity = Math.max(
+            stringSimilarity(normalizedQuery, target),
+            stringSimilarity(normalizedQuery, candidate.normalizedTitle)
+        );
+        const qualityBoost =
+            candidate.originalPriority * 0.03 +
+            Math.min(Math.log10(candidate.playCount + 1) / 100, 0.07);
+        const correctionScore = similarity + qualityBoost;
+
+        if (similarity >= MIN_CORRECTION_SIMILARITY && correctionScore > bestScore) {
+            bestScore = correctionScore;
+            bestCorrection = target;
+        }
+    }
+
+    return bestCorrection;
+}
+
+function rankSongsTopK(query, rawSongs, limit = 20) {
+    const normalizedQuery = normalizeText(query);
+    const candidateById = new Map();
+
+    for (const rawSong of rawSongs) {
+        const candidate = buildCandidate(rawSong, normalizedQuery);
+        if (!candidate || !candidate.song.audioUrl) continue;
+        const existing = candidateById.get(candidate.id);
+        if (!existing || compareCandidates(candidate, existing) < 0) {
+            candidateById.set(candidate.id, candidate);
+        }
+    }
+
+    const firstPass = Array.from(candidateById.values());
+    if (!firstPass.length) {
+        return { correctedQuery: normalizedQuery, songs: [], candidateCount: 0 };
+    }
+
+    const correctedQuery = findCorrectedQuery(normalizedQuery, firstPass);
+    const rankedCandidates = correctedQuery === normalizedQuery
+        ? firstPass
+        : firstPass.map(candidate => withMatchScore(candidate, correctedQuery));
+
+    const groups = new Map();
+    for (const candidate of rankedCandidates) {
+        const key = candidate.canonicalTitle || candidate.normalizedTitle || candidate.id;
+        groups.set(key, [...(groups.get(key) || []), candidate]);
+    }
+
+    const orderedGroups = Array.from(groups.values()).map(items => {
+        const sorted = [...items].sort(compareCandidates);
+        return { top: sorted[0], items: sorted };
+    }).sort((a, b) => compareCandidates(a.top, b.top));
+
+    const flattened = orderedGroups.flatMap(group => group.items);
+    const filtered = flattened.filter((candidate, index) =>
+        candidate.matchScore >= MIN_RESULT_SIMILARITY || index < 3
+    );
+
+    return {
+        correctedQuery,
+        songs: (filtered.length ? filtered : flattened)
+            .slice(0, Math.max(1, limit))
+            .map(candidate => candidate.song),
+        candidateCount: firstPass.length
     };
 }
 
@@ -140,17 +397,31 @@ export async function smartSearch(query) {
     console.log(`[SmartSearch] query="${query}" intent=${intent}`);
 
     try {
-        // Step 1: Fetch primary search results
-        const primaryResult = await searchSongs(query, 30);
-        const rawSongs = primaryResult?.data?.data?.results || primaryResult?.data?.results || [];
-        const allFormatted = rawSongs.map(formatSong);
+        // Step 1: Query understanding + retrieval + Top-K ranking
+        const searchPlan = createSearchPlan(query);
+        const retrievedResults = await Promise.allSettled(
+            searchPlan.retrievalQueries.map(async (searchQuery, index) => {
+                const res = await searchSongs(searchQuery, index === 0 ? 50 : 25);
+                return res?.data?.data?.results || res?.data?.results || [];
+            })
+        );
 
-        // Top result = first song with audio URL
-        const topResult = allFormatted.find(s => s.audioUrl) || allFormatted[0] || null;
+        const rawSongs = [];
+        const seenRawIds = new Set();
+        for (const result of retrievedResults) {
+            if (result.status !== 'fulfilled') continue;
+            for (const song of result.value) {
+                const id = song?.id || `${song?.name || song?.title}-${song?.album?.name || ''}`;
+                if (!id || seenRawIds.has(id)) continue;
+                seenRawIds.add(id);
+                rawSongs.push(song);
+            }
+        }
 
-        // Regular results (filtered, excluding top result)
-        const regularResults = allFormatted
-            .filter(s => s.audioUrl && s.id !== topResult?.id)
+        const ranked = rankSongsTopK(query, rawSongs, 20);
+        const topResult = ranked.songs[0] || null;
+        const regularResults = ranked.songs
+            .filter(s => s.id !== topResult?.id)
             .slice(0, 15);
 
         // Step 2: Extract mood from top result (or query itself for mood searches)
@@ -207,6 +478,7 @@ export async function smartSearch(query) {
         return {
             intent,
             query,
+            correctedQuery: ranked.correctedQuery,
             topResult,
             results: regularResults,
             similarSongs,
@@ -219,10 +491,13 @@ export async function smartSearch(query) {
         console.error('[SmartSearch] Error:', error.message);
         // Graceful fallback: just return raw search
         const fallback = await searchSongs(query, 20);
-        const songs = (fallback?.data?.data?.results || fallback?.data?.results || []).map(formatSong).filter(s => s.audioUrl);
+        const rawFallbackSongs = fallback?.data?.data?.results || fallback?.data?.results || [];
+        const rankedFallback = rankSongsTopK(query, rawFallbackSongs, 20);
+        const songs = rankedFallback.songs.filter(s => s.audioUrl);
         return {
             intent,
             query,
+            correctedQuery: rankedFallback.correctedQuery,
             topResult: songs[0] || null,
             results: songs.slice(1),
             similarSongs: [],

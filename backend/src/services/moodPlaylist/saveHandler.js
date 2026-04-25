@@ -31,10 +31,20 @@ const extractTimestampSeconds = (value) => {
 };
 
 const enforceMoodHistoryRetention = async (userId) => {
-  const snapshot = await db.collection(PLAYLISTS_COLLECTION)
-    .where('createdBy.uid', '==', userId)
-    .limit(MOOD_HISTORY_SCAN_LIMIT)
-    .get();
+  let snapshot;
+  try {
+    snapshot = await db.collection(PLAYLISTS_COLLECTION)
+      .where('createdBy.uid', '==', userId)
+      .where('moodGenerated', '==', true)
+      .orderBy('createdAt', 'desc')
+      .limit(MOOD_HISTORY_SCAN_LIMIT)
+      .get();
+  } catch {
+    snapshot = await db.collection(PLAYLISTS_COLLECTION)
+      .where('createdBy.uid', '==', userId)
+      .limit(MOOD_HISTORY_SCAN_LIMIT)
+      .get();
+  }
 
   const moodDocs = [];
   snapshot.forEach((doc) => {
@@ -99,12 +109,19 @@ export const savePlaylist = async (userId, playlistData, userInfo = {}) => {
       description: playlistData.description || `A ${playlistData.emotion} mood playlist`,
       isPublic: false, // Private by default
       songs: playlistData.songs,
+      songCount: playlistData.songs.length,
       createdBy: {
+        id: userId,
+        _id: userId,
         uid: userId,
+        name: userInfo.fullName || 'Unknown User',
         fullName: userInfo.fullName || 'Unknown User',
         imageUrl: userInfo.imageUrl || '',
       },
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      source: 'mood_playlist_generator',
+      schemaVersion: 2,
       // Mood-specific fields (Requirement 9.2)
       moodGenerated: true,
       emotion: playlistData.emotion,
@@ -202,11 +219,20 @@ export const getUserPlaylists = async (userId, limit = 10, page = 1) => {
     const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), MOOD_HISTORY_MAX_RECORDS);
     const safePage = Math.max(Number(page) || 1, 1);
 
-    // Simple query — only filter by userId to avoid needing a composite Firestore index
-    const snapshot = await db.collection(PLAYLISTS_COLLECTION)
-      .where('createdBy.uid', '==', userId)
-      .limit(200) // fetch up to 200 to allow in-memory sorting
-      .get();
+    let snapshot;
+    try {
+      snapshot = await db.collection(PLAYLISTS_COLLECTION)
+        .where('createdBy.uid', '==', userId)
+        .where('moodGenerated', '==', true)
+        .orderBy('createdAt', 'desc')
+        .limit(200)
+        .get();
+    } catch {
+      snapshot = await db.collection(PLAYLISTS_COLLECTION)
+        .where('createdBy.uid', '==', userId)
+        .limit(200)
+        .get();
+    }
 
     const playlists = [];
     snapshot.forEach((doc) => {
@@ -379,7 +405,8 @@ export const finalizeToLibrary = async (userId, playlistId) => {
       finalizedAt: admin.firestore.FieldValue.serverTimestamp(),
       name: title,
       coverGradient: gradient,
-      isPublic: false
+      isPublic: false,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
     return {
@@ -392,4 +419,3 @@ export const finalizeToLibrary = async (userId, playlistId) => {
     return { success: false, error: 'Failed to finalize', message: 'Something went wrong. Please try again.' };
   }
 };
-

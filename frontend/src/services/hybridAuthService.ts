@@ -14,9 +14,9 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import axiosInstance from "@/lib/axios";
-import { Timestamp } from "firebase/firestore";
 import { isWebView, clearAuthCache } from "@/utils/webViewDetection";
 import { signInWithFacebook, initializeFacebookSDK } from "./facebookAuthService";
+import { buildNewUserProfileDocument, buildUserProfileDocument } from "@/services/userProfileDocument";
 
 
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -111,12 +111,13 @@ export const login = async (email: string, password: string): Promise<UserProfil
         } else {
           // Create basic profile if not found
           firestoreUser = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || email,
-            displayName: firebaseUser.displayName || email.split('@')[0],
-            photoURL: firebaseUser.photoURL || null,
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
+            ...buildNewUserProfileDocument(firebaseUser, {
+              email: firebaseUser.email || email,
+              displayName: firebaseUser.displayName || email.split('@')[0],
+              fullName: firebaseUser.displayName || email.split('@')[0],
+              imageUrl: firebaseUser.photoURL || null,
+              photoURL: firebaseUser.photoURL || null,
+            }),
           };
 
           // Create document in background
@@ -127,12 +128,13 @@ export const login = async (email: string, password: string): Promise<UserProfil
       } catch (error) {
         // Use Firebase data as fallback
         firestoreUser = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || email,
-          displayName: firebaseUser.displayName || email.split('@')[0],
-          photoURL: firebaseUser.photoURL || null,
-          createdAt: Timestamp.now(),
-          updatedAt: Timestamp.now(),
+          ...buildNewUserProfileDocument(firebaseUser, {
+            email: firebaseUser.email || email,
+            displayName: firebaseUser.displayName || email.split('@')[0],
+            fullName: firebaseUser.displayName || email.split('@')[0],
+            imageUrl: firebaseUser.photoURL || null,
+            photoURL: firebaseUser.photoURL || null,
+          }),
         };
       }
 
@@ -214,13 +216,15 @@ export const register = async (email: string, password: string, fullName: string
     }
 
     // Create user document in Firestore
-    await setDoc(doc(db, "users", user.uid), {
+    await setDoc(doc(db, "users", user.uid), buildNewUserProfileDocument(user, {
       email,
       fullName,
+      displayName: fullName,
       imageUrl: null,
-      createdAt: new Date().toISOString(),
+      photoURL: null,
+      provider: "password",
       emailVerified: false
-    });
+    }));
 
     // Create a user profile object
     const userProfile: UserProfile = {
@@ -305,10 +309,9 @@ export const checkEmailVerified = async (): Promise<boolean> => {
     // Update Firestore if verification status changed
     if (user.emailVerified) {
       try {
-        await setDoc(doc(db, "users", user.uid), {
+        await setDoc(doc(db, "users", user.uid), buildUserProfileDocument(user, {
           emailVerified: true,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
+        }), { merge: true });
       } catch (error) {
         // Failed to update Firestore
       }
@@ -403,11 +406,12 @@ export const updateUserProfile = async (user: User, data: {
     }
 
     // Update user document in Firestore
-    await setDoc(doc(db, "users", user.uid), {
-      fullName: data.fullName || user.displayName,
-      imageUrl: imageUrl,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
+    await setDoc(doc(db, "users", user.uid), buildUserProfileDocument(user, {
+      fullName: data.fullName || user.displayName || "User",
+      displayName: data.fullName || user.displayName || "User",
+      imageUrl,
+      photoURL: imageUrl,
+    }), { merge: true });
 
     // Synchronize with backend if it's available
     if (API_URL) {
@@ -554,13 +558,14 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
 
         if (!userDoc.exists()) {
           // Create user document in Firestore if this is their first sign in
-          await setDoc(doc(db, "users", user.uid), {
+          await setDoc(doc(db, "users", user.uid), buildNewUserProfileDocument(user, {
             email: user.email,
-            fullName: user.displayName,
+            fullName: user.displayName || user.email?.split('@')[0] || 'User',
+            displayName: user.displayName || user.email?.split('@')[0] || 'User',
             imageUrl: user.photoURL,
-            createdAt: new Date().toISOString(),
-
-          });
+            photoURL: user.photoURL,
+            provider: "google.com",
+          }));
         }
 
         // Synchronize with backend (non-blocking)

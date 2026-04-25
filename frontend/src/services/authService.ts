@@ -10,6 +10,7 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { buildNewUserProfileDocument, buildUserProfileDocument } from "@/services/userProfileDocument";
 
 // Sign in with email and password
 export const login = async (email: string, password: string) => {
@@ -50,13 +51,14 @@ export const register = async (email: string, password: string, fullName: string
     });
     
     // Create user document in Firestore
-    await setDoc(doc(db, "users", user.uid), {
+    await setDoc(doc(db, "users", user.uid), buildNewUserProfileDocument(user, {
       email,
       fullName,
+      displayName: fullName,
       imageUrl: null,
-      createdAt: new Date().toISOString(),
-      
-    });
+      photoURL: null,
+      provider: "password",
+    }));
     
     // Update auth store
     useAuthStore.getState().setAuthStatus(true, user.uid);
@@ -106,11 +108,12 @@ export const updateUserProfile = async (user: User, data: {
     }
     
     // Update user document in Firestore
-    await setDoc(doc(db, "users", user.uid), {
-      fullName: data.fullName || user.displayName,
-      imageUrl: imageUrl,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
+    await setDoc(doc(db, "users", user.uid), buildUserProfileDocument(user, {
+      fullName: data.fullName || user.displayName || "User",
+      displayName: data.fullName || user.displayName || "User",
+      imageUrl,
+      photoURL: imageUrl,
+    }), { merge: true });
     
     // Update auth store
     useAuthStore.getState().setUserProfile(

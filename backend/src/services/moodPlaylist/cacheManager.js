@@ -4,6 +4,7 @@
  * Feature: ai-mood-playlist-generator
  */
 
+import crypto from 'crypto';
 import admin from '../../config/firebase.js';
 
 const db = admin.firestore();
@@ -29,6 +30,10 @@ function normalizeCacheKey(moodText) {
     .replace(/\s+/g, ' '); // Collapse multiple spaces to single space
 }
 
+function getCacheDocId(normalizedKey) {
+  return crypto.createHash('sha256').update(normalizedKey).digest('hex');
+}
+
 /**
  * Retrieves a cached playlist for the given mood text
  * 
@@ -45,17 +50,14 @@ async function getCachedPlaylist(moodText) {
       return null;
     }
 
-    // Query cache collection by normalized mood text
-    const snapshot = await db.collection(CACHE_COLLECTION)
-      .where('moodText', '==', normalizedKey)
-      .limit(1)
+    const cacheDoc = await db.collection(CACHE_COLLECTION)
+      .doc(getCacheDocId(normalizedKey))
       .get();
 
-    if (snapshot.empty) {
+    if (!cacheDoc.exists) {
       return null;
     }
 
-    const cacheDoc = snapshot.docs[0];
     const cacheData = cacheDoc.data();
 
     // Check if cache entry has expired
@@ -111,6 +113,7 @@ async function setCachedPlaylist(moodText, playlist, emotion) {
 
     const cacheEntry = {
       moodText: normalizedKey,
+      cacheKey: normalizedKey,
       emotion,
       playlist: {
         _id: playlist._id,
@@ -121,12 +124,13 @@ async function setCachedPlaylist(moodText, playlist, emotion) {
         generatedAt: playlist.generatedAt || now
       },
       createdAt: now,
+      updatedAt: now,
       expiresAt
     };
 
-    // Store in cache collection
-    // Use normalized mood text as document ID for easy lookup
-    await db.collection(CACHE_COLLECTION).add(cacheEntry);
+    await db.collection(CACHE_COLLECTION)
+      .doc(getCacheDocId(normalizedKey))
+      .set(cacheEntry, { merge: true });
 
     console.log(`Cached playlist for mood: "${normalizedKey}" (expires in ${CACHE_TTL_HOURS}h)`);
   } catch (error) {

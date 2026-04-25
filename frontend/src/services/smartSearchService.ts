@@ -26,6 +26,7 @@ export interface DetectedMood {
 export interface SmartSearchResult {
     intent: 'song' | 'artist' | 'mood';
     query: string;
+    correctedQuery?: string;
     topResult: SmartSearchSong | null;
     results: SmartSearchSong[];
     similarSongs: SmartSearchSong[];

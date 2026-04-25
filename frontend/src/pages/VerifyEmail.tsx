@@ -8,6 +8,7 @@ import { auth } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { buildNewUserProfileDocument } from '@/services/userProfileDocument';
 
 interface LocationState {
   email: string;
@@ -188,13 +189,15 @@ const VerifyEmail = () => {
       });
 
       // Create user document in Firestore
-      await setDoc(doc(db, "users", user.uid), {
+      await setDoc(doc(db, "users", user.uid), buildNewUserProfileDocument(user, {
         email,
         fullName,
+        displayName: fullName,
         imageUrl: null,
-        createdAt: new Date().toISOString(),
+        photoURL: null,
+        provider: "password",
         emailVerified: true // Mark as verified since we verified before account creation
-      });
+      }));
 
       // Update auth store
       useAuthStore.getState().setAuthStatus(true, user.uid);

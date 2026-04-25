@@ -52,11 +52,18 @@ export const saveUserProfile = async (userData: Partial<UserProfile>): Promise<b
       });
     } else {
       // Create new user
+      const email = auth.currentUser.email || '';
+      const displayName = userData.fullName || auth.currentUser.displayName || 'User';
       await setDoc(userRef, {
         uid,
-        email: auth.currentUser.email || '',
-        fullName: auth.currentUser.displayName || 'User',
-        imageUrl: auth.currentUser.photoURL || undefined,
+        email,
+        emailLower: email.toLowerCase(),
+        displayName,
+        fullName: displayName,
+        imageUrl: auth.currentUser.photoURL || null,
+        photoURL: auth.currentUser.photoURL || null,
+        provider: auth.currentUser.providerData[0]?.providerId || 'password',
+        schemaVersion: 2,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
 

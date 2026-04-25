@@ -1,5 +1,19 @@
 import { useAuthStore } from "@/stores/useAuthStore";
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, serverTimestamp, writeBatch } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  serverTimestamp,
+  writeBatch,
+  getCountFromServer
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Song } from "@/types";
 
@@ -16,9 +30,15 @@ export interface LikedSong {
   audioUrl: string;
   duration?: number;
   likedAt: any; // Firebase Timestamp
+  createdAt?: any;
+  updatedAt?: any;
   source: 'mavrixfy' | 'spotify' | 'saavn';
   year?: string;
   spotifyId?: string; // Original Mavrixfy track ID if synced from Mavrixfy
+  normalizedTitle?: string;
+  normalizedArtist?: string;
+  dedupeKey?: string;
+  client?: string;
 }
 
 export interface BulkLikedSongIssue {
@@ -90,6 +110,12 @@ const normalizeText = (value: unknown): string => {
   return INVALID_TEXT_VALUES.has(normalized.toLowerCase()) ? '' : normalized;
 };
 
+const normalizeForDedupe = (value: unknown): string => normalizeText(value).toLowerCase().replace(/\s+/g, ' ');
+
+const getDedupeKey = (title: unknown, artist: unknown): string => {
+  return `${normalizeForDedupe(title)}|${normalizeForDedupe(artist)}`;
+};
+
 const getAlbumNameFromSong = (song: Song): string => {
   const album = normalizeText(song.album);
   if (album) return album;
@@ -148,7 +174,13 @@ export const isSongAlreadyLiked = async (title: string, artist: string): Promise
   }
   
   // Create cache key
-  const cacheKey = `${userId}:${title.toLowerCase().trim()}:${artist.toLowerCase().trim()}`;
+  const normalizedTitle = normalizeForDedupe(title);
+  const normalizedArtist = normalizeForDedupe(artist);
+  if (!normalizedTitle || !normalizedArtist) {
+    return false;
+  }
+
+  const cacheKey = `${userId}:${normalizedTitle}:${normalizedArtist}`;
   
   // Check cache first
   const cached = duplicateCheckCache.get(cacheKey);
@@ -159,22 +191,26 @@ export const isSongAlreadyLiked = async (title: string, artist: string): Promise
   try {
     const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
     
-    // Use Firestore query to check for exact matches
-    const normalizedTitle = title.toLowerCase().trim();
-    const normalizedArtist = artist.toLowerCase().trim();
-    
-    // Get ALL songs to check for duplicates (not just recent 100)
-    // This ensures we catch all duplicates even in large libraries
-    const snapshot = await getDocs(likedSongsRef);
-    
-    // Check if any existing song matches title and artist (case-insensitive)
-    const exists = snapshot.docs.some(doc => {
-      const data = doc.data();
-      const existingTitle = data.title?.toLowerCase().trim();
-      const existingArtist = data.artist?.toLowerCase().trim();
-      
-      return existingTitle === normalizedTitle && existingArtist === normalizedArtist;
-    });
+    const duplicateQuery = query(
+      likedSongsRef,
+      where('normalizedTitle', '==', normalizedTitle),
+      where('normalizedArtist', '==', normalizedArtist),
+      limit(1)
+    );
+
+    let exists = false;
+    try {
+      const snapshot = await getDocs(duplicateQuery);
+      exists = !snapshot.empty;
+    } catch {
+      const snapshot = await getDocs(likedSongsRef);
+      exists = snapshot.docs.some(doc => {
+        const data = doc.data();
+        const existingTitle = data.normalizedTitle || normalizeForDedupe(data.title);
+        const existingArtist = data.normalizedArtist || normalizeForDedupe(data.artist);
+        return existingTitle === normalizedTitle && existingArtist === normalizedArtist;
+      });
+    }
     
     // Cache the result
     duplicateCheckCache.set(cacheKey, { result: exists, timestamp: Date.now() });
@@ -213,7 +249,14 @@ export const addLikedSong = async (
         try {
           // CRITICAL: Use song._id as the Firestore document ID consistently
           // This ensures that when we delete, we use the same ID
-          const documentId = song._id;
+          const normalizedTitle = normalizeForDedupe(song.title);
+          const normalizedArtist = normalizeForDedupe(song.artist);
+          if (!normalizedTitle || !normalizedArtist) {
+            resolve({ added: false, reason: 'Invalid song' });
+            return;
+          }
+
+          const documentId = String(song._id || getDedupeKey(song.title, song.artist)).replace(/\//g, '_');
           const likedSongRef = doc(db, 'users', userId, 'likedSongs', documentId);
           
           // Determine the likedAt timestamp
@@ -227,23 +270,29 @@ export const addLikedSong = async (
           }
 
           const likedSongData: LikedSong = {
-            id: song._id, // Store the original song ID in the data
+            id: song._id || documentId, // Store the original song ID in the data
             title: song.title,
+            normalizedTitle,
             artist: song.artist,
+            normalizedArtist,
             albumName: getAlbumNameFromSong(song),
-            imageUrl: song.imageUrl,
-            audioUrl: song.audioUrl,
+            imageUrl: song.imageUrl || '',
+            audioUrl: song.audioUrl || '',
             duration: song.duration,
             year: '',
             likedAt: likedAtTimestamp,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
             source: source,
+            dedupeKey: `${normalizedTitle}|${normalizedArtist}`,
+            client: 'mavrixfy_web',
             ...(spotifyId && { spotifyId })
           };
           
           await setDoc(likedSongRef, likedSongData);
           
           // Update cache
-          const cacheKey = `${userId}:${song.title.toLowerCase().trim()}:${song.artist.toLowerCase().trim()}`;
+          const cacheKey = `${userId}:${normalizedTitle}:${normalizedArtist}`;
           duplicateCheckCache.set(cacheKey, { result: true, timestamp: Date.now() });
           
           // Dispatch event to notify other components
@@ -299,10 +348,9 @@ export const addMultipleLikedSongs = async (
     existingSnapshot.forEach((docSnap) => {
       existingIds.add(docSnap.id);
       const data = docSnap.data();
-      const existingTitle = String(data.title || '').toLowerCase().trim();
-      const existingArtist = String(data.artist || '').toLowerCase().trim();
-      if (existingTitle && existingArtist) {
-        existingKeys.add(`${existingTitle}|${existingArtist}`);
+      const existingKey = data.dedupeKey || getDedupeKey(data.normalizedTitle || data.title, data.normalizedArtist || data.artist);
+      if (existingKey !== '|') {
+        existingKeys.add(existingKey);
       }
     });
 
@@ -324,7 +372,7 @@ export const addMultipleLikedSongs = async (
         continue;
       }
 
-      const dedupeKey = `${title.toLowerCase()}|${artist.toLowerCase()}`;
+      const dedupeKey = getDedupeKey(title, artist);
       if (normalizedInput.has(dedupeKey) || seenInputIds.has(id)) {
         skipped += 1;
         duplicateInImport += 1;
@@ -352,8 +400,8 @@ export const addMultipleLikedSongs = async (
       const committedSongs: Song[] = [];
 
       for (const song of songBatch) {
-        const normalizedTitle = String(song.title || '').toLowerCase().trim();
-        const normalizedArtist = String(song.artist || '').toLowerCase().trim();
+        const normalizedTitle = normalizeForDedupe(song.title);
+        const normalizedArtist = normalizeForDedupe(song.artist);
         const dedupeKey = `${normalizedTitle}|${normalizedArtist}`;
 
         if (existingKeys.has(dedupeKey) || existingIds.has(song._id)) {
@@ -376,14 +424,20 @@ export const addMultipleLikedSongs = async (
           const likedSongData: LikedSong = {
             id: song._id,
             title: song.title,
+            normalizedTitle,
             artist: song.artist,
+            normalizedArtist,
             albumName: getAlbumNameFromSong(song),
-            imageUrl: song.imageUrl,
-            audioUrl: song.audioUrl,
+            imageUrl: song.imageUrl || '',
+            audioUrl: song.audioUrl || '',
             duration: song.duration,
             year: '',
             likedAt: likedAtValue,
-            source
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            source,
+            dedupeKey,
+            client: 'mavrixfy_web'
           };
 
           batch.set(likedSongRef, likedSongData, { merge: true });
@@ -409,7 +463,7 @@ export const addMultipleLikedSongs = async (
           await batch.commit();
 
           committedSongs.forEach((song) => {
-            const cacheKey = `${userId}:${song.title.toLowerCase().trim()}:${song.artist.toLowerCase().trim()}`;
+            const cacheKey = `${userId}:${normalizeForDedupe(song.title)}:${normalizeForDedupe(song.artist)}`;
             duplicateCheckCache.set(cacheKey, { result: true, timestamp: Date.now() });
           });
         } catch (error) {
@@ -417,8 +471,8 @@ export const addMultipleLikedSongs = async (
           errors += committedSongs.length;
 
           committedSongs.forEach((song) => {
-            const normalizedTitle = String(song.title || '').toLowerCase().trim();
-            const normalizedArtist = String(song.artist || '').toLowerCase().trim();
+            const normalizedTitle = normalizeForDedupe(song.title);
+            const normalizedArtist = normalizeForDedupe(song.artist);
             existingKeys.delete(`${normalizedTitle}|${normalizedArtist}`);
             existingIds.delete(song._id);
             errorSongs.push({
@@ -627,11 +681,16 @@ export const getLikedSongsCount = async (): Promise<number> => {
 
   try {
     const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
-    const snapshot = await getDocs(likedSongsRef);
-    
-    return snapshot.size;
+    const snapshot = await getCountFromServer(likedSongsRef);
+    return snapshot.data().count;
     
   } catch (error) {
-    return 0;
+    try {
+      const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+      const snapshot = await getDocs(likedSongsRef);
+      return snapshot.size;
+    } catch {
+      return 0;
+    }
   }
 };

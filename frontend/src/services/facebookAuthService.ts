@@ -7,7 +7,7 @@ import {
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { Timestamp } from "firebase/firestore";
+import { buildNewUserProfileDocument, buildUserProfileDocument } from "@/services/userProfileDocument";
 
 interface UserProfile {
   id: string;
@@ -89,26 +89,22 @@ const handleFirestoreSync = async (user: any, facebookProfile: any) => {
     // Check if user document exists in Firestore
     const userDoc = await getDoc(doc(db, "users", user.uid));
 
-    const userData = {
-      uid: user.uid,
-      email: user.email,
+    const profileData = {
       displayName: user.displayName || facebookProfile?.name || user.email?.split('@')[0] || 'User',
+      fullName: user.displayName || facebookProfile?.name || user.email?.split('@')[0] || 'User',
+      imageUrl: user.photoURL || facebookProfile?.picture?.data?.url || null,
       photoURL: user.photoURL || facebookProfile?.picture?.data?.url || null,
-      provider: 'facebook',
+      provider: 'facebook.com',
       facebookId: facebookProfile?.id || null,
-      updatedAt: Timestamp.now(),
     };
 
     if (!userDoc.exists()) {
       // Create new user document
-      await setDoc(doc(db, "users", user.uid), {
-        ...userData,
-        createdAt: Timestamp.now(),
-      });
+      await setDoc(doc(db, "users", user.uid), buildNewUserProfileDocument(user, profileData));
       // Created new user document in Firestore
     } else {
       // Update existing user document
-      await setDoc(doc(db, "users", user.uid), userData, { merge: true });
+      await setDoc(doc(db, "users", user.uid), buildUserProfileDocument(user, profileData), { merge: true });
       // Updated existing user document in Firestore
     }
   } catch (error) {
@@ -134,11 +130,12 @@ export const linkFacebookAccount = async (): Promise<void> => {
     const facebookProfile = additionalUserInfo?.profile as any;
 
     // Update user document with Facebook info
-    await setDoc(doc(db, "users", user.uid), {
+    await setDoc(doc(db, "users", user.uid), buildUserProfileDocument(user, {
       facebookId: facebookProfile?.id || null,
+      imageUrl: user.photoURL || facebookProfile?.picture?.data?.url || null,
       photoURL: user.photoURL || facebookProfile?.picture?.data?.url || null,
-      updatedAt: Timestamp.now(),
-    }, { merge: true });
+      provider: 'facebook.com',
+    }), { merge: true });
 
     // Facebook account linked successfully
   } catch (error: any) {

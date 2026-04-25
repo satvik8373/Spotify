@@ -46,6 +46,8 @@ const castFirestorePlaylist = (playlist: any): FirestorePlaylist => {
   return playlist as FirestorePlaylist;
 };
 
+const normalizeForSearch = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
+
 // Convert Firestore document to Playlist format
 export const convertFirestorePlaylistToPlaylist = (data: any): Playlist => {
   // Type cast to handle the incompatible types
@@ -55,7 +57,7 @@ export const convertFirestorePlaylistToPlaylist = (data: any): Playlist => {
   const createdBy = firestorePlaylist.createdBy || {};
   const createdById = createdBy.id || createdBy._id || createdBy.uid || 'unknown';
   const createdByUid = createdBy.uid || createdBy.id || createdBy._id || 'unknown';
-  const createdByName = createdBy.fullName || createdBy.displayName || 'Unknown User';
+  const createdByName = createdBy.fullName || createdBy.displayName || createdBy.name || 'Unknown User';
   const createdByImage = createdBy.imageUrl || createdBy.photoURL || '';
   
   return {
@@ -103,7 +105,7 @@ export const getUserPlaylists = async (options?: { limit?: number; page?: number
     
     const userId = currentUser.uid;
     
-    const firestorePlaylists = await playlistsService.getUserPlaylists(userId);
+    const firestorePlaylists = await playlistsService.getUserPlaylists(userId, options?.limit);
     
     const convertedPlaylists = firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
     
@@ -116,7 +118,7 @@ export const getUserPlaylists = async (options?: { limit?: number; page?: number
 // Get featured playlists
 export const getFeaturedPlaylists = async (options?: { limit?: number; page?: number }): Promise<Playlist[]> => {
   try {
-    const firestorePlaylists = await playlistsService.getFeaturedPlaylists();
+    const firestorePlaylists = await playlistsService.getFeaturedPlaylists(options?.limit);
     return firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
   } catch (error) {
     throw error;
@@ -126,7 +128,7 @@ export const getFeaturedPlaylists = async (options?: { limit?: number; page?: nu
 // Get all public playlists
 export const getPublicPlaylists = async (options?: { limit?: number; page?: number }): Promise<Playlist[]> => {
   try {
-    const firestorePlaylists = await playlistsService.getPublicPlaylists();
+    const firestorePlaylists = await playlistsService.getPublicPlaylists(options?.limit);
     return firestorePlaylists.map(playlist => convertFirestorePlaylistToPlaylist(playlist));
   } catch (error) {
     throw error;
@@ -172,9 +174,14 @@ export const createPlaylist = async (
     const userForFirestore = {
       id: currentUser.uid,
       _id: currentUser.uid, // Add _id to match User interface
-              uid: currentUser.uid,
+      uid: currentUser.uid,
+      name: currentUser.displayName || 'User',
+      displayName: currentUser.displayName || 'User',
       fullName: currentUser.displayName || 'User',
-      imageUrl: currentUser.photoURL || ''
+      imageUrl: currentUser.photoURL || '',
+      photoURL: currentUser.photoURL || '',
+      email: currentUser.email || '',
+      emailLower: (currentUser.email || '').toLowerCase()
     };
     
     const playlistData = {
@@ -183,8 +190,12 @@ export const createPlaylist = async (
       imageUrl: playlistImageUrl, // Using the provided or generated image URL
       isPublic,
       songs: [],
+      songCount: 0,
       featured: false,
       createdBy: userForFirestore,
+      source: 'mavrixfy_web',
+      schemaVersion: 2,
+      searchableName: normalizeForSearch(name),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -229,6 +240,10 @@ export const updatePlaylist = async (
       }
     }
     
+    if (typeof updateData.name === 'string') {
+      (updateData as typeof updateData & { searchableName: string }).searchableName = normalizeForSearch(updateData.name);
+    }
+
     const firestorePlaylist = await playlistsService.update(playlistId, updateData);
     return convertFirestorePlaylistToPlaylist(firestorePlaylist);
   } catch (error) {
