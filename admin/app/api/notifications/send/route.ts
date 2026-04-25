@@ -26,10 +26,7 @@ async function sendExpoNotifications(
 
   const messages = tokens.map(to => ({
     to,
-    title: `Mavrixfy — ${title}`,
-    body,
-    data,
-    sound: 'default',
+    title: title,
     channelId: 'mavrixfy-default',
     priority: 'high',
     badge: 1,
@@ -92,9 +89,7 @@ async function sendWebNotifications(
       },
       webpush: {
         notification: {
-          title: `Mavrixfy — ${title}`,
-          body,
-          icon: 'https://mavrixfy.site/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
+          title,
           badge: 'https://mavrixfy.site/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
           ...(imageUrl ? { image: imageUrl } : {}),
           requireInteraction: false,
@@ -124,11 +119,13 @@ export async function POST(req: NextRequest) {
   try {
     const app = getAdminApp();
     const db  = getFirestore(app);
-    const { title, message, imageUrl, route, notificationId } = await req.json();
+    const { title, message, imageUrl, route, notificationId, platform } = await req.json();
 
     if (!title || !message) {
       return NextResponse.json({ error: 'Title and message are required' }, { status: 400 });
     }
+
+    const targetPlatform: string = platform || 'all';
 
     // Collect all tokens grouped by type
     const usersSnap = await db.collection('users').get();
@@ -145,20 +142,26 @@ export async function POST(req: NextRequest) {
 
         // Expo push token (works for both Android + iOS via Expo service)
         if (d.expoPushToken?.startsWith('ExponentPushToken')) {
-          expoTokens.push(d.expoPushToken);
+          if (targetPlatform === 'all' || targetPlatform === 'android' || targetPlatform === 'ios') {
+            expoTokens.push(d.expoPushToken);
+          }
           continue;
         }
 
         // Web FCM token
         if (d.platform === 'web' && d.nativePushToken) {
-          webTokens.push(d.nativePushToken);
-          tokenDocRefs.push({ ref: t.ref, token: d.nativePushToken });
+          if (targetPlatform === 'all' || targetPlatform === 'web') {
+            webTokens.push(d.nativePushToken);
+            tokenDocRefs.push({ ref: t.ref, token: d.nativePushToken });
+          }
           continue;
         }
 
-        // Native Android FCM token (type = "android")
+        // Native Android FCM token
         if (d.platform === 'android' && d.nativePushTokenType === 'android' && d.nativePushToken) {
-          androidFcmTokens.push(d.nativePushToken);
+          if (targetPlatform === 'all' || targetPlatform === 'android') {
+            androidFcmTokens.push(d.nativePushToken);
+          }
           continue;
         }
 
@@ -185,7 +188,7 @@ export async function POST(req: NextRequest) {
               const batch = androidFcmTokens.slice(i, i + 500);
               const msgs = batch.map(token => ({
                 token,
-                notification: { title: `Mavrixfy — ${title}`, body: message },
+                notification: { title, body: message },
                 data,
                 android: {
                   priority: 'high' as const,

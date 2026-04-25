@@ -287,7 +287,11 @@ export class SongsService extends FirestoreService<FirestoreSong> {
       // Create song document
       return await this.create({
         ...metadata,
-        audioUrl
+        audioUrl,
+        streamUrl: audioUrl,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type || 'audio/mpeg'
       });
     } catch (error) {
       throw error;

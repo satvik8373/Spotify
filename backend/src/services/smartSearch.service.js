@@ -14,6 +14,57 @@ import { detectEmotionByKeywords } from './moodPlaylist/fallbackDetector.js';
 import { mapEmotionToGenres } from './moodPlaylist/genreMapper.js';
 import { detectContext } from './moodPlaylist/contextDetector.js';
 import { rankSongs } from './moodPlaylist/playlistGenerator.js';
+import admin from '../config/firebase.js';
+
+// ─────────────────────────────────────────
+// Firestore catalog songs
+// ─────────────────────────────────────────
+let _firestoreSongsCache = null;
+let _firestoreCacheTime = 0;
+const FIRESTORE_CACHE_TTL = 30 * 1000; // 30 seconds
+
+async function getFirestoreSongs() {
+    const now = Date.now();
+    if (_firestoreSongsCache && now - _firestoreCacheTime < FIRESTORE_CACHE_TTL) {
+        return _firestoreSongsCache;
+    }
+    try {
+        const db = admin.firestore();
+        const snap = await db.collection('songs').get();
+        const songs = snap.docs.map(d => {
+            const data = d.data();
+            const audioUrl = data.audioUrl || data.streamUrl || data.url || '';
+            if (!audioUrl) return null;
+            return {
+                id: d.id,
+                title: data.title || data.name || '',
+                artist: data.artist || data.primaryArtists || '',
+                album: typeof data.album === 'object' ? (data.album?.name || '') : (data.album || ''),
+                year: data.year ? Number(data.year) : null,
+                duration: data.duration ? Number(data.duration) : 0,
+                imageUrl: data.imageUrl || '',
+                audioUrl,
+                source: 'catalog',
+                playCount: 0,
+            };
+        }).filter(Boolean);
+        _firestoreSongsCache = songs;
+        _firestoreCacheTime = now;
+        return songs;
+    } catch (e) {
+        console.error('[SmartSearch] Firestore fetch error:', e.message);
+        return [];
+    }
+}
+
+function matchesCatalogSong(song, query) {
+    const q = query.toLowerCase();
+    const title = (song.title || '').toLowerCase();
+    const artist = (song.artist || '').toLowerCase();
+    const album = (song.album || '').toLowerCase();
+    return title.includes(q) || artist.includes(q) || album.includes(q) ||
+        q.includes(title) || q.split(' ').some(w => w.length > 2 && title.includes(w));
+}
 
 // ─────────────────────────────────────────
 // Intent Detection
@@ -189,7 +240,7 @@ function formatSong(song) {
         duration: parseInt(song.duration) || 0,
         imageUrl,
         audioUrl,
-        source: 'jiosaavn',
+        source: song.source || 'jiosaavn',
         playCount: Number(song.playCount || song.play_count || 0) || 0
     };
 }
@@ -248,11 +299,18 @@ function buildCandidate(rawSong, query) {
 }
 
 function compareCandidates(a, b) {
+    // If match scores are significantly different, prioritize the much better match
+    if (Math.abs(b.matchScore - a.matchScore) > 0.15) {
+        return b.matchScore - a.matchScore;
+    }
+    
+    // For similar match scores, prioritize the LATEST year
+    if (b.year !== a.year) return b.year - a.year;
+
     if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
     if (b.originalPriority !== a.originalPriority) return b.originalPriority - a.originalPriority;
     if (b.playCount !== a.playCount) return b.playCount - a.playCount;
     if (b.metadataScore !== a.metadataScore) return b.metadataScore - a.metadataScore;
-    if (b.year !== a.year) return b.year - a.year;
     return a.title.localeCompare(b.title);
 }
 
@@ -419,8 +477,36 @@ export async function smartSearch(query) {
         }
 
         const ranked = rankSongsTopK(query, rawSongs, 20);
-        const topResult = ranked.songs[0] || null;
-        const regularResults = ranked.songs
+
+        // Merge Firestore catalog songs — they appear naturally in results
+        const catalogSongs = await getFirestoreSongs();
+        const matchingCatalog = catalogSongs.filter(s => matchesCatalogSong(s, query));
+
+        // Merge catalog songs into raw pool and re-rank
+        const allRaw = [...rawSongs];
+        const seenCatalogIds = new Set(seenRawIds);
+        for (const cs of matchingCatalog) {
+            if (!seenCatalogIds.has(cs.id)) {
+                seenCatalogIds.add(cs.id);
+                // Convert to JioSaavn-like format for rankSongsTopK
+                allRaw.push({
+                    id: cs.id,
+                    name: cs.title,
+                    title: cs.title,
+                    primaryArtists: cs.artist,
+                    album: { name: cs.album },
+                    year: cs.year,
+                    duration: cs.duration,
+                    image: cs.imageUrl ? [{ quality: '500x500', url: cs.imageUrl }] : [],
+                    downloadUrl: [{ quality: '320kbps', url: cs.audioUrl }],
+                    source: 'catalog',
+                });
+            }
+        }
+
+        const rankedAll = rankSongsTopK(query, allRaw, 20);
+        const topResult = rankedAll.songs[0] || ranked.songs[0] || null;
+        const regularResults = rankedAll.songs
             .filter(s => s.id !== topResult?.id)
             .slice(0, 15);
 
@@ -478,7 +564,7 @@ export async function smartSearch(query) {
         return {
             intent,
             query,
-            correctedQuery: ranked.correctedQuery,
+            correctedQuery: rankedAll.correctedQuery || ranked.correctedQuery,
             topResult,
             results: regularResults,
             similarSongs,
@@ -489,10 +575,35 @@ export async function smartSearch(query) {
 
     } catch (error) {
         console.error('[SmartSearch] Error:', error.message);
-        // Graceful fallback: just return raw search
-        const fallback = await searchSongs(query, 20);
+        // Graceful fallback: just return raw search + catalog songs
+        const fallback = await searchSongs(query, 20).catch(() => null);
         const rawFallbackSongs = fallback?.data?.data?.results || fallback?.data?.results || [];
-        const rankedFallback = rankSongsTopK(query, rawFallbackSongs, 20);
+        
+        // Merge Firestore catalog songs into fallback
+        const catalogSongs = await getFirestoreSongs();
+        const matchingCatalog = catalogSongs.filter(s => matchesCatalogSong(s, query));
+        
+        const allRawFallback = [...rawFallbackSongs];
+        const seenCatalogIds = new Set(rawFallbackSongs.map(s => s.id));
+        for (const cs of matchingCatalog) {
+            if (!seenCatalogIds.has(cs.id)) {
+                seenCatalogIds.add(cs.id);
+                allRawFallback.push({
+                    id: cs.id,
+                    name: cs.title,
+                    title: cs.title,
+                    primaryArtists: cs.artist,
+                    album: { name: cs.album },
+                    year: cs.year,
+                    duration: cs.duration,
+                    image: cs.imageUrl ? [{ quality: '500x500', url: cs.imageUrl }] : [],
+                    downloadUrl: [{ quality: '320kbps', url: cs.audioUrl }],
+                    source: 'catalog',
+                });
+            }
+        }
+
+        const rankedFallback = rankSongsTopK(query, allRawFallback, 20);
         const songs = rankedFallback.songs.filter(s => s.audioUrl);
         return {
             intent,

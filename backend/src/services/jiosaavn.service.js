@@ -15,27 +15,42 @@ const BACKUP_API_BASE_URL = 'https://saavn.me';
 export const searchSongs = async (query, limit = 20) => {
   const apis = [JIOSAAVN_API_BASE_URL, FALLBACK_API_BASE_URL, BACKUP_API_BASE_URL];
 
-  for (const apiUrl of apis) {
+  const searchPromises = apis.map(async (apiUrl) => {
     try {
       console.log(`Trying JioSaavn API: ${apiUrl}/search/songs?query=${query}`);
       const response = await axios.get(`${apiUrl}/search/songs`, {
-        params: {
-          query,
-          page: 1,
-          limit
-        },
-        timeout: 8000 // Add a timeout to fail fast and move to next fallback
+        params: { query, page: 1, limit },
+        timeout: 8000
       });
-
-      if (response.data && (response.data.success !== false)) {
-        return response.data;
+      if (response.data && response.data.success !== false) {
+        const results = response.data.data?.results || response.data.results || [];
+        return Array.isArray(results) ? results : Object.values(results);
       }
     } catch (error) {
       console.warn(`JioSaavn API ${apiUrl} failed for searchSongs:`, error.message);
     }
+    return [];
+  });
+
+  const resultsArrays = await Promise.all(searchPromises);
+  const allResults = [];
+  const seenIds = new Set();
+
+  for (const results of resultsArrays) {
+    for (const song of results) {
+      if (song && song.id && !seenIds.has(song.id)) {
+        seenIds.add(song.id);
+        allResults.push(song);
+      }
+    }
   }
 
-  throw new Error('All JioSaavn APIs failed for song search');
+  // Return empty array gracefully instead of throwing an error
+  // This allows the backend and frontend to seamlessly merge catalog songs
+  return {
+    success: true,
+    data: { results: allResults }
+  };
 };
 
 /**

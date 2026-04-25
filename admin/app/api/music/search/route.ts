@@ -81,6 +81,12 @@ const JIOSAAVN_PROVIDERS: ProviderConfig[] = [
     searchUrl: 'https://jiosaavn-api-privatecvc2.vercel.app/search/songs',
     globalUrl: 'https://jiosaavn-api-privatecvc2.vercel.app/search',
   },
+  {
+    source: 'jiosaavn-backup-2',
+    label: 'JioSaavn Backup 2',
+    searchUrl: 'https://saavn.me/search/songs',
+    globalUrl: 'https://saavn.me/search',
+  },
 ];
 
 const SONG_DETAILS_URL = 'https://saavn.sumit.co/api/songs';

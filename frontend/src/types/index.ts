@@ -6,6 +6,12 @@ export interface Song {
 	albumId: string | null;
 	imageUrl: string;
 	audioUrl: string;
+	streamUrl?: string;
+	storagePath?: string | null;
+	fileName?: string | null;
+	fileSize?: number | null;
+	mimeType?: string | null;
+	uploadedAt?: string | null;
 	duration: number;
 	createdAt: string;
 	updatedAt: string;

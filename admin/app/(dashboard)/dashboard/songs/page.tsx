@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { collection, getDocs, query, orderBy, deleteDoc, doc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase-client';
-import { Music2, Plus, Search, Edit, Trash2, Play, Pause, Loader2, X, Check, RefreshCw, Database, Globe } from 'lucide-react';
+import { auth, db } from '@/lib/firebase-client';
+import { Music2, Plus, Search, Edit, Trash2, Play, Pause, Loader2, X, Check, RefreshCw, Database, Globe, Upload } from 'lucide-react';
 
 const ADMIN_SEARCH_API = '/api/music/search';
+const ADMIN_UPLOAD_API = '/api/music/upload';
+const MAX_MP3_SIZE_BYTES = 25 * 1024 * 1024;
 const GENRES = [
   'Pop', 'Rock', 'Hip-Hop', 'Indian Hip-Hop', 'Punjabi', 'Punjabi Hip-Hop', 'Bhangra',
   'R&B', 'R&B/Soul', 'Electronic', 'Jazz', 'Classical', 'Country', 'Bollywood', 'Indie', 'Other'
@@ -19,7 +21,13 @@ interface Song {
   genre?: string;
   duration?: number;
   imageUrl?: string;
+  audioUrl?: string;
   streamUrl?: string;
+  storagePath?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  uploadedAt?: string | null;
   year?: number;
   releaseDate?: string | null;
   source?: string;
@@ -56,10 +64,21 @@ interface ApiSong {
 
 interface SongForm {
   title: string; artist: string; album: string; genre: string;
-  duration: string; imageUrl: string; streamUrl: string; year: string;
+  duration: string; imageUrl: string; year: string;
 }
 
-const EMPTY_FORM: SongForm = { title: '', artist: '', album: '', genre: '', duration: '', imageUrl: '', streamUrl: '', year: '' };
+interface UploadedAudioAsset {
+  audioUrl: string;
+  streamUrl: string;
+  storagePath?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  bucket?: string;
+  uploadedAt?: string;
+}
+
+const EMPTY_FORM: SongForm = { title: '', artist: '', album: '', genre: '', duration: '', imageUrl: '', year: '' };
 
 function formatDuration(s?: number) {
   if (!s) return '—';
@@ -69,6 +88,50 @@ function formatDuration(s?: number) {
 
 function getMediaUrl(item?: { url?: string; link?: string }) {
   return item?.url || item?.link || '';
+}
+
+function formatFileSize(bytes?: number) {
+  if (!bytes || bytes <= 0) return 'Unknown size';
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
+function inferFileName(url?: string) {
+  if (!url) return 'audio.mp3';
+  try {
+    const parsed = new URL(url);
+    const rawPath = decodeURIComponent(parsed.pathname);
+    const segments = rawPath.split('/');
+    return segments[segments.length - 1] || 'audio.mp3';
+  } catch {
+    return 'audio.mp3';
+  }
+}
+
+async function readAudioDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
+    const audio = document.createElement('audio');
+    audio.preload = 'metadata';
+    audio.src = objectUrl;
+
+    const cleanup = () => {
+      URL.revokeObjectURL(objectUrl);
+      audio.removeAttribute('src');
+    };
+
+    audio.onloadedmetadata = () => {
+      const duration = Math.round(audio.duration);
+      cleanup();
+      resolve(Number.isFinite(duration) && duration > 0 ? duration : null);
+    };
+
+    audio.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+  });
 }
 
 function getResultKey(song: Song) {
@@ -84,9 +147,9 @@ function getResultKey(song: Song) {
 }
 
 function sourceScore(song: Song) {
-  if (song.source?.startsWith('jiosaavn') && song.streamUrl) return 4;
+  if (song.source?.startsWith('jiosaavn') && (song.streamUrl || song.audioUrl)) return 4;
   if (song.source?.startsWith('jiosaavn')) return 3;
-  if (song.streamUrl) return 2;
+  if (song.streamUrl || song.audioUrl) return 2;
   return 1;
 }
 
@@ -103,6 +166,7 @@ function mergeUniqueSongs(current: Song[], incoming: Song[]) {
 }
 
 function normalizeFirestoreSong(id: string, d: any): Song {
+  const resolvedAudioUrl = d.audioUrl || d.streamUrl || d.url || '';
   return {
     id,
     title: d.title || d.name || '',
@@ -111,12 +175,18 @@ function normalizeFirestoreSong(id: string, d: any): Song {
     genre: d.genre || '',
     duration: d.duration ? Number(d.duration) : undefined,
     imageUrl: d.imageUrl || (Array.isArray(d.image) ? d.image[2]?.url : d.image) || '',
-    streamUrl: d.streamUrl || d.audioUrl || d.url || '',
+    audioUrl: resolvedAudioUrl,
+    streamUrl: resolvedAudioUrl,
+    storagePath: d.storagePath || undefined,
+    fileName: d.fileName || undefined,
+    fileSize: d.fileSize ? Number(d.fileSize) : undefined,
+    mimeType: d.mimeType || undefined,
+    uploadedAt: d.uploadedAt || null,
     year: d.year ? Number(d.year) : undefined,
     releaseDate: d.releaseDate || null,
     source: d.source || 'firestore',
     sourceLabel: d.sourceLabel || d.source || 'firestore',
-    playbackType: d.playbackType || (d.streamUrl || d.audioUrl || d.url ? 'audio' : undefined),
+    playbackType: d.playbackType || (resolvedAudioUrl ? 'audio' : undefined),
     externalUrl: d.externalUrl || undefined,
     inFirestore: true,
   };
@@ -155,6 +225,7 @@ function normalizeApiSong(s: ApiSong): Song {
     genre: s.genre || s.language || '',
     duration: s.duration ? Number(s.duration) : undefined,
     imageUrl: img,
+    audioUrl: bestAudio || '',
     streamUrl: bestAudio || '',
     year: s.year ? Number(s.year) : undefined,
     releaseDate: s.releaseDate || null,
@@ -188,8 +259,12 @@ export default function SongsPage() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<SongForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
   const [formError, setFormError] = useState('');
   const [editId, setEditId] = useState<string | null>(null);
+  const [selectedAudioFile, setSelectedAudioFile] = useState<File | null>(null);
+  const [currentAudioAsset, setCurrentAudioAsset] = useState<UploadedAudioAsset | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   // Saving API song to Firestore
   const [savingApiId, setSavingApiId] = useState<string | null>(null);
@@ -240,6 +315,92 @@ export default function SongsPage() {
       setFirestoreSongs(snap.docs.map(d => normalizeFirestoreSong(d.id, d.data())));
     } catch (e) { console.error(e); }
     finally { setFsLoading(false); }
+  }
+
+  function resetAudioSelection() {
+    setSelectedAudioFile(null);
+    setCurrentAudioAsset(null);
+    setFileInputKey(prev => prev + 1);
+  }
+
+  function openCreateModal(initialTitle = '') {
+    setEditId(null);
+    setForm({ ...EMPTY_FORM, title: initialTitle });
+    setFormError('');
+    resetAudioSelection();
+    setShowModal(true);
+  }
+
+  async function uploadAudioFile(file: File): Promise<UploadedAudioAsset> {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('Your admin session has expired. Please sign in again.');
+    }
+
+    setUploadingAudio(true);
+
+    try {
+      const idToken = await user.getIdToken();
+      const body = new FormData();
+      body.append('file', file);
+
+      const response = await fetch(ADMIN_UPLOAD_API, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${idToken}`,
+        },
+        body,
+      });
+
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.success || !json?.data) {
+        throw new Error(json?.message || 'Failed to upload MP3 file.');
+      }
+
+      return json.data as UploadedAudioAsset;
+    } finally {
+      setUploadingAudio(false);
+    }
+  }
+
+  async function handleAudioFileSelect(file: File | null) {
+    if (!file) {
+      setSelectedAudioFile(null);
+      setFileInputKey(prev => prev + 1);
+      return;
+    }
+
+    const isMp3 = file.name.toLowerCase().endsWith('.mp3') || file.type.toLowerCase().includes('mpeg');
+    if (!isMp3) {
+      setFormError('Please choose an MP3 file.');
+      setSelectedAudioFile(null);
+      setFileInputKey(prev => prev + 1);
+      return;
+    }
+
+    if (file.size > MAX_MP3_SIZE_BYTES) {
+      setFormError('MP3 file must be 25 MB or smaller.');
+      setSelectedAudioFile(null);
+      setFileInputKey(prev => prev + 1);
+      return;
+    }
+
+    setSelectedAudioFile(file);
+    setFormError('');
+
+    if (!form.title.trim()) {
+      setForm(prev => ({
+        ...prev,
+        title: file.name.replace(/\.mp3$/i, '').replace(/[_-]+/g, ' ').trim(),
+      }));
+    }
+
+    if (!form.duration.trim()) {
+      const duration = await readAudioDuration(file);
+      if (duration) {
+        setForm(prev => prev.duration.trim() ? prev : { ...prev, duration: String(duration) });
+      }
+    }
   }
 
   // Debounced API search — searches page 0 first, then loads more
@@ -335,15 +496,30 @@ export default function SongsPage() {
     if (!form.title.trim() || !form.artist.trim()) { setFormError('Title and Artist are required.'); return; }
     setSaving(true); setFormError('');
     try {
+      let uploadedAudio = currentAudioAsset;
+      if (selectedAudioFile) {
+        uploadedAudio = await uploadAudioFile(selectedAudioFile);
+      }
+
+      const audioUrl = uploadedAudio?.audioUrl || uploadedAudio?.streamUrl || '';
+      if (!audioUrl) {
+        throw new Error('Please upload an MP3 file before saving this song.');
+      }
+
       const data = {
         title: form.title.trim(), artist: form.artist.trim(),
         album: form.album.trim() || null, genre: form.genre || null,
         duration: form.duration ? parseInt(form.duration) : null,
         imageUrl: form.imageUrl.trim() || null,
-        streamUrl: form.streamUrl.trim() || null,
-        audioUrl: form.streamUrl.trim() || null,
+        streamUrl: audioUrl,
+        audioUrl,
+        storagePath: uploadedAudio?.storagePath || null,
+        fileName: uploadedAudio?.fileName || inferFileName(audioUrl),
+        fileSize: uploadedAudio?.fileSize || null,
+        mimeType: uploadedAudio?.mimeType || 'audio/mpeg',
         year: form.year ? parseInt(form.year) : null,
-        source: 'admin', updatedAt: serverTimestamp(),
+        source: 'admin', sourceLabel: 'admin upload', updatedAt: serverTimestamp(),
+        ...(selectedAudioFile ? { uploadedAt: serverTimestamp() } : {}),
       };
       if (editId) {
         await updateDoc(doc(db, 'songs', editId), data);
@@ -362,12 +538,30 @@ export default function SongsPage() {
     setForm({
       title: song.title || '', artist: song.artist || '', album: song.album || '',
       genre: song.genre || '', duration: song.duration?.toString() || '',
-      imageUrl: song.imageUrl || '', streamUrl: song.streamUrl || '', year: song.year?.toString() || '',
+      imageUrl: song.imageUrl || '', year: song.year?.toString() || '',
     });
+    setSelectedAudioFile(null);
+    setCurrentAudioAsset(song.streamUrl ? {
+      audioUrl: song.audioUrl || song.streamUrl,
+      streamUrl: song.streamUrl || song.audioUrl || '',
+      storagePath: song.storagePath,
+      fileName: song.fileName || inferFileName(song.streamUrl || song.audioUrl),
+      fileSize: song.fileSize,
+      mimeType: song.mimeType,
+      uploadedAt: song.uploadedAt || undefined,
+    } : null);
+    setFileInputKey(prev => prev + 1);
+    setFormError('');
     setShowModal(true);
   }
 
-  function closeModal() { setShowModal(false); setForm(EMPTY_FORM); setEditId(null); setFormError(''); }
+  function closeModal() {
+    setShowModal(false);
+    setForm(EMPTY_FORM);
+    setEditId(null);
+    setFormError('');
+    resetAudioSelection();
+  }
 
   async function handlePlaySong(song: Song) {
     const audio = audioRef.current;
@@ -421,7 +615,7 @@ export default function SongsPage() {
           <button onClick={fetchFirestoreSongs} disabled={fsLoading} className="btn-secondary flex items-center gap-2" title="Refresh catalog">
             <RefreshCw className={`h-4 w-4 ${fsLoading ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowModal(true); }} className="btn-primary flex items-center gap-2">
+          <button onClick={() => openCreateModal()} className="btn-primary flex items-center gap-2">
             <Plus className="h-4 w-4" /> Add Song
           </button>
         </div>
@@ -519,19 +713,17 @@ export default function SongsPage() {
               {viewMode === 'search' ? `No results for "${searchQuery}"` : 'No songs in catalog yet'}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {viewMode === 'catalog' ? 'Click "Add Song" or search to import from music APIs' : 'This song may not be available in the connected full-song APIs'}
+              {viewMode === 'catalog' ? 'Click "Add Song" to upload an MP3 or search to import from music APIs' : 'This song may not be available in the connected full-song APIs'}
             </p>
             {viewMode === 'search' && (
-              <button
-                onClick={() => {
-                  setForm(f => ({ ...f, title: searchQuery }));
-                  setEditId(null);
-                  setShowModal(true);
-                }}
-                className="btn-primary mt-4 flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" /> Add "{searchQuery}" manually
-              </button>
+                <button
+                  onClick={() => {
+                    openCreateModal(searchQuery);
+                  }}
+                  className="btn-primary mt-4 flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" /> Upload "{searchQuery}" manually
+                </button>
             )}
           </div>
         ) : (
@@ -661,13 +853,11 @@ export default function SongsPage() {
                   Can't find the song? It may not be available in the connected full-song APIs.{' '}
                   <button
                     onClick={() => {
-                      setForm(f => ({ ...f, title: searchQuery }));
-                      setEditId(null);
-                      setShowModal(true);
+                      openCreateModal(searchQuery);
                     }}
                     className="font-semibold underline hover:no-underline"
                   >
-                    Add "{searchQuery}" manually
+                    Upload "{searchQuery}" manually
                   </button>
                 </p>
               </div>
@@ -731,9 +921,58 @@ export default function SongsPage() {
                     onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Stream URL</label>
-                  <input className="input-field" placeholder="https://..." value={form.streamUrl}
-                    onChange={e => setForm(f => ({ ...f, streamUrl: e.target.value }))} />
+                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                    MP3 File <span className="text-red-500">*</span>
+                  </label>
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Upload the song file</p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          MP3 only, up to 25 MB. The saved audio URL is used by both the web player and the app.
+                        </p>
+                      </div>
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:border-gray-300 hover:bg-gray-100">
+                        <Upload className="h-4 w-4" />
+                        Choose MP3
+                        <input
+                          key={fileInputKey}
+                          type="file"
+                          accept=".mp3,audio/mpeg"
+                          className="hidden"
+                          onChange={e => void handleAudioFileSelect(e.target.files?.[0] || null)}
+                        />
+                      </label>
+                    </div>
+
+                    {currentAudioAsset?.audioUrl && !selectedAudioFile && (
+                      <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                        Current file: <span className="font-medium">{currentAudioAsset.fileName || inferFileName(currentAudioAsset.audioUrl)}</span>
+                        <span className="ml-2 text-xs text-blue-600">
+                          {formatFileSize(currentAudioAsset.fileSize)}
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedAudioFile && (
+                      <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                        Ready to upload: <span className="font-medium">{selectedAudioFile.name}</span>
+                        <span className="ml-2 text-xs text-green-700">
+                          {formatFileSize(selectedAudioFile.size)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAudioFile(null);
+                            setFileInputKey(prev => prev + 1);
+                          }}
+                          className="ml-3 text-xs font-medium text-green-700 underline hover:no-underline"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -741,7 +980,7 @@ export default function SongsPage() {
               <button onClick={closeModal} className="btn-secondary">Cancel</button>
               <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                {editId ? 'Save Changes' : 'Add Song'}
+                {saving ? (uploadingAudio ? 'Uploading MP3...' : (editId ? 'Saving Changes...' : 'Adding Song...')) : (editId ? 'Save Changes' : 'Add Song')}
               </button>
             </div>
           </div>

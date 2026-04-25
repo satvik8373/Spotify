@@ -14,6 +14,12 @@ export interface FirestoreSong extends Omit<Song, '_id'> {
   albumId: string | null;
   imageUrl: string;
   audioUrl: string;
+  streamUrl?: string;
+  storagePath?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  uploadedAt?: string | null;
   duration: number;
   createdAt: string;
   updatedAt: string;
@@ -29,9 +35,11 @@ export const songToFirestore = (song: Song): FirestoreSong => {
 };
 
 export const firestoreToSong = (fsong: FirestoreSong): Song => {
-  const { id, ...rest } = fsong;
+  const { id, audioUrl, streamUrl, ...rest } = fsong;
   return {
     _id: id,
+    audioUrl: audioUrl || streamUrl || '',
+    streamUrl: streamUrl || audioUrl || '',
     ...rest
   };
 };

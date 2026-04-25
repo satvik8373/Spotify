@@ -126,7 +126,6 @@ const HomePage = () => {
 
   useEffect(() => {
     let isCancelled = false;
-
     const loadHomeJioCategories = async () => {
       try {
         const categories = await jioSaavnService.getHomeJioSaavnCategories({
