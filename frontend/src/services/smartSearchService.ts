@@ -35,13 +35,32 @@ export interface SmartSearchResult {
     processingTime: number;
 }
 
+// Vercel serverless function — handles JioSaavn + catalog server-side (no CORS)
+const SMART_SEARCH_API = '/api/music/smart-search';
+
+// Direct JioSaavn fallback (for local dev where serverless isn't running)
 const JIOSAAVN_URLS = [
     'https://saavn.sumit.co/api/search/songs',
     'https://jiosaavn-api-privatecvc2.vercel.app/search/songs',
     'https://saavn.me/search/songs',
 ];
 
-async function fetchJioSaavnSearch(query: string, limit = 20): Promise<SmartSearchSong[]> {
+async function fetchViaServerless(query: string): Promise<SmartSearchSong[] | null> {
+    try {
+        const res = await fetch(
+            `${SMART_SEARCH_API}?q=${encodeURIComponent(query)}`,
+            { signal: AbortSignal.timeout(12000) }
+        );
+        if (!res.ok) return null;
+        const json = await res.json();
+        if (!json?.success) return null;
+        return json.data?.results || [];
+    } catch {
+        return null;
+    }
+}
+
+async function fetchJioSaavnDirect(query: string, limit = 20): Promise<SmartSearchSong[]> {
     for (const baseUrl of JIOSAAVN_URLS) {
         try {
             const url = `${baseUrl}?query=${encodeURIComponent(query)}&limit=${limit}`;
@@ -50,8 +69,8 @@ async function fetchJioSaavnSearch(query: string, limit = 20): Promise<SmartSear
             const json = await res.json();
             const raw: any[] = json?.data?.results || json?.results || [];
             const songs: SmartSearchSong[] = raw
-                .filter(s => s?.id)
-                .map(s => {
+                .filter((s: any) => s?.id)
+                .map((s: any) => {
                     const downloads: any[] = Array.isArray(s.downloadUrl) ? s.downloadUrl : [];
                     const audioUrl =
                         downloads.find((d: any) => d.quality === '320kbps')?.url ||
@@ -76,7 +95,7 @@ async function fetchJioSaavnSearch(query: string, limit = 20): Promise<SmartSear
                         source: 'jiosaavn',
                     };
                 })
-                .filter(s => s.audioUrl);
+                .filter((s: SmartSearchSong) => s.audioUrl);
             if (songs.length > 0) return songs;
         } catch {
             // try next provider
@@ -85,50 +104,58 @@ async function fetchJioSaavnSearch(query: string, limit = 20): Promise<SmartSear
     return [];
 }
 
+function rankScore(s: SmartSearchSong, query: string): number {
+    const q = query.toLowerCase();
+    const t = s.title.toLowerCase();
+    const a = s.artist.toLowerCase();
+    if (t === q) return 100;
+    if (t.startsWith(q)) return 80;
+    if (t.includes(q)) return 60;
+    if (a.includes(q)) return 30;
+    return 10;
+}
+
 export const runSmartSearch = async (query: string): Promise<SmartSearchResult> => {
     const start = Date.now();
 
-    // Run JioSaavn search + catalog fetch in parallel
-    const [jiosaavnSongs, catalogSongs] = await Promise.all([
-        fetchJioSaavnSearch(query, 20),
+    // Try serverless first (production) — it handles JioSaavn + catalog server-side
+    // Fall back to direct calls (local dev)
+    const [serverlessResults, catalogSongs] = await Promise.all([
+        fetchViaServerless(query),
         getCatalogSongs().catch(() => []),
     ]);
 
-    // Merge catalog songs that match the query and aren't already in results
-    const matchingCatalog = filterCatalogSongs(catalogSongs, query);
-    const existingIds = new Set(jiosaavnSongs.map(s => s.id));
-    const catalogResults: SmartSearchSong[] = matchingCatalog
-        .filter(s => !existingIds.has(s._id))
-        .map(s => ({
-            id: s._id,
-            title: s.title,
-            artist: s.artist,
-            album: s.album || '',
-            year: null,
-            duration: s.duration || 0,
-            imageUrl: s.imageUrl || '',
-            audioUrl: s.audioUrl,
-            source: 'catalog',
-        }));
+    let allResults: SmartSearchSong[];
 
-    // Rank: latest year first, then by title relevance as tiebreaker
-    const q = query.toLowerCase().trim();
-    const score = (s: SmartSearchSong) => {
-        const t = s.title.toLowerCase();
-        const a = s.artist.toLowerCase();
-        if (t === q) return 100;
-        if (t.startsWith(q)) return 80;
-        if (t.includes(q)) return 60;
-        if (a.includes(q)) return 30;
-        return 10;
-    };
+    if (serverlessResults !== null) {
+        // Serverless already merged catalog — just use results directly
+        allResults = serverlessResults;
+    } else {
+        // Fallback: direct JioSaavn + client-side catalog merge
+        const jiosaavnSongs = await fetchJioSaavnDirect(query, 20);
+        const matchingCatalog = filterCatalogSongs(catalogSongs, query);
+        const existingIds = new Set(jiosaavnSongs.map(s => s.id));
+        const catalogResults: SmartSearchSong[] = matchingCatalog
+            .filter(s => !existingIds.has(s._id))
+            .map(s => ({
+                id: s._id,
+                title: s.title,
+                artist: s.artist,
+                album: s.album || '',
+                year: null,
+                duration: s.duration || 0,
+                imageUrl: s.imageUrl || '',
+                audioUrl: s.audioUrl,
+                source: 'catalog',
+            }));
 
-    const allResults = [...catalogResults, ...jiosaavnSongs]
-        .sort((a, b) => {
-            const yearDiff = (b.year || 0) - (a.year || 0);
-            if (yearDiff !== 0) return yearDiff;
-            return score(b) - score(a);
-        });
+        allResults = [...jiosaavnSongs, ...catalogResults]
+            .sort((a, b) => {
+                const yearDiff = (b.year || 0) - (a.year || 0);
+                if (yearDiff !== 0) return yearDiff;
+                return rankScore(b, query) - rankScore(a, query);
+            });
+    }
 
     const topResult = allResults[0] || null;
     const results = allResults.slice(1);

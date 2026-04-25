@@ -2,16 +2,26 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "https://spotify-api-drab.vercel.app/api/$1"
-    },
-    {
       "source": "/firebase-messaging-sw.js",
       "destination": "/firebase-messaging-sw.js"
+    },
+    {
+      "source": "/api/music/smart-search",
+      "destination": "/api/music/smart-search/index.js"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "https://spotify-api-drab.vercel.app/api/$1"
     },
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/music/smart-search/index.js": {
+      "memory": 512,
+      "maxDuration": 15
+    }
+  }
 }
