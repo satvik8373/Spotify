@@ -12,6 +12,8 @@ import { SectionWrapper } from '@/components/ui/section-wrapper';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import HomeSkeleton from '@/components/skeletons/HomeSkeleton';
 import { updateMetaTags, metaPresets } from '@/utils/metaTags';
+import { PromotionsBanner } from '@/components/PromotionsBanner';
+import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 
 const HOME_JIOSAAVN_SECTION_ORDER = [
   'trending',
@@ -317,6 +319,12 @@ const HomePage = () => {
             </Link>
           </div>
         </div>
+
+        {/* Notifications permission banner */}
+        <NotificationPermissionBanner />
+
+        {/* Promotions Banner */}
+        <PromotionsBanner />
 
         <div className="w-full overflow-x-hidden">
           {isAuthenticated && (

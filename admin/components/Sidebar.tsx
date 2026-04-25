@@ -1,0 +1,139 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import {
+  Activity,
+  Music2,
+  ListMusic,
+  Mic2,
+  Search,
+  ShieldAlert,
+  Users,
+  BarChart3,
+  Flag,
+  Megaphone,
+  Bell,
+  ShieldCheck,
+  LogOut,
+  LayoutDashboard,
+} from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { hasPermission } from '@/lib/permissions';
+import { AdminPermission } from '@/types';
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  permission: AdminPermission;
+  group: string;
+}
+
+const navItems: NavItem[] = [
+  { label: 'Overview', href: '/dashboard', icon: LayoutDashboard, permission: 'overview.view', group: 'Monitor' },
+  { label: 'Songs', href: '/dashboard/songs', icon: Music2, permission: 'catalog.manage', group: 'Catalog' },
+  { label: 'Playlists', href: '/dashboard/playlists', icon: ListMusic, permission: 'playlists.manage', group: 'Catalog' },
+  { label: 'Artists', href: '/dashboard/artists', icon: Mic2, permission: 'artists.manage', group: 'Catalog' },
+  { label: 'Discovery', href: '/dashboard/discovery', icon: Search, permission: 'discovery.manage', group: 'Growth' },
+  { label: 'Moderation', href: '/dashboard/moderation', icon: ShieldAlert, permission: 'moderation.manage', group: 'Trust' },
+  { label: 'Users', href: '/dashboard/users', icon: Users, permission: 'users.manage', group: 'Trust' },
+  { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, permission: 'analytics.view', group: 'Monitor' },
+  { label: 'Feature Flags', href: '/dashboard/flags', icon: Flag, permission: 'flags.manage', group: 'Release' },
+  { label: 'Promotions', href: '/dashboard/promotions', icon: Megaphone, permission: 'promotions.manage', group: 'Growth' },
+  { label: 'Notifications', href: '/dashboard/notifications', icon: Bell, permission: 'notifications.manage', group: 'Growth' },
+  { label: 'Admin Roles', href: '/dashboard/roles', icon: ShieldCheck, permission: 'roles.manage', group: 'Security' },
+];
+
+const groupOrder = ['Monitor', 'Catalog', 'Growth', 'Trust', 'Release', 'Security'];
+
+export function Sidebar() {
+  const pathname = usePathname();
+  const { session, signOut } = useAuth();
+
+  if (!session) return null;
+
+  const groupedItems = groupOrder.map((group) => ({
+    group,
+    items: navItems.filter(
+      (item) =>
+        item.group === group &&
+        hasPermission(session.role, session.permissions, item.permission)
+    ),
+  })).filter((g) => g.items.length > 0);
+
+  return (
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-gray-200 bg-white">
+      <div className="flex h-full flex-col">
+        {/* Logo */}
+        <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
+            <Music2 className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">Mavrixfy</h1>
+            <p className="text-xs text-gray-500">Admin Panel</p>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto scrollbar-thin px-3 py-4">
+          <div className="space-y-6">
+            {groupedItems.map(({ group, items }) => (
+              <div key={group}>
+                <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {group}
+                </p>
+                <div className="space-y-1">
+                  {items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                          isActive
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        )}
+                      >
+                        <Icon className="h-5 w-5" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </nav>
+
+        {/* User Profile */}
+        <div className="border-t border-gray-200 p-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                {session.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-sm font-medium text-gray-900">{session.name}</p>
+                <p className="truncate text-xs text-gray-500 capitalize">{session.role.replace('_', ' ')}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => signOut()}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}

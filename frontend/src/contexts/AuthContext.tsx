@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { getLocalStorageJSON } from '@/utils/storageUtils';
+import { registerWebPush, onForegroundMessage } from '@/services/webPushService';
 
 interface User {
   id: string;
@@ -116,6 +117,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
 
             setUser(userObj);
+
+            // Register web push notifications
+            registerWebPush(firebaseUser.uid).catch(() => {});
+
+            // Listen for foreground messages
+            onForegroundMessage((payload) => {
+              // handled inside onForegroundMessage itself
+            });
 
             // Update auth store only if user changed
             const authStore = useAuthStore.getState();

@@ -1,0 +1,172 @@
+@keyframes admin-grid-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    transform: translate3d(0, -28px, 0);
+  }
+}
+
+@keyframes admin-orb-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(0, -14px, 0) scale(1.04);
+  }
+}
+
+.admin-shell {
+  position: relative;
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at top left, rgba(0, 209, 255, 0.14), transparent 36%),
+    radial-gradient(circle at top right, rgba(125, 255, 177, 0.12), transparent 28%),
+    linear-gradient(180deg, #050816 0%, #07101f 42%, #02060f 100%);
+  color: #e5edf8;
+}
+
+.admin-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 88px 88px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 92%);
+  opacity: 0.3;
+  pointer-events: none;
+  animation: admin-grid-drift 16s linear infinite !important;
+}
+
+.admin-shell::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  top: 9%;
+  height: 280px;
+  width: 280px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(79, 212, 255, 0.2) 0%, rgba(79, 212, 255, 0) 68%);
+  filter: blur(14px);
+  pointer-events: none;
+  animation: admin-orb-float 9s ease-in-out infinite !important;
+}
+
+.admin-shell * {
+  letter-spacing: 0;
+}
+
+.admin-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(6, 11, 24, 0.74);
+  backdrop-filter: blur(24px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 60px rgba(2, 8, 20, 0.42);
+}
+
+.admin-elevated {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(14, 23, 40, 0.88) 0%, rgba(7, 12, 22, 0.92) 100%);
+  box-shadow: 0 16px 46px rgba(4, 10, 22, 0.42);
+}
+
+.admin-nav-item {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease !important;
+}
+
+.admin-nav-item:hover {
+  background: rgba(79, 212, 255, 0.08);
+  border-color: rgba(79, 212, 255, 0.24);
+}
+
+.admin-nav-item[data-active='true'] {
+  background:
+    linear-gradient(90deg, rgba(79, 212, 255, 0.18) 0%, rgba(125, 255, 177, 0.08) 100%);
+  border-color: rgba(79, 212, 255, 0.28);
+  color: #f8fbff;
+  box-shadow: inset 0 0 0 1px rgba(79, 212, 255, 0.12);
+}
+
+.admin-kpi-card,
+.admin-soft-card,
+.admin-command-panel {
+  backdrop-filter: blur(18px);
+}
+
+.admin-kpi-card {
+  background:
+    linear-gradient(180deg, rgba(15, 25, 44, 0.92) 0%, rgba(6, 12, 24, 0.92) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-kpi-card::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  border: 1px solid rgba(79, 212, 255, 0.08);
+  pointer-events: none;
+}
+
+.admin-chip {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-preview-card {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(79, 212, 255, 0.28), transparent 38%),
+    linear-gradient(180deg, rgba(15, 24, 42, 0.96) 0%, rgba(4, 10, 18, 0.98) 100%);
+}
+
+.admin-preview-card.light {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(79, 212, 255, 0.18), transparent 38%),
+    linear-gradient(180deg, #f5f9ff 0%, #dbeafe 100%);
+  color: #0f172a;
+}
+
+.admin-range {
+  accent-color: #4fd4ff;
+}
+
+.admin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 150, 180, 0.45) transparent;
+}
+
+.admin-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.admin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(120, 150, 180, 0.45);
+  border-radius: 999px;
+}
+
+.admin-pill-success {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.admin-pill-warning {
+  color: #fcd34d;
+  background: rgba(250, 204, 21, 0.12);
+  border-color: rgba(250, 204, 21, 0.18);
+}
+
+.admin-pill-danger {
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.2);
+}
