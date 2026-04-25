@@ -5,59 +5,44 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export function NotificationPermissionBanner() {
   const { user } = useAuth();
-  const [status, setStatus] = useState<string>('idle');
-  const [dismissed, setDismissed] = useState(false);
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
 
     const perm = getNotificationPermission();
 
-    if (perm === 'denied' || perm === 'unsupported') {
-      setStatus(perm);
-      return;
-    }
-
-    // If already granted — silently re-register to ensure fresh token in Firestore
     if (perm === 'granted') {
-      registerWebPush(user.id).then(result => {
-        setStatus(result.status);
-      });
+      // Already granted — silently ensure token is registered, no banner needed
+      registerWebPush(user.id).catch(() => {});
       return;
     }
 
-    // 'default' — check if dismissed
-    if (localStorage.getItem('notif_banner_dismissed')) {
-      setDismissed(true);
+    if (perm === 'default') {
+      // Only show banner if not dismissed before
+      if (!localStorage.getItem('notif_banner_dismissed')) {
+        setShow(true);
+      }
     }
+    // 'denied' or 'unsupported' — do nothing, can't ask again
   }, [user?.id]);
 
   async function handleEnable() {
     if (!user?.id) return;
-    setStatus('loading');
+    setShow(false); // hide immediately to avoid double-click
     const result = await registerWebPush(user.id);
-    setStatus(result.status);
-    if (result.status === 'granted') {
+    if (result.status !== 'granted') {
+      // Permission denied by user — don't show again
       localStorage.setItem('notif_banner_dismissed', '1');
     }
   }
 
   function handleDismiss() {
-    setDismissed(true);
+    setShow(false);
     localStorage.setItem('notif_banner_dismissed', '1');
   }
 
-  // Hide if: no user, already handled, denied, unsupported, dismissed
-  if (
-    !user ||
-    dismissed ||
-    status === 'granted' ||
-    status === 'denied' ||
-    status === 'unsupported' ||
-    status === 'loading'
-  ) {
-    return null;
-  }
+  if (!show) return null;
 
   return (
     <div className="mx-4 md:mx-6 mb-3 flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 px-4 py-3">

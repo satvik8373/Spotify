@@ -118,8 +118,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             setUser(userObj);
 
-            // Register web push notifications
-            registerWebPush(firebaseUser.uid).catch(() => {});
+            // Register web push notifications (silent — only if permission already granted)
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              registerWebPush(firebaseUser.uid).catch(() => {});
+            }
 
             // Listen for foreground messages
             onForegroundMessage((payload) => {
