@@ -26,12 +26,14 @@ async function sendExpoNotifications(
 
   const messages = tokens.map(to => ({
     to,
-    title,
+    title: `Mavrixfy — ${title}`,
     body,
     data,
     sound: 'default',
     channelId: 'mavrixfy-default',
     priority: 'high',
+    badge: 1,
+    icon: 'https://mavrixfy.site/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
   }));
 
   // Expo push API accepts up to 100 per request
@@ -90,13 +92,17 @@ async function sendWebNotifications(
       },
       webpush: {
         notification: {
-          title,
+          title: `Mavrixfy — ${title}`,
           body,
           icon: 'https://mavrixfy.site/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
+          badge: 'https://mavrixfy.site/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
           ...(imageUrl ? { image: imageUrl } : {}),
           requireInteraction: false,
+          vibrate: [200, 100, 200],
+          tag: 'mavrixfy',
+          renotify: true,
         },
-        fcmOptions: { link: route ? `/${route}` : '/' },
+        fcmOptions: { link: route ? `https://mavrixfy.site/${route}` : 'https://mavrixfy.site/home' },
       },
     }));
 
@@ -179,9 +185,17 @@ export async function POST(req: NextRequest) {
               const batch = androidFcmTokens.slice(i, i + 500);
               const msgs = batch.map(token => ({
                 token,
-                notification: { title, body: message },
+                notification: { title: `Mavrixfy — ${title}`, body: message },
                 data,
-                android: { priority: 'high' as const, notification: { channelId: 'mavrixfy-default', sound: 'default' } },
+                android: {
+                  priority: 'high' as const,
+                  notification: {
+                    channelId: 'mavrixfy-default',
+                    sound: 'default',
+                    color: '#1DB954',
+                    icon: 'notification_icon',
+                  },
+                },
               }));
               const r = await messaging.sendEach(msgs);
               delivered += r.successCount;
