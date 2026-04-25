@@ -29,7 +29,6 @@ export async function registerWebPush(userId: string): Promise<{ token: string |
     // Register service worker
     const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
     await navigator.serviceWorker.ready;
-
     const msg = await getMessagingInstance();
     const token = await getToken(msg, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
 

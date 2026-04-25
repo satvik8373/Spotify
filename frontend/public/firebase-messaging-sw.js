@@ -15,13 +15,16 @@ const messaging = firebase.messaging();
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
   const { title, body, image } = payload.notification || {};
+  const iconUrl = self.location.origin + '/mavrixfy-icons/mavrixfy-icon-maskable-192.png';
   self.registration.showNotification(title || 'Mavrixfy', {
     body: body || '',
-    icon: '/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
-    badge: '/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
+    icon: iconUrl,
+    badge: iconUrl,
     image: image || undefined,
     data: payload.data || {},
     vibrate: [200, 100, 200],
+    tag: 'mavrixfy-notification',
+    renotify: true,
   });
 });
 

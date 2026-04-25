@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
 				includeAssets: ['mavrixfy.png', 'apple-touch-icon.png', 'mavrixfy-icons/*.png'],
 				workbox: {
 					globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,avif}'],
-					globIgnores: ['**/*.{mp3,mp4,m4a,aac,ogg,wav,flac}'],
+					globIgnores: ['**/*.{mp3,mp4,m4a,aac,ogg,wav,flac}', '**/firebase-messaging-sw.js'],
 					cleanupOutdatedCaches: true,
 					runtimeCaching: [
 						{
